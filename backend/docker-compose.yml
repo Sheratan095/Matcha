@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Infrastructure
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: myplatform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # Applications
+  gateway:
+    build:
+      context: .
+      dockerfile: apps/gateway/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://user:password@postgres:5432/myplatform?schema=public
+      - JWT_SECRET=super-secret-key-change-me-in-production
+    depends_on:
+      - postgres
+      - redis
+
+  users-service:
+    build:
+      context: .
+      dockerfile: apps/users-service/Dockerfile
+    ports:
+      - "3002:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://user:password@postgres:5432/myplatform?schema=public
+    depends_on:
+      - postgres
+      - redis
+
+  project-service:
+    build:
+      context: .
+      dockerfile: apps/project-service/Dockerfile
+    ports:
+      - "3003:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://user:password@postgres:5432/myplatform?schema=public
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  postgres_data:
