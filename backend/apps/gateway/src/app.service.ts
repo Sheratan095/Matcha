@@ -10,6 +10,6 @@ export class AppService
 {
 	getHello(): string
 	{
-		return ('aoo');
+		return ('OK');
 	}
 }

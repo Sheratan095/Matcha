@@ -13,5 +13,9 @@
     "turbo": "latest",
     "typescript": "^5.0.0"
   },
-  "packageManager": "pnpm@8.15.0"
+  "packageManager": "pnpm@8.15.0",
+  "dependencies": {
+    "@nestjs/swagger": "^11.4.2",
+    "swagger-ui-express": "^5.0.1"
+  }
 }

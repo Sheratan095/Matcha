@@ -16,7 +16,6 @@ export class AppController
 
 	getHealth(): string
 	{
-		console.log('Health check endpoint hit');
 		return (this.appService.getHello());
 	}
 }
