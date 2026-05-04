@@ -15,40 +15,6 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
-  apps/auth-service:
-    dependencies:
-      '@nestjs/common':
-        specifier: ^10.0.0
-        version: 10.4.22(reflect-metadata@0.1.14)(rxjs@7.8.2)
-      '@nestjs/core':
-        specifier: ^10.0.0
-        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/platform-express@10.4.22)(reflect-metadata@0.1.14)(rxjs@7.8.2)
-      '@nestjs/platform-express':
-        specifier: ^10.0.0
-        version: 10.4.22(@nestjs/common@10.4.22)(@nestjs/core@10.4.22)
-      '@repo/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@repo/logger':
-        specifier: workspace:*
-        version: link:../../packages/logger
-      '@repo/shared-types':
-        specifier: workspace:*
-        version: link:../../packages/shared-types
-      reflect-metadata:
-        specifier: ^0.1.13
-        version: 0.1.14
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-    devDependencies:
-      '@nestjs/cli':
-        specifier: ^10.0.0
-        version: 10.4.9
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
-
   apps/gateway:
     dependencies:
       '@nestjs/common':

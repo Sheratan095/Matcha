@@ -31,45 +31,5 @@ services:
     depends_on:
       - redis
 
-  auth-service:
-    build:
-      context: .
-      dockerfile: apps/auth-service/Dockerfile
-    ports:
-      - "3001:3000"
-    environment:
-      - PORT=3000
-      - DATABASE_URL=postgresql://user:password@postgres:5432/myplatform?schema=public
-      - JWT_SECRET=super-secret-key-change-me-in-production
-    depends_on:
-      - postgres
-      - redis
-
-  users-service:
-    build:
-      context: .
-      dockerfile: apps/users-service/Dockerfile
-    ports:
-      - "3002:3000"
-    environment:
-      - PORT=3000
-      - DATABASE_URL=postgresql://user:password@postgres:5432/myplatform?schema=public
-    depends_on:
-      - postgres
-      - redis
-
-  project-service:
-    build:
-      context: .
-      dockerfile: apps/project-service/Dockerfile
-    ports:
-      - "3003:3000"
-    environment:
-      - PORT=3000
-      - DATABASE_URL=postgresql://user:password@postgres:5432/myplatform?schema=public
-    depends_on:
-      - postgres
-      - redis
-
 volumes:
   postgres_data:
