@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { env } from "@repo/config";
 
 // This is the bootstrap file, it imports NestFactory and you root module to spin up the http server
 
@@ -21,6 +22,6 @@ async function bootstrap()
 {
 	const app = await NestFactory.create(AppModule);
 	swaggerSetup(app);
-	await app.listen(3001);
+	await app.listen(env.AUTH_SERVICE_PORT);
 }
 bootstrap();

@@ -1,10 +1,13 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@repo/config": ["packages/config/src"]
+    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
     "target": "ES2021",
     "module": "CommonJS",
     "experimentalDecorators": true,
