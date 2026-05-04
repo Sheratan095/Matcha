@@ -7,6 +7,9 @@
     "moduleResolution": "node",
     "target": "ES2021",
     "module": "CommonJS",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
     "declaration": true,
     "sourceMap": true
   }
