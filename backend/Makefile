@@ -9,8 +9,17 @@ build:
 	pnpm build
 
 # Start all services in dev mode
-dev:
+dev: generate_env
 	pnpm dev
+
+# Copy the .env.example to .env if it doesn't exist
+generate_env:
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "Generated .env from .env.example"; \
+	else \
+		echo ".env already exists, skipping generation"; \
+	fi
 
 # Start Docker infrastructure (PostgreSQL, Redis)
 up:
