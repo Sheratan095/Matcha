@@ -1,15 +1,25 @@
 .PHONY: install build dev up down clean
 
-# Install dependencies
-install:
-	pnpm install
-
 # Build all apps and packages
 build:
 	pnpm build
 
+# Install dependencies
+install:
+	build
+	pnpm install
+
 # Start all services in dev mode
 dev: generate_env
+	@if [ ! -d node_modules ]; then \
+		echo "node_modules missing — running pnpm install..."; \
+		pnpm install; \
+	fi; \
+	# Only run a full build if no package produced a dist directory yet
+	if ! find . -type d -name dist -mindepth 2 | grep -q .; then \
+		echo "no dist folders found — running pnpm build..."; \
+		pnpm build; \
+	fi; \
 	pnpm dev
 
 # Copy the .env.example to .env if it doesn't exist
