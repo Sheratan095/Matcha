@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { env } from "@repo/config";
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import { createProxyMiddleware, Options } from 'http-proxy-middleware';
+import { IncomingMessage, ServerResponse, ClientRequest } from 'http';
 import { setupSwagger } from './swagger';
 import { Microservice } from './Models/Microservice';
 
@@ -23,11 +24,37 @@ async function bootstrap()
 		'/auth',
 		createProxyMiddleware({
 			target: `${env.AUTH_HOST}:${env.AUTH_PORT}`,
+
+			// Change the origin of the host header to the target URL
 			changeOrigin: true,
-			pathRewrite: {
+
+			// Remove the /auth prefix when forwarding to the auth service
+			//	so the auth service can define its routes as /login, /register, etc. instead of /auth/login, /auth/register
+			pathRewrite:
+			{
 				'^/auth': '',
 			},
-		}),
+
+			// Add event handlers for the proxy
+			on:
+			{
+				// Specify what to do before the proxy request is sent to the target service
+				proxyReq: (proxyReq : ClientRequest, _req: Request, _res: Response) =>
+				{
+					// Add the internal key to the headers of all proxied requests for authentication between services
+					const	internalKey = env.INTERNAL_KEY;
+					if (internalKey)
+						proxyReq.setHeader('x-internal-key', internalKey);
+				},
+
+				// Specify what to do in case of an error when proxying the request to the target service
+				error: (err : Error, _req: Request, _res: Response) =>
+				{
+					console.error('[Gateway] Proxy Error:', err);
+				}
+			},
+
+		} as any),
 	);
 
 	setupSwagger(app, services);

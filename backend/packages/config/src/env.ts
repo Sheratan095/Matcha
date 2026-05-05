@@ -11,6 +11,8 @@ dotenv.config({ path: findConfig(".env") || undefined });
 const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
+	INTERNAL_KEY: z.string().default("1234abc"),
+
 	GATEWAY_HOST: z.string().default("http://localhost"),
 	GATEWAY_PORT: z.coerce.number().default(3000),
 
@@ -29,3 +31,9 @@ if (!parsed.success)
 }
 
 export const env = parsed.data;
+
+// Used for verifying the internal key in controllers and middleware without importing the entire env object
+export const verifyInternalKey = (key?: string): boolean =>
+{
+	return (key === env.INTERNAL_KEY);
+}
