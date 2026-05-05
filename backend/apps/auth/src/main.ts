@@ -8,9 +8,10 @@ import { env } from "@repo/config";
 function swaggerSetup(app : any)
 {
 	const config = new DocumentBuilder()
-		.setTitle('AUTH API')
+		.setTitle('Auth API')
 		.setVersion('1.0')
-		.addBearerAuth() // for JWT auth
+		// .addBearerAuth() // for JWT auth
+		.addServer('/auth') // base path for the auth service, so in docs the endpoints will be shown as /auth/endpoint instead of just /endpoint
 		.build();
 
 	const document = SwaggerModule.createDocument(app, config);
