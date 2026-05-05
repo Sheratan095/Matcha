@@ -1,9 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@repo/config": ["packages/config/src"]
-    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

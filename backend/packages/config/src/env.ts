@@ -11,8 +11,11 @@ dotenv.config({ path: findConfig(".env") || undefined });
 const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
+	GATEWAY_HOST: z.string().default("http://localhost"),
 	GATEWAY_PORT: z.coerce.number().default(3000),
-	AUTH_SERVICE_PORT: z.coerce.number().default(3001),
+
+	AUTH_HOST: z.string().default("http://localhost"),
+	AUTH_PORT: z.coerce.number().default(3001),
 });
 
 // validate

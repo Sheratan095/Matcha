@@ -22,6 +22,6 @@ async function bootstrap()
 {
 	const app = await NestFactory.create(AppModule);
 	swaggerSetup(app);
-	await app.listen(env.AUTH_SERVICE_PORT);
+	await app.listen(env.AUTH_PORT);
 }
 bootstrap();

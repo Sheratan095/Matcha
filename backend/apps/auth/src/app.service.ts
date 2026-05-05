@@ -10,6 +10,11 @@ export class AppService
 {
 	getHello(): string
 	{
-		return ('HELLO WORLD');
+		return ('HELLO FROM AUTH');
+	}
+
+	getHealth(): string
+	{
+		return ('OK');
 	}
 }
