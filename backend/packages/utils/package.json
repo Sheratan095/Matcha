@@ -9,6 +9,7 @@
     "clean": "tsc --build --clean"
   },
   "dependencies": {
+    "@nestjs/common": "^10.0.0",
     "@repo/config": "workspace:*"
   },
   "devDependencies": {

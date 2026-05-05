@@ -1,8 +1,13 @@
-import { Controller, Get, Headers, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
-import { validateInternalKey } from '@repo/utils';
+import { InternalKeyGuard } from '@repo/utils';
 
 @Controller()
+
+// This guard is applied to the entire controller, so all endpoints will require the internal key for authentication.
+// This ensures that only requests with the correct internal key can access these endpoints, providing a layer of security for inter-service communication.
+@UseGuards(InternalKeyGuard)
+
 export class AppController
 {
 
@@ -10,22 +15,14 @@ export class AppController
 	{ }
 
 	@Get('health')
-	getHealth(@Headers('x-internal-key') internalKey?: string): string
+	getHealth(): string
 	{
-		if (!validateInternalKey(internalKey))
-		{
-			throw new UnauthorizedException('Invalid or missing internal key');
-		}
-
 		return (this.appService.getHealth());
 	}
 
 	@Get('test')
-	test(@Headers('x-internal-key') internalKey?: string): string
+	test(): string
 	{
-		if (!validateInternalKey(internalKey))
-			throw (new UnauthorizedException('Invalid or missing internal key'));
-
 		return ('This is a test endpoint');
 	}
 }
