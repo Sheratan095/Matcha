@@ -8,11 +8,6 @@ import { Injectable } from '@nestjs/common';
 
 export class AppService
 {
-	getHello(): string
-	{
-		return ('HELLO FROM AUTH');
-	}
-
 	getHealth(): string
 	{
 		return ('OK');
