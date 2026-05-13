@@ -40,6 +40,13 @@ up:
 down:
 	pnpm docker:down
 
+# Reset Database: Stop containers, remove volumes, and start again to trigger init scripts
+db-reset:
+	@echo "Resetting database..."
+	docker compose down -v
+	docker compose up -d postgres
+	@echo "Database reset and initialized with migrations and seeds."
+
 # Clean build artifacts and node_modules
 clean:
 	find . -name "node_modules" -type d -prune -exec rm -rf '{}' +

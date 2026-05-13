@@ -31,4 +31,19 @@ export class AppService
 			throw new Error('Database connection failed');
 		}
 	}
+
+	async getUsers(): Promise<any[]>
+	{
+		try
+		{
+			const res = await this.dbService.query('SELECT * FROM users');
+			this.logger.log(`Fetched ${res.rows.length} users from database.`);
+			return (res.rows);
+		}
+		catch (error)
+		{
+			this.logger.error('Failed to fetch users', error);
+			throw new Error('Failed to fetch users');
+		}
+	}
 }

@@ -39,4 +39,11 @@ export class AppController
 	{
 		return (this.appService.testDbConnection());
 	}
+
+	@Get('users')
+	@ApiOperation({ summary: 'Get all users', description: 'Returns all users to test migrations and seeding.' })
+	async getUsers(): Promise<any[]>
+	{
+		return (this.appService.getUsers());
+	}
 }
