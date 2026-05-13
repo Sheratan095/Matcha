@@ -21,6 +21,7 @@ const envSchema = z.object({
 
 	// Database
 	DATABASE_URL: z.string(), // connection string
+	POSTGRES_HOST: z.string().default("localhost"),
 	POSTGRES_USER: z.string(),
 	POSTGRES_PASSWORD: z.string(),
 	POSTGRES_DB: z.string(),

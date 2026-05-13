@@ -32,4 +32,11 @@ export class AppController
 	{
 		return (content ? `This is a test endpoint: ${content}` : 'This is a test endpoint');
 	}
+
+	@Get('db-test')
+	@ApiOperation({ summary: 'Test database connection', description: 'Returns current timestamp from the database.' })
+	async testDb(): Promise<string>
+	{
+		return (this.appService.testDbConnection());
+	}
 }

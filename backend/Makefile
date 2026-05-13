@@ -6,7 +6,6 @@ build:
 
 # Install dependencies
 install:
-	build
 	pnpm install
 
 # Start all services in dev mode

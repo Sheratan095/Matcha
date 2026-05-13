@@ -6,8 +6,8 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down"
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
   },
   "devDependencies": {
     "turbo": "latest",
@@ -16,6 +16,7 @@
   "packageManager": "pnpm@8.15.0",
   "dependencies": {
     "@nestjs/swagger": "^11.4.2",
+    "pg": "^8.20.0",
     "swagger-ui-express": "^5.0.1"
   }
 }
