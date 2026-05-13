@@ -18,6 +18,13 @@ const envSchema = z.object({
 
 	AUTH_HOST: z.string().default("http://localhost"),
 	AUTH_PORT: z.coerce.number().default(3001),
+
+	// Database
+	DATABASE_URL: z.string(), // connection string
+	POSTGRES_USER: z.string(),
+	POSTGRES_PASSWORD: z.string(),
+	POSTGRES_DB: z.string(),
+	POSTGRES_PORT: z.coerce.number().default(5432),
 });
 
 // validate

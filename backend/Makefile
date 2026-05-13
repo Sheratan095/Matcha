@@ -10,6 +10,7 @@ install:
 	pnpm install
 
 # Start all services in dev mode
+# Starts the PostgreSQL container and then runs the development server for other microservices
 dev: generate_env
 	@if [ ! -d node_modules ]; then \
 		echo "node_modules missing — running pnpm install..."; \
@@ -20,6 +21,7 @@ dev: generate_env
 		echo "no dist folders found — running pnpm build..."; \
 		pnpm build; \
 	fi; \
+	docker compose up -d postgres
 	pnpm dev
 
 # Copy the .env.example to .env if it doesn't exist
