@@ -2,6 +2,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
+import { env } from 'process';
 
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh')
@@ -10,13 +11,10 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
 	{
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([
-				(request: Request) =>
-				{
-					return (request?.cookies?.refresh_token);
-				}
+				(request: Request) => { return (request?.cookies?.refresh_token); }
 			]),
 			ignoreExpiration: false,
-			secretOrKey: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
+			secretOrKey: env.JWT_REFRESH_SECRET,
 			passReqToCallback: true,
 		});
 	}

@@ -5,6 +5,8 @@ import { ApiOperation, ApiQuery, ApiTags, ApiHeader, ApiCookieAuth } from '@nest
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh-auth.guard';
 import { Response } from 'express';
+import { env } from "@repo/config";
+
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -38,16 +40,16 @@ export class AppController
 		// Set HTTP-only cookies
 		res.cookie('access_token', tokens.access_token, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
+			secure: process.env.NODE_ENV === 'production', // Set secure flag ONLY in production
 			sameSite: 'strict',
-			maxAge: 15 * 60 * 1000, // 15 minutes TO DO change it with env
+			maxAge: env.JWT_ACCESS_EXPIRATION_MS,
 		});
 
 		res.cookie('refresh_token', tokens.refresh_token, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
+			secure: process.env.NODE_ENV === 'production', // Set secure flag ONLY in production
 			sameSite: 'strict',
-			maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days TO DO change it with env
+			maxAge: env.JWT_REFRESH_EXPIRATION_MS,
 		});
 
 		return { message: 'Tokens generated and set as cookies successfully' };
@@ -67,16 +69,16 @@ export class AppController
 
 		res.cookie('access_token', tokens.access_token, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
+			secure: process.env.NODE_ENV === 'production', // Set secure flag ONLY in production
 			sameSite: 'strict',
-			maxAge: 15 * 60 * 1000, // 15 minutes
+			maxAge: env.JWT_ACCESS_EXPIRATION_MS
 		});
 
 		res.cookie('refresh_token', tokens.refresh_token, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
+			secure: process.env.NODE_ENV === 'production', // Set secure flag ONLY in production
 			sameSite: 'strict',
-			maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+			maxAge: env.JWT_REFRESH_EXPIRATION_MS
 		});
 
 		return { message: 'Tokens refreshed' };

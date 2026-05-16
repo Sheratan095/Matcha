@@ -8,23 +8,23 @@ import cookieParser from 'cookie-parser';
 
 function swaggerSetup(app : any)
 {
-        const config = new DocumentBuilder()
-                .setTitle('Auth API')
-                .setVersion('1.0')
-                // .addBearerAuth() // for JWT auth
-                .addServer('/auth') // base path for the auth service, so in docs the endpoints will be shown as /auth/endpoint instead of just /endpoint
-                .build();
+	const config = new DocumentBuilder()
+		.setTitle('Auth API')
+		.setVersion('1.0')
+		// .addBearerAuth() // for JWT auth
+		.addServer('/auth') // base path for the auth service, so in docs the endpoints will be shown as /auth/endpoint instead of just /endpoint
+		.build();
 
-        const document = SwaggerModule.createDocument(app, config);
+	const document = SwaggerModule.createDocument(app, config);
 
-        SwaggerModule.setup('docs', app, document);
+	SwaggerModule.setup('docs', app, document);
 }
 
 async function bootstrap()
 {
-        const app = await NestFactory.create(AppModule);
-        app.use(cookieParser());
-        swaggerSetup(app);
-        await app.listen(env.AUTH_PORT);
+	const app = await NestFactory.create(AppModule);
+	app.use(cookieParser());
+	swaggerSetup(app);
+	await app.listen(env.AUTH_PORT);
 }
 bootstrap();

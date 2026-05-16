@@ -1,6 +1,7 @@
 import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DbService } from './db/db.service';
+import { env } from "@repo/config";
 
 // Services contain the core business logic like the db calls
 
@@ -19,14 +20,17 @@ export class AppService
 	async login(user: any)
 	{
 		// In a real application, you'd validate the user credentials against the database first
-		const   payload = { username: user.username, sub: user.userId };
+		const payload = { username: user.username, sub: user.userId };
 		
 		const [accessToken, refreshToken] = await Promise.all([
-				this.jwtService.signAsync(payload),
-				this.jwtService.signAsync(payload, {
-						secret: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
-						expiresIn: '7d', // Refresh token lives much longer
-				}),
+			this.jwtService.signAsync(payload, {
+					secret: env.JWT_ACCESS_SECRET,
+					expiresIn: env.JWT_ACCESS_EXPIRATION_MS,
+			}),
+			this.jwtService.signAsync(payload, {
+					secret: env.JWT_REFRESH_SECRET,
+					expiresIn: env.JWT_REFRESH_EXPIRATION_MS,
+			}),
 		]);
 
 		// Here you would also typically hash the refresh token and save it to the database for this user
