@@ -28,6 +28,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@repo/config": "workspace:*",
     "@repo/utils": "workspace:*",
+    "@repo/jwt-utils": "workspace:*",
     "cookie-parser": "^1.4.7",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

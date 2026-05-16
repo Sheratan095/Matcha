@@ -16,6 +16,12 @@ export class AppController
 	constructor(private readonly appService: AppService)
 	{ }
 
+	@Get('health')
+	getHealth(): string
+	{
+		return (this.appService.getHealth());
+	}
+
 	@Post('login')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Login and generate JWT', description: 'Sets HTTP-only cookies with JWT access and refresh tokens.' })
@@ -34,14 +40,14 @@ export class AppController
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'strict',
-			maxAge: 15 * 60 * 1000, // 15 minutes
+			maxAge: 15 * 60 * 1000, // 15 minutes TO DO change it with env
 		});
 
 		res.cookie('refresh_token', tokens.refresh_token, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'strict',
-			maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+			maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days TO DO change it with env
 		});
 
 		return { message: 'Tokens generated and set as cookies successfully' };
@@ -96,33 +102,13 @@ export class AppController
 		return (req.user);
 	}
 
-	@Get('health')
-	getHealth(): string
-	{
-		return (this.appService.getHealth());
-	}
 
-	@Get('test')
-	// ApiOperation is used to provide metadata for swagger documentation
-	@ApiOperation({ summary: 'Test endpoint', description: 'Returns a test message. Accepts an optional *content* query parameter.' })
-	// ApiQuery is used to document the query parameters for this endpoint in swagger
-	@ApiQuery({ name: 'content', required: false, description: 'Optional content string to include in the response' })
-	test(@Query('content') content?: string): string
+	@Get('validate')
+	@UseGuards(JwtAuthGuard)
+	@ApiCookieAuth('access_token')
+	@ApiOperation({ summary: 'Validate access token', description: 'Endpoint intended to be called by the API Gateway to authorize incoming requests. Validates the JWT cookie and returns user context.' })
+	validateToken(@Request() req: any)
 	{
-		return (content ? `This is a test endpoint: ${content}` : 'This is a test endpoint');
-	}
-
-	@Get('db-test')
-	@ApiOperation({ summary: 'Test database connection', description: 'Returns current timestamp from the database.' })
-	async testDb(): Promise<string>
-	{
-		return (this.appService.testDbConnection());
-	}
-
-	@Get('users')
-	@ApiOperation({ summary: 'Get all users', description: 'Returns all users to test migrations and seeding.' })
-	async getUsers(): Promise<any[]>
-	{
-		return (this.appService.getUsers());
+		return { valid: true, user: req.user };
 	}
 }
