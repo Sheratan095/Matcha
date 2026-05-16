@@ -27,30 +27,10 @@ export class AppController
 	@ApiOperation({ summary: 'Login and generate JWT', description: 'Sets HTTP-only cookies with JWT access and refresh tokens.' })
 	async login(@Body() req: any, @Res({ passthrough: true }) res: Response)
 	{
-		// Note: Normally you would use a Local Auth Guard to validate credentials before issuing a token
-		// Mock user for testing authentication flow
-		const mockUser = {
-			userId: 1,
-			username: req.username || 'testuser',
-		};
-		const tokens = await this.appService.login(mockUser);
-		
-		// Set HTTP-only cookies
-		res.cookie('access_token', tokens.access_token, {
-			httpOnly: true,
-			secure: env.NODE_ENV === 'production', // Set secure flag ONLY in production
-			sameSite: 'strict',
-			maxAge: env.JWT_ACCESS_EXPIRATION_MS,
-		});
+		const username = req.username || 'testuser';
+		const psw = req.password || 'testpassword';
 
-		res.cookie('refresh_token', tokens.refresh_token, {
-			httpOnly: true,
-			secure: env.NODE_ENV === 'production', // Set secure flag ONLY in production
-			sameSite: 'strict',
-			maxAge: env.JWT_REFRESH_EXPIRATION_MS,
-		});
-
-		return { message: 'Tokens generated and set as cookies successfully' };
+		return await this.appService.login(username, psw, res);
 	}
 
 	@Post('refresh')
@@ -59,26 +39,10 @@ export class AppController
 	@ApiOperation({ summary: 'Refresh JWT token', description: 'Uses refresh token cookie to generate and set new access and refresh cookies.' })
 	async refreshTokens(@Request() req: any, @Res({ passthrough: true }) res: Response)
 	{
-		const userId = req.user.userId;
-		const username = req.user.username;
-		const refreshToken = req.user.refreshToken;
-		const tokens = await this.appService.refreshTokens(userId, username, refreshToken);
-
-		res.cookie('access_token', tokens.access_token, {
-			httpOnly: true,
-			secure: env.NODE_ENV === 'production', // Set secure flag ONLY in production
-			sameSite: 'strict',
-			maxAge: env.JWT_ACCESS_EXPIRATION_MS
-		});
-
-		res.cookie('refresh_token', tokens.refresh_token, {
-			httpOnly: true,
-			secure: env.NODE_ENV === 'production', // Set secure flag ONLY in production
-			sameSite: 'strict',
-			maxAge: env.JWT_REFRESH_EXPIRATION_MS
-		});
-
-		return { message: 'Tokens refreshed' };
+		const userId = req.user?.userId;
+		const username = req.user?.username;
+		const refreshToken = req.user?.refreshToken;
+		return await this.appService.refreshTokens(userId, username, refreshToken, res);
 	}
 
 	@Post('logout')
@@ -86,8 +50,8 @@ export class AppController
 	@ApiOperation({ summary: 'Logout', description: 'Clears the authentication cookies.' })
 	async logout(@Res({ passthrough: true }) res: Response)
 	{
-		res.clearCookie('access_token');
-		res.clearCookie('refresh_token');
+		await this.appService.logout(res);
+
 		return { message: 'Logged out successfully' };
 	}
 

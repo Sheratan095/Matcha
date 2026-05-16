@@ -28,4 +28,11 @@ export class DbService implements OnModuleInit
 	{
 		return (this.pool.query(text, params));
 	}
+
+	async getUserByUsername(username: string)
+	{
+		// Return the first user that matches the given username from the database. This is a helper method for authentication purposes.
+		const result = await this.pool.query('SELECT * FROM users WHERE username = $1', [username]);
+		return (result.rows[0]);
+	}
 }

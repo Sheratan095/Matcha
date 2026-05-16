@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DbModule } from './db/db.module';
 import { env } from "@repo/config";
+import { JwtHelper } from './jwt/jwt';
 
 @Module({
 	imports: [
@@ -16,6 +17,7 @@ import { env } from "@repo/config";
 		}),
 	],
 	controllers: [AppController],
-	providers: [AppService],
+	// Jwt helper is a service that generates and verifies JWT tokens, it is used in the AppService to handle token logic
+	providers: [AppService, JwtHelper],
 })
 export class AppModule {}
