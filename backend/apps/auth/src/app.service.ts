@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { DbService } from './db/db.service';
 
 // Services contain the core business logic like the db calls
@@ -8,42 +9,76 @@ import { DbService } from './db/db.service';
 @Injectable()
 export class AppService
 {
-	private readonly logger = new Logger(AppService.name);
+        private readonly logger = new Logger(AppService.name);
 
-	constructor(private readonly dbService: DbService) {}
+        constructor(
+                private readonly dbService: DbService,
+                private readonly jwtService: JwtService )
+        {}
 
-	getHealth(): string
-	{
-		return ('OK');
-	}
+        async login(user: any)
+        {
+                // In a real application, you'd validate the user credentials against the database first
+                const   payload = { username: user.username, sub: user.userId };
+                
+                const [accessToken, refreshToken] = await Promise.all([
+                        this.jwtService.signAsync(payload),
+                        this.jwtService.signAsync(payload, {
+                                secret: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
+                                expiresIn: '7d', // Refresh token lives much longer
+                        }),
+                ]);
 
-	async testDbConnection(): Promise<string>
-	{
-		try
-		{
-			const res = await this.dbService.query('SELECT NOW()');
-			this.logger.log(`Database connected successfully: ${res.rows[0].now}`);
-			return ('Database connected successfully: ' + res.rows[0].now);
-		}
-		catch (error)
-		{
-			this.logger.error('Database connection failed', error);
-			throw new Error('Database connection failed');
-		}
-	}
+                // Here you would also typically hash the refresh token and save it to the database for this user
+                // e.g., await this.dbService.query('UPDATE users SET hashed_rt = $1 WHERE id = $2', [hashedRt, user.userId]);
 
-	async getUsers(): Promise<any[]>
-	{
-		try
-		{
-			const res = await this.dbService.query('SELECT * FROM users');
-			this.logger.log(`Fetched ${res.rows.length} users from database.`);
-			return (res.rows);
-		}
-		catch (error)
-		{
-			this.logger.error('Failed to fetch users', error);
-			throw new Error('Failed to fetch users');
-		}
-	}
+                return {
+                        access_token: accessToken,
+                        refresh_token: refreshToken,
+                };
+        }
+
+        async refreshTokens(userId: number, username: string, refreshToken: string) {
+                // In reality, verify the refresh token against the hashed token in your DB
+                // const user = await this.dbService.query('SELECT * FROM users WHERE id = $1', [userId]);
+                // if (!user || !user.hashed_rt || !await bcrypt.compare(refreshToken, user.hashed_rt)) throw new ForbiddenException('Access Denied');
+                
+                // If valid, issue new tokens
+                return this.login({ userId, username });
+        }
+
+        getHealth(): string
+        {
+                return ('OK');
+        }
+
+        async testDbConnection(): Promise<string>
+        {
+                try
+                {
+                        const res = await this.dbService.query('SELECT NOW()');
+                        this.logger.log(`Database connected successfully: ${res.rows[0].now}`);
+                        return ('Database connected successfully: ' + res.rows[0].now);
+                }
+                catch (error)
+                {
+                        this.logger.error('Database connection failed', error);
+                        throw new Error('Database connection failed');
+                }
+        }
+
+        async getUsers(): Promise<any[]>
+        {
+                try
+                {
+                        const res = await this.dbService.query('SELECT * FROM users');
+                        this.logger.log(`Fetched ${res.rows.length} users from database.`);
+                        return (res.rows);
+                }
+                catch (error)
+                {
+                        this.logger.error('Failed to fetch users', error);
+                        throw new Error('Failed to fetch users');
+                }
+        }
 }
