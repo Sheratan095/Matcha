@@ -4,19 +4,18 @@ import { PassportModule } from '@nestjs/passport';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DbModule } from './db/db.module';
-import { JwtStrategy } from './jwt/jwt.strategy';
-import { JwtRefreshStrategy } from './jwt/jwt-refresh.strategy';
+import { env } from "@repo/config";
 
 @Module({
-  imports: [
-    DbModule,
-    PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'fallback_secret_key',
-      signOptions: { expiresIn: '15m' },
-    }),
-  ],
-  controllers: [AppController],
-  providers: [AppService, JwtStrategy, JwtRefreshStrategy],
+	imports: [
+		DbModule,
+		PassportModule,
+		JwtModule.register({
+			secret: env.JWT_ACCESS_SECRET,
+			signOptions: { expiresIn: env.JWT_ACCESS_EXPIRATION_MS },
+		}),
+	],
+	controllers: [AppController],
+	providers: [AppService],
 })
 export class AppModule {}
