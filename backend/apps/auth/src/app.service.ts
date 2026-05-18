@@ -34,7 +34,7 @@ export class AppService
 		// Save the refresh token in the database for later verification
 		this.dbService.saveRefreshToken(user.id, tokens.refresh_token);
 
-		return { message: 'Login successful' };
+		return ({ message: 'Login successful', userId: user.id });
 	}
 
 	async register(email: string, username: string, password: string, res: any)
@@ -51,6 +51,8 @@ export class AppService
 			this.jwtHelper.setTokensAsCookies(res, tokens);
 			// Save the refresh token in the database for later verification
 			this.dbService.saveRefreshToken(newId, tokens.refresh_token);
+
+			return { message: 'User registered successfully', userId: newId };
 		}
 		catch (error: any)
 		{
@@ -68,20 +70,23 @@ export class AppService
 			// Fallback for other DB / unexpected errors
 			throw new InternalServerErrorException('User registration failed');
 		}
-
-		return { message: 'User registered successfully' };
 	}
 
 	async logout(res: any)
 	{
 		await this.jwtHelper.clearTokens(res);
-		return { message: 'Logged out successfully' };
+		return ({ message: 'Logged out successfully' });
 	}
 
-	async refreshTokens(userId: string, username: string, refreshToken: string, res: any)
+	async refreshTokens(userId: string, refreshToken: string, res: any)
 	{
+		console.log('AppService.refreshTokens called with userId:', userId);
+		console.log('AppService.refreshTokens called with refreshToken:', refreshToken);
 		if (!userId || !refreshToken)
+		{
+			console.warn('Refresh token request missing userId or refreshToken');
 			throw new ForbiddenException('Invalid refresh token');
+		}
 
 		const storedToken = await this.dbService.getRefreshToken(userId);
 
@@ -95,7 +100,7 @@ export class AppService
 		// Store the new refresh token in the database, replacing the old one
 		this.dbService.saveRefreshToken(userId, tokens.refresh_token);
 		
-		return { message: 'Tokens refreshed' };
+		return ({ message: 'Tokens refreshed', userId });
 	}
 
 	getHealth(): string

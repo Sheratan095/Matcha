@@ -64,7 +64,9 @@ export class AppController
 	@ApiResponse({ status: 403, type: RefreshErrorDto, description: 'Invalid or missing refresh token' })
 	async refreshTokens(@Request() req: any, @Res({ passthrough: true }) res: Response)
 	{
-		return (await this.appService.refreshTokens(req.user?.userId, req.user?.username, req.user?.refreshToken, res));
+		console.log('Refresh token request received for userId:', req.body.userId);
+		console.log('Refresh token from cookies:', req.cookies.refresh_token);
+		return (await this.appService.refreshTokens(req.body.userId, req.cookies.refresh_token, res));
 	}
 
 	@Post('logout')
