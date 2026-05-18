@@ -72,9 +72,6 @@ export class AppService
 	{
 		const storedToken = await this.dbService.getRefreshToken(userId);
 
-		console.log('Stored token:', storedToken);
-		console.log('Provided token:', refreshToken);
-
 		if (!storedToken || storedToken !== refreshToken)
 			throw new ForbiddenException('Invalid refresh token');
 

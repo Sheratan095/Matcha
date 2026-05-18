@@ -38,7 +38,7 @@ export class AppController
 	// while still returning a standard response body from the controller method.
 	async register(@Body() req: RegisterDto, @Res({ passthrough: true }) res: Response) // -> Input validation is done here
 	{
-		return await this.appService.register(req.email, req.username, req.password, res);
+		return (await this.appService.register(req.email, req.username, req.password, res));
 	}
 
 	@Post('login')
@@ -71,9 +71,8 @@ export class AppController
 	@ApiResponse({ status: 200, type: RegisterResponseDto })
 	async logout(@Res({ passthrough: true }) res: Response)
 	{
-		await this.appService.logout(res);
-
-		return { message: 'Logged out successfully' };
+		// TO DO close all ws connections?
+		return (await this.appService.logout(res));
 	}
 
 	@Get('validate')
