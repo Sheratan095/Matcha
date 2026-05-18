@@ -6,9 +6,11 @@ import { AppService } from './app.service';
 import { DbModule } from './db/db.module';
 import { env } from "@repo/config";
 import { JwtHelper } from './utils/jwt';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
 	imports: [
+		HttpModule, // Used to make service-to-service calls, such as sending notifications to the notification service
 		DbModule,
 		PassportModule,
 		JwtModule.register({

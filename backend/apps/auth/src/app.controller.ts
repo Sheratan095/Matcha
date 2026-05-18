@@ -22,7 +22,7 @@ export class AppController
 	@Get('health')
 	getHealth(): string
 	{
-		return (this.appService.getHealth());
+		return ('OK');
 	}
 
 	@Post('register') // Endpoint

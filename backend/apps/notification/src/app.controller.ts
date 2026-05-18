@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { InternalKeyGuard } from '@repo/utils';
 import { ApiTags } from '@nestjs/swagger/dist/decorators/api-use-tags.decorator';
@@ -13,7 +13,13 @@ export class AppController
 	constructor(private readonly appService: AppService)
 	{}
 
-	@Get()
+	@Get('health')
+	getHealth(): string
+	{
+		return ('OK');
+	}
+
+	@Post('email-verification')
 	getTestNotification(): string
 	{
 		return this.appService.getTestNotification();

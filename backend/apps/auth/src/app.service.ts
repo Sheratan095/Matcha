@@ -38,9 +38,12 @@ export class AppService
 
 		try
 		{
-			const newId: string = await this.dbService.createUser(email, username, passwordHash);
+			// const newId: string = await this.dbService.createUser(email, username, passwordHash);
+			const newId = "1";
 
 			await this.issueTokens(newId, res);
+
+			await sendEmailVerification(email, 'dummy-token-for-now'); // In a real implementation, generate a proper token and handle errors
 
 			return { message: 'Email verification required', date: new Date(), userId: newId };
 		}
@@ -92,11 +95,6 @@ export class AppService
 		{
 			return ({ valid: false, userId: null });
 		}
-	}
-
-	getHealth(): string
-	{
-		return ('OK');
 	}
 
 	// Helper methods used just by this class
