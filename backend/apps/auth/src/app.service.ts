@@ -1,7 +1,6 @@
 import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
-import { env } from "@repo/config";
 import { JwtHelper } from './jwt/jwt';
 
 

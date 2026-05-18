@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Request, Res, UseGuards, Query, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AppService } from './app.service';
 import { InternalKeyGuard } from '@repo/utils';
-import { ApiOperation, ApiQuery, ApiTags, ApiHeader, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto, LoginErrorDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto } from './dto/refresh.dto';
