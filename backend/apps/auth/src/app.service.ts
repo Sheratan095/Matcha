@@ -27,12 +27,13 @@ export class AppService
 		if (!user || !await bcrypt.compare(password, user.password_hash))
 			throw new ForbiddenException('Invalid credentials');
 
-		const tokens = await this.jwtHelper.generateTokens({ userId: user.id, username: user.username });
+		// Generate JWT access and refresh tokens for the authenticated user
+		const tokens = await this.jwtHelper.generateTokens(user.id);
+		// Set the generated tokens as HTTP-only cookies in the response
 		this.jwtHelper.setTokensAsCookies(res, tokens);
+		// Save the refresh token in the database for later verification
+		this.dbService.saveRefreshToken(user.id, tokens.refresh_token);
 
-		// Here you would also typically hash the refresh token and save it to the database for this user TODO
-		// e.g., await this.dbService.query('UPDATE users SET hashed_rt = $1 WHERE id = $2', [hashedRt, user.userId]);
-		
 		return { message: 'Login successful' };
 	}
 
@@ -72,13 +73,20 @@ export class AppService
 
 	async refreshTokens(userId: number, username: string, refreshToken: string, res: any)
 	{
-		// In reality, verify the refresh token against the hashed token in your DB
-		// const user = await this.dbService.query('SELECT * FROM users WHERE id = $1', [userId]);
-		// if (!user || !user.hashed_rt || !await bcrypt.compare(refreshToken, user.hashed_rt)) throw new ForbiddenException('Access Denied');
-		
+		if (!userId || !refreshToken)
+			throw new ForbiddenException('Invalid refresh token');
+
+		const storedToken = await this.dbService.getRefreshToken(userId);
+
+		if (!storedToken || storedToken !== refreshToken)
+			throw new ForbiddenException('Invalid refresh token');
+
 		// If valid, issue new tokens
-		const tokens = await this.jwtHelper.generateTokens({ userId, username });
+		const tokens = await this.jwtHelper.generateTokens(userId);
+		// Set the new tokens as cookies in the response
 		this.jwtHelper.setTokensAsCookies(res, tokens);
+		// Store the new refresh token in the database, replacing the old one
+		this.dbService.saveRefreshToken(userId, tokens.refresh_token);
 		
 		return { message: 'Tokens refreshed' };
 	}

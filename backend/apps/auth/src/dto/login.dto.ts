@@ -23,7 +23,8 @@ export class LoginResponseDto
 	data?: any;
 }
 
-export class LoginErrorDto {
+export class LoginErrorDto
+{
 	@ApiProperty({ example: 401 })
 	statusCode: number;
 

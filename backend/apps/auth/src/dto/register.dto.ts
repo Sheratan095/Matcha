@@ -1,6 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
+// Dto (Data Transfer Object) is just a data structure for input validation and API documentation.
+// It doesn't contain any logic or methods, just properties with decorators for validation and Swagger docs.
+// Here the Dtos are grouped by endpoint (register, login, refresh) for better organization and clarity in the codebase and API docs.
+
 export class RegisterDto
 {
 	@ApiProperty({ example: 'jdoe', description: 'Unique username' })

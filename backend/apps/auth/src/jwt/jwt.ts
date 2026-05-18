@@ -9,7 +9,7 @@ export class JwtHelper
 
 	async generateTokens(user: any) : Promise<{ access_token: string, refresh_token: string }>
 	{
-		const payload = { username: user.username, sub: user.userId };
+		const payload = { sub: user.userId };
 		
 		const [accessToken, refreshToken] = await Promise.all([
 			this.jwtService.signAsync(payload, {
@@ -46,5 +46,16 @@ export class JwtHelper
 	{
 		res.clearCookie('access_token');
 		res.clearCookie('refresh_token');
+	}
+
+	// Return the user ID from the access token
+	async validateAccessToken(token: string) : Promise<string>
+	{
+		const payload = await this.jwtService.verifyAsync(token, {
+			secret: env.JWT_ACCESS_SECRET,
+		});
+
+		// Payload should contain the user ID in the 'sub' claim as per our generateTokens method
+		return (payload.sub);
 	}
 }

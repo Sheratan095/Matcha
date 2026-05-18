@@ -4,6 +4,7 @@ import { InternalKeyGuard } from '@repo/utils';
 import { ApiOperation, ApiQuery, ApiTags, ApiHeader, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto, LoginErrorDto } from './dto/login.dto';
+import { RefreshResponseDto, RefreshErrorDto } from './dto/refresh.dto';
 import { Response } from 'express';
 
 
@@ -27,13 +28,13 @@ export class AppController
 	@Post('register') // Endpoint
 	@HttpCode(HttpStatus.OK) // Override default 201 status code for POST to 200 for consistency in API responses
 	@ApiOperation({ summary: 'User registration', description: 'Registers a new user.' }) // Name and desc just for docs
-	@ApiBody({ type: RegisterDto }) // Input validation is done here
+	@ApiBody({ type: RegisterDto })
 	// List of possible responses for documentation
 	@ApiResponse({ status: 200, type: RegisterResponseDto, description: 'User successfully registered' })
 	@ApiResponse({ status: 409, type: RegisterErrorDto, description: 'User/Email already exists' })
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
-	async register(@Body() req: RegisterDto)
+	async register(@Body() req: RegisterDto) // -> Input validation is done here
 	{
 		await this.appService.register(req.email, req.username, req.password);
 
@@ -50,24 +51,18 @@ export class AppController
 	@ApiResponse({ status: 500, description: 'Internal server error' })
 	async login(@Body() req: LoginDto, @Res({ passthrough: true }) res: Response)
 	{
-		const username = req.username || 'testuser';
-		const psw = req.password || 'testpassword';
-
-		return await this.appService.login(username, psw, res);
+		return (await this.appService.login(req.username, req.password, res));
 	}
 
 	@Post('refresh')
 	@HttpCode(HttpStatus.OK)
 	@ApiCookieAuth('refresh_token')
 	@ApiOperation({ summary: 'Refresh JWT token', description: 'Uses refresh token cookie to generate and set new access and refresh cookies.' })
-	@ApiResponse({ status: 200, type: LoginResponseDto })
+	@ApiResponse({ status: 200, type: RefreshResponseDto, description: 'Tokens refreshed and cookies set' })
+	@ApiResponse({ status: 403, type: RefreshErrorDto, description: 'Invalid or missing refresh token' })
 	async refreshTokens(@Request() req: any, @Res({ passthrough: true }) res: Response)
 	{
-		const userId = req.user?.userId;
-		const username = req.user?.username;
-		const refreshToken = req.user?.refreshToken;
-
-		return (await this.appService.refreshTokens(userId, username, refreshToken, res));
+		return (await this.appService.refreshTokens(req.user?.userId, req.user?.username, req.user?.refreshToken, res));
 	}
 
 	@Post('logout')

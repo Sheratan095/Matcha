@@ -41,4 +41,20 @@ export class DbService implements OnModuleInit
 		// Insert a new user into the database with the provided email, username, and password hash. This is a helper method for user registration.
 		await this.pool.query('INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3)', [email, username, passwordHash]);
 	}
+
+	async saveRefreshToken(userId: number, refreshToken: string)
+	{
+		// Save the refresh token for a user in the database. This is a helper method for token management.
+		await this.pool.query(`
+			INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)
+			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP
+		`, [userId, refreshToken]);
+	}
+
+	async getRefreshToken(userId: number)
+	{
+		// Retrieve the refresh token for a user from the database. This is a helper method for token validation.
+		const result = await this.pool.query('SELECT token FROM refresh_tokens WHERE user_id = $1', [userId]);
+		return (result.rows[0]?.token);
+	}
 }
