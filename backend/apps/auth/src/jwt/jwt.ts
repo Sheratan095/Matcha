@@ -7,9 +7,9 @@ export class JwtHelper
 {
 	constructor(private readonly jwtService: JwtService) {}
 
-	async generateTokens(user: any) : Promise<{ access_token: string, refresh_token: string }>
+	async generateTokens(userId: string) : Promise<{ access_token: string, refresh_token: string }>
 	{
-		const payload = { sub: user.userId };
+		const payload = { sub: userId };
 		
 		const [accessToken, refreshToken] = await Promise.all([
 			this.jwtService.signAsync(payload, {

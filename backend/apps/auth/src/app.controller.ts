@@ -38,9 +38,7 @@ export class AppController
 	// while still returning a standard response body from the controller method.
 	async register(@Body() req: RegisterDto, @Res({ passthrough: true }) res: Response) // -> Input validation is done here
 	{
-		await this.appService.register(req.email, req.username, req.password, res);
-
-		return { message: 'User registered successfully' };
+		return await this.appService.register(req.email, req.username, req.password, res);
 	}
 
 	@Post('login')
@@ -64,8 +62,6 @@ export class AppController
 	@ApiResponse({ status: 403, type: RefreshErrorDto, description: 'Invalid or missing refresh token' })
 	async refreshTokens(@Request() req: any, @Res({ passthrough: true }) res: Response)
 	{
-		console.log('Refresh token request received for userId:', req.body.userId);
-		console.log('Refresh token from cookies:', req.cookies.refresh_token);
 		return (await this.appService.refreshTokens(req.body.userId, req.cookies.refresh_token, res));
 	}
 
@@ -86,6 +82,6 @@ export class AppController
 	@ApiResponse({ status: 200, description: 'Validation result and user context' })
 	validateToken(@Request() req: any)
 	{
-		return { valid: true, user: req.user };
+		return (this.appService.validateToken(req.cookies.access_token));
 	}
 }

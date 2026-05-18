@@ -1,4 +1,4 @@
-import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { env } from "@repo/config";
@@ -24,35 +24,25 @@ export class AppService
 		// Hash the password and compare with stored hash in DB, then fetch user details
 		const user = await this.dbService.getUserByUsername(username);
 		
-		if (!user || !await bcrypt.compare(password, user.password_hash))
+		if (!user || !await this.comparePasswords(password, user.password_hash))
 			throw new ForbiddenException('Invalid credentials');
 
-		// Generate JWT access and refresh tokens for the authenticated user
-		const tokens = await this.jwtHelper.generateTokens(user.id);
-		// Set the generated tokens as HTTP-only cookies in the response
-		this.jwtHelper.setTokensAsCookies(res, tokens);
-		// Save the refresh token in the database for later verification
-		this.dbService.saveRefreshToken(user.id, tokens.refresh_token);
+		await this.issueTokens(user.id, res);
 
 		return ({ message: 'Login successful', userId: user.id });
 	}
 
 	async register(email: string, username: string, password: string, res: any)
 	{
-		const passwordHash = await bcrypt.hash(password, 10);
+		const passwordHash = await this.hashPassword(password);
 
 		try
 		{
 			const newId: string = await this.dbService.createUser(email, username, passwordHash);
 
-			// Generate JWT access and refresh tokens for the authenticated user
-			const tokens = await this.jwtHelper.generateTokens(newId);
-			// Set the generated tokens as HTTP-only cookies in the response
-			this.jwtHelper.setTokensAsCookies(res, tokens);
-			// Save the refresh token in the database for later verification
-			this.dbService.saveRefreshToken(newId, tokens.refresh_token);
+			await this.issueTokens(newId, res);
 
-			return { message: 'User registered successfully', userId: newId };
+			return { message: 'User registered successfully', date: new Date(), userId: newId };
 		}
 		catch (error: any)
 		{
@@ -80,31 +70,59 @@ export class AppService
 
 	async refreshTokens(userId: string, refreshToken: string, res: any)
 	{
-		console.log('AppService.refreshTokens called with userId:', userId);
-		console.log('AppService.refreshTokens called with refreshToken:', refreshToken);
-		if (!userId || !refreshToken)
-		{
-			console.warn('Refresh token request missing userId or refreshToken');
-			throw new ForbiddenException('Invalid refresh token');
-		}
-
 		const storedToken = await this.dbService.getRefreshToken(userId);
+
+		console.log('Stored token:', storedToken);
+		console.log('Provided token:', refreshToken);
 
 		if (!storedToken || storedToken !== refreshToken)
 			throw new ForbiddenException('Invalid refresh token');
 
-		// If valid, issue new tokens
-		const tokens = await this.jwtHelper.generateTokens(userId);
-		// Set the new tokens as cookies in the response
-		this.jwtHelper.setTokensAsCookies(res, tokens);
-		// Store the new refresh token in the database, replacing the old one
-		this.dbService.saveRefreshToken(userId, tokens.refresh_token);
-		
+		await this.issueTokens(userId, res);
+
 		return ({ message: 'Tokens refreshed', userId });
+	}
+
+	async validateToken(token: string)
+	{
+		try
+		{
+			const userId = await this.jwtHelper.validateAccessToken(token);
+
+			return ({ valid: true, userId });
+		}
+		catch (error)
+		{
+			return ({ valid: false, userId: null });
+		}
 	}
 
 	getHealth(): string
 	{
 		return ('OK');
+	}
+
+	// Helper methods used just by this class
+	private async hashPassword(password: string): Promise<string>
+	{
+		const saltRounds = 10;
+		return (await bcrypt.hash(password, saltRounds));
+	}
+
+	private async comparePasswords(password: string, hash: string): Promise<boolean>
+	{
+		return (await bcrypt.compare(password, hash));
+	}
+
+	// Centralized method to issue new tokens, set cookies, and store refresh token in DB
+	// This is called both during login/registration and token refresh to avoid code duplication
+	private async issueTokens(userId: string, res: any)
+	{
+		// If valid, issue new tokens
+		const tokens = await this.jwtHelper.generateTokens(userId);
+		// Set the new tokens as cookies in the response
+		this.jwtHelper.setTokensAsCookies(res, tokens);
+		// Store the new refresh token in the database, replacing the old one
+		await this.dbService.saveRefreshToken(userId, tokens.refresh_token);
 	}
 }
