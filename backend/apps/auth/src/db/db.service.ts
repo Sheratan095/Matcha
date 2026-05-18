@@ -47,6 +47,7 @@ export class DbService implements OnModuleInit
 	async saveRefreshToken(userId: string, refreshToken: string)
 	{
 		// Save the refresh token for a user in the database. This is a helper method for token management.
+		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one refresh token is stored per user.
 		await this.pool.query(`
 			INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)
 			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP

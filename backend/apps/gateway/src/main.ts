@@ -11,6 +11,7 @@ import { Microservice } from './Models/Microservice';
 const	services : Microservice[] =
 [
 	new Microservice('auth', env.AUTH_HOST, env.AUTH_PORT, '/auth/docs-json'),
+	new Microservice('notification', env.NOTIFICATION_HOST, env.NOTIFICATION_PORT, '/notification/docs-json'),
 ];
 
 // This is the bootstrap file, it imports NestFactory and you root module to spin up the http server
@@ -54,6 +55,31 @@ async function bootstrap()
 				}
 			},
 
+		} as any),
+	);
+
+	app.use(
+		'/notification',
+		createProxyMiddleware({
+			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			changeOrigin: true,
+			pathRewrite:
+			{
+				'^/notification': '',
+			},
+			on:
+			{
+				proxyReq: (proxyReq : ClientRequest, _req: Request, _res: Response) =>
+				{
+					const	internalKey = env.INTERNAL_KEY;
+					if (internalKey)
+						proxyReq.setHeader('x-internal-key', internalKey);
+				},
+				error: (err : Error, _req: Request, _res: Response) =>
+				{
+					console.error('[Gateway] Proxy Error:', err);
+				}
+			},
 		} as any),
 	);
 
