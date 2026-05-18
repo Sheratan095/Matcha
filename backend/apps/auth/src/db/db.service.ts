@@ -35,4 +35,10 @@ export class DbService implements OnModuleInit
 		const result = await this.pool.query('SELECT * FROM users WHERE username = $1', [username]);
 		return (result.rows[0]);
 	}
+
+	async createUser(email: string, username: string, passwordHash: string)
+	{
+		// Insert a new user into the database with the provided email, username, and password hash. This is a helper method for user registration.
+		await this.pool.query('INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3)', [email, username, passwordHash]);
+	}
 }

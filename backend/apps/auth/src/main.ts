@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { env } from "@repo/config";
@@ -23,6 +24,7 @@ function swaggerSetup(app : any)
 async function bootstrap()
 {
 	const app = await NestFactory.create(AppModule);
+	app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 	app.use(cookieParser());
 	swaggerSetup(app);
 	await app.listen(env.AUTH_PORT);

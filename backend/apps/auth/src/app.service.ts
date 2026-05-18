@@ -1,4 +1,4 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { env } from "@repo/config";
@@ -34,6 +34,34 @@ export class AppService
 		// e.g., await this.dbService.query('UPDATE users SET hashed_rt = $1 WHERE id = $2', [hashedRt, user.userId]);
 		
 		return { message: 'Login successful' };
+	}
+
+	async register(email: string, username: string, password: string)
+	{
+		const passwordHash = await bcrypt.hash(password, 10);
+
+		try
+		{
+			await this.dbService.createUser(email, username, passwordHash);
+		}
+		catch (error: any)
+		{
+			this.logger.error('Error during user registration', error);
+
+			// PostgreSQL unique violation error code is '23505'
+			if (error && error.code === '23505')
+			{
+				if (error.detail && error.detail.includes('username'))
+					throw new ConflictException('User already exists');
+				if (error.detail && error.detail.includes('email'))
+					throw new ConflictException('Email already in use');
+			}
+
+			// Fallback for other DB / unexpected errors
+			throw new InternalServerErrorException('User registration failed');
+		}
+
+		return { message: 'User registered successfully' };
 	}
 
 	async logout(res: any)
