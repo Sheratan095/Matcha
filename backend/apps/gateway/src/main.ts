@@ -58,28 +58,22 @@ async function bootstrap()
 		} as any),
 	);
 
+	// Not all endpoints are proxied because other are internal and not exposed o the outside
 	app.use(
-		'/notification',
+		'/notification/docs-json',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
 			changeOrigin: true,
-			pathRewrite:
-			{
-				'^/notification': '',
-			},
-			on:
-			{
-				proxyReq: (proxyReq : ClientRequest, _req: Request, _res: Response) =>
-				{
-					const	internalKey = env.INTERNAL_KEY;
-					if (internalKey)
-						proxyReq.setHeader('x-internal-key', internalKey);
-				},
-				error: (err : Error, _req: Request, _res: Response) =>
-				{
-					console.error('[Gateway] Proxy Error:', err);
-				}
-			},
+			pathRewrite: { '^/notification/docs-json': '/docs-json' },
+		}),
+	);
+
+	app.use(
+		'/notification/health',
+		createProxyMiddleware({
+			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			changeOrigin: true,
+			pathRewrite: { '^/notification/health': '/health' },
 		} as any),
 	);
 
