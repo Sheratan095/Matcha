@@ -3,8 +3,9 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class AppService
 {
-	getTestNotification(): string
+	sendVerificationEmail(email: string, token: string)
 	{
-		return ('Notification test endpoint works!');
+		console.log('Received request to send verification email to ' + email + ' with token ' + token);
+		return ('Sending verification email to ' + email + ' with token ' + token);
 	}
 }

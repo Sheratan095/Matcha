@@ -8,9 +8,8 @@ export async function sendEmailVerification(email: string, token: string): Promi
 	try {
 		await axios.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/email-verification`, 
 		{
-			to: email,
-			subject: 'Email Verification',
-			body: `Please verify your email using this token: ${token}`,
+			email,
+			token,
 		});
 	} catch (err) {
 		// Log error but don't throw to avoid failing caller flows
