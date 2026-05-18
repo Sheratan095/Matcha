@@ -21,6 +21,9 @@ const envSchema = z.object({
 	AUTH_HOST: z.string().default("http://localhost"),
 	AUTH_PORT: z.coerce.number().default(3001),
 
+	NOTIFICATION_HOST: z.string().default("http://localhost"),
+	NOTIFICATION_PORT: z.coerce.number().default(3002),
+
 	// Database
 	DATABASE_URL: z.string(), // connection string
 	POSTGRES_HOST: z.string().default("localhost"),

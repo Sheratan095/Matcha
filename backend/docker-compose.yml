@@ -44,6 +44,17 @@ services:
       timeout: 5s
       retries: 5
 
+  notification:
+    build:
+      context: .
+      dockerfile: apps/notification/Dockerfile
+    ports:
+      - "${NOTIFICATION_PORT:-3002}:3002"
+    environment:
+      NOTIFICATION_PORT: 3002
+    depends_on:
+      - postgres
+
 volumes:
   # Persistent volume for PostgreSQL data
   postgres_data:

@@ -1,7 +1,8 @@
 import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
-import { JwtHelper } from './jwt/jwt';
+import { JwtHelper } from './utils/jwt';
+import { sendEmailVerification } from './utils/notification';
 
 
 // Services contain the core business logic like the db calls
@@ -41,7 +42,7 @@ export class AppService
 
 			await this.issueTokens(newId, res);
 
-			return { message: 'User registered successfully', date: new Date(), userId: newId };
+			return { message: 'Email verification required', date: new Date(), userId: newId };
 		}
 		catch (error: any)
 		{

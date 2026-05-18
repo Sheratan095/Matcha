@@ -5,7 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DbModule } from './db/db.module';
 import { env } from "@repo/config";
-import { JwtHelper } from './jwt/jwt';
+import { JwtHelper } from './utils/jwt';
 
 @Module({
 	imports: [
