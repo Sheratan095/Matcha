@@ -37,13 +37,20 @@ export class AppService
 		return { message: 'Login successful' };
 	}
 
-	async register(email: string, username: string, password: string)
+	async register(email: string, username: string, password: string, res: any)
 	{
 		const passwordHash = await bcrypt.hash(password, 10);
 
 		try
 		{
-			await this.dbService.createUser(email, username, passwordHash);
+			const newId: string = await this.dbService.createUser(email, username, passwordHash);
+
+			// Generate JWT access and refresh tokens for the authenticated user
+			const tokens = await this.jwtHelper.generateTokens(newId);
+			// Set the generated tokens as HTTP-only cookies in the response
+			this.jwtHelper.setTokensAsCookies(res, tokens);
+			// Save the refresh token in the database for later verification
+			this.dbService.saveRefreshToken(newId, tokens.refresh_token);
 		}
 		catch (error: any)
 		{
@@ -71,7 +78,7 @@ export class AppService
 		return { message: 'Logged out successfully' };
 	}
 
-	async refreshTokens(userId: number, username: string, refreshToken: string, res: any)
+	async refreshTokens(userId: string, username: string, refreshToken: string, res: any)
 	{
 		if (!userId || !refreshToken)
 			throw new ForbiddenException('Invalid refresh token');

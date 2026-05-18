@@ -34,9 +34,11 @@ export class AppController
 	@ApiResponse({ status: 409, type: RegisterErrorDto, description: 'User/Email already exists' })
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
-	async register(@Body() req: RegisterDto) // -> Input validation is done here
+	// @Res passthrough allows us to use the response object for setting cookies in the service layer
+	// while still returning a standard response body from the controller method.
+	async register(@Body() req: RegisterDto, @Res({ passthrough: true }) res: Response) // -> Input validation is done here
 	{
-		await this.appService.register(req.email, req.username, req.password);
+		await this.appService.register(req.email, req.username, req.password, res);
 
 		return { message: 'User registered successfully' };
 	}
