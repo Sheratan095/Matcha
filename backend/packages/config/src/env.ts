@@ -44,6 +44,7 @@ const envSchema = z.object({
 	JWT_REFRESH_EXPIRATION_MS: z.coerce.number().default(604800000), // 7 days in milliseconds
 
 	// EMAIL Verification
+	VERIFICATION_TOKEN_LENGTH: z.coerce.number().default(8), // Length of the random token for email verification
 	EMAIL_VERIFICATION_EXPIRATION: z.string().default("1h"), // 1 hour
 	EMAIL_VERIFICATION_EXPIRATION_MS: z.coerce.number().default(3600000), // 1 hour in milliseconds
 

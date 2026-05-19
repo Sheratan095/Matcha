@@ -46,34 +46,48 @@
 			color: #555;
 			margin-bottom: 30px;
 		}
+		.button-container {
+			text-align: center;
+			margin: 30px 0;
+		}
+		.verification-button {
+			display: inline-block;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: #ffffff;
+			padding: 14px 40px;
+			border-radius: 6px;
+			text-decoration: none;
+			font-weight: 600;
+			font-size: 16px;
+			transition: transform 0.2s ease, box-shadow 0.2s ease;
+			box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+		}
+		.verification-button:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+		}
 		.code-container {
 			background-color: #f3f4f6;
 			border-left: 4px solid #667eea;
-			padding: 20px;
-			margin: 30px 0;
+			padding: 15px;
+			margin: 20px 0;
 			border-radius: 4px;
 		}
 		.code-label {
-			font-size: 12px;
+			font-size: 11px;
 			font-weight: 600;
-			color: #6b7280;
+			color: #9ca3af;
 			text-transform: uppercase;
 			letter-spacing: 0.5px;
-			margin-bottom: 10px;
+			margin-bottom: 8px;
 		}
 		.code {
-			font-size: 32px;
-			font-weight: 700;
+			font-size: 18px;
+			font-weight: 600;
 			color: #667eea;
-			letter-spacing: 4px;
+			letter-spacing: 2px;
 			text-align: center;
 			font-family: 'Courier New', monospace;
-		}
-		.expiry-text {
-			font-size: 13px;
-			color: #9ca3af;
-			margin-top: 15px;
-			text-align: center;
 		}
 		.security-section {
 			margin: 30px 0;
@@ -150,10 +164,13 @@
 			<div class="greeting">{{GREETING}},</div>
 			<p class="message">{{MESSAGE}}</p>
 			
+			<div class="button-container">
+				<a href="{{VERIFICATION_LINK}}" class="verification-button">Verify Email</a>
+			</div>
+
 			<div class="code-container">
 				<div class="code-label">{{OTP_LABEL}}</div>
 				<div class="code">{{OTP_CODE}}</div>
-				<div class="expiry-text">{{EXPIRY_TEXT}}</div>
 			</div>
 
 			<div class="security-section">

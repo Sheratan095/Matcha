@@ -30,12 +30,14 @@ export class MailerService
 		});
 	}
 
-	async sendVerificationEmail(to: string, token: string, language: string = 'en', expiryMinutes: number = 10 ): Promise<void>
+	async sendVerificationEmail(to: string, token: string, language: string = 'en'): Promise<void>
 	{
 		try
 		{
 			const link = `${env.FRONTEND_URL}:${env.FRONTEND_PORT}/verify-email?token=${token}`;
-			await this.sendOTPEmail(to, token, language, expiryMinutes, link);
+
+			await this.sendOTPEmail(to, token, language, link);
+
 			this.logger.log(`Verification email sent to ${to}`);
 		}
 		catch (error: unknown)
@@ -46,7 +48,7 @@ export class MailerService
 		}
 	}
 
-	private async sendOTPEmail(to: string, otpCode: string, language: string = 'en', expiryMinutes: number = 10, verificationLink?: string ): Promise<void>
+	private async sendOTPEmail(to: string, otpCode: string, language: string = 'en', verificationLink?: string ): Promise<void>
 	{
 		// Get language pack for the specified language
 		const langPack = getLanguagePack(language);
@@ -65,7 +67,7 @@ export class MailerService
 
 			// Generate security points HTML
 			const securityPointsHtml = langPack.securityPoints
-				.map((point) => `<li>${point.replace(/{{EXPIRY_MINUTES}}/g, String(expiryMinutes))}</li>`)
+				.map((point) => `<li>${point}</li>`)
 				.join('');
 
 			// Replace all placeholders with language pack values and dynamic content
@@ -74,9 +76,10 @@ export class MailerService
 				.replace(/{{TITLE}}/g, langPack.title)
 				.replace(/{{GREETING}}/g, langPack.greeting)
 				.replace(/{{MESSAGE}}/g, langPack.message)
+				.replace(/{{VERIFICATION_LINK}}/g, verificationLink || '#')
 				.replace(/{{OTP_LABEL}}/g, langPack.otpLabel)
 				.replace(/{{OTP_CODE}}/g, otpCode)
-				.replace(/{{EXPIRY_TEXT}}/g, langPack.expiryText.replace(/{{EXPIRY_MINUTES}}/g, String(expiryMinutes)))
+				.replace(/{{EXPIRY_TEXT}}/g, langPack.expiryText)
 				.replace(/{{SECURITY_TITLE}}/g, langPack.securityTitle)
 				.replace(/{{SECURITY_POINTS}}/g, securityPointsHtml)
 				.replace(/{{FOOTER_MESSAGE}}/g, langPack.footerMessage)
@@ -93,9 +96,7 @@ export class MailerService
 			from: `"Matcha" <${env.SMTP_USER}>`,
 			to,
 			subject: langPack.subject,
-			text: langPack.plainText
-				.replace(/{{OTP_CODE}}/g, otpCode)
-				.replace(/{{EXPIRY_MINUTES}}/g, String(expiryMinutes)),
+			text: langPack.plainText.replace(/{{OTP_CODE}}/g, otpCode),
 			html: htmlContent,
 		};
 

@@ -10,7 +10,11 @@ import { HttpModule } from '@nestjs/axios';
 
 @Module({
 	imports: [
-		HttpModule, // Used to make service-to-service calls, such as sending notifications to the notification service
+		HttpModule.register({
+			headers: {
+				'x-internal-key': env.INTERNAL_KEY,
+			},
+		}),
 		DbModule,
 		PassportModule,
 		JwtModule.register({

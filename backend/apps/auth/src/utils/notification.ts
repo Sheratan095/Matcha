@@ -5,13 +5,16 @@ export async function sendEmailVerification(email: string, token: string): Promi
 {
 	//Add internal key to headers for authentication with the notification service
 	axios.defaults.headers.common['x-internal-key'] = env.INTERNAL_KEY;
-	try {
+	try
+	{
 		await axios.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/email-verification`, 
 		{
 			email,
 			token,
 		});
-	} catch (err) {
+	}
+	catch (err)
+	{
 		// Log error but don't throw to avoid failing caller flows
 		// You can replace this with your logger
 		// eslint-disable-next-line no-console
