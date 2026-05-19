@@ -80,6 +80,16 @@ export class AppService
 		}
 	}
 
+	async verifyEmail(token: string, res: any)
+	{
+		// TO DO
+		// 1. Validate the token against the database (not implemented here, but should be done in a real application)
+		// 2. If valid, mark the user's email as verified in the database
+		// 3. Optionally, issue JWT tokens immediately upon verification or require the user to log in
+
+
+	}
+
 	async logout(res: any)
 	{
 		await this.jwtHelper.clearTokens(res);

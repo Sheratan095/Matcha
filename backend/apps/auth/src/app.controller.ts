@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Response } from 'express';
 import { AppService } from './app.service';
 import { InternalKeyGuard } from '@repo/utils';
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto, LoginErrorDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto } from './dto/refresh.dto';
-import { Response } from 'express';
-
+import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './dto/verify_email.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -40,6 +40,18 @@ export class AppController
 	{
 		// TO DO add first and last name ? calling user service to handle that logic ? or just add to the db service ?
 		return (await this.appService.register(req.email, req.username, req.password, res));
+	}
+
+	@Post('verify-email')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Verify user email', description: 'Verifies the user\'s email address using the provided token.' })
+	@ApiBody({ type: VerifyEmailDto })
+	@ApiResponse({ status: 200, type: VerifyEmailResponseDto, description: 'Email verified successfully' })
+	@ApiResponse({ status: 400, type: VerifyEmailErrorDto, description: 'Invalid or expired verification token' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	async verifyEmail(@Body() req: VerifyEmailDto, @Res({ passthrough: true }) res: Response)
+	{
+		return (await this.appService.verifyEmail(req.token, res));
 	}
 
 	@Post('login')
