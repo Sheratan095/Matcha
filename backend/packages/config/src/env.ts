@@ -46,6 +46,12 @@ const envSchema = z.object({
 	// EMAIL Verification
 	EMAIL_VERIFICATION_EXPIRATION: z.string().default("1h"), // 1 hour
 	EMAIL_VERIFICATION_EXPIRATION_MS: z.coerce.number().default(3600000), // 1 hour in milliseconds
+
+	// SMTP Configuration
+	SMTP_HOST: z.string().default("localhost"),
+	SMTP_PORT: z.coerce.number().default(587),
+	SMTP_USER: z.string().default(""),
+	SMTP_PASS: z.string().default(""),
 });
 
 // validate
