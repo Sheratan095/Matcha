@@ -14,7 +14,7 @@ import { env } from '@repo/config';
 @Injectable()
 export class AppService
 {
-	private readonly logger = new Logger(AppService.name);
+	private readonly logger = new Logger("AUTH AppService");
 
 	constructor(
 			private readonly dbService: DbService,

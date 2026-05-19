@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { env } from "@repo/config";
 
-const logger = new Logger('Bootstrap');
+const logger = new Logger('NotificationBootstrap');
 
 function swaggerSetup(app: any)
 {

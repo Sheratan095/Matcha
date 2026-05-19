@@ -5,6 +5,9 @@ import { createProxyMiddleware, Options } from 'http-proxy-middleware';
 import { IncomingMessage, ServerResponse, ClientRequest } from 'http';
 import { setupSwagger } from './swagger';
 import { Microservice } from './Models/Microservice';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('GatewayBootstrap');
 
 // List of all microservices and their ports
 // This is where you would add more services as you build them out (eg. UserService, ProductService, etc.)
@@ -51,7 +54,7 @@ async function bootstrap()
 				// Specify what to do in case of an error when proxying the request to the target service
 				error: (err : Error, _req: Request, _res: Response) =>
 				{
-					console.error('[Gateway] Proxy Error:', err);
+					logger.error('Proxy Error:', err);
 				}
 			},
 
@@ -80,7 +83,7 @@ async function bootstrap()
 	setupSwagger(app, services);
 
 	await app.listen(env.GATEWAY_PORT);
-	console.log(`[GATEWAY] Listening on port ${env.GATEWAY_PORT}`);
-	console.log(`[GATEWAY] Proxying /auth to ${env.AUTH_HOST}:${env.AUTH_PORT}`);
+	logger.log(`Listening on port ${env.GATEWAY_PORT}`);
+	logger.log(`Proxying /auth to ${env.AUTH_HOST}:${env.AUTH_PORT}`);
 }
 bootstrap();

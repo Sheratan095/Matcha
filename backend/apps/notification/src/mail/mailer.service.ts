@@ -3,7 +3,7 @@ import { env } from '@repo/config';
 import * as nodemailer from 'nodemailer';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getLanguagePack, LanguagePack } from './languages';
+import { getLanguagePack } from './languages';
 
 export enum EmailType
 {
@@ -14,7 +14,7 @@ export enum EmailType
 @Injectable()
 export class MailerService
 {
-	private readonly logger = new Logger(MailerService.name);
+	private readonly logger = new Logger("MailerService");
 	private transporter: nodemailer.Transporter;
 
 	constructor()
@@ -85,7 +85,7 @@ export class MailerService
 		catch (error: unknown)
 		{
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			this.logger.error(`[NOTIFICATION] Error loading email template: ${errorMessage}`);
+			this.logger.error(`Error loading email template: ${errorMessage}`);
 			throw error;
 		}
 
@@ -106,7 +106,7 @@ export class MailerService
 		catch (error: unknown)
 		{
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			this.logger.error(`[NOTIFICATION] Error sending verification email: ${errorMessage}`);
+			this.logger.error(`Error sending verification email: ${errorMessage}`);
 			throw error;
 		}
 	}
