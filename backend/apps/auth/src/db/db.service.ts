@@ -44,6 +44,12 @@ export class DbService implements OnModuleInit
 		return (result.rows[0].id);
 	}
 
+	async markUserEmailVerified(userId: string)
+	{
+		// Update the user's record in the database to mark their email as verified. This is a helper method for email verification.
+		await this.pool.query('UPDATE users SET email_verified = TRUE WHERE id = $1', [userId]);
+	}
+
 	async saveRefreshToken(userId: string, refreshToken: string, expiresAt: Date)
 	{
 		// Save the refresh token for a user in the database. This is a helper method for token management.
@@ -70,4 +76,12 @@ export class DbService implements OnModuleInit
 			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP
 		`, [userId, token, expiresAt]);
 	}
+
+	async getUserIdByVerificationToken(token: string)
+	{
+		// Retrieve the user ID associated with a given email verification token from the database. This is a helper method for email verification.
+		const result = await this.pool.query('SELECT user_id FROM email_verification_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP', [token]);
+		return (result.rows[0]?.user_id);
+	}
+
 }

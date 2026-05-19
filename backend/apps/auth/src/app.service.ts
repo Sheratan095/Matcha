@@ -82,12 +82,14 @@ export class AppService
 
 	async verifyEmail(token: string, res: any)
 	{
-		// TO DO
-		// 1. Validate the token against the database (not implemented here, but should be done in a real application)
-		// 2. If valid, mark the user's email as verified in the database
-		// 3. Optionally, issue JWT tokens immediately upon verification or require the user to log in
+		const userId = await this.dbService.getUserIdByVerificationToken(token);
 
+		if (!userId)
+			throw new ForbiddenException('Invalid or expired verification token');
 
+		await this.dbService.markUserEmailVerified(userId);
+
+		return ({ message: 'Email verified successfully', userId });
 	}
 
 	async logout(res: any)
