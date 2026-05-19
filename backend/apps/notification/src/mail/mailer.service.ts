@@ -19,7 +19,6 @@ export class MailerService
 
 	constructor()
 	{
-		console.log(`[NOTIFICATION] Initializing MailerService with SMTP host: ${env.SMTP_HOST}, port: ${env.SMTP_PORT}`);
 		this.transporter = nodemailer.createTransport({
 			host: env.SMTP_HOST,
 			port: env.SMTP_PORT,
@@ -103,7 +102,6 @@ export class MailerService
 		try
 		{
 			await this.transporter.sendMail(mailOptions);
-			this.logger.log( `[NOTIFICATION] Verification email sent to ${to}, expires in ${expiryMinutes} minutes`);
 		}
 		catch (error: unknown)
 		{

@@ -1,7 +1,10 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { env } from "@repo/config";
+
+const logger = new Logger('Bootstrap');
 
 function swaggerSetup(app: any)
 {
@@ -24,6 +27,6 @@ async function bootstrap()
 
 	const port = env.NOTIFICATION_PORT;
 	await app.listen(port);
-	console.log(`Notification service is running on: ${port}`);
+	logger.log(`Notification service is running on: ${port}`);
 }
 bootstrap();
