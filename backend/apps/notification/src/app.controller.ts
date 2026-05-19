@@ -29,7 +29,7 @@ export class AppController
 	@ApiResponse({ status: 200, type: EmailVerificationResponseDto, description: 'Verification email sent successfully' })
 	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
-	sendVerificationEmail(@Body() req: EmailVerificationDto): string
+	sendVerificationEmail(@Body() req: EmailVerificationDto)
 	{
 		return (this.appService.sendVerificationEmail(req.email, req.token));
 	}

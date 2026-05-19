@@ -13,6 +13,9 @@ dotenv.config({ path: findConfig(".env") || undefined });
 const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
+	FRONTEND_URL: z.string().default("http://localhost"),
+	FRONTEND_PORT: z.coerce.number().default(4000),
+
 	INTERNAL_KEY: z.string().default("1234abc"),
 
 	GATEWAY_HOST: z.string().default("http://localhost"),
