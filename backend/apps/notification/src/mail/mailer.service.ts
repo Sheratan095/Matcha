@@ -19,6 +19,7 @@ export class MailerService
 
 	constructor()
 	{
+		console.log(`[NOTIFICATION] Initializing MailerService with SMTP host: ${env.SMTP_HOST}, port: ${env.SMTP_PORT}`);
 		this.transporter = nodemailer.createTransport({
 			host: env.SMTP_HOST,
 			port: env.SMTP_PORT,
