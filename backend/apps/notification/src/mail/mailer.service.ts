@@ -38,7 +38,7 @@ export class MailerService
 
 			await this.sendOTPEmail(to, token, language, link);
 
-			this.logger.log(`Verification email sent to ${to}`);
+			this.logger.log(`Verification email sent to ${to} : token ${token}`);
 		}
 		catch (error: unknown)
 		{

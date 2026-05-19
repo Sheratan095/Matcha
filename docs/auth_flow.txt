@@ -1,0 +1,33 @@
+REGISTRATION
+
+frontend sends email, username, psw, language
+  ↓
+server check and sends a verification email
+  ↓
+user clicks email link
+  ↓
+frontend route opens
+  ↓
+frontend extracts token
+  ↓
+frontend calls backend
+  ↓
+backend verifies token
+  ↓
+frontend shows success/error page
+  ↓
+fronend redirects to login page
+
+
+
+LOGIN
+
+frontend sends username, psw
+  ↓
+server check if profile exist  → error
+  ↓
+server check if not verified  → error and issue new verification token (401 + EMAIL_NOT_VERIFIED)
+  ↓
+server check the psw  → error
+  ↓
+issue jwt and refresh tokens

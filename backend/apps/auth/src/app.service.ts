@@ -28,8 +28,18 @@ export class AppService
 	{
 		// Hash the password and compare with stored hash in DB, then fetch user details
 		const user = await this.dbService.getUserByUsername(username);
-		
-		if (!user || !await this.comparePasswords(password, user.password_hash))
+
+		if (!user)
+			throw new ForbiddenException('Invalid credentials');
+
+		if (user.email_verified === false)
+		{
+			this.logger.warn(`Login attempt with unverified email for user ${username} (ID: ${user.id})`);
+			this.issueVerificationToken(user.id, user.email);
+			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
+		}
+
+		if (!await this.comparePasswords(password, user.password_hash))
 			throw new ForbiddenException('Invalid credentials');
 
 		await this.issueJwtTokens(user.id, res);
@@ -43,22 +53,14 @@ export class AppService
 
 		try
 		{
-			// TO DO
-			// const newId: string = await this.dbService.createUser(email, username, passwordHash);
-			const newId = "1";
+			const newId: string = await this.dbService.createUser(email, username, passwordHash);
 
 			// TOKENS ARE ISSUED AFTER EMAIL VERIFICATION AND THEN LOGIN, NOT DURING REGISTRATION
 			// await this.issueJwtTokens(newId, res);
 
 			this.logger.log(`User registered with email ${email} and username ${username}, assigned ID ${newId}`);
 
-			const verificationToken = await this.issueVerificationToken(newId);
-			// Fire-and-forget with error handling (don't block registration response)
-			sendEmailVerification(email, verificationToken, this.httpService)
-				.catch(error =>
-				{
-					this.logger.error('Failed to send verification email', error);
-				});
+			await this.issueVerificationToken(newId, email);
 
 			return { message: 'Email verification required', date: new Date(), userId: newId };
 		}
@@ -82,14 +84,14 @@ export class AppService
 
 	async verifyEmail(token: string, res: any)
 	{
-		const userId = await this.dbService.getUserIdByVerificationToken(token);
+		const verificationToken = await this.dbService.getVerificationToken(token);
 
-		if (!userId)
+		if (!verificationToken || new Date(verificationToken.expires_at) < new Date())
 			throw new ForbiddenException('Invalid or expired verification token');
 
-		await this.dbService.markUserEmailVerified(userId);
+		await this.dbService.markUserEmailVerified(verificationToken.user_id);
 
-		return ({ message: 'Email verified successfully', userId });
+		return ({ message: 'Email verified successfully', userId: verificationToken.user_id });
 	}
 
 	async logout(res: any)
@@ -148,7 +150,7 @@ export class AppService
 		await this.dbService.saveRefreshToken(userId, tokens.refresh_token, tokens.refresh_token_expires_at);
 	}
 
-	private async issueVerificationToken(userId: string): Promise<string>
+	private async issueVerificationToken(userId: string, email: string)
 	{
 		// Generate a secure random token for email verification
 		const token = randomBytes(env.EMAIL_VERIFICATION_TOKEN_LENGTH).toString('hex');
@@ -157,6 +159,11 @@ export class AppService
 		// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
 		await this.dbService.saveVerificationToken(userId, token, expiresAt);
 
-		return (token);
+		// Fire-and-forget with error handling (don't block registration response)
+		sendEmailVerification(email, token, this.httpService)
+			.catch(error =>
+			{
+				this.logger.error('Failed to send verification email', error);
+			});
 	}
 }

@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
 	email VARCHAR(255) UNIQUE NOT NULL,
 	password_hash VARCHAR(255) NOT NULL,
 
-	verified BOOLEAN DEFAULT FALSE, -- Will be set to true after email verification
+	email_verified BOOLEAN DEFAULT FALSE, -- Will be set to true after email verification
 	verification_token VARCHAR(255),
 	verification_token_expires TIMESTAMP
 );

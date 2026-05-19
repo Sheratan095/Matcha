@@ -77,11 +77,11 @@ export class DbService implements OnModuleInit
 		`, [userId, token, expiresAt]);
 	}
 
-	async getUserIdByVerificationToken(token: string)
+	async getVerificationToken(token: string)
 	{
 		// Retrieve the user ID associated with a given email verification token from the database. This is a helper method for email verification.
-		const result = await this.pool.query('SELECT user_id FROM email_verification_tokens WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP', [token]);
-		return (result.rows[0]?.user_id);
+		const result = await this.pool.query('SELECT * FROM email_verification_tokens WHERE token = $1', [token]);
+		return (result.rows[0]);
 	}
 
 }
