@@ -47,6 +47,7 @@ const envSchema = z.object({
 	EMAIL_VERIFICATION_TOKEN_LENGTH: z.coerce.number().default(8), // Length of the random token for email verification
 	EMAIL_VERIFICATION_EXPIRATION: z.string().default("1h"), // 1 hour
 	EMAIL_VERIFICATION_EXPIRATION_MS: z.coerce.number().default(3600000), // 1 hour in milliseconds
+	EMAIL_VERIFICATION_MAX_ATTEMPTS: z.coerce.number().default(5), // Max attempts for sending verification email
 
 	// SMTP Configuration
 	SMTP_HOST: z.string().default("localhost"),

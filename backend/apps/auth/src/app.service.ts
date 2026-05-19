@@ -159,11 +159,24 @@ export class AppService
 		// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
 		await this.dbService.saveVerificationToken(userId, token, expiresAt);
 
-		// Fire-and-forget with error handling (don't block registration response)
-		sendEmailVerification(email, token, this.httpService)
-			.catch(error =>
+		let sent: boolean = false;
+		let attempts: number = 0;
+
+		while (!sent && attempts < env.EMAIL_VERIFICATION_MAX_ATTEMPTS)
+		{
+			attempts++;
+			try
 			{
-				this.logger.error('Failed to send verification email', error);
-			});
+				await sendEmailVerification(email, token, this.httpService);
+				sent = true;
+			}
+			catch (error)
+			{
+				this.logger.warn(`Failed to send verification email (attempt ${attempts})`, error);
+			}
+		}
+
+		if (!sent)
+			this.logger.error(`Failed to send verification email after ${attempts} attempts for user ID ${userId} and email ${email}`);
 	}
 }

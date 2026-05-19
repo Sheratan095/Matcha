@@ -14,9 +14,8 @@ export async function sendEmailVerification(email: string, token: string, httpSe
 	}
 	catch (err)
 	{
-		// Log error but don't throw to avoid failing caller flows
-		// You can replace this with your logger
-		// eslint-disable-next-line no-console
-		console.error('sendEmailVerification failed', err);
+		// Rethrow error to allow caller (e.g. retry loop) to handle it
+		// 	BUSINESS LOGIC IS HANDLED BY AUTH app.service
+		throw err;
 	}
 }
