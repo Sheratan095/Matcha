@@ -7,7 +7,7 @@ export class JwtHelper
 {
 	constructor(private readonly jwtService: JwtService) {}
 
-	async generateTokens(userId: string) : Promise<{ access_token: string, refresh_token: string }>
+	async generateTokens(userId: string) : Promise<{ access_token: string, refresh_token: string, refresh_token_expires_at: Date }>
 	{
 		const payload = { sub: userId };
 		
@@ -22,7 +22,9 @@ export class JwtHelper
 			}),
 		]);
 
-		return ({ access_token: accessToken, refresh_token: refreshToken, });
+		const refreshTokenExpiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRATION_MS);
+
+		return ({ access_token: accessToken, refresh_token: refreshToken, refresh_token_expires_at: refreshTokenExpiresAt });
 	}
 
 	async setTokensAsCookies(res: any, tokens: { access_token: string, refresh_token: string })

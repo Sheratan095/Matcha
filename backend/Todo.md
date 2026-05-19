@@ -7,3 +7,5 @@
 [] Afer-registration link to verify account
 
 [] Via-mail password reset
+
+[] Check refresh_token expiration

@@ -42,6 +42,10 @@ const envSchema = z.object({
 	JWT_REFRESH_SECRET: z.string().default("fallback_jwt_refresh_secret"),
 	JWT_REFRESH_EXPIRATION: z.string().default("7d"), // 7 days
 	JWT_REFRESH_EXPIRATION_MS: z.coerce.number().default(604800000), // 7 days in milliseconds
+
+	// EMAIL Verification
+	EMAIL_VERIFICATION_EXPIRATION: z.string().default("1h"), // 1 hour
+	EMAIL_VERIFICATION_EXPIRATION_MS: z.coerce.number().default(3600000), // 1 hour in milliseconds
 });
 
 // validate

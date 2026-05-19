@@ -44,14 +44,14 @@ export class DbService implements OnModuleInit
 		return (result.rows[0].id);
 	}
 
-	async saveRefreshToken(userId: string, refreshToken: string)
+	async saveRefreshToken(userId: string, refreshToken: string, expiresAt: Date)
 	{
 		// Save the refresh token for a user in the database. This is a helper method for token management.
 		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one refresh token is stored per user.
 		await this.pool.query(`
-			INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)
+			INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)
 			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP
-		`, [userId, refreshToken]);
+		`, [userId, refreshToken, expiresAt]);
 	}
 
 	async getRefreshToken(userId: string)
@@ -59,5 +59,15 @@ export class DbService implements OnModuleInit
 		// Retrieve the refresh token for a user from the database. This is a helper method for token validation.
 		const result = await this.pool.query('SELECT token FROM refresh_tokens WHERE user_id = $1', [userId]);
 		return (result.rows[0]?.token);
+	}
+
+	async saveVerificationToken(userId: string, token: string, expiresAt: Date)
+	{
+		// Save the email verification token for a user in the database. This is a helper method for email verification.
+		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one verification token is stored per user.
+		await this.pool.query(`
+			INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)
+			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP
+		`, [userId, token, expiresAt]);
 	}
 }

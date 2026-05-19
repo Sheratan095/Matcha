@@ -3,6 +3,8 @@ import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { JwtHelper } from './utils/jwt';
 import { sendEmailVerification } from './utils/notification';
+import { randomBytes } from 'crypto';
+import { env } from '@repo/config';
 
 
 // Services contain the core business logic like the db calls
@@ -27,7 +29,7 @@ export class AppService
 		if (!user || !await this.comparePasswords(password, user.password_hash))
 			throw new ForbiddenException('Invalid credentials');
 
-		await this.issueTokens(user.id, res);
+		await this.issueJwtTokens(user.id, res);
 
 		return ({ message: 'Login successful', userId: user.id });
 	}
@@ -42,9 +44,11 @@ export class AppService
 			// const newId: string = await this.dbService.createUser(email, username, passwordHash);
 			const newId = "1";
 
-			await this.issueTokens(newId, res);
+			// TOKENS ARE ISSUED AFTER EMAIL VERIFICATION AND THEN LOGIN, NOT DURING REGISTRATION
+			// await this.issueJwtTokens(newId, res);
 
-			await sendEmailVerification(email, 'dummy-token-for-now'); // In a real implementation, generate a proper token and handle errors
+			const verificationToken = await this.issueVerificationToken(newId);
+			await sendEmailVerification(email, verificationToken);
 
 			return { message: 'Email verification required', date: new Date(), userId: newId };
 		}
@@ -79,7 +83,7 @@ export class AppService
 		if (!storedToken || storedToken !== refreshToken)
 			throw new ForbiddenException('Invalid refresh token');
 
-		await this.issueTokens(userId, res);
+		await this.issueJwtTokens(userId, res);
 
 		return ({ message: 'Tokens refreshed', userId });
 	}
@@ -112,13 +116,25 @@ export class AppService
 
 	// Centralized method to issue new tokens, set cookies, and store refresh token in DB
 	// This is called both during login/registration and token refresh to avoid code duplication
-	private async issueTokens(userId: string, res: any)
+	private async issueJwtTokens(userId: string, res: any)
 	{
 		// If valid, issue new tokens
 		const tokens = await this.jwtHelper.generateTokens(userId);
 		// Set the new tokens as cookies in the response
 		this.jwtHelper.setTokensAsCookies(res, tokens);
 		// Store the new refresh token in the database, replacing the old one
-		await this.dbService.saveRefreshToken(userId, tokens.refresh_token);
+		await this.dbService.saveRefreshToken(userId, tokens.refresh_token, tokens.refresh_token_expires_at);
+	}
+
+	private async issueVerificationToken(userId: string): Promise<string>
+	{
+		// Generate a secure random token for email verification
+		const token = randomBytes(32).toString('hex');
+		// Set the token expiration
+		const expiresAt = new Date(Date.now() + env.EMAIL_VERIFICATION_EXPIRATION_MS); // 24 hours from now
+		// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
+		await this.dbService.saveVerificationToken(userId, token, expiresAt);
+
+		return (token);
 	}
 }
