@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { MailerService, EmailType } from './mail/mailer.service';
 
 @Injectable()
 export class AppService
 {
+	private readonly logger = new Logger("NOTIFICATION AppService");
+
 	constructor(private readonly mailerService: MailerService) {}
 
 	// user clicks email link

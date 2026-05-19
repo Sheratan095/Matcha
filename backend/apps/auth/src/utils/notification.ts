@@ -1,17 +1,16 @@
-import axios from 'axios';
+import { HttpService } from "@nestjs/axios";
 import { env } from "@repo/config";
 
-export async function sendEmailVerification(email: string, token: string): Promise<void>
+export async function sendEmailVerification(email: string, token: string, httpService: HttpService)
 {
-	//Add internal key to headers for authentication with the notification service
-	axios.defaults.headers.common['x-internal-key'] = env.INTERNAL_KEY;
+	// HttpService is already configured with internal-key header in app.module
 	try
 	{
-		await axios.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/email-verification`, 
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/email-verification`, 
 		{
 			email,
 			token,
-		});
+		}).toPromise();
 	}
 	catch (err)
 	{

@@ -1,10 +1,12 @@
 import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { JwtHelper } from './utils/jwt';
 import { sendEmailVerification } from './utils/notification';
 import { randomBytes } from 'crypto';
 import { env } from '@repo/config';
+import { eventNames } from 'process';
 
 
 // Services contain the core business logic like the db calls
@@ -18,7 +20,8 @@ export class AppService
 
 	constructor(
 			private readonly dbService: DbService,
-			private readonly jwtHelper: JwtHelper )
+			private readonly jwtHelper: JwtHelper,
+			private readonly httpService: HttpService )
 	{}
 
 	async login(username: string, password: string, res: any)
@@ -47,8 +50,15 @@ export class AppService
 			// TOKENS ARE ISSUED AFTER EMAIL VERIFICATION AND THEN LOGIN, NOT DURING REGISTRATION
 			// await this.issueJwtTokens(newId, res);
 
+			this.logger.log(`User registered with email ${email} and username ${username}, assigned ID ${newId}`);
+
 			const verificationToken = await this.issueVerificationToken(newId);
-			await sendEmailVerification(email, verificationToken);
+			// Fire-and-forget with error handling (don't block registration response)
+			sendEmailVerification(email, verificationToken, this.httpService)
+				.catch(error =>
+				{
+					this.logger.error('Failed to send verification email', error);
+				});
 
 			return { message: 'Email verification required', date: new Date(), userId: newId };
 		}
@@ -129,7 +139,7 @@ export class AppService
 	private async issueVerificationToken(userId: string): Promise<string>
 	{
 		// Generate a secure random token for email verification
-		const token = randomBytes(32).toString('hex');
+		const token = randomBytes(env.EMAIL_VERIFICATION_TOKEN_LENGTH).toString('hex');
 		// Set the token expiration
 		const expiresAt = new Date(Date.now() + env.EMAIL_VERIFICATION_EXPIRATION_MS); // 24 hours from now
 		// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
