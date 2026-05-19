@@ -58,7 +58,7 @@ export class MailerService
 			// Load the email template
 			const templatePath = path.join(
 				__dirname,
-				'email-templates',
+				'templates',
 				'verification-template.html'
 			);
 			const htmlTemplate = fs.readFileSync(templatePath, 'utf8');
@@ -99,16 +99,15 @@ export class MailerService
 			html: htmlContent,
 		};
 
-		try {
+		try
+		{
 			await this.transporter.sendMail(mailOptions);
-			this.logger.log(
-				`[NOTIFICATION] Verification email sent to ${to}, expires in ${expiryMinutes} minutes`
-			);
-		} catch (error: unknown) {
+			this.logger.log( `[NOTIFICATION] Verification email sent to ${to}, expires in ${expiryMinutes} minutes`);
+		}
+		catch (error: unknown)
+		{
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			this.logger.error(
-				`[NOTIFICATION] Error sending verification email: ${errorMessage}`
-			);
+			this.logger.error(`[NOTIFICATION] Error sending verification email: ${errorMessage}`);
 			throw error;
 		}
 	}
