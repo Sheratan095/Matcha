@@ -6,6 +6,7 @@
   "private": false,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "tsc --build"
+    "build": "tsc --build",
+    "dev": "tsc --watch"
   }
 }

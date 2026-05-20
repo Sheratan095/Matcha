@@ -18,6 +18,6 @@
 
 [] Via-mail password reset
 
-[] Find a way to add watch also to packages
+[x] Find a way to add watch also to packages
 
 [x] Check refresh_token expiration
