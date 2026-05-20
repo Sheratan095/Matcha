@@ -38,10 +38,10 @@ export class DbService implements OnModuleInit
 	}
 
 	// Return the userId
-	async createUser(email: string, username: string, passwordHash: string, language: SupportedLanguage) : Promise<string>
+	async createUser(email: string, username: string, passwordHash: string, language: SupportedLanguage, firstName: string, lastName: string) : Promise<string>
 	{
 		// Insert a new user into the database with the provided email, username, and password hash. This is a helper method for user registration.
-		const result = await this.pool.query('INSERT INTO users (email, username, password_hash, language) VALUES ($1, $2, $3, $4) RETURNING id', [email, username, passwordHash, language]);
+		const result = await this.pool.query('INSERT INTO users (email, username, password_hash, language, first_name, last_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [email, username, passwordHash, language, firstName, lastName]);
 		return (result.rows[0].id);
 	}
 

@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
 	created_at TIMESTAMP DEFAULT NOW(),
 	updated_at TIMESTAMP DEFAULT NOW(),
 
-	language VARCHAR(10) DEFAULT 'en'
+	language VARCHAR(10) DEFAULT 'en',
+	first_name VARCHAR(50),
+	last_name VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (

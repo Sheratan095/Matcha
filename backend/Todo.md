@@ -2,12 +2,12 @@
 
 [x] auth jwt
 
-[] Password policy and username contrainsts
+[x] Password policy and username contrainsts
 	[x] Create and write
-	[] Test
+	[x] Test
 
 [x] Add language in to registration to allow verification email to be sent in that language
-[] Add last and first name to registration
+[x] Add last and first name to registration
 
 [x] Afer-registration link to verify account
 	[x] verification endpoint

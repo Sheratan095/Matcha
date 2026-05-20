@@ -31,6 +31,22 @@ export class RegisterDto
 	@Length(0, 100)
 	email: string;
 
+	@ApiProperty({ example: 'John', description: 'First name' })
+	@Transform(({ value }) => value.trim()) // Not lowercasing first name, just trimming whitespace BEFORE validation
+	@IsNotEmpty()
+	@IsString()
+	@Length(1, 50)
+	@Matches(/^[a-zA-Z]+$/) // Ensure first name is just letters
+	firstName?: string;
+
+	@ApiProperty({ example: 'Doe', description: 'Last name' })
+	@Transform(({ value }) => value.trim()) // Not lowercasing last name, just trimming whitespace BEFORE validation
+	@IsNotEmpty()
+	@IsString()
+	@Length(1, 50)
+	@Matches(/^[a-zA-Z]+$/) // Ensure last name is just letters
+	lastName?: string;
+
 	@ApiProperty({
 		example: SupportedLanguages.ENGLISH,
 		description: 'Preferred language (optional, default: en)',

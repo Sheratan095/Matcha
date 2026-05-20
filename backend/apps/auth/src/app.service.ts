@@ -48,7 +48,7 @@ export class AppService
 		return ({ message: 'Login successful', userId: user.id });
 	}
 
-	async register(email: string, username: string, password: string, language: SupportedLanguage, res: any)
+	async register(email: string, username: string, password: string, language: SupportedLanguage, firstName: string, lastName: string, res: any)
 	{
 		const passwordHash = await this.hashPassword(password);
 
@@ -58,7 +58,7 @@ export class AppService
 
 		try
 		{
-			const newId: string = await this.dbService.createUser(email, username, passwordHash, language);
+			const newId: string = await this.dbService.createUser(email, username, passwordHash, language, firstName, lastName);
 
 			// TOKENS ARE ISSUED AFTER EMAIL VERIFICATION AND THEN LOGIN, NOT DURING REGISTRATION
 			// await this.issueJwtTokens(newId, res);
