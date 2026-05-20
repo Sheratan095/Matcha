@@ -18,6 +18,12 @@ frontend shows success/error page
   ↓
 fronend redirects to login page
 
+Registration rules:
+  Username: 3-20 chars, allowed chars: [a-z, A-Z, 0-9, '_', '.'],
+    excluded reserver usernames: [admin, support, api, system, root],
+    In db: trimmed, lowercased and UNIQUE
+  Psw: 8-128 chars, exlcluded popular passwords, In db: hashed
+  Email: max 100 chars, In db: trimmed, lowercased and UNIQUE
 
 
 LOGIN

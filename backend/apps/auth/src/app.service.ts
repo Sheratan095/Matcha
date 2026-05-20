@@ -51,6 +51,10 @@ export class AppService
 	{
 		const passwordHash = await this.hashPassword(password);
 
+		// Don't need it because the normalization is done in DTO
+		// username = username.toLowerCase().trim();
+		// email = email.toLowerCase().trim();
+
 		try
 		{
 			const newId: string = await this.dbService.createUser(email, username, passwordHash);

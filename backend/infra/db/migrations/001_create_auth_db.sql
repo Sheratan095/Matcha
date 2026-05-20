@@ -1,12 +1,15 @@
 CREATE TABLE IF NOT EXISTS users (
 	id SERIAL PRIMARY KEY,
-	username VARCHAR(255) UNIQUE NOT NULL,
-	email VARCHAR(255) UNIQUE NOT NULL,
-	password_hash VARCHAR(255) NOT NULL,
 
+	username VARCHAR(30) UNIQUE NOT NULL,
+
+	password_hash VARCHAR(128) NOT NULL,
+
+	email VARCHAR(100) UNIQUE NOT NULL,
 	email_verified BOOLEAN DEFAULT FALSE, -- Will be set to true after email verification
-	verification_token VARCHAR(255),
-	verification_token_expires TIMESTAMP
+
+	created_at TIMESTAMP DEFAULT NOW(),
+	updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
