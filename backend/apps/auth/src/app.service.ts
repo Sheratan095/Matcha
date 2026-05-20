@@ -1,5 +1,6 @@
 import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { JwtHelper } from './utils/jwt';
@@ -35,7 +36,7 @@ export class AppService
 		if (user.email_verified === false)
 		{
 			this.logger.warn(`Login attempt with unverified email for user ${username} (ID: ${user.id})`);
-			this.issueVerificationToken(user.id, user.email);
+			this.issueVerificationToken(user.id, user.email, user.language as SupportedLanguage);
 			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		}
 
@@ -47,7 +48,7 @@ export class AppService
 		return ({ message: 'Login successful', userId: user.id });
 	}
 
-	async register(email: string, username: string, password: string, language: string, res: any)
+	async register(email: string, username: string, password: string, language: SupportedLanguage, res: any)
 	{
 		const passwordHash = await this.hashPassword(password);
 
@@ -154,7 +155,7 @@ export class AppService
 		await this.dbService.saveRefreshToken(userId, tokens.refresh_token, tokens.refresh_token_expires_at);
 	}
 
-	private async issueVerificationToken(userId: string, email: string, language: string = 'en')
+	private async issueVerificationToken(userId: string, email: string, language: SupportedLanguage = SupportedLanguages.ENGLISH)
 	{
 		// Generate a secure random token for email verification
 		const token = randomBytes(env.EMAIL_VERIFICATION_TOKEN_LENGTH).toString('hex');

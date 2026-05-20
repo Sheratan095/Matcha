@@ -48,6 +48,9 @@ importers:
       '@repo/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@repo/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       '@repo/utils':
         specifier: workspace:*
         version: link:../../packages/utils
@@ -227,6 +230,9 @@ importers:
       '@repo/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@repo/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       '@repo/utils':
         specifier: workspace:*
         version: link:../../packages/utils

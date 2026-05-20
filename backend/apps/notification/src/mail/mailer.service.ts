@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { env } from '@repo/config';
+import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 import * as nodemailer from 'nodemailer';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -30,7 +31,7 @@ export class MailerService
 		});
 	}
 
-	async sendVerificationEmail(to: string, token: string, language: string = 'en'): Promise<void>
+	async sendVerificationEmail(to: string, token: string, language: SupportedLanguage = SupportedLanguages.ENGLISH): Promise<void>
 	{
 		try
 		{
@@ -48,7 +49,7 @@ export class MailerService
 		}
 	}
 
-	private async sendOTPEmail(to: string, otpCode: string, language: string = 'en', verificationLink?: string ): Promise<void>
+	private async sendOTPEmail(to: string, otpCode: string, language: SupportedLanguage = SupportedLanguages.ENGLISH, verificationLink?: string ): Promise<void>
 	{
 		// Get language pack for the specified language
 		const langPack = getLanguagePack(language);

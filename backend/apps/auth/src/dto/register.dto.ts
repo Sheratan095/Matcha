@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsString, Length, Matches } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 
 // Dto (Data Transfer Object) is just a data structure for input validation and API documentation.
 // It doesn't contain any logic or methods, just properties with decorators for validation and Swagger docs.
@@ -30,10 +31,14 @@ export class RegisterDto
 	@Length(0, 100)
 	email: string;
 
-	@ApiProperty({ example:'en', description: 'Preferred language (optional, default: en)' })
-	@IsString()
-	@Length(2, 10)
-	language: string;
+	@ApiProperty({
+		example: SupportedLanguages.ENGLISH,
+		description: 'Preferred language (optional, default: en)',
+		enum: SupportedLanguages, // Check that the value is one of GLOBALLY the supported languages
+	})
+	@IsOptional()
+	@IsEnum(SupportedLanguages)
+	language?: SupportedLanguage = SupportedLanguages.ENGLISH;
 }
 
 export class RegisterResponseDto

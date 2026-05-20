@@ -1,7 +1,8 @@
 import { HttpService } from "@nestjs/axios";
 import { env } from "@repo/config";
+import { SupportedLanguage } from "@repo/shared-types";
 
-export async function sendEmailVerification(email: string, token: string, language: string, httpService: HttpService)
+export async function sendEmailVerification(email: string, token: string, language: SupportedLanguage, httpService: HttpService)
 {
 	// HttpService is already configured with internal-key header in app.module
 	try

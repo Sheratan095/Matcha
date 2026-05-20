@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 
 export class EmailVerificationDto
 {
@@ -13,9 +14,14 @@ export class EmailVerificationDto
 	@IsNotEmpty()
 	email: string;
 
-	@ApiProperty({ example: 'en', description: 'Preferred language for the email (optional)' })
-	@IsString()
-	language?: string;
+	@ApiProperty({
+		example: SupportedLanguages.ENGLISH,
+		description: 'Preferred language for the email (optional)',
+		enum: SupportedLanguages,
+	})
+	@IsOptional()
+	@IsEnum(SupportedLanguages)
+	language?: SupportedLanguage;
 }
 
 export class EmailVerificationResponseDto
