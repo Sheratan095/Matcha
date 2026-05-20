@@ -39,7 +39,7 @@ export class AppController
 	async register(@Body() req: RegisterDto, @Res({ passthrough: true }) res: Response) // -> Input validation is done here
 	{
 		// TO DO add first and last name ? calling user service to handle that logic ? or just add to the db service ?
-		return (await this.appService.register(req.email, req.username, req.password, res));
+		return (await this.appService.register(req.email, req.username, req.password, req.language, res));
 	}
 
 	@Post('verify-email')

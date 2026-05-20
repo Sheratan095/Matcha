@@ -9,9 +9,9 @@ export class AppService
 	constructor(private readonly mailerService: MailerService) {}
 
 
-	async sendVerificationEmail(email: string, token: string)
+	async sendVerificationEmail(email: string, token: string, language: string = 'en')
 	{
-		await this.mailerService.sendVerificationEmail(email, token);
+		await this.mailerService.sendVerificationEmail(email, token, language);
 
 		return ('Sending verification email to ' + email + ' with token ' + token);
 	}

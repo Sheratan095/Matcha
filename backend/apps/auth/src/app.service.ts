@@ -47,7 +47,7 @@ export class AppService
 		return ({ message: 'Login successful', userId: user.id });
 	}
 
-	async register(email: string, username: string, password: string, res: any)
+	async register(email: string, username: string, password: string, language: string, res: any)
 	{
 		const passwordHash = await this.hashPassword(password);
 
@@ -57,14 +57,14 @@ export class AppService
 
 		try
 		{
-			const newId: string = await this.dbService.createUser(email, username, passwordHash);
+			const newId: string = await this.dbService.createUser(email, username, passwordHash, language);
 
 			// TOKENS ARE ISSUED AFTER EMAIL VERIFICATION AND THEN LOGIN, NOT DURING REGISTRATION
 			// await this.issueJwtTokens(newId, res);
 
 			this.logger.log(`User registered with email ${email} and username ${username}, assigned ID ${newId}`);
 
-			await this.issueVerificationToken(newId, email);
+			await this.issueVerificationToken(newId, email, language);
 
 			return { message: 'Email verification required', date: new Date(), userId: newId };
 		}
@@ -154,7 +154,7 @@ export class AppService
 		await this.dbService.saveRefreshToken(userId, tokens.refresh_token, tokens.refresh_token_expires_at);
 	}
 
-	private async issueVerificationToken(userId: string, email: string)
+	private async issueVerificationToken(userId: string, email: string, language: string = 'en')
 	{
 		// Generate a secure random token for email verification
 		const token = randomBytes(env.EMAIL_VERIFICATION_TOKEN_LENGTH).toString('hex');
@@ -171,7 +171,7 @@ export class AppService
 			attempts++;
 			try
 			{
-				await sendEmailVerification(email, token, this.httpService);
+				await sendEmailVerification(email, token, language, this.httpService);
 				sent = true;
 			}
 			catch (error)

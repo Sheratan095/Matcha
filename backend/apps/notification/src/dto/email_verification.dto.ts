@@ -12,6 +12,10 @@ export class EmailVerificationDto
 	@IsEmail()
 	@IsNotEmpty()
 	email: string;
+
+	@ApiProperty({ example: 'en', description: 'Preferred language for the email (optional)' })
+	@IsString()
+	language?: string;
 }
 
 export class EmailVerificationResponseDto

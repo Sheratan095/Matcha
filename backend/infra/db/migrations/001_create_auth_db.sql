@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
 	email_verified BOOLEAN DEFAULT FALSE, -- Will be set to true after email verification
 
 	created_at TIMESTAMP DEFAULT NOW(),
-	updated_at TIMESTAMP DEFAULT NOW()
+	updated_at TIMESTAMP DEFAULT NOW(),
+
+	language VARCHAR(10) DEFAULT 'en'
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (

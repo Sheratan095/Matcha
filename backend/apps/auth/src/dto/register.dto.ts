@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer/types/decorators/transform.decorator';
+import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsString, Length, Matches } from 'class-validator';
 
 // Dto (Data Transfer Object) is just a data structure for input validation and API documentation.
@@ -29,6 +29,11 @@ export class RegisterDto
 	@IsNotEmpty()
 	@Length(0, 100)
 	email: string;
+
+	@ApiProperty({ example:'en', description: 'Preferred language (optional, default: en)' })
+	@IsString()
+	@Length(2, 10)
+	language: string;
 }
 
 export class RegisterResponseDto

@@ -31,6 +31,6 @@ export class AppController
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	sendVerificationEmail(@Body() req: EmailVerificationDto)
 	{
-		return (this.appService.sendVerificationEmail(req.email, req.token));
+		return (this.appService.sendVerificationEmail(req.email, req.token, req.language));
 	}
 }
