@@ -13,4 +13,4 @@
 
 [] Via-mail password reset
 
-[] Check refresh_token expiration
+[x] Check refresh_token expiration

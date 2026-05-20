@@ -104,7 +104,7 @@ export class AppService
 	{
 		const storedToken = await this.dbService.getRefreshToken(userId);
 
-		if (!storedToken || storedToken !== refreshToken)
+		if (!storedToken || storedToken !== refreshToken || storedToken.expires_at < new Date())
 			throw new ForbiddenException('Invalid refresh token');
 
 		await this.issueJwtTokens(userId, res);
