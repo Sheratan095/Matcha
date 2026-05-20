@@ -6,7 +6,7 @@
 	[x] Create and write
 	[] Test
 
-[] Add language in to registration to allow verification email to be sent in that language
+[x] Add language in to registration to allow verification email to be sent in that language
 [] Add last and first name to registration
 
 [x] Afer-registration link to verify account

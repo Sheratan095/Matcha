@@ -1,0 +1,47 @@
+BACKEND
+
+Language are defined globbally in a shared model with a list and a relative type 
+
+'
+export enum SupportedLanguages
+{
+	ENGLISH = 'en',
+	FRENCH = 'fr',
+	SPANISH = 'es',
+}
+
+export const AVAILABLE_LANGUAGES: string[] = Object.values(SupportedLanguages);
+
+export type SupportedLanguage = `${SupportedLanguages}`;
+'
+
+---------
+
+In notification service, every language is linked to the relative email verification lanauge pack.
+Record<SupportedLanguage, LanguagePack> enforces compile-time coverage for every supported language code.
+Normalize external input with mapToSupportedLanguage() or convert to SupportedLanguage before calling getLanguagePack().
+The build will fail in case a lanauge isn't mapped
+
+'
+import { SupportedLanguages, SupportedLanguage } from '@repo/shared-types';
+import { englishLanguagePack } from './en';
+import { frenchLanguagePack } from './fr';
+import { spanishLanguagePack } from './es';
+
+type LanguagePack = typeof englishLanguagePack;
+
+// It enforces that every supported language has a corresponding language pack
+// In case of error:
+// matcha/auth:dev: src/app.service.ts:68:52 - error TS2345: Argument of type 'string' is not assignable to parameter of type '"en" | "fr" | "es"'.
+const languagePacks: Record<SupportedLanguage, LanguagePack> = {
+	[SupportedLanguages.ENGLISH]: englishLanguagePack,
+	[SupportedLanguages.FRENCH]: frenchLanguagePack,
+	[SupportedLanguages.SPANISH]: spanishLanguagePack,
+};
+
+export function getLanguagePack(language: SupportedLanguage = SupportedLanguages.ENGLISH): LanguagePack {
+	return languagePacks[language] || languagePacks[SupportedLanguages.ENGLISH];
+}
+
+export type { LanguagePack };
+'
