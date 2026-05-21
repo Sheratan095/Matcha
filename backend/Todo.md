@@ -45,4 +45,8 @@
 
 [] Password different that the previus one
 
+[x] Too common psw
+
+[] Forbidden usernamea
+
 [] RATE LIMITING

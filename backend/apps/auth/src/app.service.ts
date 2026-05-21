@@ -1,19 +1,18 @@
-import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { SupportedLanguage } from '@repo/shared-types';
 import { DbService } from './db/db.service';
 import { JwtHelper } from './utils/jwt';
 import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
 import { User } from '@repo/shared-types';
-import { hashPassword, comparePasswords } from './utils/passwordHash';
-import { hashToken } from './utils/tokenHash';
+import { hashPassword, comparePasswords, loadCommonPasswords, validatePassword } from './utils/password';
 
 // Services contain the core business logic like the db calls
 
 // The @Injectable() decorator marks the AppService class as a provider that can be injected into other classes (like controllers) in the NestJS framework
 // This allows for dependency injection, making it easier to manage and test the application's components.
 @Injectable()
-export class AppService
+export class AppService implements OnModuleInit
 {
 	private readonly logger = new Logger("AUTH AppService");
 
@@ -22,6 +21,13 @@ export class AppService
 			private readonly jwtHelper: JwtHelper,
 			private readonly httpService: HttpService )
 	{}
+
+	async onModuleInit()
+	{
+		// Load common passwords into the centralized set in utils/password.ts
+		await loadCommonPasswords('common-password.txt');
+		this.logger.log('Common passwords initialization check completed.');
+	}
 
 	async login(username: string, password: string, res: any)
 	{
@@ -48,6 +54,7 @@ export class AppService
 
 	async register(email: string, username: string, password: string, language: SupportedLanguage, firstName: string, lastName: string, res: any)
 	{
+		validatePassword(password);
 		const passwordHash = await hashPassword(password);
 
 		// DON'T NEED IT BECAUSE THE NORMALIZATION IS DONE IN DTO
@@ -174,6 +181,8 @@ export class AppService
 		// 	await issueVerificationToken(User, this.dbService, this.httpService, this.logger);
 		// 	throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		// }
+
+		validatePassword(password);
 
 		// Save and hash the new password, then invalidate the reset token
 		const passwordHash = await hashPassword(password);
