@@ -28,7 +28,13 @@
 
 [] Avoid to expose email existance when sending email
 
-[] Remove email verification token after usage
+[x] Remove email verification token after usage also refresh_token at logout
+
+[] Store email and psw reset token and refresh_token hashed instead of plain?
+
+[] Insert expiration in token with userId to check eventual expiration?
+
+[] Add revoked access at logout
 
 [x] Should new verification code be sent during login even if the psw is wrong? : NO
 

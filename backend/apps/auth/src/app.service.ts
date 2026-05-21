@@ -93,12 +93,15 @@ export class AppService
 
 		await this.dbService.markUserEmailVerified(verificationToken.user_id);
 
+		await this.dbService.deleteVerificationToken(verificationToken.user_id);
+
 		return ({ message: 'Email verified successfully', userId: verificationToken.user_id });
 	}
 
 	async logout(res: any)
 	{
-		await this.jwtHelper.revokeTokens(res);
+		// Refresh token is also removed from db
+		await this.jwtHelper.revokeTokens(res, this.dbService);
 		return ({ message: 'Logged out successfully' });
 	}
 

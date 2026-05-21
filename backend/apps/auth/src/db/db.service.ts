@@ -117,6 +117,12 @@ export class DbService implements OnModuleInit
 		return result.rows[0];
 	}
 
+	async deleteVerificationToken(userId: string)
+	{
+		// Delete the email verification token for a user from the database. This is a helper method for token invalidation after email verification.
+		await this.pool.query('DELETE FROM email_verification_tokens WHERE user_id = $1', [userId]);
+	}
+
 
 	// FORGOT + RESET PASSWORD MANAGEMENT METHODS
 
