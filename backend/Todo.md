@@ -35,7 +35,7 @@
 
 [x] Store email and psw reset token and refresh_token hashed instead of plain?
 
-[] Insert expiration in token with userId to check eventual expiration?
+[x] Insert expiration in token with userId to check eventual expiration?
 
 [] Add revoked access at logout
 

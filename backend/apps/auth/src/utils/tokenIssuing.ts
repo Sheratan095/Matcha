@@ -20,7 +20,6 @@ export async function issueJwtTokens(user: User, res: any, dbService: DbService,
 	jwtHelper.setTokensAsCookies(res, tokens);
 	// Hash the refresh token before storing it in the database for security
 	const hashedRefreshToken = await hashToken(tokens.refresh_token);
-	logger.log(`Generated new refresh token for user ID ${user.id} with expiration at ${tokens.refresh_token_expires_at.toISOString()}`);
 	// Store the new refresh token in the database, replacing the old one
 	await dbService.saveRefreshToken(user.id, hashedRefreshToken, tokens.refresh_token_expires_at);
 }

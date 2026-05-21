@@ -60,6 +60,9 @@ export class JwtHelper
 	// Return the user ID from the access token
 	async validateAccessToken(token: string) : Promise<string>
 	{
+		// The expiration is automatically checked by the jwtService.verifyAsync method
+		//so we don't need to manually check it here. If the token is expired,
+		//it will throw an error which we can catch in the calling function.
 		const payload = await this.jwtService.verifyAsync(token, {
 			secret: env.JWT_ACCESS_SECRET,
 		});
