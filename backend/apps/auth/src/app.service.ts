@@ -1,10 +1,11 @@
 import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { SupportedLanguage, SupportedLanguages, stringToSupportedLanguage} from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages} from '@repo/shared-types';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { JwtHelper } from './utils/jwt';
 import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
+import { User } from '@repo/shared-types';
 
 // Services contain the core business logic like the db calls
 
@@ -24,7 +25,7 @@ export class AppService
 	async login(username: string, password: string, res: any)
 	{
 		// Hash the password and compare with stored hash in DB, then fetch user details
-		const user = await this.dbService.getUserByUsername(username);
+		const user: User | undefined = await this.dbService.getUserByUsername(username);
 
 		if (!user)
 			throw new ForbiddenException('Invalid credentials');
@@ -32,14 +33,15 @@ export class AppService
 		if (user.email_verified === false)
 		{
 			this.logger.warn(`Login attempt with unverified email for user ${username} (ID: ${user.id})`);
-			await issueVerificationToken(user.id, user.email, user.language as SupportedLanguage, this.dbService, this.httpService, this.logger);
+			await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
 			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		}
+
 
 		if (!await this.comparePasswords(password, user.password_hash))
 			throw new ForbiddenException('Invalid credentials');
 
-		await issueJwtTokens(user.id, res, stringToSupportedLanguage(user.language), this.dbService, this.jwtHelper, this.httpService, this.logger);
+		await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
 
 		return ({ message: 'Login successful', userId: user.id });
 	}
@@ -54,16 +56,16 @@ export class AppService
 
 		try
 		{
-			const newId: string = await this.dbService.createUser(email, username, passwordHash, language, firstName, lastName);
+			const newUser: User = await this.dbService.createUser(email, username, passwordHash, language, firstName, lastName);
 
 			// TOKENS ARE ISSUED AFTER EMAIL VERIFICATION AND THEN LOGIN, NOT DURING REGISTRATION
-			// await this.issueJwtTokens(newId, res);
+			// await this.issueJwtTokens(newUser.id, res);
 
-			this.logger.log(`User registered with email ${email} and username ${username}, assigned ID ${newId}`);
+			this.logger.log(`User registered with email ${email} and username ${username}, assigned ID ${newUser.id}`);
 
-			await issueVerificationToken(newId, email, language, this.dbService, this.httpService, this.logger);
+			await issueVerificationToken(newUser, this.dbService, this.httpService, this.logger);
 
-			return { message: 'Email verification required', date: new Date(), userId: newId };
+			return { message: 'Email verification required', date: new Date(), userId: newUser.id };
 		}
 		catch (error: any)
 		{
@@ -108,7 +110,11 @@ export class AppService
 		if (!storedToken || storedToken !== refreshToken || storedToken.expires_at < new Date())
 			throw new ForbiddenException('Invalid refresh token');
 
-		await issueJwtTokens(userId, res, SupportedLanguages.ENGLISH, this.dbService, this.jwtHelper, this.httpService, this.logger);
+		const user: User | undefined = await this.dbService.getUserById(userId);
+		if (!user)
+			throw new ForbiddenException('User not found');
+
+		await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
 
 		return ({ message: 'Tokens refreshed', userId });
 	}
@@ -117,7 +123,7 @@ export class AppService
 	{
 		try
 		{
-			const userId = await this.jwtHelper.validateAccessToken(token);
+			const userId: string = await this.jwtHelper.validateAccessToken(token);
 
 			return ({ valid: true, userId });
 		}
@@ -129,19 +135,19 @@ export class AppService
 
 	async forgotPassword(email: string)
 	{
-		const user = await this.dbService.getUserByEmail(email);
-	
+		const user: User | undefined = await this.dbService.getUserByEmail(email);
+
 		if (!user)
 			throw new ForbiddenException('No user found with the provided email address');
 
 		if (user.email_verified === false)
 		{
 			this.logger.warn(`Forgot password attempt with unverified email for user with email ${email} (ID: ${user.id})`);
-			await issueVerificationToken(user.id, user.email, stringToSupportedLanguage(user.language) || SupportedLanguages.ENGLISH, this.dbService, this.httpService, this.logger);
+			await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
 			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		}
 
-		await issueForgotPasswordToken(email, stringToSupportedLanguage(user.language) || SupportedLanguages.ENGLISH, this.dbService, this.httpService, this.logger);
+		await issueForgotPasswordToken(user, this.dbService, this.httpService, this.logger);
 
 		return ({ message: 'Forgot password process initiated' });
 	}

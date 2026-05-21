@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
 import { env } from "@repo/config";
 import { SupportedLanguage } from '@repo/shared-types';
+import { User } from '@repo/shared-types';
 
 @Injectable()
 
@@ -30,26 +31,34 @@ export class DbService implements OnModuleInit
 		return (this.pool.query(text, params));
 	}
 
-	async getUserByUsername(username: string)
+	async getUserByUsername(username: string): Promise<User | undefined>
 	{
 		// Return the first user that matches the given username from the database. This is a helper method for authentication purposes.
 		const result = await this.pool.query('SELECT * FROM users WHERE username = $1', [username]);
-		return (result.rows[0]);
+		return (result.rows[0] ? new User(result.rows[0]) : undefined);
 	}
 
-	async getUserByEmail(email: string)
+	async getUserByEmail(email: string): Promise<User | undefined>
 	{
 		// Return the first user that matches the given email from the database. This is a helper method for authentication purposes.
 		const result = await this.pool.query('SELECT * FROM users WHERE email = $1', [email]);
-		return (result.rows[0]);
+		return (result.rows[0] ? new User(result.rows[0]) : undefined);
 	}
 
-	// Return the userId
-	async createUser(email: string, username: string, passwordHash: string, language: SupportedLanguage, firstName: string, lastName: string) : Promise<string>
+	async getUserById(id: string): Promise<User | undefined>
+	{
+		// Return the first user that matches the given ID from the database. This is a helper method for authentication purposes.
+		const result = await this.pool.query('SELECT * FROM users WHERE id = $1', [id]);
+		return (result.rows[0] ? new User(result.rows[0]) : undefined);
+	}
+
+	// Return the new user with all fields populated
+	async createUser(email: string, username: string, passwordHash: string, language: SupportedLanguage, firstName: string, lastName: string) : Promise<User | undefined> 
 	{
 		// Insert a new user into the database with the provided email, username, and password hash. This is a helper method for user registration.
-		const result = await this.pool.query('INSERT INTO users (email, username, password_hash, language, first_name, last_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [email, username, passwordHash, language, firstName, lastName]);
-		return (result.rows[0].id);
+		// RETURNING * ensures all user fields are available for constructing the User object
+		const result = await this.pool.query('INSERT INTO users (email, username, password_hash, language, first_name, last_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *', [email, username, passwordHash, language, firstName, lastName]);
+		return (result.rows[0] ? new User(result.rows[0]) : undefined);
 	}
 
 	async markUserEmailVerified(userId: string)
@@ -87,9 +96,9 @@ export class DbService implements OnModuleInit
 
 	async getVerificationToken(token: string)
 	{
-		// Retrieve the user ID associated with a given email verification token from the database. This is a helper method for email verification.
+		// Retrieve the email verification token record by token. This is a helper method for email verification.
 		const result = await this.pool.query('SELECT * FROM email_verification_tokens WHERE token = $1', [token]);
-		return (result.rows[0]);
+		return result.rows[0];
 	}
 
 	async saveForgotPasswordToken(userId: string, token: string, expiresAt: Date)
@@ -104,8 +113,8 @@ export class DbService implements OnModuleInit
 
 	async getForgotPasswordToken(token: string)
 	{
-		// Retrieve the user ID associated with a given forgot password token from the database. This is a helper method for the forgot password process.
+		// Retrieve the forgot password token record by token. This is a helper method for the forgot password process.
 		const result = await this.pool.query('SELECT * FROM forgot_password_tokens WHERE token = $1', [token]);
-		return (result.rows[0]);
+		return result.rows[0];
 	}
 }
