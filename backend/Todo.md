@@ -19,6 +19,7 @@
 [] Via-mail password reset
 	[] Create endpoint and hanlder in notification service
 	[] Create a send-email "astraction" / organize notification in auth
+	[] Use user instead of single params to comunicate between functions
 
 [x] Find a way to add watch also to packages
 

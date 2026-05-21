@@ -1,14 +1,10 @@
 import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, stringToSupportedLanguage} from '@repo/shared-types';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { JwtHelper } from './utils/jwt';
-import { sendEmailVerification, sendForgotPasswordEmail } from './utils/notification';
-import { randomBytes } from 'crypto';
-import { env } from '@repo/config';
-import { eventNames } from 'process';
-
+import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
 
 // Services contain the core business logic like the db calls
 
@@ -36,14 +32,14 @@ export class AppService
 		if (user.email_verified === false)
 		{
 			this.logger.warn(`Login attempt with unverified email for user ${username} (ID: ${user.id})`);
-			this.issueVerificationToken(user.id, user.email, user.language as SupportedLanguage);
+			await issueVerificationToken(user.id, user.email, user.language as SupportedLanguage, this.dbService, this.httpService, this.logger);
 			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		}
 
 		if (!await this.comparePasswords(password, user.password_hash))
 			throw new ForbiddenException('Invalid credentials');
 
-		await this.issueJwtTokens(user.id, res);
+		await issueJwtTokens(user.id, res, stringToSupportedLanguage(user.language), this.dbService, this.jwtHelper, this.httpService, this.logger);
 
 		return ({ message: 'Login successful', userId: user.id });
 	}
@@ -65,7 +61,7 @@ export class AppService
 
 			this.logger.log(`User registered with email ${email} and username ${username}, assigned ID ${newId}`);
 
-			await this.issueVerificationToken(newId, email, language);
+			await issueVerificationToken(newId, email, language, this.dbService, this.httpService, this.logger);
 
 			return { message: 'Email verification required', date: new Date(), userId: newId };
 		}
@@ -112,7 +108,7 @@ export class AppService
 		if (!storedToken || storedToken !== refreshToken || storedToken.expires_at < new Date())
 			throw new ForbiddenException('Invalid refresh token');
 
-		await this.issueJwtTokens(userId, res);
+		await issueJwtTokens(userId, res, SupportedLanguages.ENGLISH, this.dbService, this.jwtHelper, this.httpService, this.logger);
 
 		return ({ message: 'Tokens refreshed', userId });
 	}
@@ -141,11 +137,11 @@ export class AppService
 		if (user.email_verified === false)
 		{
 			this.logger.warn(`Forgot password attempt with unverified email for user with email ${email} (ID: ${user.id})`);
-			this.issueVerificationToken(user.id, user.email, user.language as SupportedLanguage);
+			await issueVerificationToken(user.id, user.email, stringToSupportedLanguage(user.language) || SupportedLanguages.ENGLISH, this.dbService, this.httpService, this.logger);
 			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		}
 
-		await this.issueForgotPasswordToken(email, user.language as SupportedLanguage);
+		await issueForgotPasswordToken(email, stringToSupportedLanguage(user.language) || SupportedLanguages.ENGLISH, this.dbService, this.httpService, this.logger);
 
 		return ({ message: 'Forgot password process initiated' });
 	}
@@ -162,75 +158,4 @@ export class AppService
 		return (await bcrypt.compare(password, hash));
 	}
 
-	// Centralized method to issue new tokens, set cookies, and store refresh token in DB
-	// This is called both during login/registration and token refresh to avoid code duplication
-	private async issueJwtTokens(userId: string, res: any)
-	{
-		// If valid, issue new tokens
-		const tokens = await this.jwtHelper.generateTokens(userId);
-		// Set the new tokens as cookies in the response
-		this.jwtHelper.setTokensAsCookies(res, tokens);
-		// Store the new refresh token in the database, replacing the old one
-		await this.dbService.saveRefreshToken(userId, tokens.refresh_token, tokens.refresh_token_expires_at);
-	}
-
-	private async issueVerificationToken(userId: string, email: string, language: SupportedLanguage = SupportedLanguages.ENGLISH)
-	{
-		// Generate a secure random token for email verification
-		const token = randomBytes(env.EMAIL_VERIFICATION_TOKEN_LENGTH).toString('hex');
-		// Set the token expiration
-		const expiresAt = new Date(Date.now() + env.EMAIL_VERIFICATION_EXPIRATION_MS); // 24 hours from now
-		// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
-		await this.dbService.saveVerificationToken(userId, token, expiresAt);
-
-		let sent: boolean = false;
-		let attempts: number = 0;
-
-		while (!sent && attempts < env.EMAIL_VERIFICATION_MAX_ATTEMPTS)
-		{
-			attempts++;
-			try
-			{
-				await sendEmailVerification(email, token, language, this.httpService);
-				sent = true;
-			}
-			catch (error)
-			{
-				this.logger.warn(`Failed to send verification email (attempt ${attempts})`, error);
-			}
-		}
-
-		if (!sent)
-			this.logger.error(`Failed to send verification email after ${attempts} attempts for user ID ${userId} and email ${email}`);
-	}
-
-	private async issueForgotPasswordToken(email: string, language: SupportedLanguage = SupportedLanguages.ENGLISH)
-	{
-		// Generate a secure random token for forgot password
-		const token = randomBytes(env.FORGOT_PASSWORD_TOKEN_LENGTH).toString('hex');
-		// Set the token expiration
-		const expiresAt = new Date(Date.now() + env.FORGOT_PASSWORD_EXPIRATION_MS); // 1 hour from now
-		// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
-		await this.dbService.saveForgotPasswordToken(email, token, expiresAt);
-
-		let sent: boolean = false;
-		let attempts: number = 0;
-
-		while (!sent && attempts < env.FORGOT_PASSWORD_MAX_ATTEMPTS)
-		{
-			attempts++;
-			try
-			{
-				await sendForgotPasswordEmail(email, token, language, this.httpService);
-				sent = true;
-			}
-			catch (error)
-			{
-				this.logger.warn(`Failed to send forgot password email (attempt ${attempts})`, error);
-			}
-		}
-
-		if (!sent)
-			this.logger.error(`Failed to send forgot password email after ${attempts} attempts for email ${email}`);
-	}
 }
