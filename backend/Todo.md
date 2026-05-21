@@ -28,6 +28,8 @@
 
 [] Avoid to expose email existance when sending email
 
+[] Remove email verification token after usage
+
 [x] Should new verification code be sent during login even if the psw is wrong? : NO
 
 [x] Find a way to add watch also to packages

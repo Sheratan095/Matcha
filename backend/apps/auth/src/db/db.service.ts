@@ -31,6 +31,8 @@ export class DbService implements OnModuleInit
 		return (this.pool.query(text, params));
 	}
 
+	// 	RETRIEVE USER METHODS
+
 	async getUserByUsername(username: string): Promise<User | undefined>
 	{
 		// Return the first user that matches the given username from the database. This is a helper method for authentication purposes.
@@ -52,7 +54,9 @@ export class DbService implements OnModuleInit
 		return (result.rows[0] ? new User(result.rows[0]) : undefined);
 	}
 
-	// Return the new user with all fields populated
+
+	// 	MODIFY USER METHODS
+
 	async createUser(email: string, username: string, passwordHash: string, language: SupportedLanguage, firstName: string, lastName: string) : Promise<User | undefined> 
 	{
 		// Insert a new user into the database with the provided email, username, and password hash. This is a helper method for user registration.
@@ -66,6 +70,9 @@ export class DbService implements OnModuleInit
 		// Update the user's record in the database to mark their email as verified. This is a helper method for email verification.
 		await this.pool.query('UPDATE users SET email_verified = TRUE WHERE id = $1', [userId]);
 	}
+
+
+	//	JWT TOKEN MANAGEMENT METHODS
 
 	async saveRefreshToken(userId: string, refreshToken: string, expiresAt: Date)
 	{
@@ -90,6 +97,9 @@ export class DbService implements OnModuleInit
 		await this.pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
 	}
 
+
+	// EMAIL VERIFICATION MANAGEMENT METHODS
+
 	async saveVerificationToken(userId: string, token: string, expiresAt: Date)
 	{
 		// Save the email verification token for a user in the database. This is a helper method for email verification.
@@ -106,6 +116,9 @@ export class DbService implements OnModuleInit
 		const result = await this.pool.query('SELECT * FROM email_verification_tokens WHERE token = $1', [token]);
 		return result.rows[0];
 	}
+
+
+	// FORGOT + RESET PASSWORD MANAGEMENT METHODS
 
 	async saveForgotPasswordToken(userId: string, token: string, expiresAt: Date)
 	{

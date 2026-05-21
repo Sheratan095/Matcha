@@ -2,10 +2,10 @@ import { Injectable, Logger, ForbiddenException, ConflictException, InternalServ
 import { HttpService } from '@nestjs/axios';
 import { SupportedLanguage } from '@repo/shared-types';
 import { DbService } from './db/db.service';
-import * as bcrypt from 'bcrypt';
 import { JwtHelper } from './utils/jwt';
 import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
 import { User } from '@repo/shared-types';
+import { hashPassword, comparePasswords } from './utils/passwordHash';
 
 // Services contain the core business logic like the db calls
 
@@ -30,7 +30,7 @@ export class AppService
 		if (!user)
 			throw new ForbiddenException('Invalid credentials');
 
-		if (!await this.comparePasswords(password, user.password_hash))
+		if (!await comparePasswords(password, user.password_hash))
 			throw new ForbiddenException('Invalid credentials');
 
 		if (user.email_verified === false)
@@ -47,7 +47,7 @@ export class AppService
 
 	async register(email: string, username: string, password: string, language: SupportedLanguage, firstName: string, lastName: string, res: any)
 	{
-		const passwordHash = await this.hashPassword(password);
+		const passwordHash = await hashPassword(password);
 
 		// DON'T NEED IT BECAUSE THE NORMALIZATION IS DONE IN DTO
 		// username = username.toLowerCase().trim();
@@ -168,7 +168,7 @@ export class AppService
 		// }
 
 		// Save and hash the new password, then invalidate the reset token
-		const passwordHash = await this.hashPassword(password);
+		const passwordHash = await hashPassword(password);
 		await this.dbService.updateUserPassword(resetToken.user_id, passwordHash);
 
 		// Invalidate the reset token after successful password reset
@@ -179,17 +179,4 @@ export class AppService
 
 		return ({ message: 'Password reset successfully' });
 	}
-
-	// Helper methods used just by this class
-	private async hashPassword(password: string): Promise<string>
-	{
-		const saltRounds = 10;
-		return (await bcrypt.hash(password, saltRounds));
-	}
-
-	private async comparePasswords(password: string, hash: string): Promise<boolean>
-	{
-		return (await bcrypt.compare(password, hash));
-	}
-
 }
