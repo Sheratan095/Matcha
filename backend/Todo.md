@@ -25,6 +25,7 @@
 	[] Test endpoint
 	[x] Create a send-email "astraction" / organize notification in auth
 	[x] Use user instead of single params to comunicate between functions
+	[] Test everithing together
 
 [x] Avoid to expose email existance when sending email
 	[x] Implement generic response for forgot-password endpoint
@@ -32,7 +33,7 @@
 
 [x] Remove email verification token after usage also refresh_token at logout
 
-[] Store email and psw reset token and refresh_token hashed instead of plain?
+[x] Store email and psw reset token and refresh_token hashed instead of plain?
 
 [] Insert expiration in token with userId to check eventual expiration?
 
@@ -43,3 +44,5 @@
 [x] Find a way to add watch also to packages
 
 [x] Check refresh_token expiration
+
+[] RATE LIMITING

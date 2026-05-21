@@ -1,0 +1,5 @@
+Email Enum attack is avoided just in password reset, not in registration
+  This is a deliberate UX tradeoff - clear error messages help legitimate users
+  understand why registration failed, while email enumeration during registration
+  is considered a lower risk (users typically know their own email exists).
+  Email enumeration is prevented in password reset where it's more critical.

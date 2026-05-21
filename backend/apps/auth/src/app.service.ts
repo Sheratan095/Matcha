@@ -6,6 +6,7 @@ import { JwtHelper } from './utils/jwt';
 import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
 import { User } from '@repo/shared-types';
 import { hashPassword, comparePasswords } from './utils/passwordHash';
+import { hashToken } from './utils/tokenHash';
 
 // Services contain the core business logic like the db calls
 
@@ -84,18 +85,18 @@ export class AppService
 		}
 	}
 
-	async verifyEmail(token: string, res: any)
+	async verifyEmail(tokenPlain: string, res: any)
 	{
-		const verificationToken = await this.dbService.getVerificationToken(token);
+		const verificationTokenRecord = await this.dbService.getVerificationTokenRecord(tokenPlain);
 
-		if (!verificationToken || new Date(verificationToken.expires_at) < new Date())
+		if (!verificationTokenRecord || new Date(verificationTokenRecord.expires_at) < new Date())
 			throw new ForbiddenException('Invalid or expired verification token');
 
-		await this.dbService.markUserEmailVerified(verificationToken.user_id);
+		await this.dbService.markUserEmailVerified(verificationTokenRecord.user_id);
 
-		await this.dbService.deleteVerificationToken(verificationToken.user_id);
+		await this.dbService.deleteVerificationToken(verificationTokenRecord.user_id);
 
-		return ({ message: 'Email verified successfully', userId: verificationToken.user_id });
+		return ({ message: 'Email verified successfully', userId: verificationTokenRecord.user_id });
 	}
 
 	async logout(res: any)
@@ -105,11 +106,11 @@ export class AppService
 		return ({ message: 'Logged out successfully' });
 	}
 
-	async refreshTokens(userId: string, refreshToken: string, res: any)
+	async refreshTokens(userId: string, refreshTokenPlain: string, res: any)
 	{
-		const storedToken = await this.dbService.getRefreshToken(userId);
+		const isValidToken = await this.dbService.getRefreshTokenRecord(refreshTokenPlain, userId);
 
-		if (!storedToken || storedToken !== refreshToken || storedToken.expires_at < new Date())
+		if (!isValidToken || isValidToken.user_id !== userId || new Date(isValidToken.expires_at) < new Date())
 			throw new ForbiddenException('Invalid refresh token');
 
 		const user: User | undefined = await this.dbService.getUserById(userId);
@@ -158,11 +159,11 @@ export class AppService
 		return ({ message: 'If an account with this email exists, you will receive a password reset link shortly' });
 	}
 
-	async resetPassword(token: string, password: string)
+	async resetPassword(tokenPlain: string, password: string)
 	{
-		const resetToken = await this.dbService.getForgotPasswordToken(token);
+		const resetTokenRecord = await this.dbService.getForgotPasswordTokenRecord(tokenPlain);
 
-		if (!resetToken || new Date(resetToken.expires_at) < new Date())
+		if (!resetTokenRecord || new Date(resetTokenRecord.expires_at) < new Date())
 			throw new ForbiddenException('Invalid or expired reset token');
 
 		// DON'T NEED TO VERIFY EMAIL AGAIN BECAUSE
@@ -176,13 +177,13 @@ export class AppService
 
 		// Save and hash the new password, then invalidate the reset token
 		const passwordHash = await hashPassword(password);
-		await this.dbService.updateUserPassword(resetToken.user_id, passwordHash);
+		await this.dbService.updateUserPassword(resetTokenRecord.user_id, passwordHash);
 
 		// Invalidate the reset token after successful password reset
-		await this.dbService.deleteForgotPasswordToken(resetToken.user_id);
+		await this.dbService.deleteForgotPasswordToken(resetTokenRecord.user_id);
 
 		// Invalidate all existing tokens
-		await this.jwtHelper.revokeTokens(null, this.dbService, resetToken.user_id);
+		await this.jwtHelper.revokeTokens(null, this.dbService, resetTokenRecord.user_id);
 
 		return ({ message: 'Password reset successfully' });
 	}

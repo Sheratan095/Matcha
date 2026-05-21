@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { env } from "@repo/config";
 import { SupportedLanguage } from '@repo/shared-types';
 import { User } from '@repo/shared-types';
+import { hashToken, compareTokens } from '../utils/tokenHash';
 
 @Injectable()
 
@@ -74,21 +75,13 @@ export class DbService implements OnModuleInit
 
 	//	JWT TOKEN MANAGEMENT METHODS
 
-	async saveRefreshToken(userId: string, refreshToken: string, expiresAt: Date)
+	async saveRefreshToken(userId: string, refreshTokenHash: string, expiresAt: Date)
 	{
-		// Save the refresh token for a user in the database. This is a helper method for token management.
 		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one refresh token is stored per user.
 		await this.pool.query(`
-			INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)
-			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP
-		`, [userId, refreshToken, expiresAt]);
-	}
-
-	async getRefreshToken(userId: string)
-	{
-		// Retrieve the refresh token for a user from the database. This is a helper method for token validation.
-		const result = await this.pool.query('SELECT token FROM refresh_tokens WHERE user_id = $1', [userId]);
-		return (result.rows[0]?.token);
+			INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)
+			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, created_at = CURRENT_TIMESTAMP
+		`, [userId, refreshTokenHash, expiresAt]);
 	}
 
 	async deleteRefreshToken(userId: string)
@@ -97,24 +90,33 @@ export class DbService implements OnModuleInit
 		await this.pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
 	}
 
+	async getRefreshTokenRecord(refreshTokenPlain: string, userId : string): Promise<any>
+	{
+		// Retrieve the refresh token record from the database that matches the given hashed token. This is a helper method for validating refresh tokens.
+		// In this case we also filter by user_id to reduce the number of tokens we have to compare with bcrypt
+		const result = await this.pool.query('SELECT * FROM refresh_tokens WHERE expires_at > CURRENT_TIMESTAMP AND user_id = $1', [userId]);
+		// result should be just one row due to the ON CONFLICT clause in saveRefreshToken, but we still have to compare with bcrypt to find if the token matches because of salting
+
+		// Forced to pass trough all non-expired tokens and compare with bcrypt
+		// because we hash the token before storing it and just re-hashing the input token and comparing hashes
+		// doesn't work with bcrypt due to salting
+		for (const row of result.rows)
+			if (await compareTokens(refreshTokenPlain, row.token_hash))
+				return (row);
+
+		return (null);
+	}
+
 
 	// EMAIL VERIFICATION MANAGEMENT METHODS
 
-	async saveVerificationToken(userId: string, token: string, expiresAt: Date)
+	async saveVerificationToken(userId: string, tokenHash: string, expiresAt: Date)
 	{
-		// Save the email verification token for a user in the database. This is a helper method for email verification.
 		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one verification token is stored per user.
 		await this.pool.query(`
-			INSERT INTO email_verification_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)
-			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP
-		`, [userId, token, expiresAt]);
-	}
-
-	async getVerificationToken(token: string)
-	{
-		// Retrieve the email verification token record by token. This is a helper method for email verification.
-		const result = await this.pool.query('SELECT * FROM email_verification_tokens WHERE token = $1', [token]);
-		return result.rows[0];
+			INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)
+			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, created_at = CURRENT_TIMESTAMP
+		`, [userId, tokenHash, expiresAt]);
 	}
 
 	async deleteVerificationToken(userId: string)
@@ -123,30 +125,52 @@ export class DbService implements OnModuleInit
 		await this.pool.query('DELETE FROM email_verification_tokens WHERE user_id = $1', [userId]);
 	}
 
+	async getVerificationTokenRecord(tokenPlain: string): Promise<any>
+	{
+		// Retrieve the email verification token record from the database that matches the given hashed token. This is a helper method for validating email verification tokens.
+		const result = await this.pool.query('SELECT * FROM email_verification_tokens WHERE expires_at > CURRENT_TIMESTAMP');
+
+		// Forced to pass trough all non-expired tokens and compare with bcrypt
+		// because we hash the token before storing it and just re-hashing the input token and comparing hashes
+		// doesn't work with bcrypt due to salting
+		for (const row of result.rows)
+			if (await compareTokens(tokenPlain, row.token_hash))
+				return (row);
+
+		return (null);
+	}
+
 
 	// FORGOT + RESET PASSWORD MANAGEMENT METHODS
 
-	async saveForgotPasswordToken(userId: string, token: string, expiresAt: Date)
+	async saveForgotPasswordToken(userId: string, tokenHash: string, expiresAt: Date)
 	{
-		// Save the forgot password token for a user in the database. This is a helper method for the forgot password process.
 		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one forgot password token is stored per user.
 		await this.pool.query(`
-			INSERT INTO forgot_password_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)
-			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP
-		`, [userId, token, expiresAt]);
-	}
-
-	async getForgotPasswordToken(token: string)
-	{
-		// Retrieve the forgot password token record by token. This is a helper method for the forgot password process.
-		const result = await this.pool.query('SELECT * FROM forgot_password_tokens WHERE token = $1', [token]);
-		return result.rows[0];
+			INSERT INTO forgot_password_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)
+			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, created_at = CURRENT_TIMESTAMP
+		`, [userId, tokenHash, expiresAt]);
 	}
 
 	async deleteForgotPasswordToken(userId: string)
 	{
 		// Delete the forgot password token for a user from the database. This is a helper method for token invalidation after password reset.
 		await this.pool.query('DELETE FROM forgot_password_tokens WHERE user_id = $1', [userId]);
+	}
+
+	async getForgotPasswordTokenRecord(tokenPlain: string): Promise<any>
+	{
+		// Retrieve the forgot password token record from the database that matches the given hashed token. This is a helper method for validating forgot password tokens.
+		const result = await this.pool.query('SELECT * FROM forgot_password_tokens WHERE expires_at > CURRENT_TIMESTAMP');
+
+		// Forced to pass trough all non-expired tokens and compare with bcrypt
+		// because we hash the token before storing it and just re-hashing the input token and comparing hashes
+		// doesn't work with bcrypt due to salting
+		for (const row of result.rows)
+			if (await compareTokens(tokenPlain, row.token_hash))
+				return (row);
+
+		return (null);
 	}
 
 	async updateUserPassword(userId: string, newPasswordHash: string)
