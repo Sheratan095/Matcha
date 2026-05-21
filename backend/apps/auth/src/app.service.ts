@@ -1,6 +1,6 @@
 import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, ClassSerializerInterceptor } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { SupportedLanguage, SupportedLanguages} from '@repo/shared-types';
+import { SupportedLanguage } from '@repo/shared-types';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { JwtHelper } from './utils/jwt';
@@ -37,7 +37,6 @@ export class AppService
 			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		}
 
-
 		if (!await this.comparePasswords(password, user.password_hash))
 			throw new ForbiddenException('Invalid credentials');
 
@@ -50,7 +49,7 @@ export class AppService
 	{
 		const passwordHash = await this.hashPassword(password);
 
-		// Don't need it because the normalization is done in DTO
+		// DON'T NEED IT BECAUSE THE NORMALIZATION IS DONE IN DTO
 		// username = username.toLowerCase().trim();
 		// email = email.toLowerCase().trim();
 

@@ -18,8 +18,9 @@
 
 [] Via-mail password reset
 	[] Create endpoint and hanlder in notification service
-	[] Create a send-email "astraction" / organize notification in auth
-	[] Use user instead of single params to comunicate between functions
+	[] Create endpoint and henalder in auth service 'auth/reset-password'
+	[x] Create a send-email "astraction" / organize notification in auth
+	[x] Use user instead of single params to comunicate between functions
 
 [x] Find a way to add watch also to packages
 
