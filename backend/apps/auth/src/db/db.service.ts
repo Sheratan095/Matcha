@@ -84,6 +84,12 @@ export class DbService implements OnModuleInit
 		return (result.rows[0]?.token);
 	}
 
+	async deleteRefreshToken(userId: string)
+	{
+		// Delete the refresh token for a user from the database. This is a helper method for logout and token invalidation.
+		await this.pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [userId]);
+	}
+
 	async saveVerificationToken(userId: string, token: string, expiresAt: Date)
 	{
 		// Save the email verification token for a user in the database. This is a helper method for email verification.
@@ -116,5 +122,17 @@ export class DbService implements OnModuleInit
 		// Retrieve the forgot password token record by token. This is a helper method for the forgot password process.
 		const result = await this.pool.query('SELECT * FROM forgot_password_tokens WHERE token = $1', [token]);
 		return result.rows[0];
+	}
+
+	async deleteForgotPasswordToken(userId: string)
+	{
+		// Delete the forgot password token for a user from the database. This is a helper method for token invalidation after password reset.
+		await this.pool.query('DELETE FROM forgot_password_tokens WHERE user_id = $1', [userId]);
+	}
+
+	async updateUserPassword(userId: string, newPasswordHash: string)
+	{
+		// Update the user's password hash in the database. This is a helper method for the password reset process.
+		await this.pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newPasswordHash, userId]);
 	}
 }

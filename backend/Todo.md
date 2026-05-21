@@ -21,9 +21,12 @@
 	[x] Create template and language pack ad-hoc
 	[x] Create endpoint and hanlder in notification service
 	[x] Test endpoint
-	[] Create endpoint and henalder in auth service 'auth/reset-password'
+	[x] Create endpoint and henalder in auth service 'auth/reset-password'
+	[] Test endpoint
 	[x] Create a send-email "astraction" / organize notification in auth
 	[x] Use user instead of single params to comunicate between functions
+
+[] Avoid to expose email existance when sending email
 
 [x] Should new verification code be sent during login even if the psw is wrong? : NO
 

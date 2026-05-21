@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { env } from "@repo/config";
+import { DbService } from "../db/db.service";
 
 @Injectable()
 export class JwtHelper
@@ -44,10 +45,16 @@ export class JwtHelper
 		});
 	}
 
-	async clearTokens(res: any)
+	async revokeTokens(res: any, dbService?: DbService, userId?: string)
 	{
-		res.clearCookie('access_token');
-		res.clearCookie('refresh_token');
+		if (res)
+		{
+			res.clearCookie('access_token');
+			res.clearCookie('refresh_token');
+		}
+
+		if (dbService && userId)
+			dbService.deleteRefreshToken(userId); // Ensure the refresh token is also removed from the database for security
 	}
 
 	// Return the user ID from the access token

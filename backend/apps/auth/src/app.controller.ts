@@ -7,7 +7,7 @@ import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/regist
 import { LoginDto, LoginResponseDto, LoginErrorDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto } from './dto/refresh.dto';
 import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './dto/verify_email.dto';
-import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto } from './dto/forgo_password.dto';
+import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto, ResetPasswordDto, ResetPasswordResponseDto, ResetPasswordErrorDto } from './dto/passwordReset.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -105,5 +105,14 @@ export class AppController
 	async forgotPassword(@Body() req: ForgotPasswordDto)
 	{
 		return (await this.appService.forgotPassword(req.email));
+	}
+
+	@Post('reset-password')
+	@ApiOperation({ summary: 'Reset password', description: 'Resets the user\'s password using the provided token and new password.' })
+	@ApiResponse({ status: 200, type: ResetPasswordResponseDto, description: 'Password reset successfully' })
+	@ApiResponse({ status: 400, type: ResetPasswordErrorDto, description: 'Invalid or expired reset token' })
+	async resetPassword(@Body() req: ResetPasswordDto)
+	{
+		return (await this.appService.resetPassword(req.token, req.password));
 	}
 }

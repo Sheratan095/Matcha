@@ -46,4 +46,19 @@ frontend call /auth/forgot-passwords with email
 server checks if email exists → error
   ↓
 server check if not verified  → error and issue new verification token (401 + EMAIL_NOT_VERIFIED)
-
+  ↓
+generate and issue new password reset token
+  ↓
+user clicks on email and it's sent to frontend reset page
+  ↓
+frontend sends token + new psw to 'auth/reset-password'
+  ↓
+server DOESN'T check for email verification
+  ↓
+!! PSW RESET DOESN'T VERIFY EMAIL !! it could but for semplcity it doesn't
+  ↓
+server revokes jwt and refresh tokens
+  ↓
+frontend shows success/error page
+  ↓
+fronend redirects to login page

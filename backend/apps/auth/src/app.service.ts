@@ -98,7 +98,7 @@ export class AppService
 
 	async logout(res: any)
 	{
-		await this.jwtHelper.clearTokens(res);
+		await this.jwtHelper.revokeTokens(res);
 		return ({ message: 'Logged out successfully' });
 	}
 
@@ -149,6 +149,35 @@ export class AppService
 		await issueForgotPasswordToken(user, this.dbService, this.httpService, this.logger);
 
 		return ({ message: 'Forgot password process initiated' });
+	}
+
+	async resetPassword(token: string, password: string)
+	{
+		const resetToken = await this.dbService.getForgotPasswordToken(token);
+
+		if (!resetToken || new Date(resetToken.expires_at) < new Date())
+			throw new ForbiddenException('Invalid or expired reset token');
+
+		// DON'T NEED TO VERIFY EMAIL AGAIN BECAUSE
+		// THE FORGOT PASSWORD PROCESS CAN ONLY BE INITIATED IF THE EMAIL IS VERIFIED
+		// if (User.email_verified === false)
+		// {
+		// 	this.logger.warn(`Reset password attempt with unverified email for user with ID ${User.id}`);
+		// 	await issueVerificationToken(User, this.dbService, this.httpService, this.logger);
+		// 	throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
+		// }
+
+		// Save and hash the new password, then invalidate the reset token
+		const passwordHash = await this.hashPassword(password);
+		await this.dbService.updateUserPassword(resetToken.user_id, passwordHash);
+
+		// Invalidate the reset token after successful password reset
+		await this.dbService.deleteForgotPasswordToken(resetToken.user_id);
+
+		// Invalidate all existing tokens
+		await this.jwtHelper.revokeTokens(null, this.dbService, resetToken.user_id);
+
+		return ({ message: 'Password reset successfully' });
 	}
 
 	// Helper methods used just by this class
