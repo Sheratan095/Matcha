@@ -17,6 +17,8 @@
 	[x] what if errors during verification email send : simulated adding a fake exception in email send
 
 [] Via-mail password reset
+	[] Create endpoint and hanlder in notification service
+	[] Create a send-email "astraction" / organize notification in auth
 
 [x] Find a way to add watch also to packages
 

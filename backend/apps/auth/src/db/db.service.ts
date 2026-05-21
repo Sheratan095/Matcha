@@ -92,4 +92,20 @@ export class DbService implements OnModuleInit
 		return (result.rows[0]);
 	}
 
+	async saveForgotPasswordToken(userId: string, token: string, expiresAt: Date)
+	{
+		// Save the forgot password token for a user in the database. This is a helper method for the forgot password process.
+		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one forgot password token is stored per user.
+		await this.pool.query(`
+			INSERT INTO forgot_password_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)
+			ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = CURRENT_TIMESTAMP
+		`, [userId, token, expiresAt]);
+	}
+
+	async getForgotPasswordToken(token: string)
+	{
+		// Retrieve the user ID associated with a given forgot password token from the database. This is a helper method for the forgot password process.
+		const result = await this.pool.query('SELECT * FROM forgot_password_tokens WHERE token = $1', [token]);
+		return (result.rows[0]);
+	}
 }

@@ -33,3 +33,12 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS forgot_password_tokens (
+	user_id INTEGER PRIMARY KEY, -- Used as primary key because we only want one forgot password token per user
+	token VARCHAR(255) NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	expires_at TIMESTAMP NOT NULL,
+
+	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

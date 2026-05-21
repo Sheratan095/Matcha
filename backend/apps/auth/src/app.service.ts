@@ -144,6 +144,10 @@ export class AppService
 			this.issueVerificationToken(user.id, user.email, user.language as SupportedLanguage);
 			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		}
+
+		await this.issueForgotPasswordToken(email, user.language as SupportedLanguage);
+
+		return ({ message: 'Forgot password process initiated' });
 	}
 
 	// Helper methods used just by this class
