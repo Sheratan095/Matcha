@@ -30,15 +30,15 @@ export class AppService
 		if (!user)
 			throw new ForbiddenException('Invalid credentials');
 
+		if (!await this.comparePasswords(password, user.password_hash))
+			throw new ForbiddenException('Invalid credentials');
+
 		if (user.email_verified === false)
 		{
 			this.logger.warn(`Login attempt with unverified email for user ${username} (ID: ${user.id})`);
 			await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
 			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		}
-
-		if (!await this.comparePasswords(password, user.password_hash))
-			throw new ForbiddenException('Invalid credentials');
 
 		await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
 

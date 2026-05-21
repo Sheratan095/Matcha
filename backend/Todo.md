@@ -25,7 +25,7 @@
 	[x] Create a send-email "astraction" / organize notification in auth
 	[x] Use user instead of single params to comunicate between functions
 
-[] Should new verification code be sent during login even if the psw is wrong? : NO
+[x] Should new verification code be sent during login even if the psw is wrong? : NO
 
 [x] Find a way to add watch also to packages
 
