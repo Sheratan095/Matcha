@@ -3,9 +3,9 @@ import { Response } from 'express';
 import { AppService } from './app.service';
 import { InternalKeyGuard } from '@repo/utils';
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
-import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
+import { RegisterDto, RegisterResponseDto, RegisterErrorDto, LogoutResponseDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto, LoginErrorDto } from './dto/login.dto';
-import { RefreshResponseDto, RefreshErrorDto } from './dto/refresh.dto';
+import { RefreshResponseDto, RefreshErrorDto, ValidateTokenResponseDto } from './dto/refresh.dto';
 import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './dto/verify_email.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto, ResetPasswordDto, ResetPasswordResponseDto, ResetPasswordErrorDto } from './dto/passwordReset.dto';
 
@@ -82,7 +82,7 @@ export class AppController
 	@Post('logout')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Logout', description: 'Clears the authentication cookies.' })
-	@ApiResponse({ status: 200, type: RegisterResponseDto })
+	@ApiResponse({ status: 200, type: LogoutResponseDto })
 	async logout(@Res({ passthrough: true }) res: Response)
 	{
 		// TO DO close all ws connections?
@@ -92,7 +92,7 @@ export class AppController
 	@Get('validate')
 	@ApiCookieAuth('access_token')
 	@ApiOperation({ summary: 'Validate access token', description: 'Endpoint intended to be called by the API Gateway to authorize incoming requests. Validates the JWT cookie and returns user context.' })
-	@ApiResponse({ status: 200, description: 'Validation result and user context' })
+	@ApiResponse({ status: 200, type: ValidateTokenResponseDto })
 	validateToken(@Request() req: any)
 	{
 		return (this.appService.validateToken(req.cookies.access_token));

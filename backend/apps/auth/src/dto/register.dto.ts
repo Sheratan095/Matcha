@@ -59,7 +59,7 @@ export class RegisterDto
 
 export class RegisterResponseDto
 {
-	@ApiProperty({ example: 'User registered successfully' })
+	@ApiProperty({ example: 'Email verification required' })
 	message: string;
 
 	@ApiProperty({ example: null, description: 'Optional additional info (cookies set via httpOnly)' })
@@ -67,6 +67,9 @@ export class RegisterResponseDto
 
 	@ApiProperty( { example: '123e4567-e89b-12d3-a456-426614174000', description: 'User ID' })
 	userId?: string;
+
+	@ApiProperty({ example: '2026-05-21T12:34:56.789Z', description: 'Timestamp of registration' })
+	date?: Date;
 }
 
 export class RegisterErrorDto
@@ -78,5 +81,11 @@ export class RegisterErrorDto
 	code: string;
 
 	@ApiProperty({ example: 'User/Email already exists' })
+	message: string;
+}
+
+export class LogoutResponseDto
+{
+	@ApiProperty({ example: 'Logged out successfully' })
 	message: string;
 }

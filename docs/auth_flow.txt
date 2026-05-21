@@ -25,6 +25,14 @@ Registration rules:
   Psw: 8-128 chars, exlcluded popular passwords, In db: hashed
   Email: max 100 chars, In db: trimmed, lowercased and UNIQUE
 
+SECURITY NOTE:
+  Unlike password reset, registration DOES expose email/username existence
+  when returning errors (e.g., "Email already in use", "User already exists").
+  This is a deliberate UX tradeoff - clear error messages help legitimate users
+  understand why registration failed, while email enumeration during registration
+  is considered a lower risk (users typically know their own email exists).
+  Email enumeration is prevented in password reset where it's more critical.
+
 
 LOGIN
 
@@ -43,13 +51,15 @@ PASSWORD RESET
 
 frontend call /auth/forgot-passwords with email
   ↓
-server checks if email exists → error
+server checks if email exists and is verified (silently, no error thrown)
   ↓
-server check if not verified  → error and issue new verification token (401 + EMAIL_NOT_VERIFIED)
+if email exists and verified: generate and issue new password reset token
   ↓
-generate and issue new password reset token
+always returns success (even if email doesn't exist or not verified)
   ↓
-user clicks on email and it's sent to frontend reset page
+** SECURITY: Always returns same success message to PREVENT EMAIL ENUMERATION ATTACKS **
+  ↓
+user clicks on email and it's sent to frontend reset page (if email was valid)
   ↓
 frontend sends token + new psw to 'auth/reset-password'
   ↓

@@ -17,7 +17,7 @@ export class ForgotPasswordDto
 
 export class ForgotPasswordResponseDto
 {
-	@ApiProperty({ example: 'Forgot password process initiated', description: 'A success message' })
+	@ApiProperty({ example: 'If an account with this email exists, you will receive a password reset link shortly', description: 'A success message (generic to prevent email enumeration)' })
 	message: string;
 }
 

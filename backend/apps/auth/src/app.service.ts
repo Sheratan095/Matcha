@@ -139,19 +139,23 @@ export class AppService
 	{
 		const user: User | undefined = await this.dbService.getUserByEmail(email);
 
-		if (!user)
-			throw new ForbiddenException('No user found with the provided email address');
-
-		if (user.email_verified === false)
+		// To prevent EMAIL ENUMERATION ATTACKS, we return the same success message
+		// regardless of whether the email exists or is verified. This way, attackers
+		// cannot determine if an email is registered in the system.
+		if (!user || user.email_verified === false)
 		{
-			this.logger.warn(`Forgot password attempt with unverified email for user with email ${email} (ID: ${user.id})`);
-			await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
-			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
+			if (user && user.email_verified === false)
+				this.logger.warn(`Forgot password attempt with unverified email for user with email ${email} (ID: ${user.id})`);
+			else
+				this.logger.debug(`Forgot password attempt with non-existent email: ${email}`);
+
+			// Return success response without throwing - security by obscurity
+			return ({ message: 'If an account with this email exists, you will receive a password reset link shortly' });
 		}
 
 		await issueForgotPasswordToken(user, this.dbService, this.httpService, this.logger);
 
-		return ({ message: 'Forgot password process initiated' });
+		return ({ message: 'If an account with this email exists, you will receive a password reset link shortly' });
 	}
 
 	async resetPassword(token: string, password: string)

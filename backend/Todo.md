@@ -26,7 +26,9 @@
 	[x] Create a send-email "astraction" / organize notification in auth
 	[x] Use user instead of single params to comunicate between functions
 
-[] Avoid to expose email existance when sending email
+[x] Avoid to expose email existance when sending email
+	[x] Implement generic response for forgot-password endpoint
+	[x] Updated auth_flow.txt documentation
 
 [x] Remove email verification token after usage also refresh_token at logout
 
