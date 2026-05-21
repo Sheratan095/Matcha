@@ -37,3 +37,13 @@ server check if not verified  → error and issue new verification token (401 + 
 server check the psw  → error
   ↓
 issue jwt and refresh tokens
+
+
+PASSWORD RESET
+
+frontend call /auth/forgot-passwords with email
+  ↓
+server checks if email exists → error
+  ↓
+server check if not verified  → error and issue new verification token (401 + EMAIL_NOT_VERIFIED)
+

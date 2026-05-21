@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { Response } from 'express';
 import { AppService } from './app.service';
 import { InternalKeyGuard } from '@repo/utils';
@@ -7,6 +7,7 @@ import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/regist
 import { LoginDto, LoginResponseDto, LoginErrorDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto } from './dto/refresh.dto';
 import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './dto/verify_email.dto';
+import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto } from './dto/forgo_password.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -95,5 +96,14 @@ export class AppController
 	validateToken(@Request() req: any)
 	{
 		return (this.appService.validateToken(req.cookies.access_token));
+	}
+
+	@Post('forgot-password')
+	@ApiOperation({ summary: 'Forgot password', description: 'Initiates the forgot password process (not implemented yet).' })
+	@ApiResponse({ status: 200, type: ForgotPasswordResponseDto, description: 'Forgot password process initiated (placeholder)' })
+	@ApiResponse({ status: 400, type: ForgotPasswordErrorDto, description: 'Invalid email address' })
+	async forgotPassword(@Body() req: ForgotPasswordDto)
+	{
+		return (await this.appService.forgotPassword(req.email));
 	}
 }

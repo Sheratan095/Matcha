@@ -4,7 +4,7 @@ import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 import { DbService } from './db/db.service';
 import * as bcrypt from 'bcrypt';
 import { JwtHelper } from './utils/jwt';
-import { sendEmailVerification } from './utils/notification';
+import { sendEmailVerification, sendForgotPasswordEmail } from './utils/notification';
 import { randomBytes } from 'crypto';
 import { env } from '@repo/config';
 import { eventNames } from 'process';
@@ -131,6 +131,21 @@ export class AppService
 		}
 	}
 
+	async forgotPassword(email: string)
+	{
+		const user = await this.dbService.getUserByEmail(email);
+	
+		if (!user)
+			throw new ForbiddenException('No user found with the provided email address');
+
+		if (user.email_verified === false)
+		{
+			this.logger.warn(`Forgot password attempt with unverified email for user with email ${email} (ID: ${user.id})`);
+			this.issueVerificationToken(user.id, user.email, user.language as SupportedLanguage);
+			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
+		}
+	}
+
 	// Helper methods used just by this class
 	private async hashPassword(password: string): Promise<string>
 	{
@@ -183,5 +198,35 @@ export class AppService
 
 		if (!sent)
 			this.logger.error(`Failed to send verification email after ${attempts} attempts for user ID ${userId} and email ${email}`);
+	}
+
+	private async issueForgotPasswordToken(email: string, language: SupportedLanguage = SupportedLanguages.ENGLISH)
+	{
+		// Generate a secure random token for forgot password
+		const token = randomBytes(env.FORGOT_PASSWORD_TOKEN_LENGTH).toString('hex');
+		// Set the token expiration
+		const expiresAt = new Date(Date.now() + env.FORGOT_PASSWORD_EXPIRATION_MS); // 1 hour from now
+		// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
+		await this.dbService.saveForgotPasswordToken(email, token, expiresAt);
+
+		let sent: boolean = false;
+		let attempts: number = 0;
+
+		while (!sent && attempts < env.FORGOT_PASSWORD_MAX_ATTEMPTS)
+		{
+			attempts++;
+			try
+			{
+				await sendForgotPasswordEmail(email, token, language, this.httpService);
+				sent = true;
+			}
+			catch (error)
+			{
+				this.logger.warn(`Failed to send forgot password email (attempt ${attempts})`, error);
+			}
+		}
+
+		if (!sent)
+			this.logger.error(`Failed to send forgot password email after ${attempts} attempts for email ${email}`);
 	}
 }

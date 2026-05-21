@@ -37,6 +37,13 @@ export class DbService implements OnModuleInit
 		return (result.rows[0]);
 	}
 
+	async getUserByEmail(email: string)
+	{
+		// Return the first user that matches the given email from the database. This is a helper method for authentication purposes.
+		const result = await this.pool.query('SELECT * FROM users WHERE email = $1', [email]);
+		return (result.rows[0]);
+	}
+
 	// Return the userId
 	async createUser(email: string, username: string, passwordHash: string, language: SupportedLanguage, firstName: string, lastName: string) : Promise<string>
 	{
