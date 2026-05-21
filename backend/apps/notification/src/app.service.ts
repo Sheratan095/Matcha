@@ -16,4 +16,11 @@ export class AppService
 
 		return ('Sending verification email to ' + email + ' with token ' + token);
 	}
+
+	async sendForgotPasswordEmail(email: string, token: string, language: SupportedLanguage = SupportedLanguages.ENGLISH)
+	{
+		await this.mailerService.sendForgotPasswordEmail(email, token, language);
+
+		return ('Sending forgot password email to ' + email + ' with token ' + token);
+	}
 }

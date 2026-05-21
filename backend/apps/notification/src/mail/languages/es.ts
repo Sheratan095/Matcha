@@ -1,4 +1,4 @@
-export const spanishLanguagePack = {
+export const spanishVerificationPack = {
 	subject: 'Verifica tu dirección de correo electrónico',
 	title: 'Verificación de correo electrónico',
 	greeting: 'Hola',
@@ -15,4 +15,26 @@ export const spanishLanguagePack = {
 	footerMessage: 'Saludos cordiales,',
 	footerText: 'El equipo de Matcha',
 	plainText: 'Tu código de verificación es: {{OTP_CODE}}. Este código expirará en {{EXPIRY_MINUTES}} minutos.',
+};
+
+export const spanishForgotPasswordPack = {
+	subject: 'Restablece tu contraseña',
+	title: 'Solicitud de restablecimiento de contraseña',
+	greeting: 'Hola',
+	message: 'Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón de abajo para crear una nueva contraseña.',
+	alertMessage: 'Si no solicitaste un restablecimiento de contraseña, ignora este correo o contacta a nuestro equipo de soporte inmediatamente.',
+	buttonText: 'Restablecer contraseña',
+	otpLabel: 'Código de restablecimiento',
+	expiryText: 'Este enlace expirará en {{EXPIRY_MINUTES}} minutos.',
+	securityTitle: 'Consejos de seguridad:',
+	securityPoints: [
+		'Nunca compartas este código con nadie',
+		'Matcha nunca te pedirá este código por correo o mensaje',
+		'Si no solicitaste esto, cambia tu contraseña inmediatamente',
+		'El enlace expira en {{EXPIRY_MINUTES}} minutos',
+	],
+	footerMessage: 'Saludos cordiales,',
+	footerText: 'El equipo de Matcha',
+	plainText: 'Tu código para restablecer la contraseña es: {{OTP_CODE}}. Este código expirará en {{EXPIRY_MINUTES}} minutos. Si no solicitaste esto, ignora este correo.',
+	allRightsReserved: 'Todos los derechos reservados',
 };

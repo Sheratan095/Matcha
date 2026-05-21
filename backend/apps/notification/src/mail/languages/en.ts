@@ -1,4 +1,4 @@
-export const englishLanguagePack = {
+export const englishVerificationPack = {
 	subject: 'Verify your email address',
 	title: 'Email Verification',
 	greeting: 'Hello',
@@ -15,4 +15,26 @@ export const englishLanguagePack = {
 	footerMessage: 'Best regards,',
 	footerText: 'The Matcha Team',
 	plainText: 'Your verification code is: {{OTP_CODE}}. This code will expire in {{EXPIRY_MINUTES}} minutes.',
+};
+
+export const englishForgotPasswordPack = {
+	subject: 'Reset your password',
+	title: 'Password Reset Request',
+	greeting: 'Hello',
+	message: 'We received a request to reset your password. Click the button below to create a new password.',
+	alertMessage: 'If you did not request a password reset, please ignore this email or contact our support team immediately.',
+	buttonText: 'Reset Password',
+	otpLabel: 'Reset Code',
+	expiryText: 'This link will expire in {{EXPIRY_MINUTES}} minutes.',
+	securityTitle: 'Security Tips:',
+	securityPoints: [
+		'Never share this code with anyone',
+		'Matcha will never ask for this code via email or message',
+		'If you did not request this, change your password immediately',
+		'Link expires in {{EXPIRY_MINUTES}} minutes',
+	],
+	footerMessage: 'Best regards,',
+	footerText: 'The Matcha Team',
+	plainText: 'Your password reset code is: {{OTP_CODE}}. This code will expire in {{EXPIRY_MINUTES}} minutes. If you did not request this, please ignore this email.',
+	allRightsReserved: 'All rights reserved',
 };

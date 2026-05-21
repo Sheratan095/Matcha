@@ -1,4 +1,4 @@
-export const frenchLanguagePack = {
+export const frenchVerificationPack = {
 	subject: 'Vérifiez votre adresse e-mail',
 	title: 'Vérification des e-mails',
 	greeting: 'Bonjour',
@@ -15,4 +15,26 @@ export const frenchLanguagePack = {
 	footerMessage: 'Cordialement,',
 	footerText: 'L\'équipe Matcha',
 	plainText: 'Votre code de vérification est : {{OTP_CODE}}. Ce code expirera dans {{EXPIRY_MINUTES}} minutes.',
+};
+
+export const frenchForgotPasswordPack = {
+	subject: 'Réinitialisez votre mot de passe',
+	title: 'Demande de réinitialisation de mot de passe',
+	greeting: 'Bonjour',
+	message: 'Nous avons reçu une demande pour réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe.',
+	alertMessage: 'Si vous n\'avez pas demandé une réinitialisation de mot de passe, veuillez ignorer cet e-mail ou contacter notre équipe d\'assistance immédiatement.',
+	buttonText: 'Réinitialiser le mot de passe',
+	otpLabel: 'Code de réinitialisation',
+	expiryText: 'Ce lien expirera dans {{EXPIRY_MINUTES}} minutes.',
+	securityTitle: 'Conseils de sécurité :',
+	securityPoints: [
+		'Ne partagez jamais ce code avec quiconque',
+		'Matcha ne vous demandera jamais ce code par e-mail ou par message',
+		'Si vous n\'avez pas demandé cela, changez votre mot de passe immédiatement',
+		'Le lien expire dans {{EXPIRY_MINUTES}} minutes',
+	],
+	footerMessage: 'Cordialement,',
+	footerText: 'L\'équipe Matcha',
+	plainText: 'Votre code de réinitialisation de mot de passe est : {{OTP_CODE}}. Ce code expirera dans {{EXPIRY_MINUTES}} minutes. Si vous n\'avez pas demandé cela, veuillez ignorer cet e-mail.',
+	allRightsReserved: 'Tous droits réservés',
 };
