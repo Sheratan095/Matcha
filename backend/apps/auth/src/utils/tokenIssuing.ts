@@ -58,7 +58,7 @@ export async function issueForgotPasswordToken(user: User, dbService: DbService,
 	// Set the token expiration
 	const expiresAt = new Date(Date.now() + env.FORGOT_PASSWORD_EXPIRATION_MS); // 1 hour from now
 	// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
-	await dbService.saveForgotPasswordToken(user.email, token, expiresAt);
+	await dbService.saveForgotPasswordToken(user.id, token, expiresAt);
 
 	let sent: boolean = false;
 	let attempts: number = 0;

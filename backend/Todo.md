@@ -20,10 +20,12 @@
 	[x] Rework mailer.service in notification
 	[x] Create template and language pack ad-hoc
 	[x] Create endpoint and hanlder in notification service
-	[] Test endpoint
+	[x] Test endpoint
 	[] Create endpoint and henalder in auth service 'auth/reset-password'
 	[x] Create a send-email "astraction" / organize notification in auth
 	[x] Use user instead of single params to comunicate between functions
+
+[] Should new verification code be sent during login even if the psw is wrong? : NO
 
 [x] Find a way to add watch also to packages
 
