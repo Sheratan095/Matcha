@@ -22,10 +22,10 @@
 	[x] Create endpoint and hanlder in notification service
 	[x] Test endpoint
 	[x] Create endpoint and henalder in auth service 'auth/reset-password'
-	[] Test endpoint
+	[x] Test endpoint
 	[x] Create a send-email "astraction" / organize notification in auth
 	[x] Use user instead of single params to comunicate between functions
-	[] Test everithing together
+	[x] Test everithing together
 
 [x] Avoid to expose email existance when sending email
 	[x] Implement generic response for forgot-password endpoint
@@ -37,12 +37,12 @@
 
 [x] Insert expiration in token with userId to check eventual expiration?
 
-[] Add revoked access at logout
-
 [x] Should new verification code be sent during login even if the psw is wrong? : NO
 
 [x] Find a way to add watch also to packages
 
 [x] Check refresh_token expiration
+
+[] Password different that the previus one
 
 [] RATE LIMITING
