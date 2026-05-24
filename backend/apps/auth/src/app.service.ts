@@ -54,7 +54,7 @@ export class AppService implements OnModuleInit
 
 	async register(email: string, username: string, password: string, language: SupportedLanguage, firstName: string, lastName: string, res: any)
 	{
-		validatePassword(password);
+		await validatePassword(password);
 		const passwordHash = await hashPassword(password);
 
 		// DON'T NEED IT BECAUSE THE NORMALIZATION IS DONE IN DTO
@@ -148,18 +148,16 @@ export class AppService implements OnModuleInit
 		const user: User | undefined = await this.dbService.getUserByEmail(email);
 
 		// To prevent EMAIL ENUMERATION ATTACKS, we return the same success message
-		// regardless of whether the email exists or is verified. This way, attackers
+		// regardless of whether the email exists. This way, attackers
 		// cannot determine if an email is registered in the system.
-		if (!user || user.email_verified === false)
+		if (!user)
 		{
-			if (user && user.email_verified === false)
-				this.logger.warn(`Forgot password attempt with unverified email for user with email ${email} (ID: ${user.id})`);
-			else
-				this.logger.debug(`Forgot password attempt with non-existent email: ${email}`);
-
-			// Return success response without throwing - security by obscurity
+			this.logger.debug(`Forgot password attempt with non-existent email: ${email}`);
 			return ({ message: 'If an account with this email exists, you will receive a password reset link shortly' });
 		}
+
+		if (user.email_verified === false)
+			this.logger.warn(`Forgot password initiated for unverified email: ${email} (ID: ${user.id})`);
 
 		await issueForgotPasswordToken(user, this.dbService, this.httpService, this.logger);
 
@@ -182,17 +180,23 @@ export class AppService implements OnModuleInit
 		// 	throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 		// }
 
-		validatePassword(password);
+		const user = await this.dbService.getUserById(resetTokenRecord.user_id);
+		if (!user)
+			throw new ForbiddenException('User not found');
+
+		await validatePassword(password, user.password_hash);
+
+		this.logger.debug(`Password reset for user ID ${user.id} passed validation checks. Proceeding with password update.`);
 
 		// Save and hash the new password, then invalidate the reset token
 		const passwordHash = await hashPassword(password);
-		await this.dbService.updateUserPassword(resetTokenRecord.user_id, passwordHash);
+		await this.dbService.updateUserPassword(user.id, passwordHash);
 
 		// Invalidate the reset token after successful password reset
-		await this.dbService.deleteForgotPasswordToken(resetTokenRecord.user_id);
+		await this.dbService.deleteForgotPasswordToken(user.id);
 
 		// Invalidate all existing tokens
-		await this.jwtHelper.revokeTokens(null, this.dbService, resetTokenRecord.user_id);
+		await this.jwtHelper.revokeTokens(null, this.dbService, user.id);
 
 		return ({ message: 'Password reset successfully' });
 	}

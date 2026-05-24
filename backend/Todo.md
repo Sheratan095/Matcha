@@ -44,9 +44,12 @@
 [x] Check refresh_token expiration
 
 [] Password different that the previus one
+	[] BROKEN, seems like ther're no psw in db
 
 [x] Too common psw
 
 [] Forbidden usernamea
+
+[] Trim all dtos
 
 [] RATE LIMITING

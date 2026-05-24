@@ -14,7 +14,15 @@ export async function hashPassword(password: string): Promise<string>
 
 export async function comparePasswords(password: string, hash: string): Promise<boolean>
 {
-	return (await bcrypt.compare(password, hash));
+	try
+	{
+		return (await bcrypt.compare(password, hash));
+	}
+	catch (error)
+	{
+		// If the hash is invalid (e.g. from seeds), it's definitely not a match
+		return (false);
+	}
 }
 
 export async function loadCommonPasswords(relativeFilePath: string): Promise<void>
@@ -35,10 +43,15 @@ export async function loadCommonPasswords(relativeFilePath: string): Promise<voi
 	}
 }
 
-export function validatePassword(password: string): void
+export async function validatePassword(password: string, previousPasswordHash: string = null): Promise<void>
 {
 	if (commonPasswordsSet.has(password))
 	{
 		throw new BadRequestException('This password is too common. Please choose a more secure password.', 'COMMON_PASSWORD');
+	}
+
+	if (previousPasswordHash && await comparePasswords(password, previousPasswordHash))
+	{
+		throw new BadRequestException('The new password must be different from the previous one.', 'PASSWORD_REUSE');
 	}
 }
