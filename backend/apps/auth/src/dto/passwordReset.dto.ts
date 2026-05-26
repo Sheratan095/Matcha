@@ -26,6 +26,9 @@ export class ForgotPasswordErrorDto
 	@ApiProperty({ example: 400 })
 	statusCode: number;
 
+	@ApiProperty({ example: 'USER_NOT_FOUND' })
+	code: string;
+
 	@ApiProperty({ example: 'No user found with the provided email address' })
 	message: string;
 }
@@ -43,7 +46,9 @@ export class ResetPasswordDto
 	password: string;
 
 	@ApiProperty({ example: 'resetToken12345', description: 'The token sent to the user\'s email for password reset verification' })
+	@IsString()
 	@IsNotEmpty()
+	@Transform(({ value }) => value?.trim())
 	token: string;
 }
 
@@ -57,6 +62,9 @@ export class ResetPasswordErrorDto
 {
 	@ApiProperty({ example: 400 })
 	statusCode: number;
+
+	@ApiProperty({ example: 'INVALID_TOKEN' })
+	code: string;
 
 	@ApiProperty({ example: 'Invalid or expired reset token' })
 	message: string;

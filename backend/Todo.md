@@ -1,4 +1,4 @@
-[] Graph-oriented database
+[] Graph-oriented database: don't need it
 
 [x] auth jwt
 
@@ -16,7 +16,7 @@
 	[x] expiration work
 	[x] what if errors during verification email send : simulated adding a fake exception in email send
 
-[] Via-mail password reset
+[x] Via-mail password reset
 	[x] Rework mailer.service in notification
 	[x] Create template and language pack ad-hoc
 	[x] Create endpoint and hanlder in notification service
@@ -43,13 +43,14 @@
 
 [x] Check refresh_token expiration
 
-[] Password different that the previus one
-	[] BROKEN, seems like ther're no psw in db
+[x] Password different that the previus one
+	[x] BROKEN, seems like ther're no psw in db
 
 [x] Too common psw
 
-[] Forbidden usernamea
+[] Forbidden usernames
+	[] Check for username lowercasing?
 
-[] Trim all dtos
+[x] Trim all dtos
 
 [] RATE LIMITING

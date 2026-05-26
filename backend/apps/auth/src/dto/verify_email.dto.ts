@@ -1,11 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class VerifyEmailDto
 {
 	@ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', description: 'Email verification token' })
 	@IsString()
 	@IsNotEmpty()
+	@Transform(({ value }) => value?.trim())
 	token: string;
 }
 

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 
 export class ForgotPasswordDto
@@ -7,11 +8,13 @@ export class ForgotPasswordDto
 	@ApiProperty({ example: '4354535-6547474', description: 'Reset token' })
 	@IsString()
 	@IsNotEmpty()
+	@Transform(({ value }) => value?.trim())
 	token: string;
 
 	@ApiProperty({ example: 'user@example.com', description: 'User email' })
 	@IsEmail()
 	@IsNotEmpty()
+	@Transform(({ value }) => value.trim().toLowerCase())
 	email: string;
 
 	@ApiProperty({
@@ -39,7 +42,7 @@ export class ErrorDto
 	statusCode: number;
 
 	@ApiProperty({ example: 'INVALID_PAYLOAD' })
-	error: string;
+	code: string;
 
 	@ApiProperty({ example: 'Invalid email or token' })
 	message: string;

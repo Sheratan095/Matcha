@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
 
 export class RefreshDto
 {
@@ -25,6 +24,9 @@ export class RefreshErrorDto
 {
 	@ApiProperty({ example: 403 })
 	statusCode: number;
+
+	@ApiProperty({ example: 'INVALID_REFRESH_TOKEN' })
+	code: string;
 
 	@ApiProperty({ example: 'Forbidden' })
 	message: string;
