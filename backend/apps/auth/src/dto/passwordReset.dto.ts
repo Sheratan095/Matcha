@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, Length, IsString, Matches } from 'class-validator';
+import { PasswordDto } from './register.dto';
 
 
 // -----------------------------FORGOT PASSWORD-----------------------------
@@ -36,15 +37,8 @@ export class ForgotPasswordErrorDto
 
 // -----------------------------RESET PASSWORD-----------------------------
 
-export class ResetPasswordDto
+export class ResetPasswordDto extends PasswordDto
 {
-	@ApiProperty({ example: 'newP@ssw0rd', description: 'User password' })
-	@IsString()
-	@IsNotEmpty()
-	@Length(8, 128)
-	@Matches(/^(?!\s*$).+$/) // Ensure password is not just whitespace
-	password: string;
-
 	@ApiProperty({ example: 'resetToken12345', description: 'The token sent to the user\'s email for password reset verification' })
 	@IsString()
 	@IsNotEmpty()

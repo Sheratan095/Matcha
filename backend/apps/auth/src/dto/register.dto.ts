@@ -7,7 +7,18 @@ import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 // It doesn't contain any logic or methods, just properties with decorators for validation and Swagger docs.
 // Here the Dtos are grouped by endpoint (register, login, refresh) for better organization and clarity in the codebase and API docs.
 
-export class RegisterDto
+//Single object used to centralize psq validation
+export class PasswordDto
+{
+	@ApiProperty({ example: 'P@ssw0rd', description: 'User password' })
+	@IsString()
+	@IsNotEmpty()
+	@Length(8, 128)
+	@Matches(/^(?!\s*$).+$/) // Ensure password is not just whitespace
+	password: string;
+}
+
+export class RegisterDto extends PasswordDto
 {
 	@ApiProperty({ example: 'jdoe', description: 'Unique username' })
 	@IsString()
@@ -17,12 +28,7 @@ export class RegisterDto
 	@Matches(/^[a-z0-9_.]+$/)
 	username: string;
 
-	@ApiProperty({ example: 'P@ssw0rd', description: 'User password' })
-	@IsString()
-	@IsNotEmpty()
-	@Length(8, 128)
-	@Matches(/^(?!\s*$).+$/) // Ensure password is not just whitespace
-	password: string;
+
 
 	@ApiProperty({ example: 'jdoe@example.com', description: 'User email' })
 	@IsEmail()
