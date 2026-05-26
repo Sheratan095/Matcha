@@ -6,6 +6,7 @@ import { JwtHelper } from './utils/jwt';
 import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
 import { User } from '@repo/shared-types';
 import { hashPassword, comparePasswords, loadCommonPasswords, validatePassword } from './utils/password';
+import { loadReservedUsernames, validateUsername } from './utils/username';
 
 // Services contain the core business logic like the db calls
 
@@ -24,9 +25,14 @@ export class AppService implements OnModuleInit
 
 	async onModuleInit()
 	{
-		// Load common passwords into the centralized set in utils/password.ts
-		await loadCommonPasswords('common-password.txt');
+		// Paths are relative to the root of the @matcha/auth app (where it's executed)
+		// infra/security/policies is at the root of the workspace
+		// Since we are running from backend/apps/auth, we need to go up to backend/ and then to infra/
+		await loadCommonPasswords('../../infra/security/policies/common-password.txt');
 		this.logger.log('Common passwords initialization check completed.');
+
+		await loadReservedUsernames('../../infra/security/policies/reserved-usernames.txt');
+		this.logger.log('Reserved usernames initialization check completed.');
 	}
 
 	async login(username: string, password: string, res: any)
@@ -60,6 +66,8 @@ export class AppService implements OnModuleInit
 		// DON'T NEED IT BECAUSE THE NORMALIZATION IS DONE IN DTO
 		// username = username.toLowerCase().trim();
 		// email = email.toLowerCase().trim();
+
+		validateUsername(username);
 
 		try
 		{

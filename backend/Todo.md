@@ -48,8 +48,10 @@
 
 [x] Too common psw
 
-[] Forbidden usernames
-	[] Check for username lowercasing?
+[x] Forbidden usernames
+	[x] Check for username lowercasing?
+
+[] Oauth shutty
 
 [x] Trim all dtos
 

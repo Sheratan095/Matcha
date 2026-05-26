@@ -45,13 +45,12 @@ export async function loadCommonPasswords(relativeFilePath: string): Promise<voi
 
 export async function validatePassword(password: string, previousPasswordHash: string = null): Promise<void>
 {
+	if (commonPasswordsSet.size === 0)
+		console.warn('Common passwords set is empty. Ensure loadCommonPasswords() was called successfully during app initialization.');
+
 	if (commonPasswordsSet.has(password))
-	{
 		throw new BadRequestException('This password is too common. Please choose a more secure password.', 'COMMON_PASSWORD');
-	}
 
 	if (previousPasswordHash && await comparePasswords(password, previousPasswordHash))
-	{
 		throw new BadRequestException('The new password must be different from the previous one.', 'PASSWORD_REUSE');
-	}
 }

@@ -28,8 +28,6 @@ export class RegisterDto extends PasswordDto
 	@Matches(/^[a-z0-9_.]+$/)
 	username: string;
 
-
-
 	@ApiProperty({ example: 'jdoe@example.com', description: 'User email' })
 	@IsEmail()
 	@Transform(({ value }) => value.trim().toLowerCase()) // Trim whitespace and convert to lowercase for consistency BEFORE validation
