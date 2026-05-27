@@ -178,4 +178,49 @@ export class DbService implements OnModuleInit
 		// Update the user's password hash in the database. This is a helper method for the password reset process.
 		await this.pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newPasswordHash, userId]);
 	}
+
+	// Creates a new user from OAuth profile information in a single transaction.
+	async createOAuthUser(profile: { email: string; username: string; provider: string; providerId: string }): Promise<User | undefined>
+	{
+		const { email, username, provider, providerId } = profile;
+		const client = await this.pool.connect();
+
+		try
+		{
+			await client.query('BEGIN');
+
+			// 1. Insert the basic user info. We set email_verified to TRUE as the OAuth provider has already verified it.
+			const userResult = await client.query(
+				'INSERT INTO users (email, username, email_verified) VALUES ($1, $2, TRUE) RETURNING *',
+				[email, username]
+			);
+			const newUser = new User(userResult.rows[0]);
+
+			// 2. Insert the link between the new user and the OAuth provider.
+			await client.query(
+				'INSERT INTO oauth_accounts (user_id, provider, provider_id) VALUES ($1, $2, $3)',
+				[newUser.id, provider, providerId]
+			);
+
+			await client.query('COMMIT');
+			return (newUser);
+		}
+		catch (error)
+		{
+			await client.query('ROLLBACK');
+			throw (error);
+		}
+		finally
+		{
+			client.release();
+		}
+	}
+
+	// Links an existing user account to an OAuth provider (e.g., when a user who registered manually logs in via GitHub).
+	async linkOAuthAccount(userId: string, provider: string, providerId: string) {
+		await this.pool.query(
+			'INSERT INTO oauth_accounts (user_id, provider, provider_id) VALUES ($1, $2, $3) ON CONFLICT (user_id, provider) DO UPDATE SET provider_id = $3',
+			[userId, provider, providerId]
+		);
+	}
 }

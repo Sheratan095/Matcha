@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus, Query } from '@nestjs/common';
+import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { AppService } from './app.service';
 import { InternalKeyGuard } from '@repo/utils';
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { env } from '@repo/config';
 import { RegisterDto, RegisterResponseDto, RegisterErrorDto, LogoutResponseDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto, LoginErrorDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto, ValidateTokenResponseDto } from './dto/refresh.dto';
@@ -16,6 +18,7 @@ import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto, R
 @UseGuards(InternalKeyGuard)
 export class AppController
 {
+	private readonly logger = new Logger("AUTH Controller");
 
 	constructor(private readonly appService: AppService)
 	{ }
@@ -114,5 +117,33 @@ export class AppController
 	async resetPassword(@Body() req: ResetPasswordDto)
 	{
 		return (await this.appService.resetPassword(req.token, req.password));
+	}
+
+	@Get('github')
+	// The AuthGuard('github') intercepts the request and automatically redirects the user to GitHub's login page.
+	// The method body is mostly illustrative as the guard handles redirection before it's executed.
+	@UseGuards(AuthGuard('github'))
+	@ApiOperation({ summary: 'Initiate GitHub OAuth', description: 'Redirects to GitHub for authentication.' })
+	async githubAuth()
+	{
+		// The guard handles the redirection to GitHub.
+
+		this.logger.log('Initiating GitHub OAuth flow');
+	}
+
+	@Get('github/callback')
+	// After successful authentication, GitHub redirects the user back here with an authorization code.
+	// The AuthGuard('github') exchanges this code for the user profile and populates 'req.user'.
+	@UseGuards(AuthGuard('github'))
+	@ApiOperation({ summary: 'GitHub OAuth callback', description: 'Handles the callback from GitHub after authentication.' })
+	async githubAuthCallback(@Request() req, @Res() res: Response)
+	{
+		this.logger.log('Received GitHub OAuth callback');
+
+		const user = req.user;
+		// Issue our own application JWT tokens and set them as HTTP-only cookies in the response.
+		await this.appService.issueTokensAfterOAuth(user, res);
+		// Redirect the user back to the frontend application.
+		res.redirect(`${env.FRONTEND_URL}:${env.FRONTEND_PORT}`);
 	}
 }

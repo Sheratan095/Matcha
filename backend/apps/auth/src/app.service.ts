@@ -6,7 +6,7 @@ import { JwtHelper } from './utils/jwt';
 import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
 import { User } from '@repo/shared-types';
 import { hashPassword, comparePasswords, loadCommonPasswords, validatePassword } from './utils/password';
-import { loadReservedUsernames, validateUsername } from './utils/username';
+import { loadReservedUsernames, validateUsername, generateFallbackUsername } from './utils/username';
 
 // Services contain the core business logic like the db calls
 
@@ -151,6 +151,11 @@ export class AppService implements OnModuleInit
 		}
 	}
 
+	async issueTokensAfterOAuth(user: User, res: any)
+	{
+		await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
+	}
+
 	async forgotPassword(email: string)
 	{
 		const user: User | undefined = await this.dbService.getUserByEmail(email);
@@ -207,5 +212,42 @@ export class AppService implements OnModuleInit
 		await this.jwtHelper.revokeTokens(null, this.dbService, user.id);
 
 		return ({ message: 'Password reset successfully' });
+	}
+
+	// This method handles the logic of whether to create a new user or link an existing one.
+	async validateOAuthUser(profile: { provider: string; providerId: string; email: string; username: string;})
+	{
+		const { provider, providerId, email, username } = profile;
+		// First, we check if a user with this email already exists in our system.
+		let user = await this.dbService.getUserByEmail(email);
+	
+		if (!user)
+		{
+			// Handle potential username collisions (GitHub username might already be used by someone else in our DB)
+			let finalUsername = username;
+			const existingByUsername = await this.dbService.getUserByUsername(username);
+			if (existingByUsername)
+				finalUsername = generateFallbackUsername(username);
+
+			// If not found, we create a new user account and link the OAuth provider identity.
+			user = await this.dbService.createOAuthUser({
+				email,
+				username: finalUsername,
+				provider,
+				providerId,
+			});
+
+			this.logger.log(`Created new user with ID ${user.id} for OAuth provider ${provider} (provider ID: ${providerId})`);
+		}
+		else
+		{
+			// If the user already exists (e.g., they registered manually before), we link this OAuth provider
+			// to their existing account so they can log in via either method in the future.
+			await this.dbService.linkOAuthAccount(user.id, provider, providerId);
+
+			this.logger.log(`Linked existing user ID ${user.id} to OAuth provider ${provider} (provider ID: ${providerId})`);
+		}
+	
+		return (user);
 	}
 }

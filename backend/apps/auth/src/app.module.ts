@@ -7,6 +7,7 @@ import { DbModule } from './db/db.module';
 import { env } from "@repo/config";
 import { JwtHelper } from './utils/jwt';
 import { HttpModule } from '@nestjs/axios';
+import { GithubStrategy } from './strategies/github.strategy';
 
 @Module({
 	imports: [
@@ -16,7 +17,7 @@ import { HttpModule } from '@nestjs/axios';
 			},
 		}),
 		DbModule,
-		PassportModule,
+		PassportModule.register({ defaultStrategy: 'github' }),
 		JwtModule.register({
 			secret: env.JWT_ACCESS_SECRET,
 			signOptions: { expiresIn: env.JWT_ACCESS_EXPIRATION_MS },
@@ -24,6 +25,6 @@ import { HttpModule } from '@nestjs/axios';
 	],
 	controllers: [AppController],
 	// Jwt helper is a service that generates and verifies JWT tokens, it is used in the AppService to handle token logic
-	providers: [AppService, JwtHelper],
+	providers: [AppService, JwtHelper, GithubStrategy],
 })
 export class AppModule {}

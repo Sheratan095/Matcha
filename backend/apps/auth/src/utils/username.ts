@@ -32,3 +32,11 @@ export function validateUsername(username: string): void
 	if (reservedUsernamesSet.has(username))
 		throw new BadRequestException('This username isn\'t available. Please choose a different username.', 'RESERVED_USERNAME');
 }
+
+export function generateFallbackUsername(base: string): string
+{
+	// Simple fallback to handle collisions: base + timestamp suffix
+	const suffix = Date.now().toString().slice(-4);
+
+	return (`${base}_${suffix}`);
+}

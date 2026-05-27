@@ -59,8 +59,13 @@ const envSchema = z.object({
 	// SMTP Configuration
 	SMTP_HOST: z.string().default("localhost"),
 	SMTP_PORT: z.coerce.number().default(587),
-	SMTP_USER: z.string().default(""),
-	SMTP_PASS: z.string().default(""),
+	SMTP_USER: z.string(),
+	SMTP_PASS: z.string(),
+
+	// Github OAuth
+	GITHUB_CLIENT_ID: z.string(),
+	GITHUB_CLIENT_SECRET: z.string(),
+	GITHUB_CALLBACK_URL: z.string(),
 });
 
 // validate
