@@ -53,6 +53,13 @@
 
 [] Oauth shutty
 
+[] Update email address
+
 [x] Trim all dtos
 
 [] RATE LIMITING
+
+[] pending noiificaiton
+
+[] Remove a previously given “like”. This will prevent further notifications from that
+user, and the chat function between them will be disabled.

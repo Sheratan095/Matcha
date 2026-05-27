@@ -12,6 +12,7 @@ dotenv.config({ path: findConfig(".env") || undefined });
 // define schema
 const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+	TZ: z.string().default("UTC"),
 
 	FRONTEND_URL: z.string().default("http://localhost"),
 	FRONTEND_PORT: z.coerce.number().default(4000),
