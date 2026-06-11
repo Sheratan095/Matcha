@@ -55,6 +55,8 @@ export class AppService implements OnModuleInit
 
 		await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
 
+		this.logger.log(`Login successful for user ${username} (ID: ${user.id})`);
+
 		return ({ message: 'Login successful', userId: user.id });
 	}
 
@@ -142,15 +144,18 @@ export class AppService implements OnModuleInit
 		try
 		{
 			const userId: string = await this.jwtHelper.validateAccessToken(token);
+			this.logger.log(`Token valid for user ID: ${userId}`);
 
 			return ({ valid: true, userId });
 		}
 		catch (error)
 		{
+			this.logger.log(`Token invalid`);
 			return ({ valid: false, userId: null });
 		}
 	}
 
+	// Used after successful GitHub OAuth login to issue our own JWT tokens and set them as cookies
 	async issueTokensAfterOAuth(user: User, res: any)
 	{
 		await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
@@ -218,8 +223,14 @@ export class AppService implements OnModuleInit
 	async validateOAuthUser(profile: { provider: string; providerId: string; email: string; username: string;})
 	{
 		const { provider, providerId, email, username } = profile;
-		// First, we check if a user with this email already exists in our system.
-		let user = await this.dbService.getUserByEmail(email);
+
+		// 1. Try to find the user by their OAuth identity first.
+		let user = await this.dbService.getUserByOAuth(provider, providerId);
+		if (user)
+			return (user);
+
+		// 2. If not found by OAuth, check if a user with this email already exists (manual registration).
+		user = await this.dbService.getUserByEmail(email);
 	
 		if (!user)
 		{

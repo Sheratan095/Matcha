@@ -48,10 +48,61 @@
             color: #3c4043;
         }
         .btn-google:hover { background-color: #f8f9fa; }
+        
+        .divider {
+            margin: 1.5rem 0;
+            display: flex;
+            align-items: center;
+            color: #57606a;
+            font-size: 0.8rem;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #d0d7de;
+        }
+        .divider::before { margin-right: 0.5rem; }
+        .divider::after { margin-left: 0.5rem; }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #24292f;
+        }
+        input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        .btn-primary {
+            background-color: #0969da;
+            color: white;
+            border: none;
+        }
+        .btn-primary:hover { background-color: #0550ae; }
+        
         .status {
             margin-top: 1.5rem;
             font-size: 0.9rem;
             color: #57606a;
+        }
+        .error {
+            color: #cf222e;
+            background: #ffebe9;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            display: none;
         }
         .cookie-info {
             margin-top: 1rem;
@@ -68,6 +119,22 @@
 <body>
     <div class="login-card">
         <h1>Matcha Login</h1>
+
+        <div id="errorMessage" class="error"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" value="Marco" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" value="12345678910" required>
+            </div>
+            <button type="submit" class="btn btn-primary" id="loginBtn">Log in</button>
+        </form>
+
+        <div class="divider">OR</div>
         
         <!-- Points to the API Gateway port 3000 -->
         <a href="http://localhost:3000/auth/github" class="btn btn-github">
@@ -85,21 +152,89 @@
     </div>
 
     <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('errorMessage');
+            const loginBtn = document.getElementById('loginBtn');
+            const status = document.getElementById('authStatus');
+
+            errorEl.style.display = 'none';
+            loginBtn.disabled = true;
+            loginBtn.innerText = 'Logging in...';
+
+            try {
+                // Post to our test server which will proxy to the Gateway
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Login failed');
+                }
+
+                await updateStatus();
+                errorEl.style.display = 'none';
+                
+                // // Clear form
+                // document.getElementById('username').value = '';
+                // document.getElementById('password').value = '';
+
+            } catch (err) {
+                errorEl.innerText = err.message;
+                errorEl.style.display = 'block';
+                status.innerText = "Login failed";
+                status.style.color = "red";
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerText = 'Log in';
+            }
+        });
+
         // Check if we have cookies by trying to read them (though they are set to HttpOnly)
         // Since we can't read HttpOnly cookies, we should check if we just got redirected back
         const urlParams = new URLSearchParams(window.location.search);
         
-        function updateStatus() {
-            // Note: In a real app, you would call `GET /auth/validate` to check login state
-            const info = document.getElementById('cookieInfo');
+        async function updateStatus() {
             const status = document.getElementById('authStatus');
+            const info = document.getElementById('cookieInfo');
             
-            // This is a naive check. A real app would verify the session.
-            if (document.cookie.includes('access_token') || document.cookie.includes('refresh_token')) {
-                status.innerText = "Logged in successfully!";
-                status.style.color = "green";
-            } else {
-                status.innerText = "Not logged in";
+            try {
+                // Call our local test server which proxies to the real validate endpoint
+                const response = await fetch('/validate');
+
+                console.log("Received response from validation endpoint:", response);
+                
+                // First check if the response is actually JSON to avoid the syntax error
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    const text = await response.text();
+                    console.error("Non-JSON response received:", text.substring(0, 100));
+                    throw new Error("Server returned HTML instead of JSON. Ensure test/oauth/server.js was RESTARTED after changes.");
+                }
+
+                const data = await response.json();
+
+                console.log("Validation response data:", data.valid);
+                
+                if (data.valid) {
+                    status.innerText = `Logged in successfully! User ID: ${data.userId}`;
+                    status.style.color = "green";
+                    info.style.display = 'block';
+                    info.innerText = `Session verified via API. (HttpOnly cookies are working but invisible to JS)`;
+                } else {
+                    status.innerText = "Not logged in (No valid session)";
+                    status.style.color = "#57606a";
+                    info.style.display = 'none';
+                }
+            } catch (err) {
+                console.error("Validation check failed:", err);
+                status.innerText = "Error checking login status";
             }
         }
 

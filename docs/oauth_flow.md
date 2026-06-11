@@ -107,11 +107,6 @@ erDiagram
 - **Email is the Source of Truth**: We trust the OAuth provider (GitHub/Google) to have verified the email. If the emails match, we assume they are the same person.
 - **Verification**: If a manual account was unverified, logging in via OAuth automatically verifies it (since the provider verified it).
 
-## Security
-- **HTTP-only Cookies**: The internal JWTs are never exposed to client-side JavaScript, mitigating XSS risks.
-- **Gateway Proxying**: The frontend only communicates with port 3000. All routing and internal header injection (Internal Key) happens at the Gateway level.
-- **Hashed Refresh Tokens**: Refresh tokens are stored as bcrypt hashes in the database.
-
 ## Configuration Requirements
 The following must be set in `backend/.env`:
 - `GITHUB_CLIENT_ID`: From GitHub Developer Settings.

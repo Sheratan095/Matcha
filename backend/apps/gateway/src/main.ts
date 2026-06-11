@@ -23,6 +23,14 @@ async function bootstrap()
 {
 	const app = await NestFactory.create(AppModule);
 
+	// Enable CORS so the frontend (http://localhost:4000) can call gateway endpoints
+	app.enableCors({
+		origin: `${env.FRONTEND_URL}:${env.FRONTEND_PORT}`,
+		credentials: true,
+		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+		allowedHeaders: ['Content-Type', 'x-internal-key']
+	});
+
 	// Register proxy middleware directly on the Express app
 	app.use(
 		'/auth',

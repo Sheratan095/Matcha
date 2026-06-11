@@ -1,0 +1,10 @@
+{
+  "watch": ["**.js", ".env", "**.css", "**.json", "*.html"],
+  "ignore": ["node_modules", "*.log", "*.json"],
+  "ext": "js,json,env,css,html",
+  "verbose": false,
+  "delay": 1000,
+  "execMap": {
+    "js": "node --no-deprecation"
+  }
+}

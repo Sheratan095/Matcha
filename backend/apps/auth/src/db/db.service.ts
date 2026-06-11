@@ -55,6 +55,19 @@ export class DbService implements OnModuleInit
 		return (result.rows[0] ? new User(result.rows[0]) : undefined);
 	}
 
+	async getUserByOAuth(provider: string, providerId: string): Promise<User | undefined>
+	{
+		// Retrieve user details by joining with the oauth_accounts table.
+		const query = `
+			SELECT u.* 
+			FROM users u
+			JOIN oauth_accounts oa ON u.id = oa.user_id
+			WHERE oa.provider = $1 AND oa.provider_id = $2
+		`;
+		const result = await this.pool.query(query, [provider, providerId]);
+		return (result.rows[0] ? new User(result.rows[0]) : undefined);
+	}
+
 
 	// 	MODIFY USER METHODS
 
