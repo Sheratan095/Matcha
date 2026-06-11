@@ -23,7 +23,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github')
 	// IT RECEIVES THE ACCESS TOKEN, OPTIONAL REFRESH TOKEN, AND THE USER'S GITHUB PROFILE.
 	// They can be used to interact with GitHub's API if needed acting as client of github
 	//	we use just the profile info
-	async validate(accessToken: string, refreshToken: string, profile: Profile, done: (error: any, user: any, info?: any) => void): Promise<any>
+	async validate(profile: Profile, done: (error: any, user: any, info?: any) => void): Promise<any>
 	{
 		const { id, username, emails } = profile;
 

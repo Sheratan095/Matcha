@@ -29,10 +29,10 @@ export class AppService implements OnModuleInit
 		// infra/security/policies is at the root of the workspace
 		// Since we are running from backend/apps/auth, we need to go up to backend/ and then to infra/
 		await loadCommonPasswords('../../infra/security/policies/common-password.txt');
-		this.logger.log('Common passwords initialization check completed.');
+		this.logger.log('Common passwords initialization completed.');
 
 		await loadReservedUsernames('../../infra/security/policies/reserved-usernames.txt');
-		this.logger.log('Reserved usernames initialization check completed.');
+		this.logger.log('Reserved usernames initialization completed.');
 	}
 
 	async login(username: string, password: string, res: any)
@@ -41,10 +41,16 @@ export class AppService implements OnModuleInit
 		const user: User | undefined = await this.dbService.getUserByUsername(username);
 
 		if (!user)
+		{
+			this.logger.warn(`Failed login attempt for non-existent username: ${username}`);
 			throw new ForbiddenException('Invalid credentials');
+		}
 
 		if (!await comparePasswords(password, user.password_hash))
+		{
+			this.logger.warn(`Failed login attempt for user ${username} (ID: ${user.id})`);
 			throw new ForbiddenException('Invalid credentials');
+		}
 
 		if (user.email_verified === false)
 		{
@@ -107,11 +113,16 @@ export class AppService implements OnModuleInit
 		const verificationTokenRecord = await this.dbService.getVerificationTokenRecord(tokenPlain);
 
 		if (!verificationTokenRecord || new Date(verificationTokenRecord.expires_at) < new Date())
+		{
+			this.logger.warn(`Verification token attempt with invalid or expired token: ${tokenPlain}`);
 			throw new ForbiddenException('Invalid or expired verification token');
+		}
 
 		await this.dbService.markUserEmailVerified(verificationTokenRecord.user_id);
 
 		await this.dbService.deleteVerificationToken(verificationTokenRecord.user_id);
+
+		this.logger.log(`Email verified successfully for user ID ${verificationTokenRecord.user_id}`);
 
 		return ({ message: 'Email verified successfully', userId: verificationTokenRecord.user_id });
 	}
@@ -204,8 +215,6 @@ export class AppService implements OnModuleInit
 
 		await validatePassword(password, user.password_hash);
 
-		this.logger.debug(`Password reset for user ID ${user.id} passed validation checks. Proceeding with password update.`);
-
 		// Save and hash the new password, then invalidate the reset token
 		const passwordHash = await hashPassword(password);
 		await this.dbService.updateUserPassword(user.id, passwordHash);
@@ -215,6 +224,8 @@ export class AppService implements OnModuleInit
 
 		// Invalidate all existing tokens
 		await this.jwtHelper.revokeTokens(null, this.dbService, user.id);
+
+		this.logger.log(`Password reset successful for user ID ${user.id}`);
 
 		return ({ message: 'Password reset successfully' });
 	}
@@ -234,11 +245,13 @@ export class AppService implements OnModuleInit
 	
 		if (!user)
 		{
+			// REGISER NEW USER WITH THIS OAUTH IDENTITY
+
 			// Handle potential username collisions (GitHub username might already be used by someone else in our DB)
-			let finalUsername = username;
-			const existingByUsername = await this.dbService.getUserByUsername(username);
+			let finalUsername = username.toLowerCase().trim();
+			const existingByUsername = await this.dbService.getUserByUsername(finalUsername);
 			if (existingByUsername)
-				finalUsername = generateFallbackUsername(username);
+				finalUsername = generateFallbackUsername(finalUsername);
 
 			// If not found, we create a new user account and link the OAuth provider identity.
 			user = await this.dbService.createOAuthUser({
@@ -248,7 +261,7 @@ export class AppService implements OnModuleInit
 				providerId,
 			});
 
-			this.logger.log(`Created new user with ID ${user.id} for OAuth provider ${provider} (provider ID: ${providerId})`);
+			this.logger.log(`Created new user with ID ${user.id}, username: ${user.username} for OAuth provider ${provider} (provider ID: ${providerId})`);
 		}
 		else
 		{
@@ -256,7 +269,7 @@ export class AppService implements OnModuleInit
 			// to their existing account so they can log in via either method in the future.
 			await this.dbService.linkOAuthAccount(user.id, provider, providerId);
 
-			this.logger.log(`Linked existing user ID ${user.id} to OAuth provider ${provider} (provider ID: ${providerId})`);
+			this.logger.log(`Linked existing user ID ${user.id}, username: ${user.username} to OAuth provider ${provider} (provider ID: ${providerId})`);
 		}
 	
 		return (user);

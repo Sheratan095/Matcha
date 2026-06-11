@@ -51,7 +51,7 @@
 [x] Forbidden usernames
 	[x] Check for username lowercasing?
 
-[] Oauth shutty
+[x] Oauth shutty
 
 [] Update email address
 
