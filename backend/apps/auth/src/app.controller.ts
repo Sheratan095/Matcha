@@ -12,8 +12,6 @@ import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './d
 import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto, ResetPasswordDto, ResetPasswordResponseDto, ResetPasswordErrorDto } from './dto/passwordReset.dto';
 import { ChangeEmailDto, ChangeEmailResponseDto, ChangeEmailErrorDto } from './dto/changeEmail.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RefreshAuthGuard } from './guards/refresh-auth.guard';
-import { CurrentUser } from './decorators/current-user.decorator';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -51,14 +49,17 @@ export class AppController
 	}
 
 	@Post('change-email')
-	@UseGuards(JwtAuthGuard)
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Change email', description: 'Changes the user\'s email address (not implemented yet).' })
+	@UseGuards(JwtAuthGuard) // This guard checks for a valid access token in the request cookies and extracts the user ID.
+	@ApiOperation({ summary: 'Change email', description: 'Changes the user\'s email address.' })
+	@ApiCookieAuth('access_token')
 	@ApiResponse({ status: 200, type: ChangeEmailResponseDto, description: 'Email change successful (placeholder)' })
 	@ApiResponse({ status: 400, type: ChangeEmailErrorDto, description: 'Invalid email address' })
-	async changeEmail(@Body() req: ChangeEmailDto, @CurrentUser() user: any)
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	async changeEmail(@Body() req: ChangeEmailDto, @Request() request: any)
 	{
-		return (await this.appService.changeEmail(user.id, req.newEmail));
+		// The JwtAuthGuard attaches the userId to the request object
+		return (await this.appService.changeEmail(request.userId, req.newEmail));
 	}
 
 	@Post('verify-email')
@@ -87,14 +88,15 @@ export class AppController
 	}
 
 	@Post('refresh')
-	@UseGuards(RefreshAuthGuard)
 	@HttpCode(HttpStatus.OK)
 	@ApiCookieAuth('refresh_token')
 	@ApiOperation({ summary: 'Refresh JWT token', description: 'Uses refresh token cookie to generate and set new access and refresh cookies.' })
 	@ApiResponse({ status: 200, type: RefreshResponseDto, description: 'Tokens refreshed and cookies set' })
 	@ApiResponse({ status: 403, type: RefreshErrorDto, description: 'Invalid or missing refresh token' })
-	async refreshTokens(@CurrentUser() user: any, @Request() req: any, @Res({ passthrough: true }) res: Response)
+	// Passthrough allows us to set cookies in the service layer while still returning a standard response body from the controller method.
+	async refreshTokens(@Request() req: any, @Res({ passthrough: true }) res: Response)
 	{
+		const user = req.user; // The user ID is extracted from the refresh token by the InternalKeyGuard
 		return (await this.appService.refreshTokens(user.id, req.cookies.refresh_token, res));
 	}
 

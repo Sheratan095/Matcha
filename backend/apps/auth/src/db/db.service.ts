@@ -160,6 +160,13 @@ export class DbService implements OnModuleInit
 		await this.pool.query('UPDATE users SET email = $1, email_verified = FALSE WHERE id = $2', [newEmail, userId]);
 	}
 
+	async emailExists(email: string): Promise<boolean>
+	{
+		// Check if an email already exists in the database. This is a helper method for validation during registration and email change.
+		const result = await this.pool.query('COUNT(*) FROM users WHERE email = $1', [email]);
+		return (parseInt(result.rows[0].count) > 0);
+	}
+
 
 	// FORGOT + RESET PASSWORD MANAGEMENT METHODS
 
