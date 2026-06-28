@@ -163,7 +163,7 @@ export class DbService implements OnModuleInit
 	async emailExists(email: string): Promise<boolean>
 	{
 		// Check if an email already exists in the database. This is a helper method for validation during registration and email change.
-		const result = await this.pool.query('COUNT(*) FROM users WHERE email = $1', [email]);
+		const result = await this.pool.query('SELECT COUNT(*) FROM users WHERE email = $1', [email]);
 		return (parseInt(result.rows[0].count) > 0);
 	}
 

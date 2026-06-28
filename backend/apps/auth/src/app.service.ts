@@ -88,7 +88,7 @@ export class AppService implements OnModuleInit
 
 			await issueVerificationToken(newUser, this.dbService, this.httpService, this.logger);
 
-			return { message: 'Email verification required', date: new Date(), userId: newUser.id };
+			return ({ message: 'Email verification required', date: new Date(), userId: newUser.id });
 		}
 		catch (error: any)
 		{
@@ -116,6 +116,8 @@ export class AppService implements OnModuleInit
 			this.logger.warn(`Email change attempt for non-existent user ID: ${userId}`);
 			throw new ForbiddenException('User not found');
 		}
+
+		this.logger.debug(user.toObject());
 
 		// Check if the new email is already in use by another account
 		if (await this.dbService.emailExists(newEmail))

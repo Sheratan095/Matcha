@@ -9,7 +9,7 @@ import { HttpService } from "@nestjs/axios/dist/http.service";
 import { sendEmailVerification, sendForgotPasswordEmail } from "./notification";
 import { JwtHelper } from "./jwt";
 import { User } from "@repo/shared-types";
-import { hashToken, compareTokens } from "./tokenHash";
+import { hashToken } from "./tokenHash";
 
 // This is called both during login/registration and token refresh to avoid code duplication
 export async function issueJwtTokens(user: User, res: any, dbService: DbService, jwtHelper: JwtHelper, httpService: HttpService, logger: Logger)

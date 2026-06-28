@@ -70,4 +70,14 @@ export class JwtHelper
 		// Payload should contain the user ID in the 'sub' claim as per our generateTokens method
 		return (payload.sub);
 	}
+
+	// Return the user ID from the refresh token
+	async validateRefreshToken(token: string) : Promise<string>
+	{
+		const payload = await this.jwtService.verifyAsync(token, {
+			secret: env.JWT_REFRESH_SECRET,
+		});
+
+		return (payload.sub);
+	}
 }

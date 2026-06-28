@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus, Logger, ForbiddenException } from '@nestjs/common';
 import { Response } from 'express';
 import { AppService } from './app.service';
 import { InternalKeyGuard } from '@repo/utils';
@@ -12,6 +12,7 @@ import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './d
 import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto, ResetPasswordDto, ResetPasswordResponseDto, ResetPasswordErrorDto } from './dto/passwordReset.dto';
 import { ChangeEmailDto, ChangeEmailResponseDto, ChangeEmailErrorDto } from './dto/changeEmail.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { JwtHelper } from './utils/jwt';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -22,8 +23,10 @@ export class AppController
 {
 	private readonly logger = new Logger("AUTH Controller");
 
-	constructor(private readonly appService: AppService)
-	{ }
+	constructor(
+		private readonly appService: AppService,
+		private readonly jwtHelper: JwtHelper,
+	) { }
 
 	@Get('health')
 	getHealth(): string
@@ -96,8 +99,12 @@ export class AppController
 	// Passthrough allows us to set cookies in the service layer while still returning a standard response body from the controller method.
 	async refreshTokens(@Request() req: any, @Res({ passthrough: true }) res: Response)
 	{
-		const user = req.user; // The user ID is extracted from the refresh token by the InternalKeyGuard
-		return (await this.appService.refreshTokens(user.id, req.cookies.refresh_token, res));
+		const refreshToken = req.cookies?.refresh_token;
+
+		// If the refresh token is missing, throw a 403 Forbidden error
+		const userId = await this.jwtHelper.validateRefreshToken(refreshToken).catch(() => { throw new ForbiddenException('Invalid refresh token'); });
+
+		return (await this.appService.refreshTokens(userId, refreshToken, res));
 	}
 
 	@Post('logout')
