@@ -87,9 +87,3 @@ export class RegisterErrorDto
 	@ApiProperty({ example: 'User/Email already exists' })
 	message: string;
 }
-
-export class LogoutResponseDto
-{
-	@ApiProperty({ example: 'Logged out successfully' })
-	message: string;
-}

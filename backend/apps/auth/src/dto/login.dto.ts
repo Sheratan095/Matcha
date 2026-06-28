@@ -45,3 +45,9 @@ export class LoginErrorDto
 	@ApiProperty({ example: '/auth/login' })
 	path: string;
 }
+
+export class LogoutResponseDto
+{
+	@ApiProperty({ example: 'Logged out successfully' })
+	message: string;
+}

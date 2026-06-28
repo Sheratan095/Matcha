@@ -121,7 +121,7 @@ export class DbService implements OnModuleInit
 	}
 
 
-	// EMAIL VERIFICATION MANAGEMENT METHODS
+	// EMAIL VERIFICATION MANAGEMENT METHODS + CHANGE EMAIL METHODS
 
 	async saveVerificationToken(userId: string, tokenHash: string, expiresAt: Date)
 	{
@@ -151,6 +151,13 @@ export class DbService implements OnModuleInit
 				return (row);
 
 		return (null);
+	}
+
+	async updateUserEmail(userId: string, newEmail: string)
+	{
+		// Update the user's email in the database. This is a helper method for changing email addresses.
+		// Automatically sets email_verified to FALSE since the new email hasn't been verified yet.
+		await this.pool.query('UPDATE users SET email = $1, email_verified = FALSE WHERE id = $2', [newEmail, userId]);
 	}
 
 

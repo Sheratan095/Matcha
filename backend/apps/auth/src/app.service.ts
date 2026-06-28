@@ -108,6 +108,34 @@ export class AppService implements OnModuleInit
 		}
 	}
 
+	async changeEmail(userId: string, newEmail: string)
+	{
+		// Check if the new email is already in use by another account
+		const existingUser = await this.dbService.getUserByEmail(newEmail);
+		if (existingUser && existingUser.id !== userId)
+		{
+			this.logger.warn(`Email change attempt to an already used email: ${newEmail} by user ID ${userId}`);
+			throw new ConflictException('Email already in use');
+		}
+
+		const user = await this.dbService.getUserById(userId);
+		if (!user)
+		{
+			this.logger.warn(`Email change attempt for non-existent user ID: ${userId}`);
+			throw new ForbiddenException('User not found');
+		}
+
+		// Update the user's email and mark it as unverified
+		await this.dbService.updateUserEmail(userId, newEmail);
+
+		// Issue a new verification token for the new email address
+		await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
+
+		this.logger.log(`Email change initiated for user ID ${userId}. New email: ${newEmail}`);
+
+		return { message: 'Email change initiated. Please verify your new email address.' };
+	}
+
 	async verifyEmail(tokenPlain: string, res: any)
 	{
 		const verificationTokenRecord = await this.dbService.getVerificationTokenRecord(tokenPlain);

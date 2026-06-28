@@ -5,11 +5,15 @@ import { InternalKeyGuard } from '@repo/utils';
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { env } from '@repo/config';
-import { RegisterDto, RegisterResponseDto, RegisterErrorDto, LogoutResponseDto } from './dto/register.dto';
-import { LoginDto, LoginResponseDto, LoginErrorDto } from './dto/login.dto';
+import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
+import { LoginDto, LoginResponseDto, LoginErrorDto, LogoutResponseDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto, ValidateTokenResponseDto } from './dto/refresh.dto';
 import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './dto/verify_email.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto, ResetPasswordDto, ResetPasswordResponseDto, ResetPasswordErrorDto } from './dto/passwordReset.dto';
+import { ChangeEmailDto, ChangeEmailResponseDto, ChangeEmailErrorDto } from './dto/changeEmail.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RefreshAuthGuard } from './guards/refresh-auth.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -46,6 +50,17 @@ export class AppController
 		return (await this.appService.register(req.email, req.username, req.password, req.language, req.firstName, req.lastName, res));
 	}
 
+	@Post('change-email')
+	@UseGuards(JwtAuthGuard)
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Change email', description: 'Changes the user\'s email address (not implemented yet).' })
+	@ApiResponse({ status: 200, type: ChangeEmailResponseDto, description: 'Email change successful (placeholder)' })
+	@ApiResponse({ status: 400, type: ChangeEmailErrorDto, description: 'Invalid email address' })
+	async changeEmail(@Body() req: ChangeEmailDto, @CurrentUser() user: any)
+	{
+		return (await this.appService.changeEmail(user.id, req.newEmail));
+	}
+
 	@Post('verify-email')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Verify user email', description: 'Verifies the user\'s email address using the provided token.' })
@@ -72,14 +87,15 @@ export class AppController
 	}
 
 	@Post('refresh')
+	@UseGuards(RefreshAuthGuard)
 	@HttpCode(HttpStatus.OK)
 	@ApiCookieAuth('refresh_token')
 	@ApiOperation({ summary: 'Refresh JWT token', description: 'Uses refresh token cookie to generate and set new access and refresh cookies.' })
 	@ApiResponse({ status: 200, type: RefreshResponseDto, description: 'Tokens refreshed and cookies set' })
 	@ApiResponse({ status: 403, type: RefreshErrorDto, description: 'Invalid or missing refresh token' })
-	async refreshTokens(@Request() req: any, @Res({ passthrough: true }) res: Response)
+	async refreshTokens(@CurrentUser() user: any, @Request() req: any, @Res({ passthrough: true }) res: Response)
 	{
-		return (await this.appService.refreshTokens(req.body.userId, req.cookies.refresh_token, res));
+		return (await this.appService.refreshTokens(user.id, req.cookies.refresh_token, res));
 	}
 
 	@Post('logout')
