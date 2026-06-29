@@ -63,3 +63,5 @@
 
 [] Remove a previously given “like”. This will prevent further notifications from that
 user, and the chat function between them will be disabled.
+
+[x] login with not verified email doesn't works,should sent another code

@@ -128,7 +128,7 @@ export class DbService implements OnModuleInit
 		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one verification token is stored per user.
 		await this.pool.query(`
 			INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)
-			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, created_at = CURRENT_TIMESTAMP
+			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, expires_at = EXCLUDED.expires_at, created_at = CURRENT_TIMESTAMP
 		`, [userId, tokenHash, expiresAt]);
 	}
 
@@ -175,7 +175,7 @@ export class DbService implements OnModuleInit
 		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one forgot password token is stored per user.
 		await this.pool.query(`
 			INSERT INTO forgot_password_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)
-			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, created_at = CURRENT_TIMESTAMP
+			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, expires_at = EXCLUDED.expires_at, created_at = CURRENT_TIMESTAMP
 		`, [userId, tokenHash, expiresAt]);
 	}
 
