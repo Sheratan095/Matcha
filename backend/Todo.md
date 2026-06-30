@@ -1,4 +1,4 @@
-[] Graph-oriented database: don't need it
+[x] Graph-oriented database: don't need it
 
 [x] auth jwt
 
@@ -53,7 +53,7 @@
 
 [x] Oauth shutty
 
-[] Update email address
+[x] Update email address
 
 [x] Trim all dtos
 
