@@ -1,4 +1,4 @@
-import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { SupportedLanguage } from '@repo/shared-types';
 import { DbService } from './db/db.service';
@@ -48,7 +48,7 @@ export class AppService implements OnModuleInit
 
 		if (!await comparePasswords(password, user.password_hash))
 		{
-			this.logger.warn(`Failed login attempt for user ${username} (ID: ${user.id})`);
+			this.logger.warn(`Failed login attempt [wrong password] for user ${username} (ID: ${user.id})`);
 			throw new ForbiddenException('Invalid credentials');
 		}
 
@@ -117,7 +117,11 @@ export class AppService implements OnModuleInit
 			throw new ForbiddenException('User not found');
 		}
 
-		this.logger.debug(user.toObject());
+		if (user.email === newEmail)
+		{
+			this.logger.warn(`Email change attempt for same email: ${newEmail} for user ID: ${userId}`);
+			throw new BadRequestException('New email is the same as the current email');
+		}
 
 		// Check if the new email is already in use by another account
 		if (await this.dbService.emailExists(newEmail))
@@ -126,13 +130,14 @@ export class AppService implements OnModuleInit
 			throw new ConflictException('Email already exists');
 		}
 
-		// Update the user's email and mark it as unverified
-		await this.dbService.updateUserEmail(userId, newEmail);
+		// Store the new email as pending; the active (verified) email is left untouched
+		// until the user verifies ownership of the new address.
+		await this.dbService.setPendingEmail(userId, newEmail);
 
-		// Issue a new verification token for the new email address
-		await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
+		this.logger.log(`Email change initiated for user ID ${userId}. ${user.email} -> ${newEmail}`);
 
-		this.logger.log(`Email change initiated for user ID ${userId}. New email: ${newEmail}`);
+		// Issue a new verification token, sent to the new (pending) address
+		await issueVerificationToken(user, this.dbService, this.httpService, this.logger, newEmail);
 
 		return ({ message: 'Email change initiated. Please verify your new email address.' });
 	}
@@ -175,6 +180,8 @@ export class AppService implements OnModuleInit
 			throw new ForbiddenException('User not found');
 
 		await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
+
+		this.logger.log(`Tokens refreshed successfully for user ID ${userId}`);
 
 		return ({ message: 'Tokens refreshed', userId });
 	}

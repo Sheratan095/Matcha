@@ -8,6 +8,7 @@ export interface IUser {
 	id: string;
 	username: string;
 	email: string;
+	pending_email: string | null;
 	password_hash: string;
 	email_verified: boolean;
 	language: SupportedLanguage;
@@ -25,6 +26,7 @@ export class User implements IUser
 	id: string;
 	username: string;
 	email: string;
+	pending_email: string | null;
 	password_hash: string;
 	email_verified: boolean;
 	language: SupportedLanguage;
@@ -38,6 +40,7 @@ export class User implements IUser
 		this.id = data.id;
 		this.username = data.username;
 		this.email = data.email;
+		this.pending_email = data.pending_email || null;
 		this.password_hash = data.password_hash;
 		this.email_verified = data.email_verified;
 		this.language = data.language;
@@ -94,6 +97,7 @@ export class User implements IUser
 			id: this.id,
 			username: this.username,
 			email: this.email,
+			pending_email: this.pending_email,
 			password_hash: this.password_hash,
 			email_verified: this.email_verified,
 			language: this.language,

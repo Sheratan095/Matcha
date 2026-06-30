@@ -81,8 +81,16 @@ export class DbService implements OnModuleInit
 
 	async markUserEmailVerified(userId: string)
 	{
-		// Update the user's record in the database to mark their email as verified. This is a helper method for email verification.
-		await this.pool.query('UPDATE users SET email_verified = TRUE WHERE id = $1', [userId]);
+		// Update the user's record in the database to mark their email as verified.
+		// If a pending_email is set (email change flow), it replaces the active email and is cleared.
+		// Otherwise (initial registration flow), this just flips email_verified to TRUE.
+		await this.pool.query(`
+			UPDATE users
+			SET email = COALESCE(pending_email, email), pending_email = NULL, email_verified = TRUE
+			WHERE id = $1
+		`, [userId]);
+		// COALESCE is used to choose the pending_email if it exists; otherwise, it keeps the current email.
+		//	This ensures that the email change process is handled correctly.
 	}
 
 
@@ -153,11 +161,11 @@ export class DbService implements OnModuleInit
 		return (null);
 	}
 
-	async updateUserEmail(userId: string, newEmail: string)
+	async setPendingEmail(userId: string, pendingEmail: string)
 	{
-		// Update the user's email in the database. This is a helper method for changing email addresses.
-		// Automatically sets email_verified to FALSE since the new email hasn't been verified yet.
-		await this.pool.query('UPDATE users SET email = $1, email_verified = FALSE WHERE id = $2', [newEmail, userId]);
+		// Store the requested new email as "pending" without touching the active, already-verified email.
+		// It only becomes the active email once the user verifies it (see markUserEmailVerified).
+		await this.pool.query('UPDATE users SET pending_email = $1 WHERE id = $2', [pendingEmail, userId]);
 	}
 
 	async emailExists(email: string): Promise<boolean>

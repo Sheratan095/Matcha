@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
 	password_hash VARCHAR(128), -- NULL FOR OAUTH USERS
 
 	email VARCHAR(100) UNIQUE NOT NULL,
+	pending_email VARCHAR(100), -- New email awaiting verification before it replaces "email"
 	email_verified BOOLEAN DEFAULT FALSE, -- Will be set to true after email verification
 
 	created_at TIMESTAMPTZ DEFAULT NOW(),

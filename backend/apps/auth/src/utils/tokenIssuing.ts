@@ -24,8 +24,12 @@ export async function issueJwtTokens(user: User, res: any, dbService: DbService,
 	await dbService.saveRefreshToken(user.id, hashedRefreshToken, tokens.refresh_token_expires_at);
 }
 
-export async function issueVerificationToken(user: User, dbService: DbService, httpService: HttpService, logger: Logger)
+// targetEmail lets callers send the verification link to an address other than user.email
+// (e.g. during an email change, where the new address isn't active yet)
+export async function issueVerificationToken(user: User, dbService: DbService, httpService: HttpService, logger: Logger, targetEmail?: string)
 {
+	const recipientEmail = targetEmail || user.email;
+
 	// Generate a secure random token for email verification
 	const token = randomBytes(env.EMAIL_VERIFICATION_TOKEN_LENGTH).toString('hex');
 	// Set the token expiration
@@ -43,7 +47,7 @@ export async function issueVerificationToken(user: User, dbService: DbService, h
 		attempts++;
 		try
 		{
-			await sendEmailVerification(user.email, token, user.language, httpService);
+			await sendEmailVerification(recipientEmail, token, user.language, httpService);
 			sent = true;
 		}
 		catch (error)
@@ -53,7 +57,7 @@ export async function issueVerificationToken(user: User, dbService: DbService, h
 	}
 
 	if (!sent)
-		logger.error(`Failed to send verification email after ${attempts} attempts for user ID ${user.id} and email ${user.email}`);
+		logger.error(`Failed to send verification email after ${attempts} attempts for user ID ${user.id} and email ${recipientEmail}`);
 }
 
 export async function issueForgotPasswordToken(user: User, dbService: DbService, httpService: HttpService, logger: Logger)
