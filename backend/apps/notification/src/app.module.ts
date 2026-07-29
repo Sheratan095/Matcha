@@ -4,7 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MailerService } from './mail/mailer.service';
 import { env } from '@repo/config';
-import { NotificationGateway } from './websocket.gateway';
+import { NotificationGateway } from './websocket/gateway.ws';
 
 @Module({
 	imports: [
