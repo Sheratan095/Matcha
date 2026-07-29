@@ -1,13 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { env } from "@repo/config";
-import { createProxyMiddleware, Options } from 'http-proxy-middleware';
-import { IncomingMessage, ServerResponse, ClientRequest } from 'http';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import { ClientRequest, IncomingMessage, ServerResponse } from 'http';
 import { setupSwagger } from './swagger';
 import { Microservice } from './Models/Microservice';
 import { Logger } from '@nestjs/common';
+import { createNotificationSocketProxy, isNotificationSocketRequest } from './websocketGateway';
 
 const logger = new Logger('GatewayBootstrap');
+
+const notificationSocketProxy = createNotificationSocketProxy(logger);
 
 // List of all microservices and their ports
 // This is where you would add more services as you build them out (eg. UserService, ProductService, etc.)
@@ -87,6 +90,26 @@ async function bootstrap()
 			pathRewrite: { '^/notification/health': '/health' },
 		} as any),
 	);
+
+	// Handle WebSocket upgrade requests for the notification service
+	app.use((req: IncomingMessage, res: ServerResponse, next: () => void) =>
+	{
+		// If the request is not for the notification WebSocket, ignore it
+		if (!isNotificationSocketRequest(req.url))
+			return;
+
+		notificationSocketProxy(req as any, res as any, next);
+	});
+
+	// Handle WebSocket upgrade requests for the notification service
+	app.getHttpServer().on('upgrade', (req: IncomingMessage, socket: NodeJS.Socket, head: Buffer) =>
+	{
+		// If the request is not for the notification WebSocket, ignore it
+		if (!isNotificationSocketRequest(req.url))
+			return;
+
+		notificationSocketProxy.upgrade(req as any, socket as any, head);
+	});
 
 	setupSwagger(app, services);
 
