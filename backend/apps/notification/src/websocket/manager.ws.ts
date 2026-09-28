@@ -51,6 +51,13 @@ export class WsManager
 		}
 	}
 
+	// public method to get the total number of unique users currently connected via WebSocket
+	count(): number
+	{
+		// if a user has multiple sockets, we only want to COUNT THEM ONCE, so we return the size of the clients map
+		return (this.clients.size);
+	}
+
 	//-------------------------------------UTILS-------------------------------------
 
 	getSocketsByUserId(userId: string): Set<Socket> | undefined

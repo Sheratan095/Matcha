@@ -36,4 +36,9 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 		this.wsManager.removeClient(client);
 	}
 
+	public count(): number
+	{
+		return (this.wsManager.count());
+	}
+
 }

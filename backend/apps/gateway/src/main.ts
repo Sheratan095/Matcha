@@ -35,8 +35,7 @@ async function bootstrap()
 	});
 
 	// Register proxy middleware directly on the Express app
-	app.use(
-		'/auth',
+	app.use( '/auth',
 		createProxyMiddleware({
 			target: `${env.AUTH_HOST}:${env.AUTH_PORT}`,
 
@@ -73,30 +72,44 @@ async function bootstrap()
 	);
 
 	// Not all endpoints are proxied because other are internal and not exposed o the outside
-	app.use(
-		'/notification/docs-json',
+	// Express strips the mount path before passing to middleware, so the proxy sees '/' not the full path
+	app.use( '/notification/docs-json',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
 			changeOrigin: true,
-			pathRewrite: { '^/notification/docs-json': '/docs-json' },
+			pathRewrite: { '^/': '/docs-json' },
 		}),
 	);
 
-	app.use(
-		'/notification/health',
+	app.use( '/notification/health',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
 			changeOrigin: true,
-			pathRewrite: { '^/notification/health': '/health' },
+			pathRewrite: { '^/': '/health' },
+		} as any),
+	);
+
+	app.use( '/notification/online',
+		createProxyMiddleware({
+			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			changeOrigin: true,
+			pathRewrite: { '^/': '/online' },
+			on:
+			{
+				proxyReq: (proxyReq: ClientRequest) =>
+				{
+					if (env.INTERNAL_KEY)
+						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
+				},
+			},
 		} as any),
 	);
 
 	// Handle WebSocket upgrade requests for the notification service
 	app.use((req: IncomingMessage, res: ServerResponse, next: () => void) =>
 	{
-		// If the request is not for the notification WebSocket, ignore it
 		if (!isNotificationSocketRequest(req.url))
-			return;
+			return (next());
 
 		notificationSocketProxy(req as any, res as any, next);
 	});

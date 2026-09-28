@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
+import { WsGateway } from './websocket/gateway.ws';
 
 @Injectable()
 export class AppService
 {
 	private readonly logger = new Logger("NOTIFICATION AppService");
 
-	constructor(private readonly mailerService: MailerService) {}
+	constructor(
+		private readonly mailerService: MailerService,
+		private readonly wsGateway: WsGateway,
+	) {}
 
 
 	async sendVerificationEmail(email: string, token: string, language: SupportedLanguage = SupportedLanguages.ENGLISH)
@@ -22,5 +26,10 @@ export class AppService
 		await this.mailerService.sendForgotPasswordEmail(email, token, language);
 
 		return ('Sending forgot password email to ' + email + ' with token ' + token);
+	}
+
+	async getOnlineUsers()
+	{
+		return (this.wsGateway.count());
 	}
 }

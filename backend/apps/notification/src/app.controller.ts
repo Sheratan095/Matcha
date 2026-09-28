@@ -45,4 +45,14 @@ export class AppController
 	{
 		return (this.appService.sendForgotPasswordEmail(req.email, req.token, req.language));
 	}
+
+	@Get('online')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Get number of online users - INTERNAL 🔒', description: 'Returns the number of active WebSocket connections to the notification service.' })
+	@ApiResponse({ status: 200, description: 'Number of online users retrieved successfully' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	getOnlineUsers()
+	{
+		return (this.appService.getOnlineUsers());
+	}
 }
