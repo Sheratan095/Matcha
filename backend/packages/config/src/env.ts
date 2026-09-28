@@ -30,6 +30,9 @@ const envSchema = z.object({
 	NOTIFICATION_HOST: z.string().default("http://localhost"),
 	NOTIFICATION_PORT: z.coerce.number().default(3002),
 
+	PROFILE_HOST: z.string().default("http://localhost"),
+	PROFILE_PORT: z.coerce.number().default(3003),
+
 	// Database
 	DATABASE_URL: z.string(), // connection string
 	POSTGRES_HOST: z.string().default("localhost"),

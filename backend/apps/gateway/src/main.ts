@@ -18,6 +18,7 @@ const	services : Microservice[] =
 [
 	new Microservice('auth', env.AUTH_HOST, env.AUTH_PORT, '/auth/docs-json'),
 	new Microservice('notification', env.NOTIFICATION_HOST, env.NOTIFICATION_PORT, '/notification/docs-json'),
+	new Microservice('profile', env.PROFILE_HOST, env.PROFILE_PORT, '/profile/docs-json'),
 ];
 
 // This is the bootstrap file, it imports NestFactory and you root module to spin up the http server
@@ -56,6 +57,41 @@ async function bootstrap()
 				proxyReq: (proxyReq : ClientRequest, _req: Request, _res: Response) =>
 				{
 					// Add the internal key to the headers of all proxied requests for authentication between services
+					const	internalKey = env.INTERNAL_KEY;
+					if (internalKey)
+						proxyReq.setHeader('x-internal-key', internalKey);
+				},
+
+				// Specify what to do in case of an error when proxying the request to the target service
+				error: (err : Error, _req: Request, _res: Response) =>
+				{
+					logger.error('Proxy Error:', err);
+				}
+			},
+
+		} as any),
+	);
+
+	// Remove the /profile prefix when forwarding to the profile service
+	//	so the profile service can define its routes as /me, /pictures, etc. instead of /profile/me, /profile/pictures
+	app.use( '/profile',
+		createProxyMiddleware({
+			target: `${env.PROFILE_HOST}:${env.PROFILE_PORT}`,
+
+			// Change the origin of the host header to the target URL
+			changeOrigin: true,
+
+			pathRewrite:
+			{
+				'^/profile': '',
+			},
+
+			// Add event handlers for the proxy
+			on:
+			{
+				// Add the internal key to the headers of all proxied requests for authentication between services
+				proxyReq: (proxyReq : ClientRequest, _req: Request, _res: Response) =>
+				{
 					const	internalKey = env.INTERNAL_KEY;
 					if (internalKey)
 						proxyReq.setHeader('x-internal-key', internalKey);

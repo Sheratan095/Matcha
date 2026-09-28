@@ -58,6 +58,18 @@ services:
     depends_on:
       - postgres
 
+  profile:
+    build:
+      context: .
+      dockerfile: apps/profile/Dockerfile
+    ports:
+      - "${PROFILE_PORT:-3003}:3003"
+    environment:
+      PROFILE_PORT: 3003
+      TZ: ${TZ}
+    depends_on:
+      - postgres
+
 volumes:
   # Persistent volume for PostgreSQL data
   postgres_data:
