@@ -29,5 +29,18 @@ export class DbService implements OnModuleInit
 		return (this.pool.query(text, params));
 	}
 
-	// TO DO profile db methods (read/write profiles, interest_tags, user_interests, user_pictures)
+	// Insert a new profile row for the given user. first_name / last_name are optional
+	// at creation (the user fills the rest of the profile in later).
+	// RETURNING * exposes all columns in case the caller needs them.
+	async createProfile(userId: number, firstName?: string, lastName?: string)
+	{
+		const result = await this.pool.query(
+			'INSERT INTO profiles (user_id, first_name, last_name) VALUES ($1, $2, $3) RETURNING *',
+			[userId, firstName ?? null, lastName ?? null]
+		);
+
+		return (result.rows[0]);
+	}
+
+	// TO DO more profile db methods (read/update profiles, interest_tags, user_interests, user_pictures)
 }

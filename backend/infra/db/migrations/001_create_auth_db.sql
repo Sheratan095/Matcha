@@ -13,8 +13,6 @@ CREATE TABLE IF NOT EXISTS users (
 	updated_at TIMESTAMPTZ DEFAULT NOW(),
 
 	language VARCHAR(10) DEFAULT 'en',
-	first_name VARCHAR(50),
-	last_name VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS oauth_accounts (

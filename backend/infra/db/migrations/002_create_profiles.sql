@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS profiles (
 	created_at TIMESTAMPTZ DEFAULT NOW(),
 	updated_at TIMESTAMPTZ DEFAULT NOW(),
 
+	first_name VARCHAR(50),
+	last_name VARCHAR(50),
+
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

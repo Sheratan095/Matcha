@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { DbService } from './db/db.service';
 
@@ -16,5 +16,28 @@ export class AppService
 			private readonly httpService: HttpService )
 	{}
 
-	// TO DO profile business logic (get profile, update gender/preferences/biography, manage interests, manage pictures)
+	// Called internally by the AUTH service after a user is registered, to create
+	// the matching profile row (1:1 with the user).
+	async createProfile(userId: number, firstName?: string, lastName?: string)
+	{
+		try
+		{
+			await this.dbService.createProfile(userId, firstName, lastName);
+
+			this.logger.log(`Profile created for user ID ${userId}`);
+
+			return ({ message: 'Profile created', userId });
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error creating profile for user ID ${userId}`, error);
+
+			// PostgreSQL unique violation error code is '23505' (profile already exists for this user)
+			if (error && error.code === '23505')
+				throw new ConflictException('Profile already exists');
+
+			// Fallback for other DB / unexpected errors
+			throw new InternalServerErrorException('Profile creation failed');
+		}
+	}
 }

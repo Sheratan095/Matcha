@@ -7,6 +7,7 @@ import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from
 import { User } from '@repo/shared-types';
 import { hashPassword, comparePasswords, loadCommonPasswords, validatePassword } from './utils/password';
 import { loadReservedUsernames, validateUsername, generateFallbackUsername } from './utils/username';
+import { createUserProfile } from './utils/profile';
 
 // Services contain the core business logic like the db calls
 
@@ -79,12 +80,18 @@ export class AppService implements OnModuleInit
 
 		try
 		{
-			const newUser: User = await this.dbService.createUser(email, username, passwordHash, language, firstName, lastName);
+			const newUser: User = await this.dbService.createUser(email, username, passwordHash, language);
 
 			// TOKENS ARE ISSUED AFTER EMAIL VERIFICATION AND THEN LOGIN, NOT DURING REGISTRATION
 			// await this.issueJwtTokens(newUser.id, res);
 
 			this.logger.log(`User registered with email ${email} and username ${username}, assigned ID ${newUser.id}`);
+
+			// Create the matching profile row (1:1 with the user) in the profile service.
+			// first/last name live in the profiles table, so they are passed along here.
+			await createUserProfile(Number(newUser.id), firstName, lastName, this.httpService);
+
+			this.logger.log(`Profile created for user ID ${newUser.id}`);
 
 			await issueVerificationToken(newUser, this.dbService, this.httpService, this.logger);
 

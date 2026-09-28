@@ -71,11 +71,11 @@ export class DbService implements OnModuleInit
 
 	// 	MODIFY USER METHODS
 
-	async createUser(email: string, username: string, passwordHash: string, language: SupportedLanguage, firstName: string, lastName: string) : Promise<User | undefined> 
+	async createUser(email: string, username: string, passwordHash: string, language: SupportedLanguage) : Promise<User | undefined> 
 	{
 		// Insert a new user into the database with the provided email, username, and password hash. This is a helper method for user registration.
 		// RETURNING * ensures all user fields are available for constructing the User object
-		const result = await this.pool.query('INSERT INTO users (email, username, password_hash, language, first_name, last_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *', [email, username, passwordHash, language, firstName, lastName]);
+		const result = await this.pool.query('INSERT INTO users (email, username, password_hash, language) VALUES ($1, $2, $3, $4) RETURNING *', [email, username, passwordHash, language]);
 		return (result.rows[0] ? new User(result.rows[0]) : undefined);
 	}
 
