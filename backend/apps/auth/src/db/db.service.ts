@@ -93,6 +93,12 @@ export class DbService implements OnModuleInit
 		//	This ensures that the email change process is handled correctly.
 	}
 
+	async deleteUser(userId: string)
+	{
+		// Delete the user from the database. This is a helper method for account deletion.
+		await this.pool.query('DELETE FROM users WHERE id = $1', [userId]);
+	}
+
 
 	//	JWT TOKEN MANAGEMENT METHODS
 

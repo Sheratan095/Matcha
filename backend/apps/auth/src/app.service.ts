@@ -85,13 +85,23 @@ export class AppService implements OnModuleInit
 			// TOKENS ARE ISSUED AFTER EMAIL VERIFICATION AND THEN LOGIN, NOT DURING REGISTRATION
 			// await this.issueJwtTokens(newUser.id, res);
 
+			try
+			{
+				// Create the matching profile row (1:1 with the user) in the profile service.
+				// first/last name live in the profiles table, so they are passed along here.
+				await createUserProfile(Number(newUser.id), firstName, lastName, this.httpService);
+				this.logger.log(`Profile created for user ID ${newUser.id}`);
+
+			}
+			catch (error)
+			{
+				this.logger.error('Error creating user profile -> consequential removing of user entity from db ', error);
+				await this.dbService.deleteUser(newUser.id);
+
+				throw new InternalServerErrorException('Failed to create user profile');
+			}
+
 			this.logger.log(`User registered with email ${email} and username ${username}, assigned ID ${newUser.id}`);
-
-			// Create the matching profile row (1:1 with the user) in the profile service.
-			// first/last name live in the profiles table, so they are passed along here.
-			await createUserProfile(Number(newUser.id), firstName, lastName, this.httpService);
-
-			this.logger.log(`Profile created for user ID ${newUser.id}`);
 
 			await issueVerificationToken(newUser, this.dbService, this.httpService, this.logger);
 
