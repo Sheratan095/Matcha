@@ -95,8 +95,9 @@ export class AppService implements OnModuleInit
 			}
 			catch (error)
 			{
-				this.logger.error('Error creating user profile -> consequential removing of user entity from db ', error);
 				await this.dbService.deleteUser(newUser.id);
+
+				this.logger.error('Error creating user profile -> consequential removing of user entity from db ', error);
 
 				throw new InternalServerErrorException('Failed to create user profile');
 			}
