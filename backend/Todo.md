@@ -66,4 +66,6 @@ user, and the chat function between them will be disabled.
 
 [x] login with not verified email doesn't works,should sent another code
 
-[] ALLOW JUST AUTHENTICATED USER TO CONNECT TO WS
+[x] ALLOW JUST AUTHENTICATED USER TO CONNECT TO WS
+
+[] should the user be able to make request also with non-completed profile??

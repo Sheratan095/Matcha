@@ -40,4 +40,23 @@ export class AppService
 			throw new InternalServerErrorException('Profile creation failed');
 		}
 	}
+
+	// To be completed the user should:
+	//   have a gender
+	//   have a bio
+	//   specify a sexual orientation
+	//   a list of interests
+	//   upload at least 5 pictures
+	async isProfileComplete(userId: number): Promise<boolean>
+	{
+		try
+		{
+			return (await this.dbService.isProfileComplete(userId));
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error checking profile completeness for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to check profile completeness');
+		}
+	}
 }

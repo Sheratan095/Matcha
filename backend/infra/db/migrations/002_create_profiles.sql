@@ -23,11 +23,13 @@ CREATE TABLE IF NOT EXISTS profiles (
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+---------------------INTEREST TAGS AND USER INTERESTS---------------------
+
 -- Reusable interest tags: each tag stored once, shared across many users.
 CREATE TABLE IF NOT EXISTS interest_tags (
 	id SERIAL PRIMARY KEY,
 
-	name VARCHAR(50) UNIQUE NOT NULL, -- Stored without the leading '#', lowercased (e.g. "vegan")
+	name VARCHAR(50) UNIQUE NOT NULL, -- Stored without the leading '#', lowercased and trimmed (e.g. "vegan")
 
 	created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -42,6 +44,8 @@ CREATE TABLE IF NOT EXISTS user_interests (
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 	FOREIGN KEY (tag_id) REFERENCES interest_tags(id) ON DELETE CASCADE
 );
+
+----------------------USER PICTURES---------------------
 
 -- Up to 5 pictures per user, one of which is the profile picture.
 CREATE TABLE IF NOT EXISTS user_pictures (

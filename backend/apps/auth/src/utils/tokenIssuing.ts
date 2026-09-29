@@ -1,6 +1,5 @@
 // Centralized method to issue new tokens, set cookies, and store refresh token in DB
 
-import { SupportedLanguages, SupportedLanguage } from "@repo/shared-types/dist/languages";
 import { randomBytes } from 'crypto';
 import { env } from "@repo/config";
 import { DbService } from "../db/db.service";

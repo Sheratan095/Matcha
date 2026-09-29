@@ -1,0 +1,9 @@
+ Once logged in, users must complete their profile by providing the following information:
+◦ Gender.
+◦ Sexual preferences.
+◦ A biography.
+◦ A list of interests using tags (e.g., #vegan, #geek, #piercing, etc.), which
+must be reusable.
+◦ Up to 5 pictures, including one designated as the profile picture
+
+A FLAG COMPLETE true/false WILL BE RETURNED AFTER LOGIN SO FRONTEND KNOWS

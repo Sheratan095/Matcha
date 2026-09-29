@@ -42,5 +42,69 @@ export class DbService implements OnModuleInit
 		return (result.rows[0]);
 	}
 
+	// retrieve profile by userId, including all related tables (interests, pictures, etc.)
+	async ProfileByUserId(userId: number)
+	{
+		const result = await this.pool.query(
+			`SELECT * FROM profiles p WHERE p.user_id = $1`,
+			[userId]
+		);
+
+		return (result.rows[0]);
+	}
+
+	// retrieve tags of interests for a given userId
+	async getInterestsByUserId(userId: number)
+	{
+		const result = await this.pool.query(
+			`SELECT i.tag
+			 FROM interest_tags i
+			 INNER JOIN user_interests ui ON i.id = ui.interest_tag_id
+			 WHERE ui.user_id = $1`,
+			[userId]
+		);
+
+		return (result.rows.map(row => row.tag));
+	}
+
+	// Called by login so frontend knows if the user has completed their profile.
+	// Instead of calling getFullProfile it just checks the required fields and returns a boolean.
+	//	to reduce the amount of data sent over the network because interests and picture are just COUNT instead of SELECT.
+	async isProfileComplete(userId: number): Promise<boolean>
+	{
+		const profile = await this.pool.query(
+			`SELECT gender, bio, sexual_preference
+			 FROM profiles
+			 WHERE user_id = $1`,
+			[userId]
+		);
+		if (profile.rows.length === 0)
+			return (false);
+
+		const { gender, sexual_preference, biography } = profile.rows[0];
+		if (!gender || !sexual_preference || !biography)
+			return (false);
+
+		const interests = await this.pool.query(
+			`SELECT COUNT(*) AS count
+			 FROM user_interests
+			 WHERE user_id = $1`,
+			[userId]
+		);
+		if (parseInt(interests.rows[0].count, 10) === 0)
+			return (false);
+
+		const pictures = await this.pool.query(
+			`SELECT COUNT(*) AS count
+			 FROM user_pictures
+			 WHERE user_id = $1`,
+			[userId]
+		);
+		if (parseInt(pictures.rows[0].count, 10) < 5)
+			return (false);
+
+		return (true);
+	}
+
 	// TO DO more profile db methods (read/update profiles, interest_tags, user_interests, user_pictures)
 }
