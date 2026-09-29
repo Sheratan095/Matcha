@@ -8,6 +8,7 @@ import { User } from '@repo/shared-types';
 import { hashPassword, comparePasswords, loadCommonPasswords, validatePassword } from './utils/password';
 import { loadReservedUsernames, validateUsername, generateFallbackUsername } from './utils/username';
 import { createUserProfile } from './utils/profile';
+import { closeWsConnections } from './utils/notification';
 
 // Services contain the core business logic like the db calls
 
@@ -181,8 +182,12 @@ export class AppService implements OnModuleInit
 
 	async logout(res: any)
 	{
+		closeWsConnections(res.userId, this.httpService); // Close all WebSocket connections for the user
+		this.logger.log(`User ID ${res.userId} logged out, WebSocket connections closed`);
+
 		// Refresh token is also removed from db
 		await this.jwtHelper.revokeTokens(res, this.dbService);
+
 		return ({ message: 'Logged out successfully' });
 	}
 

@@ -32,4 +32,12 @@ export class AppService
 	{
 		return (this.wsGateway.count());
 	}
+
+	async closeWsConnections(userId: string)
+	{
+		// Close all WebSocket connections for the given user ID
+		this.wsGateway.closeConnectionsForUser(userId);
+
+		return (`Closed all WebSocket connections for user ID ${userId}`);
+	}
 }

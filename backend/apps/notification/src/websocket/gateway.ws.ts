@@ -22,6 +22,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 
 	handleConnection(client: Socket): void
 	{
+		// TODO retrieve userId from JWT token instead of query parameter for better security
 		this.wsManager.addClient(client.handshake.query.userId as string, client);
 
 		// Listen for any event on the client and log it
@@ -36,9 +37,26 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 		this.wsManager.removeClient(client);
 	}
 
-	public count(): number
+	count(): number
 	{
 		return (this.wsManager.count());
+	}
+
+	closeConnectionsForUser(userId: string): void
+	{
+		const sockets = this.wsManager.getSocketsByUserId(userId);
+		if (sockets)
+		{
+			sockets.forEach((socket) =>
+			{
+				socket.disconnect(true);
+				this.logger.log(`Closed WebSocket connection for user ID ${userId}`);
+			});
+		}
+		else
+		{
+			this.logger.warn(`No WebSocket connections found for user ID ${userId}`);
+		}
 	}
 
 }

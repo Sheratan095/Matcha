@@ -4,6 +4,7 @@ import { InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EmailVerificationDto, EmailVerificationResponseDto, ErrorDto } from './dto/email_verification.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto } from './dto/forgotPassword.dto';
+import { CloseWsConnectionsDto } from './dto/ws_endpoints.dto';
 
 
 // Specify that this class is a NestJS controller
@@ -54,5 +55,16 @@ export class AppController
 	getOnlineUsers()
 	{
 		return (this.appService.getOnlineUsers());
+	}
+
+	@Post('close-ws-connections')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Close WebSocket connections - INTERNAL 🔒', description: 'Closes all active WebSocket connections for the specified user.' })
+	@ApiBody({ type: CloseWsConnectionsDto })
+	@ApiResponse({ status: 200, description: 'WebSocket connections closed successfully' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	closeWsConnections(@Body() req: CloseWsConnectionsDto)
+	{
+		return (this.appService.closeWsConnections(req.userId));
 	}
 }
