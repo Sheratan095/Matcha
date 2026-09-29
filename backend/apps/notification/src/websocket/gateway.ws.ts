@@ -22,8 +22,18 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 
 	handleConnection(client: Socket): void
 	{
-		// TODO retrieve userId from JWT token instead of query parameter for better security
-		this.wsManager.addClient(client.handshake.query.userId as string, client);
+		// The gateway authenticates the JWT (via /auth/validate) and injects the trusted
+		// userId as the x-user-id header on the handshake. We never trust a client-supplied value.
+		const userId = client.handshake.headers['x-user-id'] as string;
+
+		if (!userId)
+		{
+			this.logger.warn(`Rejected websocket connection ${client.id}: missing authenticated user id`);
+			client.disconnect(true);
+			return;
+		}
+
+		this.wsManager.addClient(userId, client);
 
 		// Listen for any event on the client and log it
 		client.onAny((eventName: string, ...args: any[]) =>

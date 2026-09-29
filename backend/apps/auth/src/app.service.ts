@@ -220,7 +220,7 @@ export class AppService implements OnModuleInit
 		}
 		catch (error)
 		{
-			this.logger.log(`Token invalid`);
+			this.logger.warn(`Token invalid`);
 			return ({ valid: false, userId: null });
 		}
 	}

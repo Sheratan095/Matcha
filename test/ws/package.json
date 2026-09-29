@@ -1,0 +1,13 @@
+{
+	"name": "ws-tester",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Small manual tester: logs in through the gateway and opens the notification WebSocket.",
+	"scripts": {
+		"test:ws": "node tester.mjs"
+	},
+	"dependencies": {
+		"socket.io-client": "^4.8.1"
+	}
+}

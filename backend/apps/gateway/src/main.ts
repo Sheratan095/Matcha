@@ -6,7 +6,7 @@ import { ClientRequest, IncomingMessage, ServerResponse } from 'http';
 import { setupSwagger } from './swagger';
 import { Microservice } from './Models/Microservice';
 import { Logger } from '@nestjs/common';
-import { createNotificationSocketProxy, isNotificationSocketRequest } from './websocketGateway';
+import { createNotificationSocketProxy, isNotificationSocketRequest, authenticateNotificationSocket, USER_ID_HEADER } from './websocketGateway';
 
 const logger = new Logger('GatewayBootstrap');
 
@@ -141,21 +141,51 @@ async function bootstrap()
 		} as any),
 	);
 
-	// Handle WebSocket upgrade requests for the notification service
-	app.use((req: IncomingMessage, res: ServerResponse, next: () => void) =>
+	// Handle the notification socket HANDSHAKE over HTTP long-polling (socket.io's
+	// fallback transport). We authenticate only the initial handshake (no sid yet);
+	// subsequent polls carry a sid and reuse the already-authenticated session.
+	app.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) =>
 	{
 		if (!isNotificationSocketRequest(req.url))
 			return (next());
 
+		if (!req.url?.includes('sid='))
+		{
+			const userId = await authenticateNotificationSocket(req, logger);
+			if (!userId)
+			{
+				logger.warn('Rejected notification socket handshake: invalid or missing access token');
+				res.statusCode = 401;
+				res.end('Unauthorized');
+				return;
+			}
+
+			// Inject the trusted userId; overwrites any client-supplied value.
+			req.headers[USER_ID_HEADER] = userId;
+		}
+
 		notificationSocketProxy(req as any, res as any, next);
 	});
 
-	// Handle WebSocket upgrade requests for the notification service
-	app.getHttpServer().on('upgrade', (req: IncomingMessage, socket: NodeJS.Socket, head: Buffer) =>
+	// Handle the notification WebSocket upgrade (native ws transport).
+	app.getHttpServer().on('upgrade', async (req: IncomingMessage, socket: NodeJS.Socket, head: Buffer) =>
 	{
 		// If the request is not for the notification WebSocket, ignore it
 		if (!isNotificationSocketRequest(req.url))
 			return;
+
+		// Validate the JWT via the auth service before letting the upgrade through.
+		const userId = await authenticateNotificationSocket(req, logger);
+		if (!userId)
+		{
+			logger.warn('Rejected notification websocket upgrade: invalid or missing access token');
+			socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+			(socket as any).destroy();
+			return;
+		}
+
+		// Inject the trusted userId so notification never relies on client-supplied values.
+		req.headers[USER_ID_HEADER] = userId;
 
 		notificationSocketProxy.upgrade(req as any, socket as any, head);
 	});
