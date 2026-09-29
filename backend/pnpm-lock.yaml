@@ -480,6 +480,9 @@ importers:
       '@repo/config':
         specifier: workspace:*
         version: link:../config
+      axios:
+        specifier: ^1.16.0
+        version: 1.16.0
     devDependencies:
       typescript:
         specifier: ^5.0.0

@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
-    "@repo/config": "workspace:*"
+    "@repo/config": "workspace:*",
+    "axios": "^1.16.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

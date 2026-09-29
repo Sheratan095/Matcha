@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Request, Res, UseGuards, Body, HttpCode, HttpStatus, Logger, ForbiddenException } from '@nestjs/common';
 import { Response } from 'express';
 import { AppService } from './app.service';
-import { InternalKeyGuard } from '@repo/utils';
+import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { env } from '@repo/config';
@@ -11,7 +11,6 @@ import { RefreshResponseDto, RefreshErrorDto, ValidateTokenResponseDto } from '.
 import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './dto/verify_email.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto, ResetPasswordDto, ResetPasswordResponseDto, ResetPasswordErrorDto } from './dto/passwordReset.dto';
 import { ChangeEmailDto, ChangeEmailResponseDto, ChangeEmailErrorDto } from './dto/changeEmail.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtHelper } from './utils/jwt';
 
 // Specify that this class is a NestJS controller
@@ -52,16 +51,15 @@ export class AppController
 
 	@Post('change-email')
 	@HttpCode(HttpStatus.OK)
-	@UseGuards(JwtAuthGuard) // This guard checks for a valid access token in the request cookies and extracts the user ID.
+	@UseGuards(AuthenticatedUserGuard) // Shared guard: requires a valid access token (userId injected by the gateway)
 	@ApiOperation({ summary: 'Change email', description: 'Changes the user\'s email address.' })
 	@ApiCookieAuth('access_token')
 	@ApiResponse({ status: 200, type: ChangeEmailResponseDto, description: 'Email change successful (placeholder)' })
 	@ApiResponse({ status: 400, type: ChangeEmailErrorDto, description: 'Invalid email address' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	async changeEmail(@Body() req: ChangeEmailDto, @Request() request: any)
+	async changeEmail(@Body() req: ChangeEmailDto, @CurrentUser() userId: string)
 	{
-		// The JwtAuthGuard attaches the userId to the request object
-		return (await this.appService.changeEmail(request.userId, req.newEmail));
+		return (await this.appService.changeEmail(userId, req.newEmail));
 	}
 
 	@Post('verify-email')

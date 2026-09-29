@@ -1,0 +1,129 @@
+JWT VALIDATION AND PROTECTED ENDPOINTS
+======================================
+
+1. THE IDEA
+-----------
+Only the gateway reads the JWT. It turns "a cookie" into a trusted
+"x-user-id" header. The services behind it never parse tokens: they read
+that header (through a guard) to know who is calling.
+
+Public endpoint    -> nothing to do.
+Protected endpoint -> add ONE guard on the endpoint, in the microservice.
+
+
+2. HOW TO PROTECT AN ENDPOINT  (the part you will use every day)
+----------------------------------------------------------------
+The choice is made per endpoint, in the controller of the microservice.
+The gateway does NOT need to know which routes are protected.
+
+	import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
+
+	@Controller()
+	@UseGuards(InternalKeyGuard)              // whole controller: internal calls only
+	export class AppController
+	{
+		@Get('health')                        // no extra guard -> public
+		getHealth() { return ('OK'); }
+
+		@Post('upgrade')
+		@UseGuards(AuthenticatedUserGuard)    // this route requires a valid JWT
+		async upgrade(@CurrentUser() userId: string, @Body() dto: UpgradeDto)
+		{
+			return (await this.appService.upgrade(userId, dto));
+		}
+	}
+
+Rules:
+- One route protected  : @UseGuards(AuthenticatedUserGuard) on the method.
+- Whole controller     : @UseGuards(InternalKeyGuard, AuthenticatedUserGuard)
+                         on the class. Keep public routes in another controller.
+- Who is calling?      : @CurrentUser() userId. NEVER take the user id from the
+                         body/query/params: the client could fake it.
+- No / invalid / expired token -> 401 before your handler runs.
+
+Status: these are defined in packages/utils/src/auth.ts but NO endpoint uses
+them yet. The first authenticated profile endpoint will be the first user.
+
+Auth service: it uses the same protocol (see change-email). The old local
+JwtAuthGuard was removed. Auth's own login/refresh/validate logic is
+unchanged: those are how tokens are issued and checked.
+
+
+3. WHAT HAPPENS UNDER THE HOOD
+------------------------------
+Browser --(cookie access_token)--> GATEWAY :3000
+	1. delete x-user-id                   (a client can never forge it)
+	2. cookie has access_token?  --> AUTH :3001  GET /validate
+	                             <-- { valid, userId }
+	3. valid -> set x-user-id = userId
+	4. proxy (+ x-internal-key)  --> PROFILE / NOTIFICATION / AUTH
+
+Login
+	POST /auth/login makes auth set access_token (15 min) and refresh_token
+	as HttpOnly cookies. JS cannot read them; the browser sends them itself.
+
+Gateway identity middleware (apps/gateway/src/main.ts, runs before every proxy)
+	- Deletes x-user-id first, always (Node lowercases header names, so
+	  X-User-Id is caught too).
+	- If the cookie contains "access_token=", calls validateAccessTokenCookie
+	  (packages/utils/src/auth.ts): GET auth/validate with the client's cookie
+	  plus the internal key. Auth checks signature and expiry.
+	  No token -> no call, so public traffic costs nothing.
+	- Valid token -> sets the header. Invalid, missing or auth down -> header
+	  stays absent.
+	- It NEVER rejects. Absent header means "anonymous", so login, register
+	  and health keep working. Rejecting is the job of the guard (section 2).
+
+Microservice guards
+	- InternalKeyGuard: only callers holding the internal key get in.
+	- AuthenticatedUserGuard: reads x-user-id; if missing it validates the
+	  cookie itself; if still nothing -> 401. Stores the id on request.userId,
+	  which @CurrentUser() returns.
+
+Optional: the gateway can also block a route BEFORE it reaches the service by
+mounting requireAuthenticatedUser(logger) (apps/gateway/src/authMiddleware.ts)
+before that route's proxy. Usually not needed: the guard is enough.
+
+
+4. WEBSOCKETS (notification service)
+------------------------------------
+Node fires "upgrade" instead of "request" for upgrade requests, so Express
+middleware never sees them. That is why sockets have two paths:
+
+socket.io client
+ 1) GET /socket.io/?transport=polling
+      plain HTTP, goes through the identity middleware above.
+      No x-user-id and no sid -> 401, otherwise proxied to notification.
+      notification (handleConnection) reads x-user-id and registers the
+      socket under that user.
+ 2) GET /socket.io/?transport=websocket   ("Upgrade")
+      skips Express. The 'upgrade' handler in main.ts validates the cookie
+      itself -> 401, or sets the header and proxies.
+
+Notes:
+- The old ?userId= query param is no longer used. The frontend must send
+  cookies on the connection (withCredentials: true when cross-origin).
+- IMPORTANT: do NOT set "ws: true" in createNotificationSocketProxy
+  (apps/gateway/src/websocketGateway.ts). With it, http-proxy-middleware
+  registers its own 'upgrade' listener that proxies upgrades WITHOUT
+  authentication and makes our .upgrade() call a no-op. A non-browser client
+  could then register a socket under any user id by forging x-user-id.
+  Verified with an isolated test; fixed by removing ws: true.
+
+
+5. WHY THE HEADER CAN BE TRUSTED
+--------------------------------
+- The gateway strips it from every incoming HTTP request and sets it only
+  from a validated token.
+- Services reject anything without the internal key, so clients cannot reach
+  them directly. Whoever holds the internal key could set the header: same
+  trust boundary as before.
+
+
+6. LIMITS TO KNOW ABOUT
+-----------------------
+- Sockets are authenticated only at connect time. The token lasts 15 minutes
+  but an open socket stays "logged in" until it closes. Logout does not close
+  sockets yet (TODO in auth's controller).
+- Every request carrying an access_token cookie costs one call to
+  /auth/validate, including requests to /auth/* themselves.

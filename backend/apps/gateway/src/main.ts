@@ -6,7 +6,8 @@ import { ClientRequest, IncomingMessage, ServerResponse } from 'http';
 import { setupSwagger } from './swagger';
 import { Microservice } from './Models/Microservice';
 import { Logger } from '@nestjs/common';
-import { createNotificationSocketProxy, isNotificationSocketRequest, authenticateNotificationSocket, USER_ID_HEADER } from './websocketGateway';
+import { createNotificationSocketProxy, isNotificationSocketRequest } from './websocketGateway';
+import { authenticateRequest, USER_ID_HEADER } from '@repo/utils';
 
 const logger = new Logger('GatewayBootstrap');
 
@@ -33,6 +34,32 @@ async function bootstrap()
 		credentials: true,
 		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
 		allowedHeaders: ['Content-Type', 'x-internal-key']
+	});
+
+	// Best-effort identity for EVERY PROXIED REQUEST: when the caller carries a valid
+	// access token, its userId is attached as USER_ID_HEADER so downstream services can
+	// read it without parsing tokens themselves.
+	//
+	// It deliberately NEVER rejects, because public routes (login, register, health, docs)
+	// must stay reachable. Enforcing that a user IS authenticated is the job of
+	// AuthenticatedUserGuard on the microservice endpoint, or requireAuthenticatedUser()
+	// when the gateway itself should block the request.
+	app.use(async (req: IncomingMessage, _res: ServerResponse, next: () => void) =>
+	{
+		// Strip it FIRST and unconditionally: a client MUST NEVER BE ABLE TO SUPPLY
+		// ITS OWN USERID and have a downstream service trust it.
+		delete req.headers[USER_ID_HEADER];
+
+		// Short-circuit when there is no access token to validate, so public traffic
+		// never pays for a round-trip to the auth service.
+		if (req.headers.cookie?.includes('access_token='))
+		{
+			const	userId = await authenticateRequest(req);
+			if (userId)
+				req.headers[USER_ID_HEADER] = userId;
+		}
+
+		next();
 	});
 
 	// Register proxy middleware directly on the Express app
@@ -149,19 +176,15 @@ async function bootstrap()
 		if (!isNotificationSocketRequest(req.url))
 			return (next());
 
-		if (!req.url?.includes('sid='))
+		// Unlike a plain HTTP endpoint, a socket connection cannot proceed anonymously,
+		// so here we DO reject. The global identity middleware already validated the token
+		// and injected the header, so no second call to the auth service is needed.
+		if (!req.url?.includes('sid=') && !req.headers[USER_ID_HEADER])
 		{
-			const userId = await authenticateNotificationSocket(req, logger);
-			if (!userId)
-			{
-				logger.warn('Rejected notification socket handshake: invalid or missing access token');
-				res.statusCode = 401;
-				res.end('Unauthorized');
-				return;
-			}
-
-			// Inject the trusted userId; overwrites any client-supplied value.
-			req.headers[USER_ID_HEADER] = userId;
+			logger.warn('Rejected notification socket handshake: invalid or missing access token');
+			res.statusCode = 401;
+			res.end('Unauthorized');
+			return;
 		}
 
 		notificationSocketProxy(req as any, res as any, next);
@@ -174,8 +197,9 @@ async function bootstrap()
 		if (!isNotificationSocketRequest(req.url))
 			return;
 
-		// Validate the JWT via the auth service before letting the upgrade through.
-		const userId = await authenticateNotificationSocket(req, logger);
+		// 'upgrade' events bypass the Express middleware stack entirely, so the global
+		// identity middleware never ran for this request: we must validate it here MANUALLY.
+		const userId = await authenticateRequest(req);
 		if (!userId)
 		{
 			logger.warn('Rejected notification websocket upgrade: invalid or missing access token');
@@ -195,5 +219,7 @@ async function bootstrap()
 	await app.listen(env.GATEWAY_PORT);
 	logger.log(`Listening on port ${env.GATEWAY_PORT}`);
 	logger.log(`Proxying /auth to ${env.AUTH_HOST}:${env.AUTH_PORT}`);
+	logger.log(`Proxying /notification to ${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`);
+	logger.log(`Proxying /profile to ${env.PROFILE_HOST}:${env.PROFILE_PORT}`);
 }
 bootstrap();

@@ -1,6 +1,10 @@
 import { env } from '@repo/config';
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 
+// JWT / authenticated-user helpers, shared by every service that needs to know
+// WHO is calling (see auth.ts). Re-exported here so consumers keep importing from '@repo/utils'.
+export * from './auth';
+
 /**
  * @brief Validate that a provided key matches the configured internal key.
  *
