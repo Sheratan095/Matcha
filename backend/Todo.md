@@ -69,3 +69,9 @@ user, and the chat function between them will be disabled.
 [x] ALLOW JUST AUTHENTICATED USER TO CONNECT TO WS
 
 [] should the user be able to make request also with non-completed profile??
+
+[] UserID UUID string or int?? IN WHOLE PROJECT
+
+[] wtf is photo position??
+
+[] verify user completition and check that the api isn't callable from out

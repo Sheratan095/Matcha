@@ -24,3 +24,19 @@ export async function createUserProfile(userId: number, firstName: string, lastN
 		throw err;
 	}
 }
+
+export async function checkProfileCompleteness(userId: number, httpService: HttpService): Promise<boolean>
+{
+	try
+	{
+		const response = await firstValueFrom(httpService.get(`${env.PROFILE_HOST}:${env.PROFILE_PORT}/profile/${userId}/is-complete`));
+
+		return (response.data.isComplete);
+	}
+	catch (err)
+	{
+		console.error(`Error checking profile completeness for user ${userId}:`, err);
+		// Rethrow so the caller can decide how to handle it
+		throw err;
+	}
+}

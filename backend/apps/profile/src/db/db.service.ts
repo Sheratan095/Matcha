@@ -73,7 +73,7 @@ export class DbService implements OnModuleInit
 	async isProfileComplete(userId: number): Promise<boolean>
 	{
 		const profile = await this.pool.query(
-			`SELECT gender, bio, sexual_preference
+			`SELECT gender, biography, sexual_preference
 			 FROM profiles
 			 WHERE user_id = $1`,
 			[userId]

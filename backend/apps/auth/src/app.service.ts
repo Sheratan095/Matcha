@@ -7,7 +7,7 @@ import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from
 import { User } from '@repo/shared-types';
 import { hashPassword, comparePasswords, loadCommonPasswords, validatePassword } from './utils/password';
 import { loadReservedUsernames, validateUsername, generateFallbackUsername } from './utils/username';
-import { createUserProfile } from './utils/profile';
+import { createUserProfile, checkProfileCompleteness } from './utils/profile';
 import { closeWsConnections } from './utils/notification';
 
 // Services contain the core business logic like the db calls
@@ -39,33 +39,49 @@ export class AppService implements OnModuleInit
 
 	async login(username: string, password: string, res: any)
 	{
-		// Hash the password and compare with stored hash in DB, then fetch user details
-		const user: User | undefined = await this.dbService.getUserByUsername(username);
-
-		if (!user)
+		try
 		{
-			this.logger.warn(`Failed login attempt for non-existent username: ${username}`);
-			throw new ForbiddenException('Invalid credentials');
+			// Hash the password and compare with stored hash in DB, then fetch user details
+			const user: User | undefined = await this.dbService.getUserByUsername(username);
+
+			if (!user)
+			{
+				this.logger.warn(`Failed login attempt for non-existent username: ${username}`);
+				throw new ForbiddenException('Invalid credentials');
+			}
+
+			if (!await comparePasswords(password, user.password_hash))
+			{
+				this.logger.warn(`Failed login attempt [wrong password] for user ${username} (ID: ${user.id})`);
+				throw new ForbiddenException('Invalid credentials');
+			}
+
+			if (user.email_verified === false)
+			{
+				this.logger.warn(`Login attempt with unverified email for user ${username} (ID: ${user.id})`);
+				await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
+				throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
+			}
+
+			await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
+
+			const isProfileComplete : boolean = await checkProfileCompleteness(Number(user.id), this.httpService);
+
+			this.logger.log(`Login successful for user ${username} (ID: ${user.id}, COMPLETE: ${isProfileComplete})`);
+
+			return ({ message: 'Login successful', userId: user.id, isProfileComplete });
+		}
+		catch (error: any)
+		{
+			this.logger.error('Error during login', error);
+
+			if (error instanceof ForbiddenException)
+				throw error;
+
+			// Fallback for other DB / unexpected errors
+			throw new InternalServerErrorException('Login failed');
 		}
 
-		if (!await comparePasswords(password, user.password_hash))
-		{
-			this.logger.warn(`Failed login attempt [wrong password] for user ${username} (ID: ${user.id})`);
-			throw new ForbiddenException('Invalid credentials');
-		}
-
-		if (user.email_verified === false)
-		{
-			this.logger.warn(`Login attempt with unverified email for user ${username} (ID: ${user.id})`);
-			await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
-			throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
-		}
-
-		await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
-
-		this.logger.log(`Login successful for user ${username} (ID: ${user.id})`);
-
-		return ({ message: 'Login successful', userId: user.id });
 	}
 
 	async register(email: string, username: string, password: string, language: SupportedLanguage, firstName: string, lastName: string, res: any)

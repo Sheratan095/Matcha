@@ -8,9 +8,45 @@ ON CONFLICT DO NOTHING;
 
 -- first/last name now live in the profiles table, so seed them there.
 -- Subqueries resolve the SERIAL user ids by username (don't assume 1/2/3).
-INSERT INTO profiles (user_id, first_name, last_name)
+INSERT INTO profiles (user_id, first_name, last_name, biography, gender, sexual_preference)
 VALUES
-	((SELECT id FROM users WHERE username = 'admin'), 'Admin', 'User'),
-	((SELECT id FROM users WHERE username = 'testuser'), 'Test', 'User'),
+	((SELECT id FROM users WHERE username = 'admin'), 'Admin', 'User', 'I am the admin of this site.', 'other', 'other'),
+	((SELECT id FROM users WHERE username = 'testuser'), 'Test', 'User', 'I am a test user for this site.', 'other', 'other'),
 	((SELECT id FROM users WHERE username = 'alice'), 'Alice', 'Wonderland')
+ON CONFLICT DO NOTHING;
+
+-- insert some interest tags for testing
+INSERT INTO interest_tags (name)
+VALUES
+	('vegan'),
+	('hiking'),
+	('photography'),
+	('travel'),
+	('reading'),
+	('gaming'),
+	('cooking'),
+	('fitness'),
+	('music'),
+	('art')
+ON CONFLICT DO NOTHING;
+
+-- insert some user interests for testing
+INSERT INTO user_interests (user_id, tag_id)
+VALUES
+	((SELECT id FROM users WHERE username = 'testuser'), (SELECT id FROM interest_tags WHERE name = 'hiking')),
+	((SELECT id FROM users WHERE username = 'testuser'), (SELECT id FROM interest_tags WHERE name = 'photography')),
+	((SELECT id FROM users WHERE username = 'alice'), (SELECT id FROM interest_tags WHERE name = 'travel')),
+	((SELECT id FROM users WHERE username = 'alice'), (SELECT id FROM interest_tags WHERE name = 'reading'))
+ON CONFLICT DO NOTHING;
+
+--- insert some fake user pictures for testing
+INSERT INTO user_pictures (user_id, url, is_profile, position)
+VALUES
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser1.jpg', TRUE, 0),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser2.jpg', FALSE, 1),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser3.jpg', FALSE, 2),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser4.jpg', FALSE, 3),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser5.jpg', FALSE, 4),
+	((SELECT id FROM users WHERE username = 'alice'), 'https://example.com/alice1.jpg', TRUE, 0),
+	((SELECT id FROM users WHERE username = 'alice'), 'https://example.com/alice2.jpg', FALSE, 1)
 ON CONFLICT DO NOTHING;
