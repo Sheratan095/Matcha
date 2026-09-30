@@ -72,8 +72,10 @@ user, and the chat function between them will be disabled.
 
 [x] UserID UUID string or int?? IN WHOLE PROJECT
 
-[] wtf is photo position??
+[x] wtf is photo position??
 
 [x] verify user completition and check that the api isn't callable from out
 
 [] reasone for not completed profile??
+
+[] /profile/viewers should return also name and profile pic link?

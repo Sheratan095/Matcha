@@ -2,7 +2,7 @@ INSERT INTO users (username, email, password_hash, email_verified, language)
 VALUES
 	('admin', 'admin@matcha.local', 'fake_hash_1', TRUE, 'en'),
 	('testuser', 'testuser@matcha.local', '$2b$10$iLPDZU0P/A75NdItQtMnzOk30w4.py4iRIZr1R3iceJPfV48TcxUG', TRUE, 'en'),
-	('alice', 'alice@matcha.local', '$2b$10$Gn584YCMsvRevFtDhRriguKdnIIFbJOBNMQyXMRwajz7yppzDhf8u', FALSE, 'en')
+	('alice', 'alice@matcha.local', '$2b$10$Gn584YCMsvRevFtDhRriguKdnIIFbJOBNMQyXMRwajz7yppzDhf8u', TRUE, 'en')
 ON CONFLICT DO NOTHING;
 -- Password for testuser and alice is '1234' (bcrypt, 10 salt rounds). These are real working hashes, so you can log in with '1234'.
 

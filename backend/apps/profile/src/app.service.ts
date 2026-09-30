@@ -1,4 +1,4 @@
-import { Injectable, Logger, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, ConflictException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { DbService } from './db/db.service';
 import { Profile } from '@repo/shared-types';
@@ -91,16 +91,18 @@ export class AppService
 		}
 	}
 
-	async getProfileViews(userId: string)
+	async getProfileViewers(userId: string): Promise<string[]>
 	{
 		try
 		{
-			return (await this.dbService.getProfileViewers(userId));
+			const views = await this.dbService.getProfileViewers(userId);
+
+			return (views.map(view => view.viewerId));
 		}
 		catch (error: any)
 		{
-			this.logger.error(`Error fetching profile views for user ID ${userId}`, error);
-			throw new InternalServerErrorException('Failed to fetch profile views');
+			this.logger.error(`Error fetching profile viewers for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch profile viewers');
 		}
 	}
 }

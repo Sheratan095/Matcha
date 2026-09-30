@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { CreateProfileDto, CreateProfileResponseDto, CreateProfileErrorDto } from './dto/createProfile.dto';
 import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteErrorDto } from './dto/isProfileComplete.dto';
 import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto } from './dto/getProfile.dto';
+import { GetProfileViewersDto, GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 
 // Specify that this class is a NestJS controller
@@ -51,8 +52,22 @@ export class AppController
 		return ({ isComplete });
 	}
 
+	@Get('viewers')
+	@ApiOperation({ summary: 'Get profile viewers', description: 'Returns the list of user IDs that have viewed your profile' })
+	@ApiResponse({ status: 200, type: GetProfileViewersResponseDto, description: 'Viewers retrieved successfully' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 403, type: GetProfileViewersErrorDto, description: 'Requesting user is not the profile owner' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getProfileViewers(@Param() req: GetProfileViewersDto, @CurrentUser() userId: string)
+	{
+		const viewers = await this.appService.getProfileViewers(userId);
+
+		return ({ viewers });
+	}
+
 	@Get(':userId')
-	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full suser profile.' })
+	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full user profile.' })
 	@ApiResponse({ status: 200, type: GetProfileResponseDto, description: 'Profile retrieved successfully' })
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
