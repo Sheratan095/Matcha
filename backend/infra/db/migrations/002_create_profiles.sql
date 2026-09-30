@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS user_pictures (
 	user_id UUID NOT NULL,
 
 	url VARCHAR(255) NOT NULL,
+
 	is_profile BOOLEAN DEFAULT FALSE, -- The single designated profile picture
 
 	position SMALLINT NOT NULL, -- Ordering within the gallery, 0..4

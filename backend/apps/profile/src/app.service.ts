@@ -1,6 +1,7 @@
 import { Injectable, Logger, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { DbService } from './db/db.service';
+import { IProfile } from '@repo/shared-types';
 
 // Services contain the core business logic like the db calls
 
@@ -63,5 +64,23 @@ export class AppService
 	async getProfile(userId: string, requestorUserId: string)
 	{
 		this.logger.log(`Fetching profile for user ID ${userId} requested by user ID ${requestorUserId}`);
+
+		try
+		{
+			const profile: IProfile | null = await this.dbService.getProfile(userId);
+
+			if (!profile)
+			{
+				this.logger.warn(`Profile not found for user ID ${userId}`);
+				throw new ConflictException('Profile not found');
+			}
+
+			return (profile);
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error fetching profile for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch profile');
+		}
 	}
 }

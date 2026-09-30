@@ -29,7 +29,7 @@ export async function checkProfileCompleteness(userId: string, httpService: Http
 {
 	try
 	{
-		const response = await firstValueFrom(httpService.get(`${env.PROFILE_HOST}:${env.PROFILE_PORT}/profile/${userId}/is-complete`));
+		const response = await firstValueFrom(httpService.get(`${env.PROFILE_HOST}:${env.PROFILE_PORT}/${userId}/is-complete`));
 
 		return (response.data.isComplete);
 	}

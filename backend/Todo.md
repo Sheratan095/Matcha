@@ -75,3 +75,5 @@ user, and the chat function between them will be disabled.
 [] wtf is photo position??
 
 [x] verify user completition and check that the api isn't callable from out
+
+[] reasone for not completed profile??

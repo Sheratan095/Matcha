@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Pool, QueryResult } from 'pg';
 import { env } from "@repo/config";
+import { IProfile, IInterestTag, IUserPicture } from '@repo/shared-types';
 
 @Injectable()
 
@@ -24,7 +25,7 @@ export class DbService implements OnModuleInit
 	}
 
 	// The query method is a wrapper around the pool's query method, allowing other parts of the application to execute SQL queries against the database.
-	query(text: string, params?: any[])
+	query(text: string, params?: any[]): Promise<QueryResult<any>>
 	{
 		return (this.pool.query(text, params));
 	}
@@ -42,29 +43,67 @@ export class DbService implements OnModuleInit
 		return (result.rows[0]);
 	}
 
-	// retrieve profile by userId, including all related tables (interests, pictures, etc.)
-	async ProfileByUserId(userId: string)
+	async getProfile(userId: string): Promise<IProfile | null>
 	{
 		const result = await this.pool.query(
-			`SELECT * FROM profiles p WHERE p.user_id = $1`,
+			`SELECT user_id, first_name, last_name, gender, sexual_preference, biography, created_at, updated_at
+			 FROM profiles
+			 WHERE user_id = $1`,
 			[userId]
 		);
 
-		return (result.rows[0]);
+		if (!result.rows[0])
+			return (null);
+
+		const interest : IInterestTag[] = await this.getInterestsByUserId(userId);
+		const pictures : IUserPicture[] = await this.getPicturesByUserId(userId);
+
+		const	row = result.rows[0];
+		const profile: IProfile = {
+			userId:           row.user_id,
+			firstName:        row.first_name,
+			lastName:         row.last_name,
+			gender:           row.gender,
+			sexualPreference: row.sexual_preference,
+			biography:        row.biography,
+			createdAt:        row.created_at,
+			updatedAt:        row.updated_at,
+			interests:        interest,
+			pictures:         pictures,
+		};
+
+		return (profile);
 	}
 
-	// retrieve tags of interests for a given userId
-	async getInterestsByUserId(userId: string)
+	async getInterestsByUserId(userId: string): Promise<IInterestTag[]>
 	{
 		const result = await this.pool.query(
-			`SELECT i.tag
+			`SELECT i.id, i.name
 			 FROM interest_tags i
-			 INNER JOIN user_interests ui ON i.id = ui.interest_tag_id
+			 INNER JOIN user_interests ui ON i.id = ui.tag_id
 			 WHERE ui.user_id = $1`,
 			[userId]
 		);
 
-		return (result.rows.map(row => row.tag));
+		return (result.rows);
+	}
+
+	async getPicturesByUserId(userId: string): Promise<IUserPicture[]>
+	{
+		const result = await this.pool.query(
+			`SELECT id, url, is_profile, position
+			 FROM user_pictures
+			 WHERE user_id = $1
+			 ORDER BY position`,
+			[userId]
+		);
+
+		return (result.rows.map(row => ({
+			id:        row.id,
+			url:       row.url,
+			isProfile: row.is_profile,
+			position:  row.position,
+		})));
 	}
 
 	// Called by login so frontend knows if the user has completed their profile.

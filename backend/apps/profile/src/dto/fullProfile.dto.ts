@@ -1,43 +1,68 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsBoolean, IsInt, IsString, IsUUID, Max, Min } from 'class-validator';
 
-export class fullProfileDto
+export class InterestTagDto
 {
-	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'ID of the user this profile belongs to (1:1 with users.id)' })
+	@ApiProperty({ example: 'a1b2c3d4-...', description: 'Tag UUID' })
+	@IsUUID()
+	id: string;
+
+	@ApiProperty({ example: 'vegan', description: 'Tag name without leading #' })
+	@IsString()
+	name: string;
+}
+
+export class UserPictureDto
+{
+	@ApiProperty({ example: 'a1b2c3d4-...', description: 'Picture UUID' })
+	@IsUUID()
+	id: string;
+
+	@ApiProperty({ example: 'https://example.com/pic.jpg', description: 'Picture URL' })
+	@IsString()
+	url: string;
+
+	@ApiProperty({ example: true, description: 'Whether this is the profile picture' })
+	@IsBoolean()
+	isProfile: boolean;
+
+	@ApiProperty({ example: 0, description: 'Position in the gallery (0..4)' })
+	@IsInt()
+	@Min(0)
+	@Max(4)
+	position: number;
+}
+
+export class FullProfileDto
+{
+	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'User UUID' })
 	@IsUUID()
 	userId: string;
 
-	@ApiProperty({ example: 'Alice', description: 'First name' })
-	@IsString()
-	@MaxLength(50)
-	firstName: string;
+	@ApiProperty({ example: 'Alice', description: 'First name', nullable: true })
+	firstName: string | null;
 
-	@ApiProperty({ example: 'Wonderland', description: 'Last name' })
-	@IsString()
-	@MaxLength(50)
-	lastName: string;
+	@ApiProperty({ example: 'Wonderland', description: 'Last name', nullable: true })
+	lastName: string | null;
 
-	@ApiProperty({ example: 'Female', description: 'Gender' })
-	@IsString()
-	@MaxLength(20)
-	gender: string;
+	@ApiProperty({ example: 'female', enum: ['male', 'female', 'other'], nullable: true })
+	gender: string | null;
 
-	@ApiProperty({ example: 'I love adventures and exploring new places.', description: 'Bio' })
-	@IsString()
-	@MaxLength(500)
-	bio: string;
+	@ApiProperty({ example: 'both', enum: ['male', 'female', 'both', 'other'], nullable: true })
+	sexualPreference: string | null;
 
-	@ApiProperty({ example: 'male', description: 'Sexual orientation' })
-	@IsString()
-	@MaxLength(20)
-	sexualOrientation: string;
+	@ApiProperty({ example: 'Curiouser and curiouser.', nullable: true })
+	biography: string | null;
 
-	@ApiProperty({ example: ['hiking', 'reading', 'traveling'], description: 'List of interests' })
-	@IsString({ each: true })
-	@MaxLength(50, { each: true })
-	interests: string[];
+	@ApiProperty({ type: [InterestTagDto] })
+	interests: InterestTagDto[];
 
-	@ApiProperty({ example: ['https://example.com/pic1.jpg', 'https://example.com/pic2.jpg'], description: 'List of picture URLs' })
-	@IsString({ each: true })
-	pictures: string[];
+	@ApiProperty({ type: [UserPictureDto] })
+	pictures: UserPictureDto[];
+
+	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
+	createdAt: Date;
+
+	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
+	updatedAt: Date;
 }

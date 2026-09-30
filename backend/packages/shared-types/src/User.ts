@@ -26,7 +26,7 @@ export interface IInterestTag {
 export interface IUserPicture {
 	id: string;
 	url: string;
-	is_profile: boolean;
+	isProfile: boolean;
 	position: number; // 0..4, ordering within the user's gallery
 }
 
@@ -34,6 +34,24 @@ export interface IUserPicture {
  * Maximum number of pictures a user can upload
  */
 export const MAX_USER_PICTURES = 5;
+
+/**
+ * A user's profile as owned by the profile service.
+ * Contains only the fields the profile service stores — no auth fields.
+ */
+export interface IProfile
+{
+	userId: string;
+	firstName: string | null;
+	lastName: string | null;
+	gender: Gender | null;
+	sexualPreference: SexualPreference | null;
+	biography: string | null;
+	interests: IInterestTag[];
+	pictures: IUserPicture[];
+	createdAt: Date;
+	updatedAt: Date;
+}
 
 /**
  * User interface matching the database schema
@@ -129,7 +147,7 @@ export class User implements IUser
 	 */
 	getProfilePicture(): IUserPicture | null
 	{
-		const profile = this.pictures.find((picture) => picture.is_profile);
+		const profile = this.pictures.find((picture) => picture.isProfile);
 
 		return (profile || null);
 	}
