@@ -79,10 +79,9 @@ export class DbService implements OnModuleInit
 	async getPicturesByUserId(userId: string): Promise<UserPicture[]>
 	{
 		const result = await this.pool.query(
-			`SELECT id, url, is_profile, position
+			`SELECT id, url, is_profile
 			 FROM user_pictures
-			 WHERE user_id = $1
-			 ORDER BY position`,
+			 WHERE user_id = $1`,
 			[userId]
 		);
 

@@ -40,13 +40,13 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 --- insert some fake user pictures for testing
-INSERT INTO user_pictures (user_id, url, is_profile, position)
+INSERT INTO user_pictures (user_id, url, is_profile)
 VALUES
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser1.jpg', TRUE, 0),
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser2.jpg', FALSE, 1),
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser3.jpg', FALSE, 2),
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser4.jpg', FALSE, 3),
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser5.jpg', FALSE, 4),
-	((SELECT id FROM users WHERE username = 'alice'), 'https://example.com/alice1.jpg', TRUE, 0),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser1.jpg', TRUE),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser2.jpg', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser3.jpg', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser4.jpg', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser5.jpg', FALSE),
+	((SELECT id FROM users WHERE username = 'alice'), 'https://example.com/alice1.jpg', TRUE),
 	((SELECT id FROM users WHERE username = 'alice'), 'https://example.com/alice2.jpg', FALSE, 1)
 ON CONFLICT DO NOTHING;

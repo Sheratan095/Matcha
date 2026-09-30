@@ -73,12 +73,13 @@ export class AppService
 				throw new ConflictException('Profile not found');
 			}
 
-			// Views are only recorded if the requestor is not the owner of the profile
+			// Views are only recorded if the requestor is not the owner of the profile.
+			// Failures here must never block the response.
 			if (userId !== requestorUserId)
 			{
-				this.logger.log(`Adding view record for viewer ID ${requestorUserId} and viewed ID ${userId}`);
-				//									viewerId		viewedId
-				await this.dbService.addProfileView(requestorUserId, userId);
+				this.dbService.addProfileView(requestorUserId, userId).catch(err =>
+					this.logger.warn(`Failed to record profile view for viewer ${requestorUserId}: ${err.message}`)
+				);
 			}
 
 			return (profile);

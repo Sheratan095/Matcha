@@ -57,12 +57,7 @@ CREATE TABLE IF NOT EXISTS user_pictures (
 
 	is_profile BOOLEAN DEFAULT FALSE, -- The single designated profile picture
 
-	position SMALLINT NOT NULL, -- Ordering within the gallery, 0..4
-	CHECK (position BETWEEN 0 AND 4), -- Caps the gallery slots (max 5 pictures)
-
 	created_at TIMESTAMPTZ DEFAULT NOW(),
-
-	UNIQUE (user_id, position), -- One picture per slot per user
 
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

@@ -30,7 +30,6 @@ export interface IUserPicture {
 	id: string;
 	url: string;
 	isProfile: boolean;
-	position: number; // 0..4, ordering within the user's gallery
 }
 
 export class UserPicture implements IUserPicture
@@ -38,14 +37,12 @@ export class UserPicture implements IUserPicture
 	id: string;
 	url: string;
 	isProfile: boolean;
-	position: number;
 
 	constructor(data: IUserPicture)
 	{
 		this.id        = data.id;
 		this.url       = data.url;
 		this.isProfile = data.isProfile;
-		this.position  = data.position;
 	}
 
 	static fromDbRow(row: any): UserPicture
@@ -54,7 +51,6 @@ export class UserPicture implements IUserPicture
 			id:        row.id,
 			url:       row.url,
 			isProfile: row.is_profile,
-			position:  row.position,
 		}));
 	}
 }
