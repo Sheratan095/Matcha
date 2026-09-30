@@ -3,7 +3,7 @@
 ◦ Sexual preferences.
 ◦ A biography.
 ◦ A list of interests using tags (e.g., #vegan, #geek, #piercing, etc.), which
-must be reusable.
-◦ Up to 5 pictures, including one designated as the profile picture
+must be reusable. (AT LEAST ONE)
+◦ Up to 5 pictures, including one designated as the profile picture (NOT MANDATORY)
 
 A FLAG COMPLETE true/false WILL BE RETURNED AFTER LOGIN SO FRONTEND KNOWS

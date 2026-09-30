@@ -107,6 +107,7 @@ export class DbService implements OnModuleInit
 		if (!gender || !sexual_preference || !biography)
 			return (false);
 
+		// At least one interest is required for profile completion
 		const interests = await this.pool.query(
 			`SELECT COUNT(*) AS count
 			 FROM user_interests
@@ -116,14 +117,15 @@ export class DbService implements OnModuleInit
 		if (parseInt(interests.rows[0].count, 10) === 0)
 			return (false);
 
-		const pictures = await this.pool.query(
-			`SELECT COUNT(*) AS count
-			 FROM user_pictures
-			 WHERE user_id = $1`,
-			[userId]
-		);
-		if (parseInt(pictures.rows[0].count, 10) < 5)
-			return (false);
+		// PICTURES AREN'T A REQUIREMENT FOR PROFILE COMPLETION, SO THIS CHECK IS COMMENTED OUT
+		// const pictures = await this.pool.query(
+		// 	`SELECT COUNT(*) AS count
+		// 	 FROM user_pictures
+		// 	 WHERE user_id = $1`,
+		// 	[userId]
+		// );
+		// if (parseInt(pictures.rows[0].count, 10) < 5)
+		// 	return (false);
 
 		return (true);
 	}
