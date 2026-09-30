@@ -50,13 +50,13 @@ export class AppService implements OnModuleInit
 				throw new ForbiddenException('Invalid credentials');
 			}
 
-			if (!await comparePasswords(password, user.password_hash))
+			if (!await comparePasswords(password, user.passwordHash))
 			{
 				this.logger.warn(`Failed login attempt [wrong password] for user ${username} (ID: ${user.id})`);
 				throw new ForbiddenException('Invalid credentials');
 			}
 
-			if (user.email_verified === false)
+			if (user.emailVerified === false)
 			{
 				this.logger.warn(`Login attempt with unverified email for user ${username} (ID: ${user.id})`);
 				await issueVerificationToken(user, this.dbService, this.httpService, this.logger);
@@ -260,7 +260,7 @@ export class AppService implements OnModuleInit
 			return ({ message: 'If an account with this email exists, you will receive a password reset link shortly' });
 		}
 
-		if (user.email_verified === false)
+		if (user.emailVerified === false)
 			this.logger.warn(`Forgot password initiated for unverified email: ${email} (ID: ${user.id})`);
 
 		await issueForgotPasswordToken(user, this.dbService, this.httpService, this.logger);
@@ -288,7 +288,7 @@ export class AppService implements OnModuleInit
 		if (!user)
 			throw new ForbiddenException('User not found');
 
-		await validatePassword(password, user.password_hash);
+		await validatePassword(password, user.passwordHash);
 
 		// Save and hash the new password, then invalidate the reset token
 		const passwordHash = await hashPassword(password);

@@ -1,28 +1,31 @@
 import { SupportedLanguage } from './languages';
 
-/**
- * User gender
- */
 export type Gender = 'male' | 'female' | 'other';
 
-/**
- * Who the user is interested in
- */
 export type SexualPreference = 'male' | 'female' | 'both' | 'other';
 
-/**
- * A reusable interest tag (e.g. #vegan, #geek, #piercing).
- * Tags are stored once and referenced by many users so they can be reused.
- */
 export interface IInterestTag {
 	id: string;
 	name: string; // stored without the leading '#', e.g. "vegan"
 }
 
-/**
- * A single profile picture. A user can have up to 5, one of which is the
- * designated profile picture.
- */
+export class InterestTag implements IInterestTag
+{
+	id: string;
+	name: string;
+
+	constructor(data: IInterestTag)
+	{
+		this.id   = data.id;
+		this.name = data.name;
+	}
+
+	static fromDbRow(row: any): InterestTag
+	{
+		return (new InterestTag({ id: row.id, name: row.name }));
+	}
+}
+
 export interface IUserPicture {
 	id: string;
 	url: string;
@@ -30,9 +33,32 @@ export interface IUserPicture {
 	position: number; // 0..4, ordering within the user's gallery
 }
 
-/**
- * Maximum number of pictures a user can upload
- */
+export class UserPicture implements IUserPicture
+{
+	id: string;
+	url: string;
+	isProfile: boolean;
+	position: number;
+
+	constructor(data: IUserPicture)
+	{
+		this.id        = data.id;
+		this.url       = data.url;
+		this.isProfile = data.isProfile;
+		this.position  = data.position;
+	}
+
+	static fromDbRow(row: any): UserPicture
+	{
+		return (new UserPicture({
+			id:        row.id,
+			url:       row.url,
+			isProfile: row.is_profile,
+			position:  row.position,
+		}));
+	}
+}
+
 export const MAX_USER_PICTURES = 5;
 
 /**
@@ -53,88 +79,143 @@ export interface IProfile
 	updatedAt: Date;
 }
 
-/**
- * User interface matching the database schema
- * This represents a complete user record from the database
- */
-export interface IUser {
-	id: string;
-	username: string;
-	email: string;
-	pending_email: string | null;
-	password_hash: string;
-	email_verified: boolean;
-	language: SupportedLanguage;
-	first_name: string | null;
-	last_name: string | null;
+export class Profile implements IProfile
+{
+	userId: string;
+	firstName: string | null;
+	lastName: string | null;
 	gender: Gender | null;
-	sexual_preference: SexualPreference | null;
+	sexualPreference: SexualPreference | null;
 	biography: string | null;
 	interests: IInterestTag[];
 	pictures: IUserPicture[];
-	created_at: Date;
-	updated_at: Date;
+	createdAt: Date;
+	updatedAt: Date;
+
+	constructor(data: IProfile)
+	{
+		this.userId           = data.userId;
+		this.firstName        = data.firstName || null;
+		this.lastName         = data.lastName || null;
+		this.gender           = data.gender || null;
+		this.sexualPreference = data.sexualPreference || null;
+		this.biography        = data.biography || null;
+		this.interests        = data.interests || [];
+		this.pictures         = data.pictures || [];
+		this.createdAt        = data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt);
+		this.updatedAt        = data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt);
+	}
+
+	static fromDbRow(row: any, interests: IInterestTag[] = [], pictures: IUserPicture[]= []): Profile
+	{
+		return (new Profile({
+			userId:           row.user_id,
+			firstName:        row.first_name || null,
+			lastName:         row.last_name || null,
+			gender:           row.gender || null,
+			sexualPreference: row.sexual_preference || null,
+			biography:        row.biography || null,
+			interests,
+			pictures,
+			createdAt:        row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
+			updatedAt:        row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
+		}));
+	}
 }
 
-/**
- * User entity class for type-safe operations
- */
+export interface IUser
+{
+	id: string;
+	username: string;
+	email: string;
+	pendingEmail: string | null;
+	passwordHash: string;
+	emailVerified: boolean;
+	language: SupportedLanguage;
+	firstName: string | null;
+	lastName: string | null;
+	gender: Gender | null;
+	sexualPreference: SexualPreference | null;
+	biography: string | null;
+	interests: IInterestTag[];
+	pictures: IUserPicture[];
+	createdAt: Date;
+	updatedAt: Date;
+}
+
 export class User implements IUser
 {
 	id: string;
 	username: string;
 	email: string;
-	pending_email: string | null;
-	password_hash: string;
-	email_verified: boolean;
+	pendingEmail: string | null;
+	passwordHash: string;
+	emailVerified: boolean;
 	language: SupportedLanguage;
-	first_name: string | null;
-	last_name: string | null;
+	firstName: string | null;
+	lastName: string | null;
 	gender: Gender | null;
-	sexual_preference: SexualPreference | null;
+	sexualPreference: SexualPreference | null;
 	biography: string | null;
 	interests: IInterestTag[];
 	pictures: IUserPicture[];
-	created_at: Date;
-	updated_at: Date;
+	createdAt: Date;
+	updatedAt: Date;
 
 	constructor(data: IUser)
 	{
-		this.id = data.id;
-		this.username = data.username;
-		this.email = data.email;
-		this.pending_email = data.pending_email || null;
-		this.password_hash = data.password_hash;
-		this.email_verified = data.email_verified;
-		this.language = data.language;
-		this.first_name = data.first_name || null;
-		this.last_name = data.last_name || null;
-		this.gender = data.gender || null;
-		this.sexual_preference = data.sexual_preference || null;
-		this.biography = data.biography || null;
-		this.interests = data.interests || [];
-		this.pictures = data.pictures || [];
-		this.created_at = data.created_at instanceof Date ? data.created_at : new Date(data.created_at);
-		this.updated_at = data.updated_at instanceof Date ? data.updated_at : new Date(data.updated_at);
+		this.id              = data.id;
+		this.username        = data.username;
+		this.email           = data.email;
+		this.pendingEmail    = data.pendingEmail || null;
+		this.passwordHash    = data.passwordHash;
+		this.emailVerified   = data.emailVerified;
+		this.language        = data.language;
+		this.firstName       = data.firstName || null;
+		this.lastName        = data.lastName || null;
+		this.gender          = data.gender || null;
+		this.sexualPreference = data.sexualPreference || null;
+		this.biography       = data.biography || null;
+		this.interests       = data.interests || [];
+		this.pictures        = data.pictures || [];
+		this.createdAt       = data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt);
+		this.updatedAt       = data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt);
 	}
 
-	/**
-	 * Get full name combining first and last name
-	 */
+	static fromDbRow(row: any): User
+	{
+		return (new User({
+			id:               row.id,
+			username:         row.username,
+			email:            row.email,
+			pendingEmail:     row.pending_email || null,
+			passwordHash:     row.password_hash,
+			emailVerified:    row.email_verified,
+			language:         row.language,
+			firstName:        row.first_name || null,
+			lastName:         row.last_name || null,
+			gender:           row.gender || null,
+			sexualPreference: row.sexual_preference || null,
+			biography:        row.biography || null,
+			interests:        [],
+			pictures:         [],
+			createdAt:        row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
+			updatedAt:        row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
+		}));
+	}
+
 	getFullName(): string
 	{
 		const parts = [];
-		if (this.first_name)
-			parts.push(this.first_name);
-		if (this.last_name)
-			parts.push(this.last_name);
+
+		if (this.firstName)
+			parts.push(this.firstName);
+		if (this.lastName)
+			parts.push(this.lastName);
 
 		return (parts.join(' ').trim() || this.username);
 	}
 
-	/**
-	 * Get user display name (prioritize full name, fall back to username)
-	 */
 	getDisplayName(): string
 	{
 		const fullName = this.getFullName();
@@ -142,9 +223,6 @@ export class User implements IUser
 		return (fullName !== this.username ? fullName : this.username);
 	}
 
-	/**
-	 * Get the designated profile picture, or null if none is set
-	 */
 	getProfilePicture(): IUserPicture | null
 	{
 		const profile = this.pictures.find((picture) => picture.isProfile);
@@ -152,61 +230,56 @@ export class User implements IUser
 		return (profile || null);
 	}
 
-	/**
-	 * Get user summary for API responses (excludes sensitive data)
-	 */
 	toPublicProfile()
 	{
 		return ({
-			id: this.id,
-			username: this.username,
-			email: this.email,
-			language: this.language,
-			first_name: this.first_name,
-			last_name: this.last_name,
-			gender: this.gender,
-			sexual_preference: this.sexual_preference,
-			biography: this.biography,
-			interests: this.interests,
-			pictures: this.pictures,
-			created_at: this.created_at,
+			id:               this.id,
+			username:         this.username,
+			email:            this.email,
+			language:         this.language,
+			firstName:        this.firstName,
+			lastName:         this.lastName,
+			gender:           this.gender,
+			sexualPreference: this.sexualPreference,
+			biography:        this.biography,
+			interests:        this.interests,
+			pictures:         this.pictures,
+			createdAt:        this.createdAt,
 		});
 	}
 
-	iscompleteProfile(): boolean
+	isCompleteProfile(): boolean
 	{
 		return (
-			this.first_name !== null &&
-			this.last_name !== null &&
+			this.firstName !== null &&
+			this.lastName !== null &&
 			this.gender !== null &&
-			this.sexual_preference !== null &&
+			this.sexualPreference !== null &&
 			this.biography !== null &&
 			this.interests.length > 0 &&
 			this.pictures.length > 0
 		);
 	}
 
-	/**
-	 * Convert to plain object
-	 */
-	toObject(): IUser {
+	toObject(): IUser
+	{
 		return ({
-			id: this.id,
-			username: this.username,
-			email: this.email,
-			pending_email: this.pending_email,
-			password_hash: this.password_hash,
-			email_verified: this.email_verified,
-			language: this.language,
-			first_name: this.first_name,
-			last_name: this.last_name,
-			gender: this.gender,
-			sexual_preference: this.sexual_preference,
-			biography: this.biography,
-			interests: this.interests,
-			pictures: this.pictures,
-			created_at: this.created_at,
-			updated_at: this.updated_at,
+			id:               this.id,
+			username:         this.username,
+			email:            this.email,
+			pendingEmail:     this.pendingEmail,
+			passwordHash:     this.passwordHash,
+			emailVerified:    this.emailVerified,
+			language:         this.language,
+			firstName:        this.firstName,
+			lastName:         this.lastName,
+			gender:           this.gender,
+			sexualPreference: this.sexualPreference,
+			biography:        this.biography,
+			interests:        this.interests,
+			pictures:         this.pictures,
+			createdAt:        this.createdAt,
+			updatedAt:        this.updatedAt,
 		});
 	}
 }

@@ -1,7 +1,7 @@
 import { Injectable, Logger, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { DbService } from './db/db.service';
-import { IProfile } from '@repo/shared-types';
+import { Profile } from '@repo/shared-types';
 
 // Services contain the core business logic like the db calls
 
@@ -67,7 +67,7 @@ export class AppService
 
 		try
 		{
-			const profile: IProfile | null = await this.dbService.getProfile(userId);
+			const profile: Profile | null = await this.dbService.getProfile(userId);
 
 			if (!profile)
 			{

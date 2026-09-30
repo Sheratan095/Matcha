@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { IProfile, IInterestTag, IUserPicture } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture } from '@repo/shared-types';
 
 @Injectable()
 
@@ -43,7 +43,7 @@ export class DbService implements OnModuleInit
 		return (result.rows[0]);
 	}
 
-	async getProfile(userId: string): Promise<IProfile | null>
+	async getProfile(userId: string): Promise<Profile | null>
 	{
 		const result = await this.pool.query(
 			`SELECT user_id, first_name, last_name, gender, sexual_preference, biography, created_at, updated_at
@@ -55,27 +55,15 @@ export class DbService implements OnModuleInit
 		if (!result.rows[0])
 			return (null);
 
-		const interest : IInterestTag[] = await this.getInterestsByUserId(userId);
-		const pictures : IUserPicture[] = await this.getPicturesByUserId(userId);
+		const [interests, pictures] = await Promise.all([
+			this.getInterestsByUserId(userId),
+			this.getPicturesByUserId(userId),
+		]);
 
-		const	row = result.rows[0];
-		const profile: IProfile = {
-			userId:           row.user_id,
-			firstName:        row.first_name,
-			lastName:         row.last_name,
-			gender:           row.gender,
-			sexualPreference: row.sexual_preference,
-			biography:        row.biography,
-			createdAt:        row.created_at,
-			updatedAt:        row.updated_at,
-			interests:        interest,
-			pictures:         pictures,
-		};
-
-		return (profile);
+		return (Profile.fromDbRow(result.rows[0], interests, pictures));
 	}
 
-	async getInterestsByUserId(userId: string): Promise<IInterestTag[]>
+	async getInterestsByUserId(userId: string): Promise<InterestTag[]>
 	{
 		const result = await this.pool.query(
 			`SELECT i.id, i.name
@@ -85,10 +73,10 @@ export class DbService implements OnModuleInit
 			[userId]
 		);
 
-		return (result.rows);
+		return (result.rows.map(row => InterestTag.fromDbRow(row)));
 	}
 
-	async getPicturesByUserId(userId: string): Promise<IUserPicture[]>
+	async getPicturesByUserId(userId: string): Promise<UserPicture[]>
 	{
 		const result = await this.pool.query(
 			`SELECT id, url, is_profile, position
@@ -98,12 +86,7 @@ export class DbService implements OnModuleInit
 			[userId]
 		);
 
-		return (result.rows.map(row => ({
-			id:        row.id,
-			url:       row.url,
-			isProfile: row.is_profile,
-			position:  row.position,
-		})));
+		return (result.rows.map(row => UserPicture.fromDbRow(row)));
 	}
 
 	// Called by login so frontend knows if the user has completed their profile.

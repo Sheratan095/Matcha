@@ -36,36 +36,32 @@ export class DbService implements OnModuleInit
 
 	async getUserByUsername(username: string): Promise<User | undefined>
 	{
-		// Return the first user that matches the given username from the database. This is a helper method for authentication purposes.
 		const result = await this.pool.query('SELECT * FROM users WHERE username = $1', [username]);
-		return (result.rows[0] ? new User(result.rows[0]) : undefined);
+		return (result.rows[0] ? User.fromDbRow(result.rows[0]) : undefined);
 	}
 
 	async getUserByEmail(email: string): Promise<User | undefined>
 	{
-		// Return the first user that matches the given email from the database. This is a helper method for authentication purposes.
 		const result = await this.pool.query('SELECT * FROM users WHERE email = $1', [email]);
-		return (result.rows[0] ? new User(result.rows[0]) : undefined);
+		return (result.rows[0] ? User.fromDbRow(result.rows[0]) : undefined);
 	}
 
 	async getUserById(id: string): Promise<User | undefined>
 	{
-		// Return the first user that matches the given ID from the database. This is a helper method for authentication purposes.
 		const result = await this.pool.query('SELECT * FROM users WHERE id = $1', [id]);
-		return (result.rows[0] ? new User(result.rows[0]) : undefined);
+		return (result.rows[0] ? User.fromDbRow(result.rows[0]) : undefined);
 	}
 
 	async getUserByOAuth(provider: string, providerId: string): Promise<User | undefined>
 	{
-		// Retrieve user details by joining with the oauth_accounts table.
 		const query = `
-			SELECT u.* 
+			SELECT u.*
 			FROM users u
 			JOIN oauth_accounts oa ON u.id = oa.user_id
 			WHERE oa.provider = $1 AND oa.provider_id = $2
 		`;
 		const result = await this.pool.query(query, [provider, providerId]);
-		return (result.rows[0] ? new User(result.rows[0]) : undefined);
+		return (result.rows[0] ? User.fromDbRow(result.rows[0]) : undefined);
 	}
 
 
@@ -235,7 +231,7 @@ export class DbService implements OnModuleInit
 				'INSERT INTO users (email, username, email_verified) VALUES ($1, $2, TRUE) RETURNING *',
 				[email, username]
 			);
-			const newUser = new User(userResult.rows[0]);
+			const newUser = User.fromDbRow(userResult.rows[0]);
 
 			// 2. Insert the link between the new user and the OAuth provider.
 			await client.query(
