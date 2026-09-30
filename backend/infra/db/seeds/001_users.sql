@@ -12,7 +12,7 @@ INSERT INTO profiles (user_id, first_name, last_name, biography, gender, sexual_
 VALUES
 	((SELECT id FROM users WHERE username = 'admin'), 'Admin', 'User', 'I am the admin of this site.', 'other', 'other'),
 	((SELECT id FROM users WHERE username = 'testuser'), 'Test', 'User', 'I am a test user for this site.', 'other', 'other'),
-	((SELECT id FROM users WHERE username = 'alice'), 'Alice', 'Wonderland')
+	((SELECT id FROM users WHERE username = 'alice'), 'Alice', 'Wonderland', 'Curiouser and curiouser.', 'female', 'both')
 ON CONFLICT DO NOTHING;
 
 -- insert some interest tags for testing

@@ -74,4 +74,4 @@ user, and the chat function between them will be disabled.
 
 [] wtf is photo position??
 
-[] verify user completition and check that the api isn't callable from out
+[x] verify user completition and check that the api isn't callable from out
