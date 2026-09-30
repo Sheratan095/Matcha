@@ -91,6 +91,30 @@ export class AppService
 		}
 	}
 
+	async updateProfile( userId: string,
+		fields: { firstName?: string; lastName?: string; gender?: string; sexualPreference?: string; biography?: string },
+		interests?: string[],
+	): Promise<Profile>
+	{
+		try
+		{
+			const profile = await this.dbService.updateProfile(userId, fields, interests);
+
+			if (!profile)
+			{
+				this.logger.warn(`Profile not found for user ID ${userId} during update`);
+				throw new ConflictException('Profile not found');
+			}
+
+			return (profile);
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error updating profile for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to update profile');
+		}
+	}
+
 	async getProfileViewers(userId: string): Promise<string[]>
 	{
 		try

@@ -129,6 +129,94 @@ export class DbService implements OnModuleInit
 		return (true);
 	}
 
+	async updateProfile( userId: string,
+		fields: { firstName?: string; lastName?: string; gender?: string; sexualPreference?: string; biography?: string },
+		interests?: string[],
+	): Promise<Profile | null>
+	{
+		const client = await this.pool.connect();
+
+		try
+		{
+			await client.query('BEGIN');
+
+			// Build a dynamic SET clause from only the fields that were provided.
+			const	setClauses: string[] = ['updated_at = NOW()'];
+			const	params: any[]        = [userId]; // $1 is always userId
+			let		paramIndex           = 2;
+
+			const	columnMap: Record<string, string> =
+			{
+				firstName:        'first_name',
+				lastName:         'last_name',
+				gender:           'gender',
+				sexualPreference: 'sexual_preference',
+				biography:        'biography',
+			};
+
+			for (const [key, column] of Object.entries(columnMap))
+			{
+				if (fields[key as keyof typeof fields] !== undefined)
+				{
+					setClauses.push(`${column} = $${paramIndex}`);
+					params.push(fields[key as keyof typeof fields]);
+					paramIndex++;
+				}
+			}
+
+			await client.query(
+				`UPDATE profiles SET ${setClauses.join(', ')} WHERE user_id = $1`,
+				params,
+			);
+
+			if (interests !== undefined)
+			{
+				// Upsert each tag and collect its id.
+				const	tagIds: string[] = [];
+
+				for (const name of interests)
+				{
+					// Upsert the tag: insert if new, or do a no-op update (name = EXCLUDED.name)
+					// just to satisfy ON CONFLICT so RETURNING id fires even on duplicates.
+					const tagResult = await client.query(
+						`INSERT INTO interest_tags (name) VALUES ($1)
+						 ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+						 RETURNING id`,
+						[name.toLowerCase().trim()],
+					);
+
+					tagIds.push(tagResult.rows[0].id);
+				}
+
+				// Replace all interests for this user atomically.
+				await client.query('DELETE FROM user_interests WHERE user_id = $1', [userId]);
+
+				if (tagIds.length > 0)
+				{
+					const	valuePlaceholders = tagIds.map((_, i) => `($1, $${i + 2})`).join(', ');
+
+					await client.query(
+						`INSERT INTO user_interests (user_id, tag_id) VALUES ${valuePlaceholders}`,
+						[userId, ...tagIds],
+					);
+				}
+			}
+
+			await client.query('COMMIT');
+		}
+		catch (err)
+		{
+			await client.query('ROLLBACK');
+			throw (err);
+		}
+		finally
+		{
+			client.release();
+		}
+
+		return (this.getProfile(userId));
+	}
+
 	async addProfileView(viewerId: string, viewedId: string): Promise<void>
 	{
 		await this.pool.query(

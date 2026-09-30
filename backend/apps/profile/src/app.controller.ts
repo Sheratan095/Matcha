@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Param, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { CreateProfileDto, CreateProfileResponseDto, CreateProfileErrorDto } from './dto/createProfile.dto';
 import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteErrorDto } from './dto/isProfileComplete.dto';
 import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto } from './dto/getProfile.dto';
 import { GetProfileViewersDto, GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
+import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 
 // Specify that this class is a NestJS controller
@@ -64,6 +65,22 @@ export class AppController
 		const viewers = await this.appService.getProfileViewers(userId);
 
 		return ({ viewers });
+	}
+
+	@Patch()
+	@ApiOperation({ summary: 'Update user profile', description: 'Update the authenticated user\'s own profile. All fields are optional — only provided fields are applied.' })
+	@ApiBody({ type: UpdateProfileDto })
+	@ApiResponse({ status: 200, type: UpdateProfileResponseDto, description: 'Profile updated successfully' })
+	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 403, type: UpdateProfileErrorDto, description: 'Requesting user is not the profile owner' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async updateProfile(@Body() body: UpdateProfileDto, @CurrentUser() userId: string)
+	{
+		const { interests, ...fields } = body;
+
+		return (await this.appService.updateProfile(userId, fields, interests));
 	}
 
 	@Get(':userId')
