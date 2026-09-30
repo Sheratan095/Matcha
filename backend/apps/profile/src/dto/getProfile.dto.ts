@@ -21,3 +21,20 @@ export class GetProfileErrorDto
 	@ApiProperty({ example: 'Profile not found', description: 'Error message' })
 	message: string;
 }
+
+// --------------------------------------------------------------------------------------
+
+
+export class GetMyProfileDto
+{
+	// This DTO is intentionally left empty as it serves as a placeholder for the "Get My Profile" request.
+	// So the id is inferred from the authenticated user context, and no additional parameters are needed.
+}
+
+export class GetMyProfileResponseDto extends FullProfileDto
+{
+}
+
+export class GetMyProfileErrorDto extends GetProfileErrorDto
+{
+}

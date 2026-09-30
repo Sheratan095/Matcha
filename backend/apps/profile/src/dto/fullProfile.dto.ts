@@ -25,12 +25,6 @@ export class UserPictureDto
 	@ApiProperty({ example: true, description: 'Whether this is the profile picture' })
 	@IsBoolean()
 	isProfile: boolean;
-
-	@ApiProperty({ example: 0, description: 'Position in the gallery (0..4)' })
-	@IsInt()
-	@Min(0)
-	@Max(4)
-	position: number;
 }
 
 export class FullProfileDto

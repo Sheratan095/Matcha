@@ -80,4 +80,4 @@ user, and the chat function between them will be disabled.
 
 [] /profile/viewers should return also name and profile pic link?
 
-[] get /profile = get my profile
+[x] get /profile = get my profile

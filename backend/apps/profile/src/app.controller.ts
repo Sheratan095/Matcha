@@ -3,8 +3,8 @@ import { AppService } from './app.service';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { CreateProfileDto, CreateProfileResponseDto, CreateProfileErrorDto } from './dto/createProfile.dto';
 import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteErrorDto } from './dto/isProfileComplete.dto';
-import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto } from './dto/getProfile.dto';
-import { GetProfileViewersDto, GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
+import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
+import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
 import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 
@@ -40,17 +40,17 @@ export class AppController
 		return (await this.appService.createProfile(req.userId, req.firstName, req.lastName));
 	}
 
-	@Get(':userId/is-complete')
-	@ApiOperation({ summary: 'Check if user profile is complete', description: 'INTERNAL endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
-	@ApiResponse({ status: 200, type: IsProfileCompleteResponseDto, description: 'Profile completeness status' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
-	@ApiResponse({ status: 500, type: IsProfileCompleteErrorDto, description: 'Internal server error' })
-	async isProfileComplete(@Param() req: IsProfileCompleteDto)
+	@Get()
+	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full profile of the authenticated user.' })
+	@ApiResponse({ status: 200, type: GetMyProfileResponseDto, description: 'Profile retrieved successfully' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getMyProfile(@CurrentUser() userId: string)
 	{
-		const isComplete = await this.appService.isProfileComplete(req.userId);
+		const profile = await this.appService.getProfile(userId, userId);
 
-		return ({ isComplete });
+		return (profile);
 	}
 
 	@Get('viewers')
@@ -60,7 +60,7 @@ export class AppController
 	@ApiResponse({ status: 403, type: GetProfileViewersErrorDto, description: 'Requesting user is not the profile owner' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
-	async getProfileViewers(@Param() req: GetProfileViewersDto, @CurrentUser() userId: string)
+	async getProfileViewers(@CurrentUser() userId: string)
 	{
 		const viewers = await this.appService.getProfileViewers(userId);
 
@@ -96,5 +96,18 @@ export class AppController
 		const profile = await this.appService.getProfile(req.userId, userId);
 
 		return (profile);
+	}
+
+	@Get(':userId	/is-complete')
+	@ApiOperation({ summary: 'Check if user profile is complete', description: 'INTERNAL endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
+	@ApiResponse({ status: 200, type: IsProfileCompleteResponseDto, description: 'Profile completeness status' })
+	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
+	@ApiResponse({ status: 500, type: IsProfileCompleteErrorDto, description: 'Internal server error' })
+	async isProfileComplete(@Param() req: IsProfileCompleteDto)
+	{
+		const isComplete = await this.appService.isProfileComplete(req.userId);
+
+		return ({ isComplete });
 	}
 }
