@@ -59,4 +59,9 @@ export class AppService
 			throw new InternalServerErrorException('Failed to check profile completeness');
 		}
 	}
+
+	async getProfile(userId: string, requestorUserId: string)
+	{
+		this.logger.log(`Fetching profile for user ID ${userId} requested by user ID ${requestorUserId}`);
+	}
 }

@@ -11,7 +11,7 @@ export async function createUserProfile(userId: string, firstName: string, lastN
 	{
 		// firstValueFrom subscribes to the Observable so the request is actually sent
 		// (a bare httpService.post(...) is a cold Observable and would never fire).
-		await firstValueFrom(httpService.post(`${env.PROFILE_HOST}:${env.PROFILE_PORT}/profile`,
+		await firstValueFrom(httpService.post(`${env.PROFILE_HOST}:${env.PROFILE_PORT}/`,
 		{
 			userId,
 			firstName,
