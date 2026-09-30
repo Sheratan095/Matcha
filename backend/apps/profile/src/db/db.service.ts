@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { Profile, InterestTag, UserPicture } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture, ProfileView } from '@repo/shared-types';
 
 @Injectable()
 
@@ -130,5 +130,25 @@ export class DbService implements OnModuleInit
 		return (true);
 	}
 
-	// TO DO more profile db methods (read/update profiles, interest_tags, user_interests, user_pictures)
+	async addProfileView(viewerId: string, viewedId: string): Promise<void>
+	{
+		await this.pool.query(
+			`INSERT INTO profile_views (viewer_id, viewed_id)
+			 VALUES ($1, $2)
+			 ON CONFLICT (viewer_id, viewed_id) DO NOTHING`,
+			[viewerId, viewedId]
+		);
+	}
+
+	async getProfileViewers(viewedId: string): Promise<ProfileView[]>
+	{
+		const result = await this.pool.query(
+			`SELECT viewer_id, viewed_id
+			 FROM profile_views
+			 WHERE viewed_id = $1`,
+			[viewedId]
+		);
+
+		return (result.rows.map(row => ProfileView.fromDbRow(row)));
+	}
 }

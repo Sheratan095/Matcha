@@ -2,3 +2,4 @@
 export type Shared = { placeholder?: string };
 export * from './languages';
 export * from './User';
+export * from './ProfileView';

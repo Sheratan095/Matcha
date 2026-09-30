@@ -63,8 +63,6 @@ export class AppService
 
 	async getProfile(userId: string, requestorUserId: string)
 	{
-		this.logger.log(`Fetching profile for user ID ${userId} requested by user ID ${requestorUserId}`);
-
 		try
 		{
 			const profile: Profile | null = await this.dbService.getProfile(userId);
@@ -75,12 +73,33 @@ export class AppService
 				throw new ConflictException('Profile not found');
 			}
 
+			// Views are only recorded if the requestor is not the owner of the profile
+			if (userId !== requestorUserId)
+			{
+				this.logger.log(`Adding view record for viewer ID ${requestorUserId} and viewed ID ${userId}`);
+				//									viewerId		viewedId
+				await this.dbService.addProfileView(requestorUserId, userId);
+			}
+
 			return (profile);
 		}
 		catch (error: any)
 		{
 			this.logger.error(`Error fetching profile for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to fetch profile');
+		}
+	}
+
+	async getProfileViews(userId: string)
+	{
+		try
+		{
+			return (await this.dbService.getProfileViewers(userId));
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error fetching profile views for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch profile views');
 		}
 	}
 }

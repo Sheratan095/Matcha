@@ -72,3 +72,4 @@ CREATE TABLE IF NOT EXISTS user_pictures (
 CREATE UNIQUE INDEX IF NOT EXISTS one_profile_picture_per_user
 	ON user_pictures (user_id)
 	WHERE is_profile;
+
