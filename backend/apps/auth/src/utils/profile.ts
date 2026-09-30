@@ -5,7 +5,7 @@ import { firstValueFrom } from "rxjs";
 // Calls the PROFILE service (internally) to create the profile row that pairs 1:1
 // with a freshly registered user. HttpService is already configured with the
 // internal-key header in app.module, so the profile service's InternalKeyGuard accepts it.
-export async function createUserProfile(userId: number, firstName: string, lastName: string, httpService: HttpService)
+export async function createUserProfile(userId: string, firstName: string, lastName: string, httpService: HttpService)
 {
 	try
 	{
@@ -25,7 +25,7 @@ export async function createUserProfile(userId: number, firstName: string, lastN
 	}
 }
 
-export async function checkProfileCompleteness(userId: number, httpService: HttpService): Promise<boolean>
+export async function checkProfileCompleteness(userId: string, httpService: HttpService): Promise<boolean>
 {
 	try
 	{

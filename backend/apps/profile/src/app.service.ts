@@ -18,7 +18,7 @@ export class AppService
 
 	// Called internally by the AUTH service after a user is registered, to create
 	// the matching profile row (1:1 with the user).
-	async createProfile(userId: number, firstName?: string, lastName?: string)
+	async createProfile(userId: string, firstName?: string, lastName?: string)
 	{
 		try
 		{
@@ -47,7 +47,7 @@ export class AppService
 	//   specify a sexual orientation
 	//   a list of interests
 	//   upload at least 5 pictures
-	async isProfileComplete(userId: number): Promise<boolean>
+	async isProfileComplete(userId: string): Promise<boolean>
 	{
 		try
 		{

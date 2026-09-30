@@ -1,12 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsUUID } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 
 export class CloseWsConnectionsDto
 {
-	@ApiProperty({ example: '123456', description: 'User ID for which to close WebSocket connections' })
-	@IsString()
+	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'User ID for which to close WebSocket connections' })
+	@IsUUID()
 	@IsNotEmpty()
 	@Transform(({ value }) => value?.trim())
 	userId: string;

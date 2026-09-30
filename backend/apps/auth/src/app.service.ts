@@ -65,7 +65,7 @@ export class AppService implements OnModuleInit
 
 			await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
 
-			const isProfileComplete : boolean = await checkProfileCompleteness(Number(user.id), this.httpService);
+			const isProfileComplete : boolean = await checkProfileCompleteness(user.id, this.httpService);
 
 			this.logger.log(`Login successful for user ${username} (ID: ${user.id}, COMPLETE: ${isProfileComplete})`);
 
@@ -106,7 +106,7 @@ export class AppService implements OnModuleInit
 			{
 				// Create the matching profile row (1:1 with the user) in the profile service.
 				// first/last name live in the profiles table, so they are passed along here.
-				await createUserProfile(Number(newUser.id), firstName, lastName, this.httpService);
+				await createUserProfile(newUser.id, firstName, lastName, this.httpService);
 				this.logger.log(`Profile created for user ID ${newUser.id}`);
 
 			}

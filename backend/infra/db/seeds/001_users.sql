@@ -7,7 +7,7 @@ ON CONFLICT DO NOTHING;
 -- Password for testuser and alice is '1234' (bcrypt, 10 salt rounds). These are real working hashes, so you can log in with '1234'.
 
 -- first/last name now live in the profiles table, so seed them there.
--- Subqueries resolve the SERIAL user ids by username (don't assume 1/2/3).
+-- Subqueries resolve the generated UUID user ids by username (they aren't predictable).
 INSERT INTO profiles (user_id, first_name, last_name, biography, gender, sexual_preference)
 VALUES
 	((SELECT id FROM users WHERE username = 'admin'), 'Admin', 'User', 'I am the admin of this site.', 'other', 'other'),

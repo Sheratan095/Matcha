@@ -1,5 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
-	id SERIAL PRIMARY KEY,
+	-- Random UUID rather than a sequence: the id travels to clients (profile routes,
+	-- JWT subject), so it must not leak the user count or allow walking 1..N.
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
 	username VARCHAR(30) UNIQUE NOT NULL,
 
@@ -16,9 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS oauth_accounts (
-	id SERIAL PRIMARY KEY,
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-	user_id INTEGER NOT NULL, -- Many-to-one relationship with users table (one user, multiple providers)
+	user_id UUID NOT NULL, -- Many-to-one relationship with users table (one user, multiple providers)
 
 	provider VARCHAR(20) NOT NULL, -- e.g., 'github', 'google', etc.
 	CHECK (provider IN ('github')), -- Ensure only valid providers are used
@@ -35,7 +37,7 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
 
 -- Using user_id as pk force the user to be logged just one device at time
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-	user_id INTEGER PRIMARY KEY, -- Used as primary key because we only want one refresh token per user
+	user_id UUID PRIMARY KEY, -- Used as primary key because we only want one refresh token per user
 	token_hash VARCHAR(255) NOT NULL,
 	created_at TIMESTAMPTZ DEFAULT NOW(),
 	expires_at TIMESTAMPTZ NOT NULL,
@@ -44,7 +46,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 );
 
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
-	user_id INTEGER PRIMARY KEY, -- Used as primary key because we only want one verification token per user
+	user_id UUID PRIMARY KEY, -- Used as primary key because we only want one verification token per user
 	token_hash VARCHAR(255) NOT NULL,
 	created_at TIMESTAMPTZ DEFAULT NOW(),
 	expires_at TIMESTAMPTZ NOT NULL,
@@ -53,7 +55,7 @@ CREATE TABLE IF NOT EXISTS email_verification_tokens (
 );
 
 CREATE TABLE IF NOT EXISTS forgot_password_tokens (
-	user_id INTEGER PRIMARY KEY, -- Used as primary key because we only want one forgot password token per user
+	user_id UUID PRIMARY KEY, -- Used as primary key because we only want one forgot password token per user
 	token_hash VARCHAR(255) NOT NULL,
 	created_at TIMESTAMPTZ DEFAULT NOW(),
 	expires_at TIMESTAMPTZ NOT NULL,

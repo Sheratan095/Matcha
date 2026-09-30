@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS profiles (
 	-- user_id is both PK and FK: enforces a strict 1:1 with the users table
-	user_id INTEGER PRIMARY KEY,
+	user_id UUID PRIMARY KEY,
 
 	gender VARCHAR(10),
 	CHECK (gender IN ('male', 'female', 'other')), -- Mirrors the Gender union in shared-types
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- Reusable interest tags: each tag stored once, shared across many users.
 CREATE TABLE IF NOT EXISTS interest_tags (
-	id SERIAL PRIMARY KEY,
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
 	name VARCHAR(50) UNIQUE NOT NULL, -- Stored without the leading '#', lowercased and trimmed (e.g. "vegan")
 
@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS interest_tags (
 
 -- Join table: many-to-many between users and reusable interest tags.
 CREATE TABLE IF NOT EXISTS user_interests (
-	user_id INTEGER NOT NULL,
-	tag_id INTEGER NOT NULL,
+	user_id UUID NOT NULL,
+	tag_id UUID NOT NULL,
 
 	PRIMARY KEY (user_id, tag_id), -- A user can't add the same tag twice
 
@@ -49,9 +49,9 @@ CREATE TABLE IF NOT EXISTS user_interests (
 
 -- Up to 5 pictures per user, one of which is the profile picture.
 CREATE TABLE IF NOT EXISTS user_pictures (
-	id SERIAL PRIMARY KEY,
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-	user_id INTEGER NOT NULL,
+	user_id UUID NOT NULL,
 
 	url VARCHAR(255) NOT NULL,
 	is_profile BOOLEAN DEFAULT FALSE, -- The single designated profile picture

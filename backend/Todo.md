@@ -70,7 +70,7 @@ user, and the chat function between them will be disabled.
 
 [] should the user be able to make request also with non-completed profile??
 
-[] UserID UUID string or int?? IN WHOLE PROJECT
+[x] UserID UUID string or int?? IN WHOLE PROJECT
 
 [] wtf is photo position??
 

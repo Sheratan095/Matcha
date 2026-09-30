@@ -32,7 +32,7 @@ export class DbService implements OnModuleInit
 	// Insert a new profile row for the given user. first_name / last_name are optional
 	// at creation (the user fills the rest of the profile in later).
 	// RETURNING * exposes all columns in case the caller needs them.
-	async createProfile(userId: number, firstName?: string, lastName?: string)
+	async createProfile(userId: string, firstName?: string, lastName?: string)
 	{
 		const result = await this.pool.query(
 			'INSERT INTO profiles (user_id, first_name, last_name) VALUES ($1, $2, $3) RETURNING *',
@@ -43,7 +43,7 @@ export class DbService implements OnModuleInit
 	}
 
 	// retrieve profile by userId, including all related tables (interests, pictures, etc.)
-	async ProfileByUserId(userId: number)
+	async ProfileByUserId(userId: string)
 	{
 		const result = await this.pool.query(
 			`SELECT * FROM profiles p WHERE p.user_id = $1`,
@@ -54,7 +54,7 @@ export class DbService implements OnModuleInit
 	}
 
 	// retrieve tags of interests for a given userId
-	async getInterestsByUserId(userId: number)
+	async getInterestsByUserId(userId: string)
 	{
 		const result = await this.pool.query(
 			`SELECT i.tag
@@ -70,7 +70,7 @@ export class DbService implements OnModuleInit
 	// Called by login so frontend knows if the user has completed their profile.
 	// Instead of calling getFullProfile it just checks the required fields and returns a boolean.
 	//	to reduce the amount of data sent over the network because interests and picture are just COUNT instead of SELECT.
-	async isProfileComplete(userId: number): Promise<boolean>
+	async isProfileComplete(userId: string): Promise<boolean>
 	{
 		const profile = await this.pool.query(
 			`SELECT gender, biography, sexual_preference

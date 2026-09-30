@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
 import { InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { CreateProfileDto, CreateProfileResponseDto, CreateProfileErrorDto } from './dto/createProfile.dto';
-import { IsProfileCompleteResponseDto } from './dto/isProfileComplete.dto';
+import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteErrorDto } from './dto/isProfileComplete.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -42,10 +42,10 @@ export class AppController
 	@ApiResponse({ status: 200, type: IsProfileCompleteResponseDto, description: 'Profile completeness status' })
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
-	async isProfileComplete(@Param('userId', ParseIntPipe) userId: number)
+	@ApiResponse({ status: 500, type: IsProfileCompleteErrorDto, description: 'Internal server error' })
+	async isProfileComplete(@Param() req: IsProfileCompleteDto)
 	{
-		const isComplete = await this.appService.isProfileComplete(userId);
+		const isComplete = await this.appService.isProfileComplete(req.userId);
 
 		return ({ isComplete });
 	}
