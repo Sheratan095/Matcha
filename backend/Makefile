@@ -1,4 +1,4 @@
-.PHONY: install build dev up down clean
+.PHONY: install build dev up down clean db-reset storage seed-pictures generate_env
 
 # Build all apps and packages
 build:
@@ -20,7 +20,9 @@ dev: generate_env
 		echo "no dist folders found — running pnpm build..."; \
 		pnpm build; \
 	fi; \
-	docker compose up -d postgres
+	docker compose up -d postgres garage
+	./infra/garage/init.sh
+	$(MAKE) seed-pictures
 	pnpm dev
 
 # Copy the .env.example to .env if it doesn't exist
@@ -40,12 +42,25 @@ up:
 down:
 	pnpm docker:down
 
-# Reset Database: Stop containers, remove volumes, and start again to trigger init scripts
+# Reset Database: Stop containers, remove volumes, and start again to trigger init scripts.
+# Garage volumes are wiped too: the picture URLs lived in the database that was just reset.
 db-reset:
-	@echo "Resetting database..."
+	@echo "Resetting database and picture storage..."
 	docker compose down -v
-	docker compose up -d postgres
+	docker compose up -d postgres garage
+	./infra/garage/init.sh
+	$(MAKE) seed-pictures
 	@echo "Database reset and initialized with migrations and seeds."
+
+# Start Garage (object storage for pictures) and make sure it is initialized
+storage:
+	docker compose up -d garage
+	./infra/garage/init.sh
+
+# Upload the committed sample images (infra/garage/seed-images/) into the Garage bucket,
+# so the demo profiles seeded in the database actually show pictures. Idempotent.
+seed-pictures:
+	pnpm --filter @matcha/profile seed:pictures
 
 # Clean build artifacts and node_modules
 clean:

@@ -1,4 +1,4 @@
-// packages/config/src/env.ts
+    // packages/config/src/env.ts
 
 import * as dotenv from "dotenv";
 // zod is used for schema validation of environment variables
@@ -66,6 +66,16 @@ const envSchema = z.object({
 	SMTP_PORT: z.coerce.number().default(587),
 	SMTP_USER: z.string(),
 	SMTP_PASS: z.string(),
+
+	// S3-compatible object storage (Garage), used by the profile service for pictures
+	S3_ENDPOINT: z.string().default("http://localhost:3900"), // S3 API the backend talks to ("http://garage:3900" inside docker)
+	S3_REGION: z.string().default("garage"), // Must match s3_region in infra/garage/garage.toml
+	// Empty defaults keep services that don't use storage bootable; the profile service logs an error instead
+	S3_ACCESS_KEY: z.string().default(""),
+	S3_SECRET_KEY: z.string().default(""),
+	S3_BUCKET: z.string().default("profile-pictures"),
+	// Base URL the BROWSER uses to load images, already pointing at the bucket root
+	S3_PUBLIC_URL: z.string().default("http://profile-pictures.web.garage.localhost:3902"),
 
 	// Github OAuth
 	GITHUB_CLIENT_ID: z.string(),

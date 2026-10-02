@@ -81,3 +81,7 @@ user, and the chat function between them will be disabled.
 [] /profile/viewers should return also name and profile pic link?
 
 [x] get /profile = get my profile
+
+[] In getProfile and updateProfile, the catch block turns the "Profile not found" error into a 500. Those endpoints never return a proper "not found" response.
+
+[] Deleting the current profile picture doesn't make another picture the profile picture; the user has none until they pick one.

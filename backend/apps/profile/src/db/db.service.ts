@@ -81,11 +81,93 @@ export class DbService implements OnModuleInit
 		const result = await this.pool.query(
 			`SELECT id, url, is_profile
 			 FROM user_pictures
-			 WHERE user_id = $1`,
+			 WHERE user_id = $1
+			 ORDER BY created_at`,
 			[userId]
 		);
 
 		return (result.rows.map(row => UserPicture.fromDbRow(row)));
+	}
+
+	async getPictureCount(userId: string): Promise<number>
+	{
+		const result = await this.pool.query(
+			'SELECT COUNT(*) AS count FROM user_pictures WHERE user_id = $1',
+			[userId]
+		);
+
+		return (parseInt(result.rows[0].count, 10));
+	}
+
+	async addPicture(userId: string, url: string, isProfile: boolean): Promise<UserPicture>
+	{
+		const result = await this.pool.query(
+			`INSERT INTO user_pictures (user_id, url, is_profile)
+			 VALUES ($1, $2, $3)
+			 RETURNING id, url, is_profile`,
+			[userId, url, isProfile]
+		);
+
+		return (UserPicture.fromDbRow(result.rows[0]));
+	}
+
+	// The user_id filter is the ownership check: another user's picture id simply matches nothing.
+	// Returns the deleted picture's url (so the file can be removed from storage), or null if not found.
+	async deletePicture(pictureId: string, userId: string): Promise<string | null>
+	{
+		const result = await this.pool.query(
+			`DELETE FROM user_pictures
+			 WHERE id = $1 AND user_id = $2
+			 RETURNING url`,
+			[pictureId, userId]
+		);
+
+		if (result.rows.length === 0)
+			return (null);
+
+		return (result.rows[0].url);
+	}
+
+	// Returns false if the picture doesn't exist or doesn't belong to the user.
+	async setProfilePicture(userId: string, pictureId: string): Promise<boolean>
+	{
+		const client = await this.pool.connect();
+
+		try
+		{
+			await client.query('BEGIN');
+
+			// Clear first: the partial unique index allows only one is_profile = true row per user.
+			await client.query(
+				'UPDATE user_pictures SET is_profile = FALSE WHERE user_id = $1 AND is_profile',
+				[userId]
+			);
+
+			const result = await client.query(
+				'UPDATE user_pictures SET is_profile = TRUE WHERE id = $1 AND user_id = $2',
+				[pictureId, userId]
+			);
+
+			if (result.rowCount === 0)
+			{
+				await client.query('ROLLBACK');
+
+				return (false);
+			}
+
+			await client.query('COMMIT');
+
+			return (true);
+		}
+		catch (err)
+		{
+			await client.query('ROLLBACK');
+			throw (err);
+		}
+		finally
+		{
+			client.release();
+		}
 	}
 
 	// Called by login so frontend knows if the user has completed their profile.

@@ -1,7 +1,10 @@
-import { Injectable, Logger, ConflictException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, ConflictException, ForbiddenException, InternalServerErrorException, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
-import { Profile } from '@repo/shared-types';
+import { StorageService } from './storage/storage.service';
+import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
+import { Profile, UserPicture, MAX_USER_PICTURES } from '@repo/shared-types';
 
 // Services contain the core business logic like the db calls
 
@@ -14,7 +17,8 @@ export class AppService
 
 	constructor(
 			private readonly dbService: DbService,
-			private readonly httpService: HttpService )
+			private readonly httpService: HttpService,
+			private readonly storageService: StorageService )
 	{}
 
 	// Called internally by the AUTH service after a user is registered, to create
@@ -127,6 +131,99 @@ export class AppService
 		{
 			this.logger.error(`Error fetching profile viewers for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to fetch profile viewers');
+		}
+	}
+
+	//	PICTURES
+
+	async uploadPicture(userId: string, file: Express.Multer.File): Promise<UserPicture[]>
+	{
+		const	count = await this.dbService.getPictureCount(userId);
+
+		if (count >= MAX_USER_PICTURES)
+			throw new BadRequestException(`You can upload at most ${MAX_USER_PICTURES} pictures`);
+
+		let	cleanImage: Buffer;
+
+		try
+		{
+			cleanImage = await sanitizeImage(file.buffer);
+		}
+		catch
+		{
+			throw new BadRequestException('File is not a valid image');
+		}
+
+		const	key = `${userId}/${randomUUID()}.${PICTURE_OUTPUT_EXT}`;
+		let		url: string;
+
+		try
+		{
+			url = await this.storageService.upload(key, cleanImage, PICTURE_OUTPUT_MIME);
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error uploading picture to storage for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to store picture');
+		}
+
+		try
+		{
+			// The first picture becomes the profile picture automatically.
+			await this.dbService.addPicture(userId, url, count === 0);
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error saving picture for user ID ${userId}, removing orphan file`, error);
+			this.storageService.delete(key).catch(() => {});
+			throw new InternalServerErrorException('Failed to save picture');
+		}
+
+		return (await this.dbService.getPicturesByUserId(userId));
+	}
+
+	async deletePicture(userId: string, pictureId: string): Promise<UserPicture[]>
+	{
+		try
+		{
+			const	url = await this.dbService.deletePicture(pictureId, userId);
+
+			if (!url)
+				throw new NotFoundException('Picture not found');
+
+			// The DB row is already gone, so a storage failure only leaves an unreachable file behind.
+			this.storageService.delete(this.storageService.keyFromUrl(url)).catch(err =>
+				this.logger.warn(`Failed to delete picture file ${url}: ${err.message}`)
+			);
+
+			return (await this.dbService.getPicturesByUserId(userId));
+		}
+		catch (error: any)
+		{
+			if (error instanceof HttpException)
+				throw (error);
+
+			this.logger.error(`Error deleting picture ${pictureId} for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to delete picture');
+		}
+	}
+
+	async setProfilePicture(userId: string, pictureId: string): Promise<UserPicture[]>
+	{
+		try
+		{
+			if (!await this.dbService.setProfilePicture(userId, pictureId))
+				throw new NotFoundException('Picture not found');
+
+			return (await this.dbService.getPicturesByUserId(userId));
+		}
+		catch (error: any)
+		{
+			if (error instanceof HttpException)
+				throw (error);
+
+			this.logger.error(`Error setting profile picture ${pictureId} for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to set profile picture');
 		}
 	}
 }

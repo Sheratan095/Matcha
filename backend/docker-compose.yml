@@ -26,6 +26,22 @@ services:
       timeout: 5s
       retries: 5
 
+  # S3-compatible object storage for profile pictures (see docs/object-storage.md)
+  # First start only: run ./infra/garage/init.sh to create the layout, bucket and key.
+  garage:
+    image: dxflrs/garage:v2.1.0
+    restart: always
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+      TZ: ${TZ}
+    ports:
+      - "3900:3900" # S3 API (uploads / deletes, needs credentials)
+      - "3902:3902" # Public web endpoint (the browser loads images from here)
+    volumes:
+      - ./infra/garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+
 
   # Applications
   gateway:
@@ -67,9 +83,14 @@ services:
     environment:
       PROFILE_PORT: 3003
       TZ: ${TZ}
+      S3_ENDPOINT: http://garage:3900 # Reach Garage through the compose network, not localhost
     depends_on:
       - postgres
+      - garage
 
 volumes:
   # Persistent volume for PostgreSQL data
   postgres_data:
+  # Persistent volumes for Garage (object metadata + uploaded pictures)
+  garage_meta:
+  garage_data:

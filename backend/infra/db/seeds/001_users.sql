@@ -39,14 +39,18 @@ VALUES
 	((SELECT id FROM users WHERE username = 'alice'), (SELECT id FROM interest_tags WHERE name = 'reading'))
 ON CONFLICT DO NOTHING;
 
---- insert some fake user pictures for testing
+--- insert some fake user pictures for testing.
+--- The files themselves are uploaded to Garage by `make seed-pictures`
+--- (apps/profile/scripts/seed-pictures.mjs) under the "seed/" key prefix.
+--- These URLs hardcode the default S3_PUBLIC_URL; if you change that in .env the seeded
+--- URLs won't match the web endpoint (acceptable for a dev seed).
 INSERT INTO user_pictures (user_id, url, is_profile)
 VALUES
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser1.jpg', TRUE),
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser2.jpg', FALSE),
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser3.jpg', FALSE),
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser4.jpg', FALSE),
-	((SELECT id FROM users WHERE username = 'testuser'), 'https://example.com/testuser5.jpg', FALSE),
-	((SELECT id FROM users WHERE username = 'alice'), 'https://example.com/alice1.jpg', TRUE),
-	((SELECT id FROM users WHERE username = 'alice'), 'https://example.com/alice2.jpg', FALSE, 1)
+	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-1.webp', TRUE),
+	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-2.webp', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-3.webp', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-4.webp', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-5.webp', FALSE),
+	((SELECT id FROM users WHERE username = 'alice'), 'http://profile-pictures.web.garage.localhost:3902/seed/alice-1.webp', TRUE),
+	((SELECT id FROM users WHERE username = 'alice'), 'http://profile-pictures.web.garage.localhost:3902/seed/alice-2.webp', FALSE)
 ON CONFLICT DO NOTHING;

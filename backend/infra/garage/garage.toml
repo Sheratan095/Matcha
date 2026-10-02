@@ -1,0 +1,26 @@
+# Garage: S3-compatible object storage for profile pictures (see docs/object-storage.md)
+# Single node, single copy of the data: enough for development.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+# rpc_secret is NOT stored here: it comes from the GARAGE_RPC_SECRET env var (see .env)
+
+# S3 API: used by the profile service to upload / delete objects (requires credentials)
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+# Public, read-only web endpoint: used by the browser to load images.
+# A bucket is served at http://<bucket>.web.garage.localhost:3902/<key>
+# once website access is enabled for it (done by infra/garage/init.sh).
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.localhost"
+index = "index.html"
