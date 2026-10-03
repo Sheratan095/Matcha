@@ -74,7 +74,7 @@ export class AppService
 			if (!profile)
 			{
 				this.logger.warn(`Profile not found for user ID ${userId}`);
-				throw new ConflictException('Profile not found');
+				throw new NotFoundException('Profile not found');
 			}
 
 			// Views are only recorded if the requestor is not the owner of the profile.
@@ -90,6 +90,9 @@ export class AppService
 		}
 		catch (error: any)
 		{
+			if (error instanceof HttpException)
+				throw (error);
+
 			this.logger.error(`Error fetching profile for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to fetch profile');
 		}
@@ -104,16 +107,22 @@ export class AppService
 		{
 			const profile = await this.dbService.updateProfile(userId, fields, interests);
 
+			// This endpoint sits behind the JWT guard, so a valid token should always
+			// map to an existing profile. A miss here means the JWT and the users/profile
+			// tables are out of sync (e.g. a deleted user with a still-valid token).
 			if (!profile)
 			{
 				this.logger.warn(`Profile not found for user ID ${userId} during update`);
-				throw new ConflictException('Profile not found');
+				throw new NotFoundException('Profile not found');
 			}
 
 			return (profile);
 		}
 		catch (error: any)
 		{
+			if (error instanceof HttpException)
+				throw (error);
+
 			this.logger.error(`Error updating profile for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to update profile');
 		}
@@ -136,7 +145,7 @@ export class AppService
 
 	//	PICTURES
 
-	async uploadPicture(userId: string, file: Express.Multer.File): Promise<UserPicture[]>
+	async uploadPicture(userId: string, file: { buffer: Buffer }): Promise<UserPicture[]>
 	{
 		const	count = await this.dbService.getPictureCount(userId);
 

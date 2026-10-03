@@ -49,6 +49,7 @@ export class AppController
 	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full profile of the authenticated user.' })
 	@ApiResponse({ status: 200, type: GetMyProfileResponseDto, description: 'Profile retrieved successfully' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: GetProfileErrorDto, description: 'Profile not found' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getMyProfile(@CurrentUser() userId: string)
@@ -79,6 +80,7 @@ export class AppController
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
 	@ApiResponse({ status: 403, type: UpdateProfileErrorDto, description: 'Requesting user is not the profile owner' })
+	@ApiResponse({ status: 404, type: UpdateProfileErrorDto, description: 'Profile not found' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async updateProfile(@Body() body: UpdateProfileDto, @CurrentUser() userId: string)
@@ -112,7 +114,7 @@ export class AppController
 			callback(null, true);
 		},
 	}))
-	async uploadPicture(@UploadedFile() file: Express.Multer.File, @CurrentUser() userId: string)
+	async uploadPicture(@UploadedFile() file: Parameters<AppService['uploadPicture']>[1], @CurrentUser() userId: string)
 	{
 		if (!file)
 			throw new BadRequestException('Missing "file" field');
