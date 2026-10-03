@@ -101,31 +101,99 @@ export class DbService implements OnModuleInit
 
 	async addPicture(userId: string, url: string, isProfile: boolean): Promise<UserPicture>
 	{
-		const result = await this.pool.query(
-			`INSERT INTO user_pictures (user_id, url, is_profile)
-			 VALUES ($1, $2, $3)
-			 RETURNING id, url, is_profile`,
-			[userId, url, isProfile]
-		);
+		const client = await this.pool.connect();
 
-		return (UserPicture.fromDbRow(result.rows[0]));
+		try
+		{
+			await client.query('BEGIN');
+
+			// Clear first: the partial unique index allows only one is_profile = true row per
+			// user, so a new profile picture must demote the current one before being inserted.
+			if (isProfile)
+				await client.query(
+					'UPDATE user_pictures SET is_profile = FALSE WHERE user_id = $1 AND is_profile',
+					[userId]
+				);
+
+			const result = await client.query(
+				`INSERT INTO user_pictures (user_id, url, is_profile)
+				 VALUES ($1, $2, $3)
+				 RETURNING id, url, is_profile`,
+				[userId, url, isProfile]
+			);
+
+			await client.query('COMMIT');
+
+			return (UserPicture.fromDbRow(result.rows[0]));
+		}
+		catch (err)
+		{
+			await client.query('ROLLBACK');
+			throw (err);
+		}
+		finally
+		{
+			client.release();
+		}
 	}
 
 	// The user_id filter is the ownership check: another user's picture id simply matches nothing.
 	// Returns the deleted picture's url (so the file can be removed from storage), or null if not found.
+	// If the deleted picture was the profile picture, the oldest remaining picture is promoted so the
+	// user is never left without a profile picture while they still have at least one picture.
 	async deletePicture(pictureId: string, userId: string): Promise<string | null>
 	{
-		const result = await this.pool.query(
-			`DELETE FROM user_pictures
-			 WHERE id = $1 AND user_id = $2
-			 RETURNING url`,
-			[pictureId, userId]
-		);
+		const client = await this.pool.connect();
 
-		if (result.rows.length === 0)
-			return (null);
+		try
+		{
+			await client.query('BEGIN');
 
-		return (result.rows[0].url);
+			const result = await client.query(
+				`DELETE FROM user_pictures
+				 WHERE id = $1 AND user_id = $2
+				 RETURNING url, is_profile`,
+				[pictureId, userId]
+			);
+
+			if (result.rows.length === 0)
+			{
+				await client.query('ROLLBACK');
+
+				return (null);
+			}
+
+			const { url, is_profile } = result.rows[0];
+
+			// Only promote when the profile picture itself was removed; the partial unique
+			// index is safe here since the previous is_profile = true row is already gone.
+			if (is_profile)
+			{
+				await client.query(
+					`UPDATE user_pictures SET is_profile = TRUE
+					 WHERE id = (
+						SELECT id FROM user_pictures
+						WHERE user_id = $1
+						ORDER BY created_at
+						LIMIT 1
+					 )`,
+					[userId]
+				);
+			}
+
+			await client.query('COMMIT');
+
+			return (url);
+		}
+		catch (err)
+		{
+			await client.query('ROLLBACK');
+			throw (err);
+		}
+		finally
+		{
+			client.release();
+		}
 	}
 
 	// Returns false if the picture doesn't exist or doesn't belong to the user.
