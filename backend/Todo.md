@@ -87,3 +87,5 @@ user, and the chat function between them will be disabled.
 [x] Deleting the current profile picture doesn't make another picture the profile picture; the user has none until they pick one.
 
 [] test oauth2 github shitty shit
+
+[] garage .toml file contains a 127.0.0.1 address, maybe it will not work in prod?
