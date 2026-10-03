@@ -172,6 +172,11 @@ async function handleApi(req, res, url)
 		return (sendGateway(res, await gateway('GET', '/profile/viewers')));
 	}
 
+	if (path === '/api/interests' && method === 'GET')
+	{
+		return (sendGateway(res, await gateway('GET', '/profile/interests')));
+	}
+
 	if (path === '/api/profile' && method === 'PATCH')
 	{
 		const	body = await readBody(req);
@@ -198,7 +203,7 @@ async function handleApi(req, res, url)
 		// The browser sends the raw file bytes with its name/type in headers; we rebuild a
 		// proper multipart form here so the gateway/profile service sees a normal upload.
 		const	bytes    = await readBody(req);
-		const	filename = req.headers['x-filename'] ?? 'upload.bin';
+		const	filename = decodeURIComponent(req.headers['x-filename'] ?? 'upload.bin');
 		const	mime     = req.headers['x-mime'] ?? 'application/octet-stream';
 
 		const	form = new FormData();
@@ -260,7 +265,7 @@ server.listen(PORT, () =>
 {
 	console.log(`Profile tester UI:  http://localhost:${PORT}`);
 	console.log(`Proxying to gateway: ${GATEWAY_URL}`);
-	console.log(`Default login:       ${'testuser'} / ${'1234'} (seeded)`);
+	console.log(`Default login:       testuser / 1234 (seeded)`);
 });
 
 // --- the single-page UI --------------------------------------------------------
@@ -314,6 +319,8 @@ const	PAGE = /* html */ `<!doctype html>
 	}
 	.panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 12px; }
 	label { display: block; color: var(--muted); margin: 8px 0 3px; font-size: 12px; }
+	label.inline { display: flex; align-items: center; gap: 6px; }
+	label.inline input { width: auto; }
 	input, select
 	{
 		width: 100%;
@@ -354,6 +361,43 @@ const	PAGE = /* html */ `<!doctype html>
 	.pic .pbtns { display: flex; gap: 4px; }
 	.pic .pbtns button { flex: 1; padding: 4px; font-size: 11px; }
 	.badge { font-size: 10px; color: var(--ok); }
+
+	/* interest picker */
+	.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+	.chip
+	{
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		background: #222838;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 3px 6px 3px 10px;
+		font-size: 12px;
+	}
+	.chip button { padding: 0 5px; border: none; background: transparent; color: var(--muted); font-size: 13px; line-height: 1; }
+	.chip button:hover { color: var(--err); }
+	.combo { position: relative; }
+	.dropdown
+	{
+		position: absolute;
+		z-index: 10;
+		left: 0;
+		right: 0;
+		margin-top: 2px;
+		background: #0c0e13;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		max-height: 200px;
+		overflow: auto;
+		display: none;
+	}
+	.dropdown.open { display: block; }
+	.opt { padding: 7px 10px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+	.opt:hover, .opt.active { background: #222838; }
+	.opt .tag { color: var(--muted); font-size: 11px; }
+	.opt.create { color: var(--accent); }
+
 	#outWrap { grid-column: 1 / -1; }
 	.outhead { display: flex; justify-content: space-between; align-items: center; }
 	pre#out
@@ -416,7 +460,7 @@ const	PAGE = /* html */ `<!doctype html>
 
 	<section class="panel">
 		<h2>Update profile (PATCH)</h2>
-		<small class="hint">Leave a field blank to omit it. Interests = full replacement list.</small>
+		<small class="hint">Leave a field blank to omit it.</small>
 		<div class="row">
 			<div>
 				<label>firstName</label>
@@ -450,8 +494,18 @@ const	PAGE = /* html */ `<!doctype html>
 		</div>
 		<label>biography</label>
 		<input id="biography" />
-		<label>interests (comma-separated; type "none" to clear all)</label>
-		<input id="interests" placeholder="hiking, photography" />
+
+		<label>interests</label>
+		<div class="chips" id="interestChips"></div>
+		<div class="combo">
+			<input id="interestSearch" placeholder="search interests, or type a new one + Enter" autocomplete="off" />
+			<div class="dropdown" id="interestDropdown"></div>
+		</div>
+		<label class="inline">
+			<input type="checkbox" id="interestsEnabled" />
+			send interests in this PATCH (unchecked = leave them untouched; checked + empty = clear all)
+		</label>
+
 		<div class="btns">
 			<button class="primary" onclick="updateProfile()">Send PATCH</button>
 		</div>
@@ -570,6 +624,7 @@ const	PAGE = /* html */ `<!doctype html>
 		const	data = await call('GET', '/api/profile');
 
 		renderPictures(data);
+		syncInterestsFromProfile(data);
 	}
 
 	async function getViewers()
@@ -587,6 +642,201 @@ const	PAGE = /* html */ `<!doctype html>
 		await call('GET', '/api/profile/' + encodeURIComponent(id));
 	}
 
+	// ---- interest picker ----------------------------------------------------
+
+	let	allInterests      = [];   // [{ id, name }] fetched from the DB
+	let	selectedInterests = [];   // lower-cased names currently chosen
+	let	activeOptIndex    = -1;   // keyboard highlight within the dropdown
+
+	const	searchEl   = document.getElementById('interestSearch');
+	const	dropdownEl = document.getElementById('interestDropdown');
+	const	chipsEl    = document.getElementById('interestChips');
+	const	enabledEl  = document.getElementById('interestsEnabled');
+
+	async function loadInterests()
+	{
+		const	res = await fetch('/api/interests').then(r => r.json()).catch(() => null);
+
+		if (res && Array.isArray(res.interests))
+			allInterests = res.interests;
+	}
+
+	// Reflect the loaded profile's current interests in the chips, WITHOUT enabling the
+	// send checkbox — so a PATCH that doesn't touch interests leaves them as they are.
+	function syncInterestsFromProfile(profile)
+	{
+		if (!profile || !Array.isArray(profile.interests))
+			return;
+
+		selectedInterests = profile.interests.map(i => String(i.name).toLowerCase());
+		enabledEl.checked = false;
+		renderChips();
+	}
+
+	function renderChips()
+	{
+		chipsEl.innerHTML = '';
+
+		for (const name of selectedInterests)
+		{
+			const	chip = document.createElement('span');
+
+			chip.className = 'chip';
+			chip.textContent = name;
+
+			const	x = document.createElement('button');
+
+			x.type = 'button';
+			x.textContent = '×';
+			x.onclick = () => removeInterest(name);
+
+			chip.appendChild(x);
+			chipsEl.appendChild(chip);
+		}
+	}
+
+	function addInterest(name)
+	{
+		const	clean = name.trim().toLowerCase();
+
+		if (!clean)
+			return;
+
+		// Adding is a deliberate change, so start sending interests with the PATCH.
+		enabledEl.checked = true;
+
+		if (!selectedInterests.includes(clean))
+			selectedInterests.push(clean);
+
+		searchEl.value = '';
+		renderChips();
+		renderDropdown();
+		searchEl.focus();
+	}
+
+	function removeInterest(name)
+	{
+		enabledEl.checked = true;
+		selectedInterests = selectedInterests.filter(n => n !== name);
+		renderChips();
+		renderDropdown();
+	}
+
+	// Builds the dropdown: existing matches first, and ALWAYS the typed text as the last
+	// "create" option, so the user can add an interest that isn't in the DB yet.
+	function renderDropdown()
+	{
+		const	query = searchEl.value.trim().toLowerCase();
+		const	opts  = [];
+
+		// Existing tags that match the query and aren't already chosen.
+		for (const tag of allInterests)
+		{
+			const	name = String(tag.name).toLowerCase();
+
+			if (selectedInterests.includes(name))
+				continue;
+
+			if (query === '' || name.includes(query))
+				opts.push({ name, create: false });
+		}
+
+		// The last option is whatever the user is typing — unless it is empty, already
+		// selected, or an exact duplicate of a match already listed above.
+		const	exactExists = opts.some(o => o.name === query);
+
+		if (query !== '' && !selectedInterests.includes(query) && !exactExists)
+			opts.push({ name: query, create: true });
+
+		activeOptIndex = -1;
+		dropdownEl.innerHTML = '';
+
+		if (opts.length === 0)
+		{
+			dropdownEl.classList.remove('open');
+
+			return;
+		}
+
+		opts.forEach((opt, i) =>
+		{
+			const	row = document.createElement('div');
+
+			row.className = 'opt' + (opt.create ? ' create' : '');
+			row.dataset.index = String(i);
+			row.dataset.name = opt.name;
+
+			if (opt.create)
+				row.innerHTML = '<span>+ add "' + opt.name + '"</span><span class="tag">new</span>';
+			else
+				row.innerHTML = '<span>' + opt.name + '</span><span class="tag">existing</span>';
+
+			// mousedown (not click) so it fires before the input's blur hides the dropdown.
+			row.addEventListener('mousedown', ev =>
+			{
+				ev.preventDefault();
+				addInterest(opt.name);
+			});
+
+			dropdownEl.appendChild(row);
+		});
+
+		dropdownEl.classList.add('open');
+	}
+
+	function moveActive(delta)
+	{
+		const	rows = dropdownEl.querySelectorAll('.opt');
+
+		if (rows.length === 0)
+			return;
+
+		activeOptIndex = (activeOptIndex + delta + rows.length) % rows.length;
+
+		rows.forEach((r, i) => r.classList.toggle('active', i === activeOptIndex));
+	}
+
+	searchEl.addEventListener('input', renderDropdown);
+	searchEl.addEventListener('focus', renderDropdown);
+
+	searchEl.addEventListener('blur', () =>
+	{
+		// Delay so a mousedown on an option still registers before we hide.
+		setTimeout(() => dropdownEl.classList.remove('open'), 120);
+	});
+
+	searchEl.addEventListener('keydown', ev =>
+	{
+		if (ev.key === 'ArrowDown')
+		{
+			ev.preventDefault();
+			moveActive(1);
+		}
+		else if (ev.key === 'ArrowUp')
+		{
+			ev.preventDefault();
+			moveActive(-1);
+		}
+		else if (ev.key === 'Enter')
+		{
+			ev.preventDefault();
+
+			const	rows = dropdownEl.querySelectorAll('.opt');
+
+			// Enter picks the highlighted row, else just adds whatever is typed.
+			if (activeOptIndex >= 0 && rows[activeOptIndex])
+				addInterest(rows[activeOptIndex].dataset.name);
+			else
+				addInterest(searchEl.value);
+		}
+		else if (ev.key === 'Escape')
+		{
+			dropdownEl.classList.remove('open');
+		}
+	});
+
+	// ---- update / pictures ---------------------------------------------------
+
 	async function updateProfile()
 	{
 		const	body = {};
@@ -596,7 +846,6 @@ const	PAGE = /* html */ `<!doctype html>
 		const	gender           = document.getElementById('gender').value;
 		const	sexualPreference = document.getElementById('sexualPreference').value;
 		const	biography        = document.getElementById('biography').value.trim();
-		const	interests        = document.getElementById('interests').value.trim();
 
 		if (firstName)        body.firstName = firstName;
 		if (lastName)         body.lastName = lastName;
@@ -604,11 +853,9 @@ const	PAGE = /* html */ `<!doctype html>
 		if (sexualPreference) body.sexualPreference = sexualPreference;
 		if (biography)        body.biography = biography;
 
-		// "none" clears the list; otherwise split + trim into a full replacement array.
-		if (interests === 'none')
-			body.interests = [];
-		else if (interests)
-			body.interests = interests.split(',').map(s => s.trim()).filter(Boolean);
+		// Only send interests when the user opted in; then it is a full replacement list.
+		if (enabledEl.checked)
+			body.interests = selectedInterests;
 
 		const	data = await call('PATCH', '/api/profile',
 		{
@@ -617,6 +864,8 @@ const	PAGE = /* html */ `<!doctype html>
 		});
 
 		renderPictures(data);
+		syncInterestsFromProfile(data);
+		loadInterests(); // a newly created interest is now in the DB, refresh the suggestions
 	}
 
 	async function uploadPicture()
@@ -694,11 +943,12 @@ const	PAGE = /* html */ `<!doctype html>
 		}
 	}
 
-	// Auto-login as the seeded tester on load, then show the profile.
+	// Auto-login as the seeded tester on load, then load interests + profile.
 	(async function init()
 	{
 		await refreshStatus();
 		await login();
+		await loadInterests();
 		await getMe();
 	})();
 </script>

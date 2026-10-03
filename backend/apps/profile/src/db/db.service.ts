@@ -76,6 +76,18 @@ export class DbService implements OnModuleInit
 		return (result.rows.map(row => InterestTag.fromDbRow(row)));
 	}
 
+	// Every interest tag in the system, for the "pick your interests" autocomplete.
+	async getAllInterests(): Promise<InterestTag[]>
+	{
+		const result = await this.pool.query(
+			`SELECT id, name
+			 FROM interest_tags
+			 ORDER BY name`
+		);
+
+		return (result.rows.map(row => InterestTag.fromDbRow(row)));
+	}
+
 	async getPicturesByUserId(userId: string): Promise<UserPicture[]>
 	{
 		const result = await this.pool.query(

@@ -8,6 +8,7 @@ import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteEr
 import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
 import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
 import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
+import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
@@ -71,6 +72,20 @@ export class AppController
 		const viewers = await this.appService.getProfileViewers(userId);
 
 		return ({ viewers });
+	}
+
+	// Declared before the ':userId' route below, otherwise '/interests' would be captured as a userId.
+	@Get('interests')
+	@ApiOperation({ summary: 'Get all interests', description: 'Returns every interest tag stored in the database, for the interest picker / autocomplete.' })
+	@ApiResponse({ status: 200, type: GetInterestsResponseDto, description: 'Interests retrieved successfully' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: GetInterestsErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getAllInterests()
+	{
+		const interests = await this.appService.getAllInterests();
+
+		return ({ interests });
 	}
 
 	@Patch()

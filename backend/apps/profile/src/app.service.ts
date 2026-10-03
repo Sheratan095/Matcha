@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
-import { Profile, UserPicture, MAX_USER_PICTURES } from '@repo/shared-types';
+import { Profile, UserPicture, InterestTag, MAX_USER_PICTURES } from '@repo/shared-types';
 
 // Services contain the core business logic like the db calls
 
@@ -71,6 +71,7 @@ export class AppService
 		{
 			const profile: Profile | null = await this.dbService.getProfile(userId);
 
+
 			if (!profile)
 			{
 				this.logger.warn(`Profile not found for user ID ${userId}`);
@@ -116,6 +117,8 @@ export class AppService
 				throw new NotFoundException('Profile not found');
 			}
 
+			this.logger.log(`Profile updated for user ID ${userId}`);
+
 			return (profile);
 		}
 		catch (error: any)
@@ -143,6 +146,19 @@ export class AppService
 		}
 	}
 
+	async getAllInterests(): Promise<InterestTag[]>
+	{
+		try
+		{
+			return (await this.dbService.getAllInterests());
+		}
+		catch (error: any)
+		{
+			this.logger.error('Error fetching interests', error);
+			throw new InternalServerErrorException('Failed to fetch interests');
+		}
+	}
+
 	//	PICTURES
 
 	async uploadPicture(userId: string, file: { buffer: Buffer }): Promise<UserPicture[]>
@@ -152,11 +168,15 @@ export class AppService
 		if (count >= MAX_USER_PICTURES)
 			throw new BadRequestException(`You can upload at most ${MAX_USER_PICTURES} pictures`);
 
+		this.logger.log(`Uploading picture for user ID ${userId}, current count: ${count}`);
+
 		let	cleanImage: Buffer;
 
 		try
 		{
 			cleanImage = await sanitizeImage(file.buffer);
+
+			this.logger.log(`Picture sanitized for user ID ${userId}, size: ${cleanImage.length} bytes`);
 		}
 		catch
 		{
@@ -166,9 +186,13 @@ export class AppService
 		const	key = `${userId}/${randomUUID()}.${PICTURE_OUTPUT_EXT}`;
 		let		url: string;
 
+	
 		try
 		{
+			// Upload the sanitized image to STORAGE AND GET THE URL
 			url = await this.storageService.upload(key, cleanImage, PICTURE_OUTPUT_MIME);
+
+			this.logger.log(`Picture uploaded to STORAGE for user ID ${userId}, URL: ${url}`);
 		}
 		catch (error: any)
 		{
@@ -178,8 +202,11 @@ export class AppService
 
 		try
 		{
+			// Upload the picture URL to the DB, associated with the user. The DB will return the new picture row.
 			// The first picture becomes the profile picture automatically.
 			await this.dbService.addPicture(userId, url, count === 0);
+
+			this.logger.log(`Picture URL saved to DB for user ID ${userId}, URL: ${url}`);
 		}
 		catch (error: any)
 		{
@@ -205,6 +232,8 @@ export class AppService
 				this.logger.warn(`Failed to delete picture file ${url}: ${err.message}`)
 			);
 
+			this.logger.log(`Picture ${pictureId} deleted for user ID ${userId}`);
+
 			return (await this.dbService.getPicturesByUserId(userId));
 		}
 		catch (error: any)
@@ -223,6 +252,8 @@ export class AppService
 		{
 			if (!await this.dbService.setProfilePicture(userId, pictureId))
 				throw new NotFoundException('Picture not found');
+
+			this.logger.log(`Profile picture set to ${pictureId} for user ID ${userId}`);
 
 			return (await this.dbService.getPicturesByUserId(userId));
 		}
