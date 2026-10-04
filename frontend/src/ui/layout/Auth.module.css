@@ -1,0 +1,276 @@
+/* ------------------------------------------------------------ poster */
+.poster {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  overflow: hidden;
+  background: var(--tone-bg);
+  color: var(--c-ink);
+  isolation: isolate;
+  container-type: inline-size;
+}
+
+.sun {
+  position: absolute;
+  z-index: -1;
+  top: 12%;
+  right: -14cqi;
+  width: 72cqi;
+  aspect-ratio: 1;
+  border: var(--line);
+  border-radius: 50%;
+  background: var(--c-yolk);
+  overflow: hidden;
+}
+.poster[data-tone='yolk'] .sun {
+  background: var(--c-strawberry);
+}
+.poster[data-tone='blue'] .sun {
+  background: var(--c-yolk);
+}
+
+.regTL {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.regBR {
+  position: absolute;
+  bottom: 64px;
+  left: 12px;
+}
+
+.top {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-6) var(--s-12) 0 var(--s-6);
+}
+
+.mark {
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+.poster[data-tone='blue'] .mark {
+  color: var(--c-paper-hi);
+}
+
+.edition {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lettering {
+  position: relative;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 var(--s-16) var(--s-5);
+  pointer-events: none;
+  user-select: none;
+}
+
+.line {
+  /* each line is sized from its own length so the stack fills the width; long lines run off */
+  --fit: calc(100cqi / (var(--n) * 0.46 + 0.35));
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: min(var(--fit), 46cqi);
+  line-height: 0.78;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--c-ink);
+}
+
+/* line treatments rotate: ink with a misregistered plate, outlined paper, solid ink */
+.line-0 {
+  text-shadow: 0.04em 0.04em 0 var(--c-strawberry);
+}
+.line-1 {
+  color: var(--c-paper-hi);
+  -webkit-text-stroke: max(6px, 0.07em) var(--c-ink);
+  paint-order: stroke fill;
+  text-shadow: 0.05em 0.05em 0 var(--c-ink);
+  margin-left: 0.35em;
+}
+.line-2 {
+  color: var(--c-ink);
+}
+.poster[data-tone='strawberry'] .line-0 {
+  text-shadow: 0.04em 0.04em 0 var(--c-yolk);
+}
+
+.sticker {
+  position: absolute;
+  top: 34%;
+  left: 52%;
+  z-index: 2;
+}
+
+.barcode {
+  position: absolute;
+  top: 50%;
+  right: -46px;
+  rotate: 90deg;
+}
+
+.band {
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  bottom: 18px;
+  z-index: 3;
+}
+
+/* the phone band */
+.compact {
+  min-height: 0;
+  height: clamp(300px, 46vh, 380px);
+}
+.compact .top {
+  padding: calc(var(--safe-t) + var(--s-4)) var(--s-10) 0 var(--gutter);
+}
+.compact .sun {
+  top: 16%;
+  right: -12cqi;
+  width: 58cqi;
+}
+.compact .lettering {
+  padding: 0 0 60px var(--gutter);
+}
+.compact .line {
+  font-size: min(var(--fit), 30cqi);
+}
+.compact .sticker {
+  top: 22%;
+  left: 54%;
+}
+.compact .band {
+  bottom: 46px;
+}
+.compact .regBR {
+  display: none;
+}
+
+/* ------------------------------------------------------------ auth layout
+   Switches on its own width (container query), so it also renders right inside a preview frame. */
+.authRoot {
+  container-type: inline-size;
+}
+
+.auth {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.posterFull {
+  display: none;
+}
+
+.formSide {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-5);
+  padding: 0 var(--gutter) var(--s-10);
+  margin-top: -34px;
+}
+
+.ticket {
+  --card-pad: var(--s-5);
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  padding: var(--s-4) var(--card-pad) var(--s-6);
+  border: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-3);
+}
+
+.ticketStrip {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+.ticketStrip i {
+  flex: 1;
+  border-top: var(--bw-thin) solid var(--c-ink);
+}
+
+.title {
+  margin-bottom: var(--s-2);
+}
+
+.intro {
+  margin-top: var(--s-3);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--c-ink-2);
+}
+
+.ticket > [role='separator'] {
+  --perf-notch: var(--c-paper);
+  margin-block: var(--s-5);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.footer {
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+
+@container (min-width: 960px) {
+  .auth {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(420px, 1fr);
+  }
+  .posterSide {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    border-right: var(--line);
+  }
+  .posterCompact {
+    display: none;
+  }
+  .posterFull {
+    display: flex;
+    height: 100%;
+  }
+  .formSide {
+    justify-content: center;
+    margin-top: 0;
+    padding: var(--s-12) var(--s-10);
+  }
+}

@@ -1,0 +1,250 @@
+/*
+ * The press mechanic, shared by every button-like control here:
+ * the control floats --lift above the page on a hard shadow; hover lifts it one more pixel,
+ * pressing drives it all the way down into the shadow.
+ */
+.button {
+  --lift: var(--press);
+  --btn-h: 50px;
+  --btn-px: 22px;
+  --btn-fs: 0.9375rem;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  min-height: var(--btn-h);
+  padding: 0 var(--btn-px);
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  box-shadow: var(--lift) var(--lift) 0 var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-wide);
+  font-size: var(--btn-fs);
+  line-height: 1;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press),
+    background-color var(--dur-fast) linear;
+}
+
+/* an ink button casts a matcha shadow, otherwise it would have none to press into */
+.button[data-tone='ink'] {
+  box-shadow:
+    var(--lift) var(--lift) 0 var(--c-matcha),
+    var(--lift) var(--lift) 0 var(--bw) var(--c-ink);
+}
+
+@media (hover: hover) {
+  .button:hover:not(:disabled, [aria-disabled='true']) {
+    translate: -1px -1px;
+    box-shadow: calc(var(--lift) + 1px) calc(var(--lift) + 1px) 0 var(--c-ink);
+  }
+  .button[data-tone='ink']:hover:not(:disabled, [aria-disabled='true']) {
+    box-shadow:
+      calc(var(--lift) + 1px) calc(var(--lift) + 1px) 0 var(--c-matcha),
+      calc(var(--lift) + 1px) calc(var(--lift) + 1px) 0 var(--bw) var(--c-ink);
+  }
+}
+
+.button:active:not(:disabled, [aria-disabled='true']) {
+  translate: var(--lift) var(--lift);
+  box-shadow: 0 0 0 var(--c-ink);
+  transition-duration: 40ms;
+}
+.button[data-tone='ink']:active:not(:disabled, [aria-disabled='true']) {
+  box-shadow: 0 0 0 var(--c-matcha), 0 0 0 var(--bw) var(--c-ink);
+}
+
+.button:disabled {
+  background-color: var(--c-paper-lo);
+  background-image: var(--tex-hatch);
+  color: var(--c-ink-3);
+  border-style: dashed;
+  box-shadow: none;
+  translate: 2px 2px;
+}
+
+.loading {
+  cursor: progress;
+}
+
+.label {
+  /* optical: Archivo caps sit a hair high in the line box */
+  padding-top: 0.08em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  margin-inline: -2px;
+}
+
+/* sizes */
+.sm {
+  --btn-h: 38px;
+  --btn-px: 14px;
+  --btn-fs: 0.8125rem;
+  --lift: 3px;
+  border-radius: var(--r-sm);
+}
+/* keep a 44px touch target around the small button */
+.sm::after,
+.ib-sm::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+.md {
+  --btn-h: 50px;
+}
+.lg {
+  --btn-h: 60px;
+  --btn-px: 28px;
+  --btn-fs: 1.125rem;
+  --lift: 5px;
+  border-radius: var(--r-lg);
+}
+
+.block {
+  display: flex;
+  width: 100%;
+}
+
+/* ghost: lettering only, with a thick underline that fills on hover */
+.ghost {
+  --lift: 0px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--c-ink);
+  padding-inline: 10px;
+}
+.ghost .label {
+  text-decoration: underline;
+  text-decoration-color: var(--c-matcha);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.3em;
+}
+@media (hover: hover) {
+  .ghost:hover:not(:disabled, [aria-disabled='true']) {
+    translate: none;
+    box-shadow: none;
+    background: var(--c-matcha);
+    border-color: var(--c-ink);
+  }
+  .ghost:hover .label {
+    text-decoration-color: transparent;
+  }
+}
+.ghost:active:not(:disabled, [aria-disabled='true']) {
+  translate: 1px 1px;
+  background: var(--c-matcha);
+  border-color: var(--c-ink);
+}
+.ghost:disabled {
+  background: none;
+  border-color: transparent;
+  translate: none;
+}
+
+/* ------------------------------------------------------------ icon button */
+.iconButton {
+  --lift: 3px;
+  min-height: 0;
+  padding: 0;
+  flex: none;
+  border-radius: var(--r-sm);
+}
+.ib-sm {
+  width: 36px;
+  height: 36px;
+  --lift: 2px;
+}
+.ib-md {
+  width: 44px;
+  height: 44px;
+}
+.ib-lg {
+  width: 52px;
+  height: 52px;
+  --lift: 4px;
+  border-radius: var(--r-md);
+}
+.round {
+  border-radius: 50%;
+}
+
+.badge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border: var(--line-thin);
+  border-radius: var(--r-pill);
+  background: var(--c-strawberry);
+  color: var(--c-ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0;
+  rotate: 6deg;
+}
+
+/* ------------------------------------------------------------ deck action button */
+.action {
+  --lift: 5px;
+  min-height: 0;
+  padding: 0;
+  flex: none;
+  border-radius: 50%;
+  border-width: var(--bw);
+}
+.ac-md {
+  width: 56px;
+  height: 56px;
+  --lift: 4px;
+}
+.ac-lg {
+  width: 68px;
+  height: 68px;
+}
+.ac-xl {
+  width: 80px;
+  height: 80px;
+  --lift: 6px;
+  border-width: 4px;
+}
+/* a faint inner keyline, like the rim of a tin lid */
+.action::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.28;
+  pointer-events: none;
+}
+.action:disabled {
+  background-image: none;
+  border-style: solid;
+  opacity: 0.55;
+}

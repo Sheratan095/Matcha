@@ -1,0 +1,126 @@
+@keyframes spin-slow {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes slap-in {
+  from {
+    opacity: 0;
+    translate: 0 40%;
+    rotate: 18deg;
+    scale: 1.15;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-6);
+  min-height: 100%;
+  padding: calc(var(--safe-t) + var(--s-16)) var(--gutter) 0;
+  background: var(--c-matcha);
+  color: var(--c-ink);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.rays {
+  position: absolute;
+  z-index: -2;
+  left: 50%;
+  top: 34%;
+  width: 260vmax;
+  height: 260vmax;
+  translate: -50% -50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--c-matcha) 80%, var(--c-ink)) 0 7.5deg,
+    var(--c-matcha) 7.5deg 15deg
+  );
+  animation: spin-slow 80s linear infinite;
+}
+
+.word {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 30%;
+  translate: -50% -50%;
+  rotate: -8deg;
+}
+
+.card {
+  position: relative;
+  width: min(62%, 15rem);
+  flex: none;
+}
+
+.polaroid {
+  padding: 10px 10px 0;
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  box-shadow: 8px 8px 0 var(--c-ink);
+  rotate: -4deg;
+  animation: slap-in 460ms var(--ease-thunk) both;
+}
+
+.caption {
+  display: block;
+  padding: 8px 2px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.stamp {
+  position: absolute;
+  left: -14%;
+  bottom: 4%;
+}
+
+.sticker {
+  position: absolute;
+  top: -10%;
+  right: -16%;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-4);
+  width: min(100%, 26rem);
+  animation: rise var(--dur-sheet) var(--ease-out) 220ms both;
+}
+
+.band {
+  align-self: stretch;
+  margin: auto calc(-1 * var(--gutter) - 24px) var(--s-8);
+  padding-top: var(--s-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rays,
+  .polaroid,
+  .copy {
+    animation: none;
+  }
+}

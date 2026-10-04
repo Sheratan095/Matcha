@@ -1,0 +1,19 @@
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.footer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s-3);
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .footer {
+    grid-template-columns: auto minmax(14rem, auto);
+    justify-content: end;
+  }
+}

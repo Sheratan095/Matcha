@@ -1,0 +1,21 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  scroll-margin-top: calc(var(--topbar-h) + var(--s-4));
+}
+
+.panel {
+  outline-offset: 4px;
+  border-radius: var(--r-md);
+}
+
+.photosIntro {
+  margin-bottom: var(--s-4);
+}

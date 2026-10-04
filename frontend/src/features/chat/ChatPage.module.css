@@ -1,0 +1,344 @@
+/* ------------------------------------------------------------ header: who you are talking to */
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  max-width: 100%;
+  min-height: var(--touch);
+  margin-block: -2px;
+  padding: 2px var(--s-3) 2px 2px;
+  border-radius: var(--r-pill);
+  color: inherit;
+  text-align: left;
+  text-transform: inherit;
+  transition: background-color var(--dur-fast) linear;
+}
+@media (hover: hover) {
+  .who:hover {
+    background: var(--c-paper-hi);
+  }
+}
+.who:focus-visible {
+  outline-offset: -3px;
+}
+
+.whoText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.whoName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+  padding-top: 0.08em;
+}
+.whoPresence {
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  font-stretch: normal;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+.whoLive {
+  color: var(--c-matcha-deep);
+}
+
+.whoSkeleton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  vertical-align: middle;
+}
+
+/* ------------------------------------------------------------ the scrolling column */
+.content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* short conversations sit on the composer, like a real chat */
+.conversation {
+  margin-top: auto;
+}
+
+.footer {
+  display: block;
+}
+
+/* ------------------------------------------------------------ match stub (conversation started) */
+.stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-6) var(--gutter) var(--s-2);
+  text-align: center;
+}
+.stubCommon {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 8px;
+  max-width: 34ch;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-ink-2);
+}
+.stubTag {
+  color: var(--c-matcha-deep);
+}
+
+/* ------------------------------------------------------------ intro (empty conversation) */
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-6) var(--gutter) var(--s-2);
+  text-align: center;
+}
+
+.introArt {
+  position: relative;
+  flex: none;
+  width: 228px;
+  height: 152px;
+}
+.introMe,
+.introThem {
+  position: absolute;
+  top: 0;
+  width: 100px;
+}
+.introMe {
+  left: 8px;
+}
+.introThem {
+  right: 8px;
+  top: 8px;
+}
+.introStamp {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  z-index: var(--z-raised);
+  translate: -50% 0;
+}
+
+.introCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+}
+.introMeta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4em;
+}
+
+.common {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+.commonTags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.breakers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  width: 100%;
+  margin-top: var(--s-2);
+  text-align: left;
+}
+.breakersHead {
+  padding-inline: 2px;
+}
+.breakerList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.breaker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 60px;
+  padding: var(--s-2) var(--s-3) var(--s-2) 0;
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  box-shadow: var(--sh-2);
+  text-align: left;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press),
+    background-color var(--dur-fast) linear;
+}
+@media (hover: hover) {
+  .breaker:hover {
+    background: var(--c-matcha-tint);
+  }
+}
+.breaker:active {
+  translate: var(--press) var(--press);
+  box-shadow: none;
+}
+
+/* the stub of the ticket: a numeral, then a perforation */
+.breakerNo {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  margin-block: calc(-1 * var(--s-2));
+  padding-inline: var(--s-2);
+  border-right: var(--bw-thin) dashed var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 1.875rem;
+  line-height: 1;
+  color: var(--c-ink);
+  text-shadow: 2px 2px 0 var(--c-matcha);
+}
+.breakerText {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.breakerUse {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: var(--line-thin);
+  border-radius: 50%;
+  background: var(--c-matcha);
+  color: var(--c-ink);
+}
+
+/* ------------------------------------------------------------ failed send */
+.failed {
+  align-self: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  max-width: 100%;
+  margin: calc(-1 * var(--s-1)) 0 var(--s-4);
+}
+.failedWhy {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--c-strawberry-deep);
+}
+
+/* ------------------------------------------------------------ loading / errors / not found */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin-top: auto;
+  padding: var(--s-4) var(--gutter) var(--s-3);
+}
+
+.loadError,
+.inlineNotice {
+  padding: var(--s-4) var(--gutter);
+}
+.loadError {
+  margin-top: auto;
+}
+
+.notFound {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: var(--s-8) var(--gutter);
+}
+
+/* ------------------------------------------------------------ "new messages" jump */
+@keyframes jump-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+.jumpDock {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-raised);
+  display: flex;
+  justify-content: center;
+  height: 0;
+}
+.jump {
+  position: absolute;
+  bottom: var(--s-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--touch);
+  padding: 0 var(--s-4) 0 var(--s-3);
+  border: var(--line);
+  border-radius: var(--r-pill);
+  background: var(--c-ink);
+  color: var(--c-paper-hi);
+  box-shadow: 3px 3px 0 var(--c-matcha);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: jump-in var(--dur-thunk) var(--ease-thunk) both;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+.jump:focus-visible {
+  outline-color: var(--c-yolk);
+}
+.jump:active {
+  translate: 3px 3px;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jump {
+    animation: none;
+  }
+}

@@ -1,0 +1,8 @@
+/* Single entry for the kit's global CSS: fonts, tokens, base. Imported once by src/ui/index.ts. */
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/archivo/wdth-italic.css';
+@import '@fontsource/space-mono/400.css';
+@import '@fontsource/space-mono/700.css';
+@import './tokens.css';
+@import './global.css';
+@import './tones.css';

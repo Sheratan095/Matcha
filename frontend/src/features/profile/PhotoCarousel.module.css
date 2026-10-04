@@ -1,0 +1,92 @@
+.carousel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: min(56dvh, 560px);
+  border-bottom: var(--line);
+  background: var(--c-paper-lo);
+  overflow: hidden;
+}
+
+.track {
+  display: flex;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.photo {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+
+.pips {
+  position: absolute;
+  top: 12px;
+  left: 64px;
+  right: 64px;
+  display: flex;
+  gap: 5px;
+  pointer-events: none;
+}
+.pips i {
+  flex: 1;
+  height: 6px;
+  border: 1.5px solid var(--c-ink);
+  border-radius: 3px;
+  background: rgb(251 246 230 / 75%);
+}
+.pips i[data-on] {
+  background: var(--c-ink);
+}
+
+.counter {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 3px 8px 2px;
+  border: var(--line-thin);
+  border-radius: var(--r-pill);
+  background: var(--c-paper-hi);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
+
+.prev,
+.next {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+}
+.prev {
+  left: 10px;
+}
+.next {
+  right: 10px;
+}
+
+/* touch screens swipe the strip; the arrows are for pointers */
+@media (hover: none) {
+  .prev,
+  .next {
+    display: none;
+  }
+}

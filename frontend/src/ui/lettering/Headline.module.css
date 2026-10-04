@@ -1,0 +1,152 @@
+.headline {
+  --hl-ink: var(--c-ink);
+  --hl-offset: var(--c-matcha);
+  --hl-shift: max(2px, 0.05em);
+  position: relative;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-normal);
+  text-transform: uppercase;
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  color: var(--hl-ink);
+  text-wrap: balance;
+  /* room for the offset plate so it is not clipped by overflow:hidden parents */
+  padding-block: 0.04em;
+}
+
+/* scale */
+.mega {
+  font-size: var(--fs-mega);
+  line-height: 0.8;
+  letter-spacing: -0.035em;
+}
+.d1 {
+  font-size: var(--fs-d1);
+  line-height: 0.82;
+  letter-spacing: -0.03em;
+}
+.d2 {
+  font-size: var(--fs-d2);
+  line-height: 0.86;
+  letter-spacing: -0.025em;
+}
+.d3 {
+  font-size: var(--fs-d3);
+  line-height: 0.9;
+}
+.d4 {
+  font-size: var(--fs-d4);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+}
+.d5 {
+  font-size: var(--fs-d5);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* width axis */
+.w-condensed {
+  font-stretch: var(--wd-condensed);
+  letter-spacing: -0.005em;
+}
+.w-narrow {
+  font-stretch: var(--wd-narrow);
+  letter-spacing: -0.012em;
+}
+.w-normal {
+  font-stretch: var(--wd-normal);
+}
+.w-wide {
+  font-stretch: var(--wd-wide);
+}
+.w-expanded {
+  font-stretch: var(--wd-expanded);
+}
+
+.italic {
+  font-style: italic;
+}
+.nowrap {
+  white-space: nowrap;
+  text-wrap: nowrap;
+}
+.a-start {
+  text-align: start;
+}
+.a-center {
+  text-align: center;
+}
+.a-end {
+  text-align: end;
+}
+
+/* ------------------------------------------------------------ print treatments */
+.riso {
+  text-shadow: var(--hl-shift) var(--hl-shift) 0 var(--hl-offset);
+}
+
+.overprint {
+  isolation: isolate;
+}
+.overprint .plate {
+  display: block;
+}
+.overprint .ghost {
+  position: absolute;
+  inset: 0;
+  padding-block: inherit;
+  color: var(--hl-offset);
+  mix-blend-mode: multiply;
+  translate: calc(var(--hl-shift) * 1.5) var(--hl-shift);
+  pointer-events: none;
+  user-select: none;
+}
+
+.outline {
+  color: var(--c-paper-hi);
+  -webkit-text-stroke: max(4px, 0.085em) var(--hl-ink);
+  paint-order: stroke fill;
+  text-shadow: calc(var(--hl-shift) * 1.6) calc(var(--hl-shift) * 1.6) 0 var(--hl-offset);
+  letter-spacing: 0.01em;
+}
+
+.worn {
+  -webkit-mask-image: var(--tex-wear);
+  mask-image: var(--tex-wear);
+  -webkit-mask-size: 300px 300px;
+  mask-size: 300px 300px;
+}
+
+/* ------------------------------------------------------------ poster word */
+.poster {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--pw-size, 34vw);
+  line-height: 0.76;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--pw-color, var(--c-ink));
+  pointer-events: none;
+  user-select: none;
+}
+
+.posterOutline {
+  color: transparent;
+  -webkit-text-stroke: var(--bw) var(--pw-color, var(--c-ink));
+  paint-order: stroke fill;
+}
+
+@supports not (-webkit-text-stroke: 1px black) {
+  .outline {
+    color: var(--hl-ink);
+  }
+  .posterOutline {
+    color: var(--pw-color, var(--c-ink));
+    opacity: 0.2;
+  }
+}

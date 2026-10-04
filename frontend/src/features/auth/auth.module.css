@@ -1,0 +1,129 @@
+/* Shared by the auth screens: everything sits inside the kit's AuthLayout ticket. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+/* first name / last name side by side, from the narrowest phones */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  align-items: start;
+}
+
+.or {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+.or::before,
+.or::after {
+  content: '';
+  flex: 1;
+  border-top: var(--bw-thin) dashed currentColor;
+}
+
+.github {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.githubNote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--c-ink-2);
+}
+.githubNote svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--c-blue);
+}
+
+/* the code field prints like a ticket number */
+.code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+/* "fill in a demo account": a stub torn off the ticket */
+.demo {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-3);
+  border: var(--bw-thin) dashed var(--c-ink);
+  border-radius: var(--r-md);
+  background: var(--c-yolk-tint);
+}
+.demoButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+/* a phase that replaced the form: a big stamp, a sentence, what to do next */
+.result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-4);
+}
+.resultStamp {
+  margin: var(--s-2) 0 var(--s-1) var(--s-1);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  width: 100%;
+}
+
+/* under the ticket: the demo inbox, then the links */
+.below {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  width: 100%;
+}
+.links {
+  margin: 0;
+  text-align: center;
+}
+
+.inlineButton {
+  padding: 0;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--c-matcha);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.18em;
+}
+@media (hover: hover) {
+  .inlineButton:hover {
+    background: var(--c-matcha);
+    text-decoration-color: var(--c-ink);
+  }
+}
+
+.checking {
+  padding: var(--s-6) 0;
+}

@@ -1,0 +1,191 @@
+.figure {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ------------------------------------------------------------ photo frame */
+.frame {
+  --photo-tone: var(--c-matcha);
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--c-paper-lo);
+  isolation: isolate;
+}
+
+.framed {
+  border: var(--line);
+}
+
+.sh-0 {
+  box-shadow: none;
+}
+.sh-1 {
+  box-shadow: var(--sh-1);
+}
+.sh-2 {
+  box-shadow: var(--sh-2);
+}
+.sh-3 {
+  box-shadow: var(--sh-3);
+}
+.sh-4 {
+  box-shadow: var(--sh-4);
+}
+
+.r-none {
+  border-radius: 0;
+}
+.r-sm {
+  border-radius: var(--r-sm);
+}
+.r-md {
+  border-radius: var(--r-md);
+}
+.r-lg {
+  border-radius: var(--r-lg);
+}
+.r-xl {
+  border-radius: var(--r-xl);
+}
+
+.img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* duotone: the photo becomes the black plate, multiplied over a flat colour field */
+.duotone {
+  background: var(--photo-tone);
+}
+.duotone .img {
+  filter: grayscale(1) contrast(1.25) brightness(1.08);
+  mix-blend-mode: multiply;
+}
+
+/* halftone: a 45° dot screen knocked out of the image in the field colour */
+.screen {
+  position: absolute;
+  inset: 0;
+  color: var(--photo-tone);
+  background-image: var(--tex-halftone), var(--tex-halftone);
+  background-size: 7px 7px;
+  background-position:
+    0 0,
+    3.5px 3.5px;
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.halftone .img {
+  filter: grayscale(1) contrast(1.5) brightness(1.05);
+}
+
+/* ------------------------------------------------------------ avatar */
+.avatar {
+  --av: 48px;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--av);
+  height: var(--av);
+  vertical-align: middle;
+}
+
+.av-xs {
+  --av: 28px;
+}
+.av-sm {
+  --av: 36px;
+}
+.av-md {
+  --av: 48px;
+}
+.av-lg {
+  --av: 64px;
+}
+.av-xl {
+  --av: 96px;
+}
+.av-2xl {
+  --av: 132px;
+}
+
+.avFace {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: var(--line);
+  border-radius: 50%;
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+}
+.av-xs .avFace,
+.av-sm .avFace {
+  border-width: var(--bw-thin);
+}
+.av-tile .avFace {
+  border-radius: 26%;
+}
+.avShadow .avFace {
+  box-shadow: var(--sh-2);
+}
+.av-xl.avShadow .avFace,
+.av-2xl.avShadow .avFace {
+  box-shadow: var(--sh-3);
+}
+
+.avFace img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Portrait photos: keep the face, which sits in the upper part of the frame. */
+  object-position: 50% 30%;
+}
+/* The generated demo portraits are 3:4 busts with the head at ~45% height: zoom onto the face. */
+.avFace img[src^='data:image/svg'] {
+  transform: scale(1.35);
+  transform-origin: 50% 42%;
+}
+
+.initials {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: calc(var(--av) * 0.4);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  padding-top: 0.08em;
+}
+
+.dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: max(11px, calc(var(--av) * 0.27));
+  height: max(11px, calc(var(--av) * 0.27));
+  border: var(--bw-thin) solid var(--c-ink);
+  border-radius: 50%;
+  background: var(--c-paper-lo);
+}
+.av-xl .dot,
+.av-2xl .dot {
+  width: 24px;
+  height: 24px;
+  right: 4px;
+  bottom: 4px;
+  border-width: var(--bw);
+}
+.dotOn {
+  background: var(--c-matcha);
+}

@@ -1,0 +1,64 @@
+.mark {
+  flex: none;
+  display: block;
+  overflow: visible;
+}
+
+.wordmark {
+  --wm-size: 1.625rem;
+  --wm-color: var(--c-ink);
+  --wm-plate: var(--c-matcha);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: var(--wm-size);
+  color: var(--wm-color);
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+.paper {
+  --wm-color: var(--c-paper-hi);
+}
+
+.sm {
+  --wm-size: 1.25rem;
+}
+.md {
+  --wm-size: 1.625rem;
+}
+.lg {
+  --wm-size: 2.5rem;
+}
+.xl {
+  --wm-size: clamp(2.75rem, 12vw, 4.5rem);
+}
+
+.lockup {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.28em;
+}
+
+.letters {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-expanded);
+  font-size: 1em;
+  line-height: 0.8;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  text-shadow: max(1.5px, 0.055em) max(1.5px, 0.055em) 0 var(--wm-plate);
+  /* optical: the cap height sits on the tile's centre line */
+  padding-top: 0.06em;
+}
+
+.strap {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: max(0.5625rem, 0.24em);
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

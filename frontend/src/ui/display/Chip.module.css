@@ -1,0 +1,146 @@
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 0 11px;
+  border: var(--line-thin);
+  border-radius: var(--r-pill);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.sm {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: var(--fs-micro);
+}
+
+.text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+}
+
+/* toggle chip: presses like a small button */
+.clickable {
+  --lift: 2px;
+  min-height: 36px;
+  padding: 0 14px;
+  cursor: pointer;
+  box-shadow: var(--lift) var(--lift) 0 var(--c-ink);
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press),
+    background-color var(--dur-fast) linear;
+}
+/* 44px touch target */
+.clickable::after {
+  content: '';
+  position: absolute;
+  inset: -5px -2px;
+}
+@media (hover: hover) {
+  .clickable:hover:not(:disabled) {
+    translate: -1px -1px;
+    box-shadow: 3px 3px 0 var(--c-ink);
+  }
+}
+.clickable:active:not(:disabled) {
+  translate: var(--lift) var(--lift);
+  box-shadow: 0 0 0 var(--c-ink);
+}
+.selected {
+  background: var(--c-matcha);
+  color: var(--c-ink);
+  translate: 1px 1px;
+  box-shadow: 1px 1px 0 var(--c-ink);
+}
+.clickable:disabled {
+  border-style: dashed;
+  box-shadow: none;
+  color: var(--c-ink-3);
+}
+
+.removable {
+  padding-right: 3px;
+}
+
+.remove {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--c-ink);
+  color: var(--c-paper-hi);
+}
+/* 44px touch target */
+.remove::after {
+  content: '';
+  position: absolute;
+  inset: -11px -8px -11px -4px;
+}
+@media (hover: hover) {
+  .remove:hover {
+    background: var(--c-strawberry);
+    color: var(--c-ink);
+  }
+}
+
+/* ------------------------------------------------------------ badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px 2px;
+  border: var(--line-thin);
+  border-radius: var(--r-xs);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ------------------------------------------------------------ count */
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border: var(--line-thin);
+  border-radius: var(--r-pill);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  box-shadow: 1.5px 1.5px 0 var(--c-ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  line-height: 1;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}

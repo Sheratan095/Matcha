@@ -1,0 +1,308 @@
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    translate: 0 100%;
+  }
+}
+
+@keyframes dialog-in {
+  0% {
+    opacity: 0;
+    translate: 0 24px;
+    rotate: -2deg;
+    scale: 0.96;
+  }
+  70% {
+    opacity: 1;
+    translate: 0 -3px;
+    rotate: 0.4deg;
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+    rotate: 0deg;
+    scale: 1;
+  }
+}
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background-color: var(--c-scrim);
+  /* a coarse dot screen over the scrim: the page is "printed over" rather than blurred */
+  background-image: radial-gradient(circle at center, rgb(21 19 15 / 55%) 1.4px, transparent 1.8px);
+  background-size: 6px 6px;
+  animation: scrim-in var(--dur-sheet) var(--ease-out) both;
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 40px);
+  border: var(--line);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  outline: none;
+}
+
+.panel:focus-visible {
+  outline: var(--bw) solid var(--c-focus);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------ sheet look */
+.sheet .panel,
+.auto .panel {
+  width: 100%;
+  border-bottom: 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: 0 -6px 0 var(--c-ink);
+  padding-bottom: var(--safe-b);
+  animation: sheet-up var(--dur-sheet) var(--ease-out) both;
+}
+
+.grip {
+  display: none;
+}
+.sheet .grip,
+.auto .grip {
+  display: block;
+  align-self: center;
+  width: 64px;
+  height: 8px;
+  margin-top: 10px;
+  border: var(--line-thin);
+  border-radius: var(--r-pill);
+  background: var(--c-paper-lo);
+  background-image: radial-gradient(circle at center, var(--c-ink) 1.5px, transparent 2px);
+  background-size: 8px 100%;
+}
+
+/* ------------------------------------------------------------ dialog look */
+.dialog {
+  justify-content: center;
+  align-items: center;
+  padding: var(--s-4);
+}
+.dialog .panel {
+  width: 100%;
+  border-radius: var(--r-xl);
+  border-bottom: var(--line);
+  box-shadow: var(--sh-4);
+  max-height: calc(100dvh - 48px);
+  animation: dialog-in var(--dur-thunk) var(--ease-out) both;
+}
+
+@media (min-width: 640px) {
+  .auto {
+    justify-content: center;
+    align-items: center;
+    padding: var(--s-6);
+  }
+  .auto .panel {
+    border-bottom: var(--line);
+    border-radius: var(--r-xl);
+    box-shadow: var(--sh-4);
+    padding-bottom: 0;
+    max-height: calc(100dvh - 64px);
+    animation: dialog-in var(--dur-thunk) var(--ease-out) both;
+  }
+  .auto .grip {
+    display: none;
+  }
+  .sheet {
+    align-items: center;
+  }
+  .sheet .panel {
+    max-width: 560px;
+  }
+}
+
+.dialog .size-sm,
+.auto .size-sm {
+  max-width: 400px;
+}
+.dialog .size-md,
+.auto .size-md {
+  max-width: 520px;
+}
+.dialog .size-lg,
+.auto .size-lg {
+  max-width: 680px;
+}
+
+/* ------------------------------------------------------------ takeover */
+@keyframes takeover-in {
+  0% {
+    opacity: 0;
+    scale: 1.08;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+.takeover .panel {
+  position: absolute;
+  inset: 0;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  animation: takeover-in var(--dur-thunk) var(--ease-out) both;
+}
+.takeover .head {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  padding: calc(var(--safe-t) + var(--s-3)) var(--s-3) 0;
+}
+.takeover .body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------ closing */
+.closing .scrim {
+  opacity: 0;
+  transition: opacity 180ms linear;
+}
+.closing .panel {
+  animation: none;
+  opacity: 0;
+  translate: 0 40px;
+  transition:
+    opacity 180ms linear,
+    translate 200ms var(--ease-press);
+}
+.sheet.closing .panel {
+  opacity: 1;
+  translate: 0 100%;
+}
+@media (max-width: 639.98px) {
+  .auto.closing .panel {
+    opacity: 1;
+    translate: 0 100%;
+  }
+}
+
+/* ------------------------------------------------------------ inside */
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-3) var(--s-3) var(--s-5);
+}
+
+.headHidden {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  padding: var(--s-3);
+}
+.sheet .headHidden,
+.auto .headHidden {
+  top: 14px;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 2.25rem;
+  line-height: 0.86;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.close {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: var(--line);
+  border-radius: 50%;
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  box-shadow: var(--sh-1);
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+@media (hover: hover) {
+  .close:hover {
+    background: var(--c-strawberry);
+  }
+}
+.close:active {
+  translate: 2px 2px;
+  box-shadow: none;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s-2) var(--s-5) var(--s-5);
+}
+
+.bleed {
+  padding: 0;
+}
+
+.footer {
+  flex: none;
+  display: flex;
+  gap: var(--s-3);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  border-top: var(--bw) dashed var(--c-ink);
+}
+.footer > * {
+  flex: 1 1 auto;
+}
+@media (min-width: 640px) {
+  .footer > * {
+    flex: 0 0 auto;
+  }
+}

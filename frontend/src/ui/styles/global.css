@@ -1,0 +1,256 @@
+/* Matcha — global styles: reset, paper, type, focus, selection, scrollbars. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-padding-top: calc(var(--topbar-h) + var(--s-4));
+  background: var(--c-bg);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: 450;
+  font-stretch: var(--wd-normal);
+  line-height: var(--lh-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: break-word;
+}
+
+/* Paper grain, printed over everything (controls, photos, overlays) like real stock. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-grain);
+  pointer-events: none;
+  background-image: var(--tex-grain);
+  background-size: 240px 240px;
+  opacity: 0.5;
+}
+
+#root {
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: var(--lh-tight);
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  margin: 0;
+}
+
+button {
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+textarea {
+  resize: vertical;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+}
+
+a:not([class]) {
+  font-weight: 700;
+  text-decoration-line: underline;
+  text-decoration-color: var(--c-matcha);
+  text-decoration-thickness: 3px;
+}
+
+@media (hover: hover) {
+  a:not([class]):hover {
+    background: var(--c-matcha);
+    text-decoration-color: var(--c-ink);
+  }
+}
+
+strong,
+b {
+  font-weight: 800;
+}
+
+hr {
+  border: 0;
+  border-top: var(--line);
+  margin: 0;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+kbd {
+  display: inline-block;
+  padding: 0 0.4em;
+  border: var(--line-thin);
+  border-radius: var(--r-xs);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-1);
+}
+
+/* ---------------------------------------------------------------- selection */
+::selection {
+  background: var(--c-ink);
+  color: var(--c-matcha);
+}
+
+/* ---------------------------------------------------------------- focus
+   One ring for every interactive thing: a cobalt keyline that sits off the ink outline. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: var(--bw) solid var(--c-focus);
+  outline-offset: 3px;
+}
+
+/* dark fields flip the ring to yolk so it stays visible */
+[data-surface='ink'] :focus-visible,
+[data-surface='ink']:focus-visible {
+  outline-color: var(--c-yolk);
+}
+
+/* ---------------------------------------------------------------- scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-ink) var(--c-paper-lo);
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--c-paper-lo);
+  border-left: 2px solid var(--c-ink);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-ink);
+  border: 2px solid var(--c-paper-lo);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-matcha-deep);
+}
+
+/* ---------------------------------------------------------------- helpers */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* body scroll lock, set by Modal while an overlay is open */
+html[data-scroll-lock] body {
+  overflow: hidden;
+  padding-right: var(--scrollbar-gap, 0px);
+}
+
+/* ---------------------------------------------------------------- reduced motion
+   Movement is removed; state changes stay instant and legible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

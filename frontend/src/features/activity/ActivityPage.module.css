@@ -1,0 +1,382 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  margin-top: var(--s-2);
+}
+
+/* ------------------------------------------------------------ scoreboard tabs */
+.score {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+}
+
+.scoreTab {
+  --plate: var(--c-matcha);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-3) var(--s-4) var(--s-3);
+  border: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  box-shadow: var(--sh-2);
+  text-align: left;
+  overflow: hidden;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press),
+    background-color var(--dur-fast) linear;
+}
+/* a punched ticket hole */
+.scoreTab::after {
+  content: '';
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+  width: 14px;
+  height: 14px;
+  border: var(--line-thin);
+  border-radius: 50%;
+  background: var(--c-paper);
+}
+@media (hover: hover) {
+  .scoreTab:not(.scoreActive):hover {
+    background: var(--c-matcha-tint);
+  }
+}
+.scoreTab:not(.scoreActive):active {
+  translate: var(--press) var(--press);
+  box-shadow: none;
+}
+.scoreActive {
+  background: var(--c-ink);
+  color: var(--c-paper-hi);
+  box-shadow: 4px 4px 0 var(--plate);
+}
+.scoreActive:focus-visible {
+  outline-color: var(--c-yolk);
+}
+
+.scoreNum {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: clamp(3.5rem, 19cqi, 5.25rem);
+  line-height: 0.8;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  padding-top: 0.06em;
+  text-shadow: 4px 4px 0 var(--plate);
+}
+
+.scoreLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.scoreIcon {
+  display: inline-flex;
+  color: var(--plate);
+}
+.scoreTab:not(.scoreActive) .scoreIcon {
+  color: var(--c-ink);
+}
+
+/* ------------------------------------------------------------ likes: pinned polaroids */
+.likes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-5) var(--s-4);
+  padding: var(--s-2) 2px var(--s-2);
+}
+@container (min-width: 600px) {
+  .likes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@container (min-width: 860px) {
+  .likes {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.like {
+  --tilt: 0deg;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  width: 100%;
+  padding: 7px 7px var(--s-3);
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  box-shadow: var(--sh-2);
+  text-align: left;
+  rotate: var(--tilt);
+  transition:
+    rotate var(--dur-thunk) var(--ease-thunk),
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+@media (hover: hover) {
+  .like:hover {
+    rotate: 0deg;
+    translate: -2px -2px;
+    box-shadow: var(--sh-3);
+  }
+}
+.like:active {
+  translate: var(--press) var(--press);
+  box-shadow: none;
+}
+.like:focus-visible {
+  rotate: 0deg;
+  outline-offset: 3px;
+}
+
+.likePhoto {
+  width: 100%;
+}
+
+.likeHeart {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: var(--line-thin);
+  border-radius: 50%;
+  background: var(--c-strawberry);
+  color: var(--c-ink);
+  box-shadow: var(--sh-1);
+  rotate: -8deg;
+}
+.likeOnline {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  width: 14px;
+  height: 14px;
+  border: var(--line-thin);
+  border-radius: 50%;
+  background: var(--c-matcha);
+}
+
+.likeLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-inline: 3px;
+}
+.likeName {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: 1.25rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.likeAge {
+  font-weight: 500;
+  font-stretch: var(--wd-normal);
+  font-size: 1rem;
+}
+.likeMeta {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+/* ------------------------------------------------------------ answering a like (inside the profile sheet) */
+.answer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+}
+.answerNote {
+  max-width: 36ch;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--c-strawberry-deep);
+}
+.answerHeart {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: -3px;
+}
+.answerButtons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-6);
+}
+.answerError {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--c-strawberry-deep);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ viewers: ticket stubs */
+.honest {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--c-ink-2);
+}
+
+.stubs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.stub {
+  --notch: 11px;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 100%;
+  min-height: 92px;
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  box-shadow: var(--sh-2);
+  text-align: left;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press),
+    background-color var(--dur-fast) linear;
+}
+@media (hover: hover) {
+  .stub:hover {
+    background: var(--c-blue-tint);
+  }
+}
+.stub:active {
+  translate: var(--press) var(--press);
+  box-shadow: none;
+}
+
+.stubMain {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: var(--s-3) var(--s-4);
+}
+.stubKicker {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+.stubId {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.375rem;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+}
+.stubBarcode {
+  margin-top: 2px;
+  opacity: 0.85;
+}
+
+/* the tear-off: a perforation with a notch top and bottom, then the number */
+.stubSide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 88px;
+  padding: var(--s-3) var(--s-4);
+  border-left: var(--bw-thin) dashed var(--c-ink);
+}
+.stubSide::before,
+.stubSide::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--notch) * -1 - 1px);
+  width: calc(var(--notch) * 2);
+  height: var(--notch);
+  border: var(--line);
+  background: var(--c-paper);
+}
+.stubSide::before {
+  top: calc(var(--bw) * -1);
+  border-top: 0;
+  border-radius: 0 0 var(--notch) var(--notch);
+}
+.stubSide::after {
+  bottom: calc(var(--bw) * -1);
+  border-bottom: 0;
+  border-radius: var(--notch) var(--notch) 0 0;
+}
+.stubNo {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 2.75rem;
+  line-height: 0.8;
+  padding-top: 0.06em;
+  text-shadow: 3px 3px 0 var(--c-blue-tint);
+}
+.stub:hover .stubNo {
+  text-shadow: 3px 3px 0 var(--c-paper-hi);
+}
+.stubOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--c-blue);
+}

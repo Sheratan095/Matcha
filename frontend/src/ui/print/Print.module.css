@@ -1,0 +1,267 @@
+.cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ------------------------------------------------------------ patterns */
+.pattern {
+  display: block;
+  pointer-events: none;
+  color: var(--c-ink);
+}
+
+.p-dots {
+  background-image: var(--tex-dots);
+  background-size: var(--tex-dots-size);
+}
+.p-halftone {
+  background-image: var(--tex-halftone), var(--tex-halftone);
+  background-size: var(--tex-halftone-size);
+  background-position:
+    0 0,
+    5px 5px;
+}
+.p-stripes {
+  background-image: var(--tex-stripes);
+}
+.p-grid {
+  background-image: var(--tex-grid);
+  background-size: var(--tex-grid-size);
+}
+.p-checks {
+  background-image: var(--tex-checks);
+  background-size: var(--tex-checks-size);
+}
+
+.halftone {
+  display: block;
+  pointer-events: none;
+  fill: currentColor;
+}
+
+/* ------------------------------------------------------------ perforation */
+.perf {
+  --perf-bleed: var(--card-pad, 0px);
+  --perf-notch: var(--c-bg);
+  position: relative;
+  height: var(--bw);
+  margin-inline: calc(-1 * var(--perf-bleed));
+  margin-block: var(--s-4);
+  color: var(--c-ink);
+  flex: none;
+}
+
+.perf-dashes {
+  background-image: repeating-linear-gradient(90deg, currentColor 0 8px, transparent 8px 15px);
+}
+
+.perf-holes {
+  height: 8px;
+  background-image: radial-gradient(circle at center, currentColor 3px, transparent 3.4px);
+  background-size: 14px 8px;
+  background-position: center;
+  background-repeat: repeat-x;
+}
+
+.notches::before,
+.notches::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  translate: 0 -50%;
+  border: var(--line);
+  border-radius: 50%;
+  background: var(--perf-notch);
+}
+
+/* each notch is centred on the card's outer edge; the half that pokes outside is clipped away */
+.notches::before {
+  left: calc(-11px - var(--bw));
+  clip-path: inset(-4px -4px -4px 50%);
+}
+.notches::after {
+  right: calc(-11px - var(--bw));
+  clip-path: inset(-4px 50% -4px -4px);
+}
+
+/* ------------------------------------------------------------ serial */
+.serial {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45em;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.serialPrefix {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.serial-ink {
+  color: var(--c-ink);
+}
+.serial-muted {
+  color: var(--c-ink-3);
+}
+.serial-paper {
+  color: var(--c-paper-hi);
+}
+
+/* ------------------------------------------------------------ barcode */
+.barcode {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  color: var(--c-ink);
+}
+.barcode svg {
+  fill: currentColor;
+}
+.bc-paper {
+  color: var(--c-paper-hi);
+}
+.barcodeCaption {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.22em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------ crop marks */
+.crop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--c-ink);
+}
+.crop i {
+  position: absolute;
+  width: var(--crop-size);
+  height: var(--crop-size);
+}
+.crop i::before,
+.crop i::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+}
+/* horizontal stroke */
+.crop i::before {
+  height: 1.5px;
+  width: var(--crop-size);
+}
+/* vertical stroke */
+.crop i::after {
+  width: 1.5px;
+  height: var(--crop-size);
+}
+
+.tl {
+  top: 0;
+  left: 0;
+}
+.tl::before {
+  top: 0;
+  right: calc(100% + var(--crop-gap));
+}
+.tl::after {
+  left: 0;
+  bottom: calc(100% + var(--crop-gap));
+}
+
+.tr {
+  top: 0;
+  right: 0;
+}
+.tr::before {
+  top: 0;
+  left: calc(100% + var(--crop-gap));
+}
+.tr::after {
+  right: 0;
+  bottom: calc(100% + var(--crop-gap));
+}
+
+.bl {
+  bottom: 0;
+  left: 0;
+}
+.bl::before {
+  bottom: 0;
+  right: calc(100% + var(--crop-gap));
+}
+.bl::after {
+  left: 0;
+  top: calc(100% + var(--crop-gap));
+}
+
+.br {
+  bottom: 0;
+  right: 0;
+}
+.br::before {
+  bottom: 0;
+  left: calc(100% + var(--crop-gap));
+}
+.br::after {
+  right: 0;
+  top: calc(100% + var(--crop-gap));
+}
+
+.reg {
+  display: block;
+  flex: none;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------ colour bar */
+.colorbar {
+  display: inline-flex;
+  border: var(--line-thin);
+}
+.colorbar i {
+  width: 14px;
+  height: 14px;
+}
+.colorbar i + i {
+  border-left: var(--line-thin);
+}
+
+/* ------------------------------------------------------------ ticket header */
+.ticketHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ticketHeader i {
+  flex: 1;
+  min-width: var(--s-4);
+  height: 0;
+  border-top: var(--bw-thin) solid currentColor;
+}
+.ticketHeader span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.th-ink {
+  color: var(--c-ink);
+}
+.th-paper {
+  color: var(--c-paper-hi);
+}

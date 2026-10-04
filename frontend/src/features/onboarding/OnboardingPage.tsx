@@ -1,0 +1,372 @@
+import { useEffect, useRef, useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import type { Profile } from '@/api/types'
+import { MAX_BIOGRAPHY_LENGTH, MAX_INTEREST_LENGTH } from '@/api/types'
+import { focusFirstInvalid } from '@/features/me/focus'
+import { PhotoManager } from '@/features/me/PhotoManager'
+import { ProfileLoading, ProfileUnavailable, SignedOut } from '@/features/me/ProfileStatus'
+import { GENDER_OPTIONS, PREFERENCE_OPTIONS } from '@/features/me/profile'
+import { useMyProfile } from '@/features/me/useMyProfile'
+import { useProfileDraft, type ProfileDraftApi } from '@/features/me/useProfileDraft'
+import { useTagCatalogue } from '@/features/me/useTagCatalogue'
+import {
+  Button,
+  FormError,
+  Headline,
+  IconArrowLeft,
+  IconArrowRight,
+  IconCheck,
+  IconLogout,
+  IconPlus,
+  Label,
+  Notice,
+  PosterWord,
+  Screen,
+  Segmented,
+  Steps,
+  TagInput,
+  Text,
+  TextArea,
+  TextField,
+  toast,
+  Wordmark,
+} from '@/ui'
+import { actions, useNodeValue } from '@/wb'
+import { Celebration } from './Celebration'
+import { firstRequiredGap, resumeStep, STEP_LABELS, STEPS } from './steps'
+import s from './Onboarding.module.css'
+
+const FORM_ID = 'onboarding-step'
+const pad = (n: number) => String(n).padStart(2, '0')
+
+const BIO_STARTERS: readonly { label: string; text: string }[] = [
+  { label: 'Perfect Sunday', text: 'My perfect Sunday: ' },
+  { label: 'Weirdly good at', text: 'I’m weirdly good at ' },
+  { label: 'Matcha or coffee', text: 'Matcha or coffee? ' },
+]
+
+// ---------------------------------------------------------------- frame
+
+function OnboardingHeader({ current }: { current: number | null }) {
+  const navigate = useNavigate()
+  const [leaving, setLeaving] = useState(false)
+  const logout = async () => {
+    setLeaving(true)
+    try {
+      await actions.logout()
+      navigate('/', { replace: true })
+    } catch {
+      setLeaving(false)
+      toast.error('Could not log out', 'Try again in a moment.')
+    }
+  }
+  return (
+    <div className={s.top}>
+      <div className={s.topRow}>
+        <Wordmark size="sm" />
+        <Button variant="ghost" size="sm" icon={<IconLogout size={16} />} loading={leaving} onClick={logout}>
+          Log out
+        </Button>
+      </div>
+      {current !== null ? <Steps current={current + 1} total={STEPS.length} labels={STEP_LABELS} /> : null}
+    </div>
+  )
+}
+
+function Frame({ children, footer, poster, current }: { children: ReactNode; footer?: ReactNode; poster?: string; current: number | null }) {
+  return (
+    <Screen header={<OnboardingHeader current={current} />} footer={footer} poster={poster}>
+      {children}
+    </Screen>
+  )
+}
+
+// ---------------------------------------------------------------- steps
+
+function AboutFields({ form }: { form: ProfileDraftApi }) {
+  return (
+    <>
+      <div className={s.names}>
+        <TextField
+          label="First name"
+          autoComplete="given-name"
+          maxLength={50}
+          value={form.value.firstName}
+          onChange={(e) => form.set('firstName', e.currentTarget.value)}
+          error={form.errors.firstName}
+        />
+        <TextField
+          label="Last name"
+          autoComplete="family-name"
+          maxLength={50}
+          value={form.value.lastName}
+          onChange={(e) => form.set('lastName', e.currentTarget.value)}
+          error={form.errors.lastName}
+          aside="Optional"
+        />
+      </div>
+      <Segmented
+        label="I am"
+        options={GENDER_OPTIONS}
+        value={form.value.gender}
+        onChange={(value) => form.set('gender', value)}
+        error={form.errors.gender}
+        size="lg"
+        stacked
+      />
+    </>
+  )
+}
+
+function IntoFields({ form }: { form: ProfileDraftApi }) {
+  return (
+    <Segmented
+      label="Show me"
+      options={PREFERENCE_OPTIONS}
+      value={form.value.sexualPreference}
+      onChange={(value) => form.set('sexualPreference', value)}
+      error={form.errors.sexualPreference}
+      tone="strawberry"
+      size="lg"
+      stacked
+    />
+  )
+}
+
+function BioFields({ form }: { form: ProfileDraftApi }) {
+  const bio = form.value.biography
+  const add = (starter: string) => {
+    const joined = (bio.trim() ? `${bio.trimEnd()}\n${starter}` : starter).slice(0, MAX_BIOGRAPHY_LENGTH)
+    form.set('biography', joined)
+    // once React has committed the new value: caret at the end, ready to finish the sentence
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const area = document.getElementById('onboarding-bio') as HTMLTextAreaElement | null
+        if (!area) return
+        area.focus()
+        const end = Math.min(joined.length, area.value.length)
+        area.setSelectionRange(end, end)
+      }),
+    )
+  }
+  return (
+    <>
+      <TextArea
+        id="onboarding-bio"
+        label="Biography"
+        maxLength={MAX_BIOGRAPHY_LENGTH}
+        rows={6}
+        value={bio}
+        placeholder="Tea, trains and terrible puns…"
+        onChange={(e) => form.set('biography', e.currentTarget.value)}
+        error={form.errors.biography}
+      />
+      <div className={s.starters} role="group" aria-label="Need a start?">
+        <Label tone="muted" as="span">
+          Need a start?
+        </Label>
+        <div className={s.starterRow}>
+          {BIO_STARTERS.map((starter) => (
+            <Button key={starter.label} size="sm" variant="paper" icon={<IconPlus size={14} />} onClick={() => add(starter.text)}>
+              {starter.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function InterestFields({ form }: { form: ProfileDraftApi }) {
+  const catalogue = useTagCatalogue()
+  const count = form.value.interests.length
+  return (
+    <>
+      <TagInput
+        label="Interests"
+        value={form.value.interests}
+        onChange={(tags) => form.set('interests', tags)}
+        suggestions={catalogue.tags}
+        suggestionLimit={14}
+        maxLength={MAX_INTEREST_LENGTH}
+        hint={catalogue.hint}
+        error={form.errors.interests}
+      />
+      <p className={s.tally} aria-live="polite">
+        <span className={s.tallyNumber}>{pad(count)}</span> picked{count === 0 ? ' · one at least' : ''}
+      </p>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- wizard
+
+function Wizard({ profile }: { profile: Profile }) {
+  const navigate = useNavigate()
+  const [start] = useState(() => resumeStep(profile))
+  const [index, setIndex] = useState(() => Math.min(start, STEPS.length - 1))
+  const [celebrating, setCelebrating] = useState(false)
+  const [gapNotice, setGapNotice] = useState<string | null>(null)
+  const [announcement, setAnnouncement] = useState('')
+  const stepRef = useRef<HTMLFormElement>(null)
+  const form = useProfileDraft(profile)
+  const complete = useNodeValue('profileComplete') === true
+  /** Set by `go`: once the new step has rendered, scroll to its top and focus its first field. */
+  const moved = useRef(false)
+
+  useEffect(() => {
+    const el = stepRef.current
+    if (!moved.current || !el) return
+    moved.current = false
+    // the screen's scrolling middle (kit Screen): back to the top-left of the new step
+    el.closest('main')?.scrollTo({ top: 0, left: 0 })
+    el.querySelector<HTMLElement>('input:not([type="file"]):not(:disabled), textarea, input[type="file"]:not(:disabled)')?.focus({
+      preventScroll: true,
+    })
+  }, [index])
+
+  if (start >= STEPS.length && !celebrating) return <Navigate to="/discover" replace />
+
+  const step = STEPS[index]
+  const last = index === STEPS.length - 1
+
+  const go = (next: number) => {
+    moved.current = true
+    setIndex(next)
+    setAnnouncement(`Step ${next + 1} of ${STEPS.length}: ${STEPS[next].label}`)
+  }
+
+  const finish = () => {
+    const gap = firstRequiredGap(profile)
+    if (!complete || gap >= 0) {
+      const target = gap >= 0 ? gap : 0
+      setGapNotice(`One more thing before the deck: ${STEPS[target].label.toLowerCase()} is still missing.`)
+      go(target)
+      return
+    }
+    setCelebrating(true)
+  }
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (form.saving) return
+    if (last) {
+      finish()
+      return
+    }
+    const ok = await form.save(step.fields, { keepDraft: true })
+    if (!ok) {
+      focusFirstInvalid(stepRef.current)
+      return
+    }
+    setGapNotice(null)
+    go(index + 1)
+  }
+
+  const leave = () => {
+    navigate('/discover', { replace: true })
+    toast.show({ tone: 'matcha', title: 'You’re in the deck', message: 'Swipe right on what you like. Your profile lives under Me.' })
+  }
+
+  const photoCount = profile.pictures.length
+  const nextLabel = last ? (photoCount > 0 ? 'Finish' : 'Skip & finish') : 'Continue'
+
+  return (
+    <Frame
+      current={index}
+      poster={step.poster}
+      footer={
+        <div className={s.footer}>
+          {index > 0 ? (
+            <Button
+              variant="paper"
+              size="lg"
+              icon={<IconArrowLeft size={22} />}
+              aria-label={`Back to ${STEPS[index - 1].label.toLowerCase()}`}
+              title="Back"
+              disabled={form.saving}
+              onClick={() => go(index - 1)}
+            />
+          ) : null}
+          <Button
+            type="submit"
+            form={FORM_ID}
+            size="lg"
+            loading={form.saving}
+            className={s.grow}
+            iconRight={last ? <IconCheck size={20} strokeWidth={3.5} /> : <IconArrowRight size={20} />}
+          >
+            {form.saving ? 'Saving' : nextLabel}
+          </Button>
+        </div>
+      }
+    >
+      <title>{`${step.label} · Set up your profile · Matcha`}</title>
+      <form
+        key={step.key}
+        id={FORM_ID}
+        ref={stepRef}
+        className={s.step}
+        onSubmit={onSubmit}
+        noValidate
+        aria-labelledby="onboarding-title"
+      >
+        <PosterWord size="clamp(10rem, 62cqw, 17rem)" tone={step.tone} outline className={s.numeral}>
+          {pad(index + 1)}
+        </PosterWord>
+
+        <header className={s.head}>
+          <Label tone="muted">
+            Step {pad(index + 1)} · {step.label}
+          </Label>
+          <Headline as="h1" id="onboarding-title" size="d2" width="condensed" print="riso" offset={step.tone}>
+            {step.title[0]}
+            <br />
+            {step.title[1]}
+          </Headline>
+          <Text size="lead" className={s.lead}>
+            {step.lead}
+          </Text>
+        </header>
+
+        {gapNotice ? (
+          <Notice tone="warning" title="Almost there" onDismiss={() => setGapNotice(null)}>
+            {gapNotice}
+          </Notice>
+        ) : null}
+
+        <div className={s.fields}>
+          {step.key === 'about' ? <AboutFields form={form} /> : null}
+          {step.key === 'into' ? <IntoFields form={form} /> : null}
+          {step.key === 'bio' ? <BioFields form={form} /> : null}
+          {step.key === 'interests' ? <InterestFields form={form} /> : null}
+          {step.key === 'photos' ? <PhotoManager profile={profile} label="Your photos" /> : null}
+        </div>
+
+        <FormError error={form.formError} title="Not saved" />
+      </form>
+
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
+
+      <Celebration open={celebrating} profile={profile} onGo={leave} />
+    </Frame>
+  )
+}
+
+/** `/onboarding`: complete the profile one step at a time; each step saves what it changed. */
+export default function OnboardingPage() {
+  const me = useMyProfile()
+  if (me.state === 'ready') return <Wizard profile={me.profile} />
+  return (
+    <Frame current={null}>
+      <div className={s.status}>
+        {me.state === 'loading' ? <ProfileLoading caption="Setting out your card" /> : null}
+        {me.state === 'error' ? <ProfileUnavailable error={me.error} /> : null}
+        {me.state === 'signed-out' ? <SignedOut /> : null}
+      </div>
+    </Frame>
+  )
+}

@@ -1,0 +1,71 @@
+@keyframes run {
+  from {
+    translate: 0 0;
+  }
+  to {
+    translate: -50% 0;
+  }
+}
+
+.marquee {
+  --mq-fs: 1.125rem;
+  overflow: hidden;
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  border-block: var(--line);
+  font-size: var(--mq-fs);
+  user-select: none;
+}
+
+.marquee[data-tone='ink'] {
+  color: var(--c-matcha);
+}
+
+.sm {
+  --mq-fs: 0.8125rem;
+}
+.md {
+  --mq-fs: 1.125rem;
+}
+.lg {
+  --mq-fs: 2rem;
+}
+
+.belt {
+  display: flex;
+  width: max-content;
+  animation: run var(--mq-speed, 22s) linear infinite;
+}
+
+.reverse .belt {
+  animation-direction: reverse;
+}
+
+.track {
+  display: flex;
+  align-items: center;
+  flex: none;
+  padding-block: 0.5em 0.42em;
+}
+
+.item {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-wide);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sep {
+  display: inline-flex;
+  align-items: center;
+  margin-inline: 0.9em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .belt {
+    animation: none;
+  }
+}

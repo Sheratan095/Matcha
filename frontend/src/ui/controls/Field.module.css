@@ -1,0 +1,226 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  line-height: 1.25;
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--c-ink);
+}
+
+.aside {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+  white-space: nowrap;
+}
+
+.hint,
+.error {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+}
+
+.hint {
+  color: var(--c-ink-3);
+}
+
+.error {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  color: var(--c-strawberry-deep);
+  font-weight: 700;
+}
+.error svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* ------------------------------------------------------------ the box */
+.box {
+  --box-shadow-color: var(--c-ink);
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  /* debossed at rest: a shallow inner shadow, as if pressed into the sheet */
+  box-shadow: inset 3px 3px 0 rgb(21 19 15 / 9%);
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+
+/* focus: the box lifts off the page onto a hard shadow */
+.box:focus-within {
+  translate: -2px -2px;
+  box-shadow: 5px 5px 0 var(--box-shadow-color);
+}
+
+.box:has(.reveal:focus-visible) {
+  translate: none;
+  box-shadow: inset 3px 3px 0 rgb(21 19 15 / 9%);
+}
+
+.invalid {
+  background: var(--c-strawberry-tint);
+  box-shadow: 4px 4px 0 var(--c-strawberry);
+}
+.invalid:focus-within {
+  --box-shadow-color: var(--c-strawberry);
+}
+
+.disabled {
+  background-color: var(--c-paper-lo);
+  background-image: var(--tex-hatch);
+  color: var(--c-ink-3);
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  padding: 0 var(--s-4);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  font-size: 1rem; /* 16px: no zoom on iOS */
+  font-weight: 600;
+  line-height: 1.3;
+  caret-color: var(--c-matcha-deep);
+  outline: none;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--c-ink-3);
+  font-weight: 450;
+  opacity: 1;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+  color: var(--c-ink-3);
+}
+
+/* keep autofill on-palette */
+.input:-webkit-autofill {
+  -webkit-text-fill-color: var(--c-ink);
+  box-shadow: inset 0 0 0 100px var(--c-matcha-tint);
+  caret-color: var(--c-ink);
+}
+
+.lead {
+  display: inline-flex;
+  flex: none;
+  padding-left: var(--s-3);
+  margin-right: -6px;
+  color: var(--c-ink);
+}
+
+.trail {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding-right: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.reveal {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-sm);
+  color: var(--c-ink);
+}
+@media (hover: hover) {
+  .reveal:hover {
+    background: var(--c-matcha);
+  }
+}
+.reveal[aria-pressed='true'] {
+  background: var(--c-ink);
+  color: var(--c-matcha);
+}
+.reveal:focus-visible {
+  outline-offset: 0;
+}
+
+/* textarea */
+.area {
+  align-items: stretch;
+}
+.textarea {
+  display: block;
+  padding-block: var(--s-3);
+  min-height: 112px;
+  font-weight: 500;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+}
+.counterNear {
+  color: var(--c-strawberry-deep);
+  font-weight: 700;
+}
+
+/* select */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 48px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+.select option {
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  font-weight: 500;
+}
+.chevron {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  display: grid;
+  place-items: center;
+  border-left: var(--line);
+  border-radius: 0 calc(var(--r-md) - 3px) calc(var(--r-md) - 3px) 0;
+  background: var(--c-matcha);
+  pointer-events: none;
+}

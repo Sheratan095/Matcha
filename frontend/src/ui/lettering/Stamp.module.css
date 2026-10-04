@@ -1,0 +1,181 @@
+@keyframes thunk {
+  0% {
+    opacity: 0;
+    scale: 2.6;
+    rotate: calc(var(--stamp-rot, 0deg) - 14deg);
+  }
+  55% {
+    opacity: 1;
+    scale: 0.9;
+    rotate: calc(var(--stamp-rot, 0deg) + 2deg);
+  }
+  75% {
+    scale: 1.05;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+    rotate: var(--stamp-rot, 0deg);
+  }
+}
+
+.thunk {
+  animation: thunk var(--dur-thunk) var(--ease-press) both;
+}
+
+/* ------------------------------------------------------------ stamp */
+.stamp {
+  --stamp-fs: 2rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  padding: 0.14em 0.36em 0.1em;
+  font-size: var(--stamp-fs);
+  rotate: var(--stamp-rot, -8deg);
+  border-radius: 0.22em;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sm {
+  --stamp-fs: 1.25rem;
+}
+.md {
+  --stamp-fs: 2rem;
+}
+.lg {
+  --stamp-fs: 3.25rem;
+}
+.xl {
+  --stamp-fs: clamp(4rem, 21vw, 6rem);
+}
+
+.word {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.sub {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: max(0.625rem, 0.2em);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  padding-bottom: 0.3em;
+}
+
+.solid {
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  border: max(3px, 0.085em) solid var(--c-ink);
+  box-shadow: max(3px, 0.1em) max(3px, 0.1em) 0 var(--c-ink);
+}
+
+.rubber {
+  color: var(--tone-text);
+  border: max(3px, 0.1em) solid currentColor;
+  /* the double keyline of a rubber stamp */
+  outline: max(1.5px, 0.035em) solid currentColor;
+  outline-offset: max(2px, 0.06em);
+  margin: max(4px, 0.1em);
+}
+
+.worn {
+  -webkit-mask-image: var(--tex-wear);
+  mask-image: var(--tex-wear);
+  -webkit-mask-size: 260px 260px;
+  mask-size: 260px 260px;
+}
+
+/* ------------------------------------------------------------ sticker */
+.sticker {
+  --sticker-size: 88px;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  rotate: var(--stamp-rot, 8deg);
+  color: var(--tone-fg);
+  text-align: center;
+  user-select: none;
+}
+
+.stickerText {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: calc(var(--sticker-size) * 0.17);
+  line-height: 0.92;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.sh-burst,
+.sh-circle {
+  width: var(--sticker-size);
+  height: var(--sticker-size);
+  padding: calc(var(--sticker-size) * 0.16);
+}
+
+.burst {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: var(--tone-bg);
+  stroke: var(--c-ink);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(3px 3px 0 var(--c-ink));
+}
+
+.burst polygon {
+  vector-effect: non-scaling-stroke;
+}
+
+.sh-circle {
+  background: var(--tone-bg);
+  border: var(--line);
+  border-radius: 50%;
+  box-shadow: var(--sh-2);
+}
+
+.sh-circle::after {
+  /* inner keyline, like a seal */
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1.5px dashed currentColor;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+
+.sh-pill,
+.sh-tag {
+  padding: 6px 14px 5px;
+  background: var(--tone-bg);
+  border: var(--line);
+  box-shadow: var(--sh-1);
+}
+
+.sh-pill {
+  border-radius: var(--r-pill);
+}
+
+.sh-tag {
+  border-radius: var(--r-xs);
+}
+
+.sh-pill .stickerText,
+.sh-tag .stickerText {
+  font-size: 0.9375rem;
+  white-space: nowrap;
+}

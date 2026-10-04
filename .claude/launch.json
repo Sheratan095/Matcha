@@ -1,0 +1,83 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "matcha-demo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev:demo"
+      ],
+      "port": 4000
+    },
+    {
+      "name": "matcha-real",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev"
+      ],
+      "port": 4000
+    },
+    {
+      "name": "ui-auth",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev:demo",
+        "--",
+        "--port",
+        "4101"
+      ],
+      "port": 4101
+    },
+    {
+      "name": "ui-me",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev:demo",
+        "--",
+        "--port",
+        "4102"
+      ],
+      "port": 4102
+    },
+    {
+      "name": "ui-discover",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev:demo",
+        "--",
+        "--port",
+        "4103"
+      ],
+      "port": 4103
+    },
+    {
+      "name": "ui-social",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev:demo",
+        "--",
+        "--port",
+        "4104"
+      ],
+      "port": 4104
+    }
+  ]
+}

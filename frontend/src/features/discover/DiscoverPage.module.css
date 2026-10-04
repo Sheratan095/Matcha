@@ -1,0 +1,170 @@
+/*
+ * The deck screen fits the viewport: its height is what is left under whatever sits above it
+ * (`--fit-top`, measured) and above the tab bar + the shell's bottom padding. The deck flexes.
+ */
+.page {
+  --fit-bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--s-8));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  width: 100%;
+  max-width: var(--col);
+  height: max(440px, calc(100dvh - var(--fit-top, 140px) - var(--fit-bottom)));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* the shell's wide layout: no tab bar; keep the card a card on very tall screens */
+@container (min-width: 960px) {
+  .page {
+    --fit-bottom: var(--s-8);
+    max-height: 56rem;
+  }
+}
+
+/* ------------------------------------------------------------ head: count + filter ticket */
+.head {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-3);
+  container: discover-head / inline-size;
+}
+
+.count {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 3.1rem;
+}
+
+.count b {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 2.6rem;
+  line-height: 0.78;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 3px 3px 0 var(--c-matcha);
+}
+
+.count small {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.5625rem;
+  line-height: 1.15;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  max-width: 4.5em;
+}
+
+/* The filter ticket: a punched stub of mono fields; pressing it sinks it into its shadow. */
+.ticket {
+  --lift: 3px;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  min-height: 50px;
+  padding: 0;
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  box-shadow: var(--lift) var(--lift) 0 var(--c-ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+
+@media (hover: hover) {
+  .ticket:hover {
+    background: var(--c-matcha-tint);
+  }
+}
+
+.ticket:active {
+  translate: var(--lift) var(--lift);
+  box-shadow: 0 0 0 var(--c-ink);
+}
+
+.seg {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 9px;
+  border-right: var(--bw-thin) dashed var(--c-ink);
+}
+
+.seg[data-grow] {
+  flex: 1 1 auto;
+}
+
+.seg small {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.5625rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+.seg b {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.knob {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  margin: -3px -3px -3px 0;
+  border: var(--line);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: var(--c-matcha);
+}
+
+.knobBadge {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  rotate: 8deg;
+}
+
+@container discover-head (max-width: 330px) {
+  .seg[data-optional] {
+    display: none;
+  }
+}
+
+@container discover-head (min-width: 420px) {
+  .seg {
+    padding: 0 12px;
+  }
+}
+
+/* ------------------------------------------------------------ profile sheet: swipe from it */
+.sheetActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-5);
+  width: 100%;
+}

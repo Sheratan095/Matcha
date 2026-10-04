@@ -1,0 +1,56 @@
+/*
+ * The tone contract. Any element carrying data-tone exposes:
+ *   --tone-bg    the flat colour field
+ *   --tone-fg    text / icons printed on that field (AA)
+ *   --tone-text  the same hue usable as text on paper (AA)
+ *   --tone-tint  a pale wash of the hue
+ * Every tone-aware component in the kit always sets data-tone, so these never leak from a parent.
+ */
+[data-tone='ink'] {
+  --tone-bg: var(--c-ink);
+  --tone-fg: var(--c-paper-hi);
+  --tone-text: var(--c-ink);
+  --tone-tint: var(--c-paper-lo);
+}
+[data-tone='paper'] {
+  --tone-bg: var(--c-paper-hi);
+  --tone-fg: var(--c-ink);
+  --tone-text: var(--c-ink);
+  --tone-tint: var(--c-paper);
+}
+[data-tone='kraft'] {
+  --tone-bg: var(--c-paper-lo);
+  --tone-fg: var(--c-ink);
+  --tone-text: var(--c-ink-2);
+  --tone-tint: var(--c-paper);
+}
+[data-tone='matcha'] {
+  --tone-bg: var(--c-matcha);
+  --tone-fg: var(--c-ink);
+  --tone-text: var(--c-matcha-deep);
+  --tone-tint: var(--c-matcha-tint);
+}
+[data-tone='deep'] {
+  --tone-bg: var(--c-matcha-deep);
+  --tone-fg: var(--c-paper-hi);
+  --tone-text: var(--c-matcha-deep);
+  --tone-tint: var(--c-matcha-tint);
+}
+[data-tone='strawberry'] {
+  --tone-bg: var(--c-strawberry);
+  --tone-fg: var(--c-ink);
+  --tone-text: var(--c-strawberry-deep);
+  --tone-tint: var(--c-strawberry-tint);
+}
+[data-tone='yolk'] {
+  --tone-bg: var(--c-yolk);
+  --tone-fg: var(--c-ink);
+  --tone-text: var(--c-yolk-deep);
+  --tone-tint: var(--c-yolk-tint);
+}
+[data-tone='blue'] {
+  --tone-bg: var(--c-blue);
+  --tone-fg: var(--c-paper-hi);
+  --tone-text: var(--c-blue);
+  --tone-tint: var(--c-blue-tint);
+}

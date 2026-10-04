@@ -1,0 +1,197 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.section + .section {
+  margin-top: var(--s-4);
+}
+
+/* ------------------------------------------------------------ new matches strip */
+.strip {
+  display: flex;
+  gap: var(--s-4);
+  margin-inline: calc(var(--gutter) * -1);
+  padding: var(--s-4) var(--gutter) var(--s-5);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--gutter);
+  scrollbar-width: thin;
+}
+
+.stripItem {
+  flex: none;
+  scroll-snap-align: start;
+}
+
+.fresh,
+.more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  width: 104px;
+  padding: 4px 0;
+  border-radius: var(--r-md);
+  color: var(--c-ink);
+  text-decoration: none;
+  transition: translate var(--dur-press) var(--ease-press);
+}
+@media (hover: hover) {
+  .fresh:hover,
+  .more:hover {
+    translate: 0 -3px;
+  }
+}
+.fresh:active,
+.more:active {
+  translate: 0 2px;
+}
+.fresh:focus-visible,
+.more:focus-visible {
+  outline-offset: 2px;
+}
+
+.freshFace {
+  position: relative;
+  display: inline-flex;
+}
+.freshBadge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+}
+
+.freshName {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: 1rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.moreFace {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  border: var(--bw) dashed var(--c-ink);
+  border-radius: 50%;
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  transition: background-color var(--dur-fast) linear;
+}
+@media (hover: hover) {
+  .more:hover .moreFace {
+    background: var(--c-matcha);
+    border-style: solid;
+  }
+}
+
+/* ------------------------------------------------------------ conversations */
+.rows {
+  margin-inline: calc(var(--s-2) * -1);
+}
+
+.you {
+  font-weight: 800;
+  color: var(--c-ink);
+}
+
+.typing {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--c-matcha-deep);
+}
+
+.quiet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin-top: var(--s-4);
+  padding: var(--s-5) var(--s-4);
+  border: var(--bw) dashed var(--c-ink);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+.quietTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: var(--fs-d4);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+.quietText {
+  font-size: var(--fs-sm);
+  color: var(--c-ink-2);
+}
+
+/* ------------------------------------------------------------ no matches at all */
+.empty {
+  position: relative;
+  overflow: hidden;
+  padding-bottom: var(--s-16);
+  border: var(--line);
+  border-radius: var(--r-xl);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-3);
+}
+.empty > :not(.emptyWord) {
+  position: relative;
+}
+.emptyWord {
+  position: absolute;
+  left: -0.04em;
+  bottom: -0.34em;
+  line-height: 0.8;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/* ------------------------------------------------------------ loading */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.skeletonStrip {
+  display: flex;
+  gap: var(--s-4);
+  overflow: hidden;
+  padding-block: var(--s-4) var(--s-2);
+}
+.skeletonFresh {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 72px;
+}
+.skeletonLines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--s-2);
+}

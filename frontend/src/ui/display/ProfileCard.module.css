@@ -1,0 +1,229 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  aspect-ratio: 3 / 4.6;
+  border: var(--line);
+  border-radius: var(--r-xl);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-3);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.fill {
+  aspect-ratio: auto;
+  height: 100%;
+}
+
+.photo {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-bottom: var(--line);
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+
+.pips {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  gap: 5px;
+}
+.pips i {
+  flex: 1;
+  height: 6px;
+  border: 1.5px solid var(--c-ink);
+  border-radius: 3px;
+  background: rgb(251 246 230 / 70%);
+}
+.pips .pipOn {
+  background: var(--c-ink);
+}
+
+.online {
+  position: absolute;
+  top: 26px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 2px 6px;
+  border: var(--line-thin);
+  border-radius: var(--r-pill);
+  background: var(--c-paper-hi);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.online::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--c-ink);
+  border-radius: 50%;
+  background: var(--c-matcha);
+}
+
+.stamp {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  transition:
+    opacity 60ms linear,
+    scale 60ms linear;
+}
+.stamp-like {
+  top: 44px;
+  left: 16px;
+  transform-origin: left top;
+}
+.stamp-nope {
+  top: 44px;
+  right: 16px;
+  transform-origin: right top;
+}
+.stamp-super {
+  bottom: 22px;
+  left: 50%;
+  translate: -50% 0;
+  transform-origin: center bottom;
+}
+
+.likesYou {
+  position: absolute;
+  right: 10px;
+  bottom: -26px;
+  z-index: 3;
+}
+
+/* ------------------------------------------------------------ the tin label */
+.label {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  background: var(--c-paper-hi);
+}
+
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.stripClear {
+  padding-right: 84px; /* clear of the LIKES YOU sticker */
+}
+.strip > i {
+  flex: 1;
+  min-width: 12px;
+  border-top: var(--bw-thin) solid var(--c-ink);
+}
+.where {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.where svg {
+  flex: none;
+}
+
+.nameRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.18em;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: clamp(2.5rem, 13vw, 3.25rem);
+  line-height: 0.82;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--c-matcha);
+  padding-top: 0.05em;
+}
+
+.nameText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* the riso plate needs room inside the clip box */
+  padding: 0 4px 4px 0;
+  margin: 0 -4px -4px 0;
+}
+
+.age {
+  flex: none;
+  font-stretch: var(--wd-normal);
+  font-weight: 700;
+  font-size: 0.62em;
+  color: var(--c-ink);
+  text-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.info {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: var(--line);
+  border-radius: 50%;
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-1);
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+@media (hover: hover) {
+  .info:hover {
+    background: var(--c-blue-tint);
+  }
+}
+.info:active {
+  translate: 2px 2px;
+  box-shadow: none;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 54px;
+  overflow: hidden;
+}

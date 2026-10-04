@@ -1,0 +1,88 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+/* The matcha tin: the photo laid on a dotted colour field, the name cropped behind it. */
+.band {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: var(--s-6) var(--s-4) var(--s-10);
+  border: var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-3);
+  background: var(--c-matcha);
+  color: var(--c-ink);
+  overflow: hidden;
+  container-type: inline-size;
+  isolation: isolate;
+}
+
+.bandWord {
+  position: absolute;
+  z-index: -1;
+  left: -0.05em;
+  bottom: -0.2em;
+}
+
+.hero {
+  position: relative;
+  width: min(60%, 16.5rem);
+}
+
+.stamp {
+  position: absolute;
+  right: -2.5rem;
+  bottom: 1.5rem;
+}
+
+.sticker {
+  position: absolute;
+  top: var(--s-5);
+  left: max(var(--s-3), calc(20% - 60px));
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.name {
+  overflow-wrap: anywhere;
+}
+
+.last {
+  display: block;
+  margin-top: 0.12em;
+  font-stretch: var(--wd-normal);
+  font-weight: 800;
+  font-size: 0.4em;
+  letter-spacing: 0;
+  line-height: 1;
+  text-shadow: none;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.grow {
+  flex: 1;
+}

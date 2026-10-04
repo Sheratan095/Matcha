@@ -1,0 +1,435 @@
+/* The real input stays in the DOM (focusable, clickable), stretched invisibly over its face. */
+.native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.native:disabled {
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------ segmented */
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  /* room for the chips' hard shadows */
+  padding: 0 4px 4px 0;
+}
+
+.segBlock .chip {
+  flex: 1 1 0;
+}
+
+.segStacked {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.chip {
+  --lift: 4px;
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.chipFace {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 46px;
+  padding: 0 18px;
+  border: var(--line);
+  border-radius: var(--r-pill);
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  box-shadow: var(--lift) var(--lift) 0 var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: var(--wd-wide);
+  font-size: 0.875rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press),
+    background-color var(--dur-fast) linear;
+}
+
+.seg-lg .chipFace {
+  min-height: 58px;
+  padding: 0 24px;
+  font-size: 1.0625rem;
+  font-weight: 900;
+}
+
+.segStacked .chipFace {
+  justify-content: flex-start;
+  border-radius: var(--r-md);
+}
+
+.chipIcon {
+  display: inline-flex;
+  flex: none;
+}
+
+@media (hover: hover) {
+  .native:not(:checked, :disabled):hover + .chipFace {
+    translate: -1px -1px;
+    box-shadow: calc(var(--lift) + 1px) calc(var(--lift) + 1px) 0 var(--c-ink);
+    background: var(--tone-tint);
+  }
+}
+
+.native:active:not(:disabled) + .chipFace {
+  translate: var(--lift) var(--lift);
+  box-shadow: 0 0 0 var(--c-ink);
+}
+
+/* chosen: stays most of the way down, in colour */
+.native:checked + .chipFace {
+  translate: calc(var(--lift) - 1px) calc(var(--lift) - 1px);
+  box-shadow: 1px 1px 0 var(--c-ink);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+}
+
+.native:focus-visible + .chipFace,
+.native:focus-visible + .checkBox,
+.native:focus-visible + .track {
+  outline: var(--bw) solid var(--c-focus);
+  outline-offset: 3px;
+}
+
+.native:disabled + .chipFace {
+  border-style: dashed;
+  box-shadow: none;
+  color: var(--c-ink-3);
+  background: var(--c-paper-lo);
+}
+
+/* ------------------------------------------------------------ checkbox */
+.check,
+.switch {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.switch {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checkControl {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  /* widen the hit area to 44px */
+  margin: 2px 0;
+}
+.checkControl .native {
+  inset: -8px;
+  width: 44px;
+  height: 44px;
+}
+
+.checkBox {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: var(--line);
+  border-radius: var(--r-xs);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-1);
+  color: transparent;
+  transition:
+    background-color var(--dur-fast) linear,
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+.checkBox svg {
+  scale: 0.2;
+  transition: scale var(--dur-fast) var(--ease-thunk);
+}
+.native:checked + .checkBox {
+  background: var(--c-matcha);
+  color: var(--c-ink);
+  translate: 1px 1px;
+  box-shadow: 1px 1px 0 var(--c-ink);
+}
+.native:checked + .checkBox svg {
+  scale: 1;
+}
+.native:disabled + .checkBox {
+  border-style: dashed;
+  box-shadow: none;
+  background: var(--c-paper-lo);
+}
+.native[aria-invalid='true'] + .checkBox {
+  background: var(--c-strawberry-tint);
+  box-shadow: 2px 2px 0 var(--c-strawberry);
+}
+
+.checkText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 3px;
+}
+.switch .checkText {
+  padding-top: 0;
+}
+.checkLabel {
+  font-weight: 700;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.checkDesc {
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--c-ink-3);
+}
+.checkError {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--c-strawberry-deep);
+}
+
+/* ------------------------------------------------------------ switch */
+.switchControl {
+  position: relative;
+  flex: none;
+  width: 60px;
+  height: 34px;
+}
+.switchControl .native {
+  inset: -5px 0;
+  height: 44px;
+}
+
+.track {
+  position: relative;
+  display: block;
+  width: 60px;
+  height: 34px;
+  border: var(--line);
+  border-radius: var(--r-pill);
+  background: var(--c-paper-lo);
+  box-shadow: inset 3px 3px 0 rgb(21 19 15 / 14%);
+  transition: background-color var(--dur-fast) linear;
+}
+
+.onOff {
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  translate: 0 -50%;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--c-ink);
+  opacity: 0;
+  transition: opacity var(--dur-fast) linear;
+}
+
+.thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 26px;
+  height: 26px;
+  border: var(--line);
+  border-radius: 50%;
+  background: var(--c-paper-hi);
+  box-shadow: 2px 2px 0 var(--c-ink);
+  transition: translate var(--dur-fast) var(--ease-thunk);
+}
+
+.native:checked + .track {
+  background: var(--c-matcha);
+}
+.native:checked + .track .thumb {
+  translate: 26px 0;
+  background: var(--c-ink);
+  box-shadow: none;
+}
+.native:checked + .track .onOff {
+  opacity: 1;
+}
+.native:disabled + .track {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+/* ------------------------------------------------------------ slider */
+.readout {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2em;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: 1.375rem;
+  line-height: 0.9;
+  letter-spacing: 0;
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+}
+.readout i {
+  font-style: normal;
+  margin-inline: 0.05em;
+}
+.readout small {
+  margin-left: 0.25em;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.slider {
+  --thumb: 30px;
+  --rail-h: 16px;
+  position: relative;
+  height: 44px;
+  /* the thumb's hard shadow needs a little room */
+  margin-right: 3px;
+}
+
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--rail-h);
+  translate: 0 -50%;
+  border: var(--line);
+  border-radius: var(--r-pill);
+  /* thumb centres travel from thumb/2 to 100% - thumb/2: the fill is mapped onto that span */
+  background:
+    linear-gradient(
+      90deg,
+      var(--c-matcha) 0 calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--to, 0)),
+      transparent 0
+    ),
+    var(--c-paper-lo);
+  box-shadow: inset 2px 2px 0 rgb(21 19 15 / 14%);
+}
+
+.dual .rail {
+  background:
+    linear-gradient(
+      90deg,
+      transparent calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--from, 0)),
+      var(--c-matcha) 0 calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--to, 1)),
+      transparent 0
+    ),
+    var(--c-paper-lo);
+}
+
+.range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.range:focus-visible {
+  outline: none;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 44px;
+  background: transparent;
+}
+.range::-moz-range-track {
+  height: 44px;
+  background: transparent;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: 7px;
+  border: var(--bw) solid var(--c-ink);
+  border-radius: 50%;
+  background: var(--c-paper-hi);
+  box-shadow: 3px 3px 0 var(--c-ink);
+  cursor: grab;
+  transition: scale var(--dur-press) var(--ease-press);
+}
+.range::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--thumb);
+  height: var(--thumb);
+  border: var(--bw) solid var(--c-ink);
+  border-radius: 50%;
+  background: var(--c-paper-hi);
+  box-shadow: 3px 3px 0 var(--c-ink);
+  cursor: grab;
+}
+
+.range:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  background: var(--c-yolk);
+  box-shadow: 1px 1px 0 var(--c-ink);
+  scale: 1.08;
+}
+.range:active::-moz-range-thumb {
+  cursor: grabbing;
+  background: var(--c-yolk);
+  box-shadow: 1px 1px 0 var(--c-ink);
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+  outline: var(--bw) solid var(--c-focus);
+  outline-offset: 3px;
+  background: var(--c-yolk);
+}
+.range:focus-visible::-moz-range-thumb {
+  outline: var(--bw) solid var(--c-focus);
+  outline-offset: 3px;
+  background: var(--c-yolk);
+}
+
+/* dual: both inputs overlap; only the thumbs take pointer events */
+.dual .range {
+  pointer-events: none;
+}
+.dual .range::-webkit-slider-thumb {
+  pointer-events: auto;
+}
+.dual .range::-moz-range-thumb {
+  pointer-events: auto;
+}
+
+.sliderDisabled {
+  opacity: 0.55;
+}
+.sliderDisabled .range {
+  cursor: not-allowed;
+}

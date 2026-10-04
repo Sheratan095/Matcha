@@ -1,0 +1,112 @@
+.box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 52px;
+  padding: 9px;
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  box-shadow: inset 3px 3px 0 rgb(21 19 15 / 9%);
+  cursor: text;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+
+.box:has(.input:focus) {
+  translate: -2px -2px;
+  box-shadow: 5px 5px 0 var(--c-ink);
+}
+
+.invalid {
+  background: var(--c-strawberry-tint);
+  box-shadow: 4px 4px 0 var(--c-strawberry);
+}
+
+.disabled {
+  background-color: var(--c-paper-lo);
+  border-style: dashed;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.input {
+  flex: 1 1 120px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  caret-color: var(--c-matcha-deep);
+  outline: none;
+}
+.input:focus-visible {
+  outline: none;
+}
+.input::placeholder {
+  color: var(--c-ink-3);
+  font-weight: 450;
+  opacity: 1;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+}
+.countFull {
+  color: var(--c-matcha-deep);
+  font-weight: 700;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding-top: 2px;
+}
+
+.suggestion {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 11px 0 9px;
+  border: var(--bw-thin) dashed var(--c-ink);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--c-ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    background-color var(--dur-fast) linear;
+}
+/* 44px touch target */
+.suggestion::after {
+  content: '';
+  position: absolute;
+  inset: -6px -2px;
+}
+@media (hover: hover) {
+  .suggestion:hover:not(:disabled) {
+    background: var(--c-yolk);
+    border-style: solid;
+  }
+}
+.suggestion:active:not(:disabled) {
+  translate: 1px 1px;
+  background: var(--c-yolk);
+  border-style: solid;
+}
+.suggestion:disabled {
+  color: var(--c-ink-3);
+  border-color: var(--c-ink-3);
+}

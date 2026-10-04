@@ -1,0 +1,106 @@
+/**
+ * Client-side copies of the backend's auth validation (docs/API_CONTRACT.md §2.1), so a form can say
+ * what is wrong before sending. The server stays the authority: its answers are mapped onto the same
+ * fields by `errors.ts`.
+ *
+ * Every check returns a message, or null when the value passes.
+ */
+import { LANGUAGES, type Language } from '@/api/types'
+
+export const USERNAME_MIN = 3
+export const USERNAME_MAX = 20
+export const EMAIL_MAX = 100
+export const PASSWORD_MIN = 8
+export const PASSWORD_MAX = 128
+export const NAME_MAX = 50
+
+const USERNAME_PATTERN = /^[a-z0-9_.]+$/
+const NAME_PATTERN = /^[a-zA-Z]+$/
+/** `Matches(/^(?!\s*$).+$/)`: not whitespace-only, and `.` never matches a line break. */
+const PASSWORD_PATTERN = /^(?!\s*$).+$/
+/** Close to validator.js `isEmail` for ordinary addresses (the same pattern the demo backend uses). */
+const EMAIL_PATTERN =
+  /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.[a-z]{2,}$/i
+
+/**
+ * The technical entries of backend/infra/security/policies/reserved-usernames.txt. The file also lists
+ * offensive words, which are not reproduced here: the server's RESERVED_USERNAME answer covers them.
+ */
+const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
+  'admin', 'administrator', 'root', 'superuser', 'system', 'internal', 'api', 'auth', 'matcha', 'support', 'help',
+  'contact', 'info', 'mail', 'webmaster', 'postmaster', 'hostmaster', 'null', 'undefined', 'none',
+])
+
+/**
+ * The entries of backend/infra/security/policies/common-password.txt that are long enough to reach the
+ * list check (shorter ones already fail the length rule). Exact, case-sensitive match, like the backend.
+ */
+const COMMON_PASSWORDS: ReadonlySet<string> = new Set([
+  'password', '12345678', '123456789', 'p@ssword', 'football', 'iloveyou', 'sunshine', 'baseball', 'qwertyuiop',
+  '1234567890', 'trustno1', 'princess', 'superman', 'swimming', 'basketball', 'computer', 'password123', 'nicholas',
+  'christopher', 'elizabeth', 'patricia', 'jennifer', 'margaret', 'kathleen', 'fernando', 'alejandro', 'christian',
+  'emmanuel',
+])
+
+/** What the backend stores: trimmed and lowercased. */
+export function normaliseUsername(raw: string): string {
+  return raw.trim().toLowerCase()
+}
+
+export function normaliseEmail(raw: string): string {
+  return raw.trim().toLowerCase()
+}
+
+/** Verification and reset tokens are lowercase hex; tolerate pasted spaces and capitals. */
+export function normaliseCode(raw: string): string {
+  return raw.replace(/\s+/g, '').toLowerCase()
+}
+
+export function checkUsername(raw: string): string | null {
+  const value = normaliseUsername(raw)
+  if (!value) return 'Pick a username.'
+  if (value.length < USERNAME_MIN) return `At least ${USERNAME_MIN} characters.`
+  if (value.length > USERNAME_MAX) return `At most ${USERNAME_MAX} characters.`
+  if (!USERNAME_PATTERN.test(value)) return 'Letters, digits, dots and underscores only.'
+  if (RESERVED_USERNAMES.has(value)) return "This username isn't available. Pick another one."
+  return null
+}
+
+export function checkEmail(raw: string): string | null {
+  const value = normaliseEmail(raw)
+  if (!value) return 'Enter your email address.'
+  if (value.length > EMAIL_MAX) return `At most ${EMAIL_MAX} characters.`
+  if (!EMAIL_PATTERN.test(value)) return "That doesn't look like an email address."
+  return null
+}
+
+/** Registration and reset rules: 8–128 characters, not only spaces, no line breaks, not a common password. */
+export function checkNewPassword(password: string): string | null {
+  if (!password) return 'Choose a password.'
+  if (password.length < PASSWORD_MIN) return `At least ${PASSWORD_MIN} characters.`
+  if (password.length > PASSWORD_MAX) return `At most ${PASSWORD_MAX} characters.`
+  if (!PASSWORD_PATTERN.test(password)) return /[\r\n]/.test(password) ? 'No line breaks.' : "Can't be only spaces."
+  if (COMMON_PASSWORDS.has(password)) return 'This password is too common. Pick something harder to guess.'
+  return null
+}
+
+export function checkName(raw: string, what: 'first' | 'last'): string | null {
+  const value = raw.trim()
+  if (!value) return what === 'first' ? 'Enter your first name.' : 'Enter your last name.'
+  if (value.length > NAME_MAX) return `At most ${NAME_MAX} characters.`
+  if (!NAME_PATTERN.test(value)) return 'Letters A–Z only: no spaces, hyphens, apostrophes or accents.'
+  return null
+}
+
+export function isLanguage(value: string): value is Language {
+  return (LANGUAGES as readonly string[]).includes(value)
+}
+
+/** Login only requires non-empty strings (seeded accounts have 4-character passwords). */
+export function checkRequired(value: string, message: string): string | null {
+  return value.trim() ? null : message
+}
+
+export function checkCode(raw: string): string | null {
+  return normaliseCode(raw) ? null : 'Enter the code from the email.'
+}

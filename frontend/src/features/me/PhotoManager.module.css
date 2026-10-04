@@ -1,0 +1,79 @@
+.manager {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  container-type: inline-size;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.grid > li {
+  min-width: 0;
+}
+
+/* The sixth cell: the limits, printed like a ticket stub. */
+.rules {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 3px;
+  aspect-ratio: 3 / 4;
+  padding: var(--s-2);
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-ink);
+  color: var(--c-paper-hi);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  overflow: hidden;
+  rotate: 1.5deg;
+}
+
+.rulesHead {
+  margin-bottom: auto;
+  padding-bottom: var(--s-1);
+  border-bottom: var(--bw-thin) dashed var(--c-paper-hi);
+  color: var(--c-matcha);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 1.375rem;
+  letter-spacing: 0;
+  line-height: 0.9;
+}
+
+.rule {
+  overflow-wrap: anywhere;
+}
+
+.ruleStar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-yolk);
+}
+
+.confirm {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.confirmThumb {
+  width: 96px;
+}
+
+@container (min-width: 400px) {
+  .rulesHead {
+    font-size: 1.625rem;
+  }
+}

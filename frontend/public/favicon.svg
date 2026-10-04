@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <title>Matcha</title>
+  <rect x="5.5" y="5.5" width="33" height="33" rx="9" fill="#15130f"/>
+  <rect x="1.5" y="1.5" width="33" height="33" rx="8.5" fill="#72c13c" stroke="#15130f" stroke-width="3"/>
+  <g transform="translate(18 18.5)">
+    <path fill="#15130f" d="M0 11C-7 6.3-10.6 1.9-10.6-2.8c0-3.5 2.5-5.8 5.5-5.8C-2.8-8.6-1-7.3 0-5.4 1-7.3 2.8-8.6 5.1-8.6c3 0 5.5 2.3 5.5 5.8C10.6 1.9 7 6.3 0 11z"/>
+    <path fill="none" stroke="#72c13c" stroke-width="1.9" stroke-linecap="round" d="M0-4.4V7.8M0 .2l-4-3.1M0 .2l4-3.1M0 4.2l-3.4-2.6M0 4.2l3.4-2.6"/>
+  </g>
+</svg>

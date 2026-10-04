@@ -1,0 +1,169 @@
+/*
+ * Matcha — "Press Edition" design tokens.
+ * Printed matter: paper stock, five ink drums, hard shadows, heavy type.
+ * Everything in the kit reads from here; features should too.
+ */
+:root {
+  color-scheme: light;
+
+  /* ---------------------------------------------------------------- paper stock */
+  --c-paper: #f1e7cf; /* the sheet: default page background */
+  --c-paper-hi: #fbf6e6; /* card stock: panels, inputs, raised things */
+  --c-paper-lo: #e3d5b2; /* kraft: wells, tracks, the cutting mat on wide screens */
+
+  /* ---------------------------------------------------------------- ink drums */
+  --c-ink: #15130f; /* black drum: text, outlines, shadows */
+  --c-ink-2: #3b362d; /* secondary text */
+  --c-ink-3: #625b4b; /* muted text (AA on every paper stock) */
+
+  --c-matcha: #72c13c; /* brand drum. Text on it is always ink. */
+  --c-matcha-deep: #1d4b24; /* tin green: dark fields, green text on paper */
+  --c-matcha-tint: #d3e9ae;
+
+  --c-strawberry: #ff4f64; /* likes, danger. Text on it is always ink. */
+  --c-strawberry-deep: #b3122d; /* error text on paper */
+  --c-strawberry-tint: #ffd3d0;
+
+  --c-yolk: #ffc531; /* super-likes, highlights. Text on it is always ink. */
+  --c-yolk-deep: #7a4f00; /* yolk as text on paper */
+  --c-yolk-tint: #ffe9a8;
+
+  --c-blue: #2b48f0; /* the one cool drum: info, focus. Text on it is paper-hi. */
+  --c-blue-tint: #cfd8ff;
+
+  /* semantic aliases */
+  --c-bg: var(--c-paper);
+  --c-surface: var(--c-paper-hi);
+  --c-well: var(--c-paper-lo);
+  --c-text: var(--c-ink);
+  --c-text-2: var(--c-ink-2);
+  --c-text-muted: var(--c-ink-3);
+  --c-line: var(--c-ink);
+  --c-brand: var(--c-matcha);
+  --c-like: var(--c-strawberry);
+  --c-super: var(--c-yolk);
+  --c-info: var(--c-blue);
+  --c-danger: var(--c-strawberry);
+  --c-danger-text: var(--c-strawberry-deep);
+  --c-focus: var(--c-blue);
+  --c-scrim: rgb(21 19 15 / 62%);
+
+  /* ---------------------------------------------------------------- outlines */
+  --bw: 3px; /* the house outline */
+  --bw-thin: 2px; /* small parts: chips, badges, dots */
+  --line: var(--bw) solid var(--c-line);
+  --line-thin: var(--bw-thin) solid var(--c-line);
+
+  /* ---------------------------------------------------------------- radii */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* ---------------------------------------------------------------- hard shadows (never blurred) */
+  --sh-color: var(--c-ink);
+  --sh-1: 2px 2px 0 var(--sh-color);
+  --sh-2: 4px 4px 0 var(--sh-color);
+  --sh-3: 6px 6px 0 var(--sh-color);
+  --sh-4: 10px 10px 0 var(--sh-color);
+  /* press depth: how far a control travels into its shadow */
+  --press: 4px;
+
+  /* ---------------------------------------------------------------- spacing (4px rhythm) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+  --gutter: var(--s-4); /* page side padding on the phone column */
+
+  /* ---------------------------------------------------------------- layout */
+  --col: 30rem; /* the phone-sized working column (480px) */
+  --topbar-h: 60px;
+  --tabbar-h: 68px;
+  --rail-w: 240px;
+  --touch: 44px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+
+  /* ---------------------------------------------------------------- type */
+  --font-display: 'Archivo Variable', 'Archivo', 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Archivo Variable', 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, 'Cascadia Mono', 'Courier New', monospace;
+
+  /* Archivo width axis (font-stretch) */
+  --wd-condensed: 62%;
+  --wd-narrow: 78%;
+  --wd-normal: 100%;
+  --wd-wide: 112%;
+  --wd-expanded: 125%;
+
+  /* display scale: uppercase, weight 900, leading 0.84–0.9 */
+  --fs-mega: clamp(4.5rem, 24vw, 7.25rem);
+  --fs-d1: clamp(3.25rem, 16.5vw, 5rem);
+  --fs-d2: clamp(2.5rem, 11.5vw, 3.375rem);
+  --fs-d3: 2rem;
+  --fs-d4: 1.5rem;
+  --fs-d5: 1.1875rem;
+  /* text scale */
+  --fs-lead: 1.125rem;
+  --fs-body: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-xs: 0.8125rem;
+  /* mono ticket labels */
+  --fs-label: 0.75rem;
+  --fs-micro: 0.6875rem;
+
+  --lh-display: 0.86;
+  --lh-tight: 1.1;
+  --lh-body: 1.5;
+  --ls-display: -0.02em;
+  --ls-label: 0.09em;
+
+  /* ---------------------------------------------------------------- motion */
+  --ease-press: cubic-bezier(0.2, 0.9, 0.3, 1);
+  --ease-thunk: cubic-bezier(0.2, 1.7, 0.4, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-press: 90ms;
+  --dur-fast: 140ms;
+  --dur-thunk: 280ms;
+  --dur-sheet: 320ms;
+
+  /* ---------------------------------------------------------------- layers */
+  --z-raised: 2;
+  --z-nav: 50;
+  --z-overlay: 200;
+  --z-toast: 300;
+  --z-grain: 1000;
+
+  /* ---------------------------------------------------------------- textures */
+  /* paper grain: fine dark specks, tiled. Painted over everything by body::after. */
+  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .08 0 0 0 0 .05 0 0 0 .9 -.34'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* ink wear: an alpha mask with small voids, for stamps and heavy lettering */
+  --tex-wear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -11 0 0 0 7.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
+  /* pattern fills: use with background-size var(--tex-*-size); they paint in currentColor */
+  --tex-dots: radial-gradient(circle at center, currentColor 1.6px, transparent 1.9px);
+  --tex-dots-size: 9px 9px;
+  --tex-halftone: radial-gradient(circle at center, currentColor 2.6px, transparent 2.9px);
+  --tex-halftone-size: 10px 10px;
+  --tex-stripes: repeating-linear-gradient(
+    135deg,
+    currentColor 0 3px,
+    transparent 3px 10px
+  );
+  /* light hatching for disabled controls (fixed colour, legible under text) */
+  --tex-hatch: repeating-linear-gradient(135deg, rgb(21 19 15 / 13%) 0 2.5px, transparent 2.5px 9px);
+  --tex-grid: linear-gradient(currentColor 1.5px, transparent 1.5px),
+    linear-gradient(90deg, currentColor 1.5px, transparent 1.5px);
+  --tex-grid-size: 18px 18px;
+  --tex-checks: repeating-conic-gradient(currentColor 0 25%, transparent 0 50%);
+  --tex-checks-size: 16px 16px;
+}

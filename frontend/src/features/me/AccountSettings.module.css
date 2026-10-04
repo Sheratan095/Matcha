@@ -1,0 +1,96 @@
+/* ------------------------------------------------------------ demo inbox: an ink slip */
+.inbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-ink);
+  color: var(--c-paper-hi);
+  rotate: -0.6deg;
+}
+
+.inboxHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.inboxTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--c-yolk);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: var(--fs-d5);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.inboxNote {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  line-height: 1.45;
+}
+
+.inboxList {
+  margin-inline: calc(-1 * var(--s-2));
+  border-radius: var(--r-sm);
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+}
+
+.inboxRow {
+  padding-inline: var(--s-3);
+}
+
+/* ------------------------------------------------------------ about this build */
+.specs {
+  display: grid;
+  margin: 0;
+  border-top: var(--bw-thin) dashed var(--c-paper-hi);
+}
+
+.specs > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-2) 0;
+  border-bottom: var(--bw-thin) dashed var(--c-paper-hi);
+}
+
+.specs dt {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--c-matcha);
+}
+
+.specs dd {
+  margin: 0;
+  font-weight: 800;
+  font-size: var(--fs-lead);
+  overflow-wrap: anywhere;
+}
+
+.buildNote {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.buildNote code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}

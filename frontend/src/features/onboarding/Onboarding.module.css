@@ -1,0 +1,123 @@
+/* vertical only: a sideways slide would overflow the scroll area and shift it */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    translate: 0 22px;
+  }
+}
+
+/* ------------------------------------------------------------ header */
+.top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+/* ------------------------------------------------------------ one step */
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  min-height: 100%;
+  padding: var(--s-8) var(--gutter) var(--s-10);
+  overflow: clip;
+  isolation: isolate;
+  container-type: inline-size;
+  scroll-margin-top: 0;
+  transform-origin: 0 0;
+  animation: step-in var(--dur-sheet) var(--ease-out) both;
+}
+
+/* The step number, giant and outlined, cropped by the top-right corner. */
+.numeral {
+  position: absolute;
+  z-index: -1;
+  top: -0.14em;
+  right: -0.1em;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.lead {
+  max-width: 34ch;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.names {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.starters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.starterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.tally {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+
+.tallyNumber {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 2.75rem;
+  line-height: 0.8;
+  letter-spacing: 0;
+  text-shadow: 3px 3px 0 var(--c-blue);
+}
+
+/* ------------------------------------------------------------ footer */
+.footer {
+  display: flex;
+  gap: var(--s-3);
+}
+
+.grow {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------ loading / failure */
+.status {
+  display: grid;
+  min-height: 100%;
+  padding: var(--s-8) var(--gutter);
+  place-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step {
+    animation: none;
+  }
+}

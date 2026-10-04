@@ -1,0 +1,128 @@
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  border: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-2);
+}
+
+.top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding-bottom: var(--s-3);
+  border-bottom: var(--bw-thin) dashed var(--c-ink);
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+
+.count {
+  color: var(--c-ink-3);
+}
+
+.big {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 3.5rem;
+  line-height: 0.8;
+  letter-spacing: var(--ls-display);
+  text-shadow: 3px 3px 0 var(--c-matcha);
+}
+.bigWarn {
+  text-shadow: 3px 3px 0 var(--c-strawberry);
+}
+.big small {
+  font-size: 0.45em;
+  font-stretch: var(--wd-normal);
+  text-shadow: none;
+}
+
+.cells {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.hole {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 30px;
+  border: var(--line);
+  border-radius: var(--r-xs);
+}
+
+.done .hole {
+  background: var(--c-matcha);
+  box-shadow: 2px 2px 0 var(--c-ink);
+}
+
+.needed .hole {
+  border-color: var(--c-strawberry-deep);
+  border-style: dashed;
+  background-color: var(--c-strawberry-tint);
+  background-image: var(--tex-hatch);
+}
+
+.todo .hole {
+  border-style: dashed;
+  background-color: var(--c-paper-lo);
+  background-image: var(--tex-hatch);
+}
+
+.cellLabel {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.needed .cellLabel {
+  color: var(--c-strawberry-deep);
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.missing {
+  flex: 1 1 12rem;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+.note {
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}

@@ -1,0 +1,179 @@
+@keyframes drop-in {
+  0% {
+    opacity: 0;
+    translate: 0 -80%;
+    scale: 1.04;
+  }
+  60% {
+    opacity: 1;
+    translate: 0 6%;
+    scale: 0.99;
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes burn {
+  from {
+    scale: 1 1;
+  }
+  to {
+    scale: 0 1;
+  }
+}
+
+.region {
+  position: fixed;
+  z-index: var(--z-toast);
+  top: calc(var(--safe-t) + 10px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--s-3);
+  pointer-events: none;
+}
+
+@media (min-width: 900px) {
+  .top-right {
+    justify-content: flex-end;
+    padding-right: var(--s-6);
+    top: var(--s-5);
+  }
+  .top-center {
+    top: var(--s-5);
+  }
+  .bottom-right {
+    top: auto;
+    bottom: var(--s-6);
+    justify-content: flex-end;
+    padding-right: var(--s-6);
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  width: min(100%, 380px);
+}
+
+.toast {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  pointer-events: auto;
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  box-shadow: var(--sh-3);
+  overflow: hidden;
+  animation: drop-in var(--dur-thunk) var(--ease-out) both;
+}
+
+.tab {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  /* the torn, perforated edge between stub and ticket */
+  border-right: var(--bw) dashed var(--c-ink);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 4px 13px 12px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: 1.125rem;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  padding-top: 0.06em;
+}
+
+.message {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--c-ink-2);
+}
+
+.action {
+  margin-top: 8px;
+  padding: 5px 10px 4px;
+  border: var(--line-thin);
+  border-radius: var(--r-xs);
+  background: var(--c-ink);
+  color: var(--c-paper-hi);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  min-height: 32px;
+}
+@media (hover: hover) {
+  .action:hover {
+    background: var(--c-matcha);
+    color: var(--c-ink);
+  }
+}
+
+.close {
+  flex: none;
+  align-self: flex-start;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--c-ink);
+}
+@media (hover: hover) {
+  .close:hover {
+    color: var(--c-strawberry-deep);
+  }
+}
+.close:focus-visible {
+  outline-offset: -6px;
+}
+
+/* the time fuse along the bottom edge */
+.fuse {
+  position: absolute;
+  left: 52px;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--tone-bg);
+  border-top: 1.5px solid var(--c-ink);
+  transform-origin: left center;
+  animation: burn linear forwards;
+}
+.toast[data-tone='ink'] .fuse {
+  background: var(--c-matcha);
+}
+.fusePaused {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+  .fuse {
+    display: none;
+  }
+}

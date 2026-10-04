@@ -1,0 +1,507 @@
+/* The landing poster. Phones first; from 960px of its own width (container query) the hero becomes
+   a two-column poster with the headline running across the top. */
+
+.page {
+  container: landing / inline-size;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--c-paper);
+}
+
+/* ------------------------------------------------------------ masthead */
+.masthead {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: calc(var(--safe-t) + var(--s-3)) var(--gutter) var(--s-3);
+  background: var(--c-paper);
+  border-bottom: var(--line);
+  /* the second hairline of a newspaper masthead */
+  box-shadow: 0 4px 0 -2.5px var(--c-ink);
+}
+
+.home {
+  display: inline-flex;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+.markLarge {
+  display: none !important;
+}
+
+/* room for the PREVIEW / DEMO tab hanging from the top edge (16px) */
+.page[data-markers] .masthead {
+  padding-top: calc(var(--safe-t) + 22px);
+}
+
+.edition {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+/* phones: the ticket below carries both calls to action; the masthead keeps "Sign in" */
+.navJoin {
+  display: none;
+}
+
+/* ------------------------------------------------------------ hero */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero {
+  position: relative;
+  container-type: inline-size;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'title'
+    'art'
+    'ticket'
+    'band';
+  row-gap: var(--s-5);
+  padding: var(--s-5) var(--gutter) 0;
+  background: var(--c-matcha);
+  color: var(--c-ink);
+  border-bottom: var(--line);
+}
+
+.sun {
+  position: absolute;
+  z-index: -1;
+  top: 132px;
+  right: -22cqi;
+  width: 88cqi;
+  aspect-ratio: 1;
+  border: var(--line);
+  border-radius: 50%;
+  background: var(--c-yolk);
+  overflow: hidden;
+}
+
+.regA {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.regB {
+  position: absolute;
+  left: 8px;
+  bottom: 92px;
+}
+
+/* the real h1, set as poster lettering */
+.title {
+  grid-area: title;
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: min(33cqi, 9rem);
+  line-height: 0.8;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  text-wrap: nowrap;
+  white-space: nowrap;
+  /* room for the offset plates */
+  padding-bottom: 0.06em;
+}
+.titleA,
+.titleB {
+  display: block;
+}
+.titleA {
+  color: var(--c-ink);
+  text-shadow: 0.045em 0.045em 0 var(--c-strawberry);
+}
+.titleB {
+  color: var(--c-paper-hi);
+  -webkit-text-stroke: max(5px, 0.065em) var(--c-ink);
+  paint-order: stroke fill;
+  text-shadow: 0.05em 0.05em 0 var(--c-ink);
+  margin-left: 0.04em;
+}
+
+/* the fanned deck */
+.art {
+  grid-area: art;
+  position: relative;
+  height: clamp(300px, 96cqi, 440px);
+  margin-top: calc(var(--s-2) * -1);
+}
+
+.front,
+.back1,
+.back2 {
+  position: absolute;
+  top: 0;
+  left: 50%;
+}
+.front {
+  z-index: 3;
+  width: min(60cqi, 270px);
+  translate: -46% 6px;
+  rotate: 3deg;
+}
+.back1 {
+  z-index: 1;
+  width: min(48cqi, 220px);
+  translate: -112% 34px;
+  rotate: -13deg;
+}
+.back2 {
+  z-index: 2;
+  width: min(48cqi, 220px);
+  translate: 12% 42px;
+  rotate: 12deg;
+}
+
+/* slapped over the bottom-right corner, clear of the front card's name */
+.matchStamp {
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: -2%;
+  scale: 0.74;
+  transform-origin: right bottom;
+}
+
+.sticker {
+  position: absolute;
+  z-index: 4;
+  top: -4px;
+  right: 0;
+}
+
+/* the sign-up ticket */
+.ticket {
+  grid-area: ticket;
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  border: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-4);
+}
+
+.lede {
+  font-weight: 600;
+}
+
+.ctas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.demoNote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin: 0;
+  padding-top: var(--s-3);
+  border-top: var(--bw-thin) dashed var(--c-ink);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.demoNote > :first-child {
+  flex: none;
+}
+
+.band {
+  grid-area: band;
+  position: relative;
+  z-index: 3;
+  margin: var(--s-4) calc(var(--gutter) * -1 - 24px) var(--s-6);
+}
+
+/* ------------------------------------------------------------ steps */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  padding: var(--s-10) var(--gutter) var(--s-12);
+}
+
+.stepsHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.stepList {
+  display: grid;
+  gap: var(--s-6);
+}
+
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5) var(--s-5);
+  border: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  box-shadow: var(--sh-3);
+}
+
+.stepTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.stepNumber {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 5.5rem;
+  line-height: 0.78;
+  letter-spacing: -0.02em;
+  color: var(--c-paper-hi);
+  -webkit-text-stroke: 4px var(--c-ink);
+  paint-order: stroke fill;
+  text-shadow: 5px 5px 0 var(--c-ink);
+}
+.step[data-tone='paper'] .stepNumber {
+  color: var(--c-strawberry);
+}
+.step[data-tone='yolk'] .stepNumber {
+  color: var(--c-paper-hi);
+}
+
+.stepStamp {
+  margin-top: var(--s-2);
+}
+
+.stepTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: var(--fs-d3);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+.stepIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: var(--line);
+  border-radius: 50%;
+  background: var(--c-paper-hi);
+  color: var(--c-ink);
+  --icon-hole: var(--c-paper-hi);
+}
+
+.stepText {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.closing {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--s-2);
+}
+
+/* ------------------------------------------------------------ colophon */
+.colophon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3) var(--s-4);
+  padding: var(--s-5) var(--gutter) calc(var(--s-5) + var(--safe-b));
+  border-top: var(--line);
+  background: var(--c-paper-lo);
+}
+.colophonLink {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--c-ink);
+}
+.colophonCode {
+  display: none;
+}
+
+/* ------------------------------------------------------------ medium */
+@container landing (min-width: 640px) {
+  .edition {
+    display: flex;
+  }
+  .navJoin {
+    display: inline-flex;
+  }
+  .markSmall {
+    display: none !important;
+  }
+  .markLarge {
+    display: inline-flex !important;
+  }
+  .masthead {
+    padding-inline: var(--s-6);
+  }
+  /* wider: only the centred edition line is under the tab */
+  .page[data-markers] .masthead {
+    padding-top: calc(var(--safe-t) + var(--s-3));
+  }
+  .page[data-markers] .edition {
+    padding-top: 12px;
+  }
+  .hero {
+    padding-inline: var(--s-6);
+  }
+  .band {
+    margin-inline: calc(var(--s-6) * -1 - 24px);
+  }
+  .steps {
+    padding-inline: var(--s-6);
+  }
+  .stepList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-5);
+  }
+  .colophon {
+    padding-inline: var(--s-6);
+  }
+  .colophonCode {
+    display: inline-flex;
+  }
+}
+
+/* ------------------------------------------------------------ wide: the poster spread */
+@container landing (min-width: 960px) {
+  .masthead {
+    padding: var(--s-4) var(--s-10);
+  }
+  .hero {
+    grid-template-columns: minmax(380px, 460px) minmax(0, 1fr);
+    grid-template-areas:
+      'title title'
+      'ticket art'
+      'band band';
+    column-gap: var(--s-12);
+    row-gap: var(--s-6);
+    padding: var(--s-8) var(--s-10) 0;
+    min-height: calc(100dvh - 82px);
+    align-content: start;
+  }
+  .title {
+    /* one line, edge to edge: the A of MATCHA kisses the trim */
+    font-size: 18.4cqi;
+    line-height: 0.82;
+  }
+  .titleA,
+  .titleB {
+    display: inline;
+  }
+  .sun {
+    top: auto;
+    bottom: -10cqi;
+    right: 4cqi;
+    width: 44cqi;
+  }
+  .regB {
+    left: 16px;
+    bottom: 120px;
+  }
+  .ticket {
+    justify-self: start;
+    align-self: start;
+    max-width: none;
+  }
+  .art {
+    height: 100%;
+    min-height: 440px;
+    margin-top: 0;
+  }
+  .front {
+    width: min(23cqi, 300px);
+    translate: -40% 0;
+  }
+  .back1 {
+    width: min(19cqi, 250px);
+    translate: -118% 34px;
+  }
+  .back2 {
+    width: min(19cqi, 250px);
+    translate: 26% 46px;
+  }
+  .matchStamp {
+    right: auto;
+    bottom: auto;
+    left: 2%;
+    top: 52%;
+    scale: 1;
+  }
+  .sticker {
+    top: 4%;
+    right: 6%;
+  }
+  .band {
+    margin: var(--s-2) calc(var(--s-10) * -1 - 24px) var(--s-8);
+  }
+  .steps {
+    padding: var(--s-16) var(--s-10);
+    max-width: 1280px;
+    width: 100%;
+    margin-inline: auto;
+  }
+  .stepsHead {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap-reverse;
+  }
+  .stepList {
+    gap: var(--s-8);
+  }
+  .colophon {
+    padding-inline: var(--s-10);
+  }
+}
