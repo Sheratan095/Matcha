@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { env } from '@repo/config';
+import { env, FRONTEND_BASE_URL } from '@repo/config';
 import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto, LoginErrorDto, LogoutResponseDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto, ValidateTokenResponseDto } from './dto/refresh.dto';
@@ -165,6 +165,6 @@ export class AppController
 		// Issue our own application JWT tokens and set them as HTTP-only cookies in the response.
 		await this.appService.issueTokensAfterOAuth(user, res);
 		// Redirect the user back to the frontend application.
-		res.redirect(`${env.FRONTEND_URL}:${env.FRONTEND_PORT}`);
+		res.redirect(FRONTEND_BASE_URL);
 	}
 }

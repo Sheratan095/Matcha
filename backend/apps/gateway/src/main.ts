@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { env } from "@repo/config";
+import { env, FRONTEND_BASE_URL } from "@repo/config";
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ClientRequest, IncomingMessage, ServerResponse } from 'http';
 import { setupSwagger } from './swagger';
@@ -30,7 +30,7 @@ async function bootstrap()
 
 	// Enable CORS so the frontend (http://localhost:4000) can call gateway endpoints
 	app.enableCors({
-		origin: `${env.FRONTEND_URL}:${env.FRONTEND_PORT}`,
+		origin: FRONTEND_BASE_URL,
 		credentials: true,
 		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
 		allowedHeaders: ['Content-Type', 'x-internal-key']

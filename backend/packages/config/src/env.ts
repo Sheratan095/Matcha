@@ -95,6 +95,22 @@ if (!parsed.success)
 
 export const env = parsed.data;
 
+// Full base URL the browser uses to reach the frontend, composed once so every
+// service builds links the same way. The port is omitted for the standard
+// HTTP/HTTPS ports so production URLs (e.g. https://matcha.com) don't carry a
+// stray :443, while dev keeps its explicit :4000.
+const buildFrontendBaseUrl = (): string =>
+{
+	const port = env.FRONTEND_PORT;
+
+	if (!port || port === 80 || port === 443)
+		return (env.FRONTEND_URL);
+
+	return (`${env.FRONTEND_URL}:${port}`);
+}
+
+export const FRONTEND_BASE_URL = buildFrontendBaseUrl();
+
 // Used for verifying the internal key in controllers and middleware without importing the entire env object
 export const verifyInternalKey = (key?: string): boolean =>
 {

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { env } from '@repo/config';
+import { env, FRONTEND_BASE_URL } from '@repo/config';
 import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 import * as nodemailer from 'nodemailer';
 import * as path from 'path';
@@ -35,7 +35,7 @@ export class MailerService
 	{
 		try
 		{
-			const link = `${env.FRONTEND_URL}:${env.FRONTEND_PORT}/verify-email?token=${token}`;
+			const link = `${FRONTEND_BASE_URL}/verify-email?token=${token}`;
 
 			await this.sendVerificationEmailContent(to, token, language, link);
 
@@ -117,7 +117,7 @@ export class MailerService
 	{
 		try
 		{
-			const link = `${env.FRONTEND_URL}:${env.FRONTEND_PORT}/reset-password?token=${token}`;
+			const link = `${FRONTEND_BASE_URL}/reset-password?token=${token}`;
 
 			await this.sendForgotPasswordEmailContent(to, token, language, link);
 
