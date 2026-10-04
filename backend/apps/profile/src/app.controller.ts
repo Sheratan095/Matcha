@@ -8,6 +8,7 @@ import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteEr
 import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
 import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
 import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
+import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
@@ -49,6 +50,7 @@ export class AppController
 	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full profile of the authenticated user.' })
 	@ApiResponse({ status: 200, type: GetMyProfileResponseDto, description: 'Profile retrieved successfully' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: GetProfileErrorDto, description: 'Profile not found' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getMyProfile(@CurrentUser() userId: string)
@@ -72,6 +74,20 @@ export class AppController
 		return ({ viewers });
 	}
 
+	// Declared before the ':userId' route below, otherwise '/interests' would be captured as a userId.
+	@Get('interests')
+	@ApiOperation({ summary: 'Get all interests', description: 'Returns every interest tag stored in the database, for the interest picker / autocomplete.' })
+	@ApiResponse({ status: 200, type: GetInterestsResponseDto, description: 'Interests retrieved successfully' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: GetInterestsErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getAllInterests()
+	{
+		const interests = await this.appService.getAllInterests();
+
+		return ({ interests });
+	}
+
 	@Patch()
 	@ApiOperation({ summary: 'Update user profile', description: 'Update the authenticated user\'s own profile. All fields are optional — only provided fields are applied.' })
 	@ApiBody({ type: UpdateProfileDto })
@@ -79,6 +95,7 @@ export class AppController
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
 	@ApiResponse({ status: 403, type: UpdateProfileErrorDto, description: 'Requesting user is not the profile owner' })
+	@ApiResponse({ status: 404, type: UpdateProfileErrorDto, description: 'Profile not found' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async updateProfile(@Body() body: UpdateProfileDto, @CurrentUser() userId: string)
@@ -112,7 +129,7 @@ export class AppController
 			callback(null, true);
 		},
 	}))
-	async uploadPicture(@UploadedFile() file: Express.Multer.File, @CurrentUser() userId: string)
+	async uploadPicture(@UploadedFile() file: Parameters<AppService['uploadPicture']>[1], @CurrentUser() userId: string)
 	{
 		if (!file)
 			throw new BadRequestException('Missing "file" field');
