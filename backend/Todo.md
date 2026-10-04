@@ -88,4 +88,5 @@ user, and the chat function between them will be disabled.
 
 [] test oauth2 github shitty shit
 
-[] garage .toml file contains a 127.0.0.1 address, maybe it will not work in prod?
+[x] garage .toml file contains a 127.0.0.1 address, maybe it will not work in prod?
+	think is should be to modify only with a real domain for prod
