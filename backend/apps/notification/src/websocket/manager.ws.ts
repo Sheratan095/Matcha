@@ -6,12 +6,17 @@ export class WsManager
 	// Map of connected clients, where the key is the user ID and the value is a set of sockets associated with that user
 	// This allows for multiple connections per user (e.g., from different devices or browser tabs)
 	private clients: Map<string, Set<Socket>>;
+
+	// Map to hold pending notifications for users who are not currently connected
+	private pendingNotifications: Map<string, any[]>;
+
 	private logger: Logger;
 
 	constructor(logger: Logger)
 	{
 		// Initialize the clients map
 		this.clients = new Map();
+		this.pendingNotifications = new Map();
 
 		this.logger = logger;
 	}
@@ -28,6 +33,10 @@ export class WsManager
 
 		const totalSockets : number = this.clients.get(userId)?.size || 0;
 		this.logger.log(`Websocket connected: UserId: ${userId}, SocketId: ${socket.id}, TotalSockets: ${totalSockets}`);
+
+		// If there are any pending notifications for this user, send them now
+		this.sendPendingNotifications(userId);
+		this.logger.log(`Sent pending notifications for user ID ${userId}`);
 	}
 
 	// Remove a client connection for a user
@@ -58,6 +67,28 @@ export class WsManager
 		return (this.clients.size);
 	}
 
+	// send a message to all sockets associated with a specific user ID
+	sendMessageToUser(userId: string, event: string, message: any): boolean
+	{
+		const sockets = this.clients.get(userId);
+		if (sockets)
+		{
+			for (const socket of sockets)
+				socket.emit(event, message);
+
+			return (true);
+		}
+		else
+		{
+			// If the user is not connected, store the message in pending notifications
+			if (!this.pendingNotifications.has(userId))
+				this.pendingNotifications.set(userId, []);
+
+			this.pendingNotifications.get(userId)?.push({ event, message });
+			return (false);
+		}
+	}
+
 	//-------------------------------------UTILS-------------------------------------
 
 	getSocketsByUserId(userId: string): Set<Socket> | undefined
@@ -73,5 +104,20 @@ export class WsManager
 				return (userId);
 		}
 		return (undefined);
+	}
+
+	sendPendingNotifications(userId: string): void
+	{
+		const	pending = this.pendingNotifications.get(userId);
+		if (!pending)
+			return;
+
+		// Detach the queue up front: `pending` is now a PRIVATE SNAPSHOT, so nothing is mutated
+		// mid-iteration. Anything that fails to send is re-queued (in order) into a fresh list
+		// by sendMessageToUser(), since the key is already gone from the map.
+		this.pendingNotifications.delete(userId);
+
+		for (const { event, message } of pending)
+			this.sendMessageToUser(userId, event, message);
 	}
 }
