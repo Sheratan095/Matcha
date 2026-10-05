@@ -51,14 +51,12 @@ const envSchema = z.object({
 
 	// EMAIL Verification
 	EMAIL_VERIFICATION_TOKEN_LENGTH: z.coerce.number().default(8), // Length of the random token for email verification
-	EMAIL_VERIFICATION_EXPIRATION: z.string().default("1h"), // 1 hour
-	EMAIL_VERIFICATION_EXPIRATION_MS: z.coerce.number().default(3600000), // 1 hour in milliseconds
+	EMAIL_VERIFICATION_EXPIRATION_MINUTES: z.coerce.number().default(15), // Token lifetime, in minutes (also shown in the email)
 	EMAIL_VERIFICATION_MAX_ATTEMPTS: z.coerce.number().default(5), // Max attempts for sending verification email
 
 	// Forgot Password
 	FORGOT_PASSWORD_TOKEN_LENGTH: z.coerce.number().default(12), // Length of the random token for forgot password
-	FORGOT_PASSWORD_EXPIRATION: z.string().default("1h"), // 1 hour
-	FORGOT_PASSWORD_EXPIRATION_MS: z.coerce.number().default(3600000), // 1 hour in milliseconds
+	FORGOT_PASSWORD_EXPIRATION_MINUTES: z.coerce.number().default(15), // Token lifetime, in minutes (also shown in the email)
 	FORGOT_PASSWORD_MAX_ATTEMPTS: z.coerce.number().default(5), // Max attempts for sending forgot password email
 
 	// SMTP Configuration

@@ -32,7 +32,7 @@ export async function issueVerificationToken(user: User, dbService: DbService, h
 	// Generate a secure random token for email verification
 	const token = randomBytes(env.EMAIL_VERIFICATION_TOKEN_LENGTH).toString('hex');
 	// Set the token expiration
-	const expiresAt = new Date(Date.now() + env.EMAIL_VERIFICATION_EXPIRATION_MS); // 24 hours from now
+	const expiresAt = new Date(Date.now() + env.EMAIL_VERIFICATION_EXPIRATION_MINUTES * 60 * 1000);
 	// Hash the token before storing it in the database for security
 	const hashedToken = await hashToken(token);
 	// Store the token in the database associated with the user (not implemented here, but should be done in a real application)
@@ -64,7 +64,7 @@ export async function issueForgotPasswordToken(user: User, dbService: DbService,
 	// Generate a secure random token for forgot password
 	const token = randomBytes(env.FORGOT_PASSWORD_TOKEN_LENGTH).toString('hex');
 	// Set the token expiration
-	const expiresAt = new Date(Date.now() + env.FORGOT_PASSWORD_EXPIRATION_MS); // 1 hour from now
+	const expiresAt = new Date(Date.now() + env.FORGOT_PASSWORD_EXPIRATION_MINUTES * 60 * 1000);
 	// Hash the token before storing it in the database for security
 	const hashedToken = await hashToken(token);
 	// Store the token in the database associated with the user (not implemented here, but should be done in a real application)

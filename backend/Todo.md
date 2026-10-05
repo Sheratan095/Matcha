@@ -91,4 +91,4 @@ user, and the chat function between them will be disabled.
 [x] garage .toml file contains a 127.0.0.1 address, maybe it will not work in prod?
 	think is should be to modify only with a real domain for prod
 
-[] {{EXPIRY_MINUTES}} in forgot psw email
+[x] {{EXPIRY_MINUTES}} in forgot psw email

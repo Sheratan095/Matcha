@@ -54,6 +54,9 @@ export class MailerService
 		// Get language pack for the specified language
 		const langPack = getVerificationPack(language);
 
+		// Minutes shown in the email; must mirror the token TTL set in the auth service.
+		const expiryMinutes = String(env.EMAIL_VERIFICATION_EXPIRATION_MINUTES);
+
 		// Generate HTML content using template and language pack
 		let htmlContent: string;
 		try
@@ -84,7 +87,10 @@ export class MailerService
 				.replace(/{{SECURITY_TITLE}}/g, langPack.securityTitle)
 				.replace(/{{SECURITY_POINTS}}/g, securityPointsHtml)
 				.replace(/{{FOOTER_MESSAGE}}/g, langPack.footerMessage)
-				.replace(/{{FOOTER_TEXT}}/g, langPack.footerText);
+				.replace(/{{FOOTER_TEXT}}/g, langPack.footerText)
+				// Resolve {{EXPIRY_MINUTES}} last: it lives inside langPack strings (expiryText,
+				// securityPoints) that were just substituted into the HTML above.
+				.replace(/{{EXPIRY_MINUTES}}/g, expiryMinutes);
 		}
 		catch (error: unknown)
 		{
@@ -97,7 +103,7 @@ export class MailerService
 			from: `"Matcha" <${env.SMTP_USER}>`,
 			to,
 			subject: langPack.subject,
-			text: langPack.plainText.replace(/{{OTP_CODE}}/g, otpCode).replace(/{{EXPIRY_MINUTES}}/g, '15'),
+			text: langPack.plainText.replace(/{{OTP_CODE}}/g, otpCode).replace(/{{EXPIRY_MINUTES}}/g, expiryMinutes),
 			html: htmlContent,
 		};
 
@@ -137,6 +143,9 @@ export class MailerService
 		// Get language pack for the specified language
 		const langPack = getForgotPasswordPack(language);
 
+		// Minutes shown in the email; must mirror the token TTL set in the auth service.
+		const expiryMinutes = String(env.FORGOT_PASSWORD_EXPIRATION_MINUTES);
+
 		// Generate HTML content using template and language pack
 		let htmlContent: string;
 		try
@@ -170,7 +179,10 @@ export class MailerService
 				.replace(/{{SECURITY_POINTS}}/g, securityPointsHtml)
 				.replace(/{{FOOTER_MESSAGE}}/g, langPack.footerMessage)
 				.replace(/{{FOOTER_TEXT}}/g, langPack.footerText)
-				.replace(/{{ALL_RIGHTS_RESERVED}}/g, langPack.allRightsReserved);
+				.replace(/{{ALL_RIGHTS_RESERVED}}/g, langPack.allRightsReserved)
+				// Resolve {{EXPIRY_MINUTES}} last: it lives inside langPack strings (expiryText,
+				// securityPoints) that were just substituted into the HTML above.
+				.replace(/{{EXPIRY_MINUTES}}/g, expiryMinutes);
 		}
 		catch (error: unknown)
 		{
@@ -183,7 +195,7 @@ export class MailerService
 			from: `"Matcha" <${env.SMTP_USER}>`,
 			to,
 			subject: langPack.subject,
-			text: langPack.plainText.replace(/{{OTP_CODE}}/g, resetCode).replace(/{{EXPIRY_MINUTES}}/g, '15'),
+			text: langPack.plainText.replace(/{{OTP_CODE}}/g, resetCode).replace(/{{EXPIRY_MINUTES}}/g, expiryMinutes),
 			html: htmlContent,
 		};
 
