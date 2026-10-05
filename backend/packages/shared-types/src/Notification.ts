@@ -15,6 +15,7 @@ export enum NotificationType
 export interface ProfileViewPayload
 {
 	viewerId: string;
+	username: string;
 	createdAt: string; // ISO 8601
 }
 

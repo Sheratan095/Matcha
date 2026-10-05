@@ -76,8 +76,8 @@ export class AppController
 	@ApiResponse({ status: 200, type: ProfileViewNotifyResponseDto, description: 'Notification delivered or queued' })
 	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
-	notifyProfileView(@Body() req: ProfileViewNotifyDto)
+	async notifyProfileView(@Body() req: ProfileViewNotifyDto)
 	{
-		return (this.appService.notifyProfileView(req.recipientId, req.viewerId));
+		return ( await this.appService.notifyProfileView(req.recipientId, req.viewerId));
 	}
 }
