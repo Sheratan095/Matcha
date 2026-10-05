@@ -19,11 +19,13 @@ export class UpdateProfileDto
 	@Transform(({ value }) => value?.trim())
 	lastName?: string;
 
+	// Not need to trim because it's an enum
 	@ApiProperty({ example: 'female', enum: ['male', 'female', 'other'], required: false })
 	@IsOptional()
 	@IsIn(['male', 'female', 'other'])
 	gender?: string;
 
+	// Not need to trim because it's an enum
 	@ApiProperty({ example: 'both', enum: ['male', 'female', 'both', 'other'], required: false })
 	@IsOptional()
 	@IsIn(['male', 'female', 'both', 'other'])
@@ -31,12 +33,16 @@ export class UpdateProfileDto
 
 	@ApiProperty({ example: 'Curiouser and curiouser.', required: false })
 	@IsOptional()
+	@Transform(({ value }) => value?.trim())
 	@IsString()
 	@MaxLength(500)
 	biography?: string;
 
 	@ApiProperty({ example: ['vegan', 'geek'], description: 'Full replacement list of interest tag names', required: false })
 	@IsOptional()
+	// Transform the interests array to remove leading '#' characters and trim whitespace
+	@Transform(({ value }) => Array.isArray(value)
+		? value.map((tag) => typeof tag === 'string' ? tag.trim().replace(/^#+/, '').trim() : tag) : value)
 	@IsString({ each: true })
 	@MaxLength(50, { each: true })
 	interests?: string[];
