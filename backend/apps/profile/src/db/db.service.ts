@@ -389,6 +389,23 @@ export class DbService implements OnModuleInit
 		);
 	}
 
+	// Records that reporterId flagged reportedId as a fake account. Idempotent: a second
+	// report for the same pair is a no-op (ON CONFLICT DO NOTHING). Returns true when a new
+	// report was stored, false when this reporter had already reported this user.
+	// A missing reportedId trips the users(id) foreign key (error code 23503), which the
+	// service layer translates into a 404.
+	async reportFake(reporterId: string, reason: string | null, reportedId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`INSERT INTO fake_reports (reporter_id, reported_id, reason)
+			 VALUES ($1, $2, $3)
+			 ON CONFLICT (reporter_id, reported_id) DO NOTHING`,
+			[reporterId, reportedId, reason]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+
 	async getProfileViewers(viewedId: string): Promise<ProfileView[]>
 	{
 		const result = await this.pool.query(

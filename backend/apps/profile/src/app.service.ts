@@ -153,6 +153,36 @@ export class AppService
 		}
 	}
 
+	// Flags reportedId as a fake account on behalf of reporterId. Idempotent: reporting the
+	// same user twice still resolves successfully, so the client never learns whether a prior
+	// report existed.
+	async reportFakeAccount(reportedId: string, reason: string | null, reporterId: string)
+	{
+		if (reportedId === reporterId)
+			throw new BadRequestException('You cannot report yourself');
+
+		try
+		{
+			const	created = await this.dbService.reportFake(reporterId, reason, reportedId);
+
+			if (created)
+				this.logger.log(`User ${reportedId} reported as fake by ${reporterId}`);
+			else
+				this.logger.log(`Duplicate fake report for user ${reportedId} by ${reporterId} ignored`);
+
+			return ({ reported: true });
+		}
+		catch (error: any)
+		{
+			// Foreign key violation: the reported user does not exist.
+			if (error && error.code === '23503')
+				throw new NotFoundException('User not found');
+
+			this.logger.error(`Error reporting user ${reportedId} as fake by ${reporterId}`, error);
+			throw new InternalServerErrorException('Failed to report user');
+		}
+	}
+
 	async getAllInterests(): Promise<InterestTag[]>
 	{
 		try

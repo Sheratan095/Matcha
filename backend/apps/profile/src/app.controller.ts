@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AppService } from './app.service';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
@@ -11,6 +11,7 @@ import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } fro
 import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 import { IsOnlineDto, IsOnlineResponseDto, IsOnlineErrorDto } from './dto/is_online';
+import { ReportUserDto, ReportUserResponseDto, ReportUserErrorDto } from './dto/reportUser.dto';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -191,7 +192,6 @@ export class AppController
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
 	@ApiResponse({ status: 500, type: IsProfileCompleteErrorDto, description: 'Internal server error' })
-	@UseGuards(AuthenticatedUserGuard)
 	async isProfileComplete(@Param() req: IsProfileCompleteDto)
 	{
 		const isComplete = await this.appService.isProfileComplete(req.userId);
@@ -211,5 +211,18 @@ export class AppController
 		const isOnline = await this.appService.isUserOnline(req.userId);
 
 		return ({ isOnline });
+	}
+
+	@Post(':userId/report')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Report a user as fake', description: 'Flags the target user as a fake account. Idempotent: reporting the same user more than once has no additional effect.' })
+	@ApiResponse({ status: 400, type: ReportUserErrorDto, description: 'Cannot report yourself / invalid user id' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ReportUserErrorDto, description: 'User not found' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async reportUser( @Param('userId', ParseUUIDPipe) reportedId: string, @Body() body: ReportUserDto, @CurrentUser() userId: string)
+	{
+		await this.appService.reportFakeAccount(reportedId, body.reason ?? null, userId);
 	}
 }

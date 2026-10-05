@@ -94,3 +94,9 @@ user, and the chat function between them will be disabled.
 [x] {{EXPIRY_MINUTES}} in forgot psw email
 
 [] store pending notification in database
+
+[] GetProfile should return also username
+
+[] view the date and time of the last connection
+
+[x] report fake accounts
