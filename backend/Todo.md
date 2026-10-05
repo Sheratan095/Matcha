@@ -78,7 +78,7 @@ user, and the chat function between them will be disabled.
 
 [] reasons for not completed profile??
 
-[] /profile/viewers should return also name and profile pic link?
+[x] /profile/viewers should return also name and profile pic link?
 
 [x] get /profile = get my profile
 

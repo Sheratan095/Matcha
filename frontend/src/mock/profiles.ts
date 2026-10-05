@@ -100,12 +100,30 @@ const create: Handler = (request) => {
   return ok({ message: 'Profile created', userId: input.userId })
 }
 
+// Resolves a viewer id to its username and profile picture, from the demo accounts or the mock people.
+const resolveViewer = (id: string) => {
+  const profilePicture = (pictures: { url: string; isProfile: boolean }[]) =>
+    (pictures.find((picture) => picture.isProfile) ?? pictures[0])?.url ?? null
+
+  const account = authDb().accounts.find((candidate) => candidate.id === id)
+  if (account) {
+    const profile = accountProfile(id)
+    const pictures = profile ? toProfile(id, profile).pictures : []
+    return { viewerId: id, username: account.username, profilePictureUrl: profilePicture(pictures) }
+  }
+  const person = personById(id)
+  if (person)
+    return { viewerId: id, username: person.key, profilePictureUrl: profilePicture(personProfile(person).pictures) }
+  return { viewerId: id, username: id, profilePictureUrl: null }
+}
+
 const viewers: Handler = () => {
   const account = requireAccount()
   const viewer = currentViewer()
   const people = viewer ? mockViewers(viewer) : []
   const all = [...people, ...accountViewers(account.id)].sort((a, b) => b.at - a.at)
-  return ok({ viewers: [...new Set(all.map((entry) => entry.id))] })
+  const ids = [...new Set(all.map((entry) => entry.id))]
+  return ok({ viewers: ids.map(resolveViewer) })
 }
 
 const isComplete: Handler = (_request, params) => {

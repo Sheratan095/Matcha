@@ -392,9 +392,11 @@ export class DbService implements OnModuleInit
 	async getProfileViewers(viewedId: string): Promise<ProfileView[]>
 	{
 		const result = await this.pool.query(
-			`SELECT viewer_id, viewed_id
-			 FROM profile_views
-			 WHERE viewed_id = $1`,
+			`SELECT pv.viewer_id, u.username, up.url AS profile_picture_url
+			 FROM profile_views pv
+			 INNER JOIN users u ON pv.viewer_id = u.id
+			 LEFT JOIN user_pictures up ON up.user_id = pv.viewer_id AND up.is_profile
+			 WHERE pv.viewed_id = $1`,
 			[viewedId]
 		);
 

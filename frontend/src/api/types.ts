@@ -118,9 +118,16 @@ export interface PicturesResult {
   pictures: UserPicture[]
 }
 
-/** GET /profile/viewers: ids only. */
+/** One entry of GET /profile/viewers: the viewer plus their username and profile picture. */
+export interface ProfileViewer {
+  viewerId: string
+  username: string
+  profilePictureUrl: string | null
+}
+
+/** GET /profile/viewers. */
 export interface ViewersResult {
-  viewers: string[]
+  viewers: ProfileViewer[]
 }
 
 /** POST /profile (workaround for OAuth users that have no profile row). */

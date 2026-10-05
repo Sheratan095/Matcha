@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
-import { Profile, UserPicture, InterestTag, MAX_USER_PICTURES } from '@repo/shared-types';
+import { Profile, UserPicture, InterestTag, ProfileView, MAX_USER_PICTURES } from '@repo/shared-types';
 
 // Services contain the core business logic like the db calls
 
@@ -131,13 +131,11 @@ export class AppService
 		}
 	}
 
-	async getProfileViewers(userId: string): Promise<string[]>
+	async getProfileViewers(userId: string): Promise<ProfileView[]>
 	{
 		try
 		{
-			const views = await this.dbService.getProfileViewers(userId);
-
-			return (views.map(view => view.viewerId));
+			return (await this.dbService.getProfileViewers(userId));
 		}
 		catch (error: any)
 		{
