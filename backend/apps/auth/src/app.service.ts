@@ -336,6 +336,19 @@ export class AppService implements OnModuleInit
 				providerId,
 			});
 
+			try
+			{
+				await createUserProfile(user.id, undefined, undefined, this.httpService);
+			}
+			catch (error)
+			{
+				// If profile creation fails, we should clean up by deleting the user we just created to avoid orphaned records.
+				await this.dbService.deleteUser(user.id);
+				this.logger.error(`Error creating user profile for user ID ${user.id}: ${error}`);
+
+				throw (error);
+			}
+
 			this.logger.log(`Created new user with ID ${user.id}, username: ${user.username} for OAuth provider ${provider} (provider ID: ${providerId})`);
 		}
 		else

@@ -86,7 +86,9 @@ user, and the chat function between them will be disabled.
 
 [x] Deleting the current profile picture doesn't make another picture the profile picture; the user has none until they pick one.
 
-[] test oauth2 github shitty shit
+[x] test oauth2 github shitty shit
 
 [x] garage .toml file contains a 127.0.0.1 address, maybe it will not work in prod?
 	think is should be to modify only with a real domain for prod
+
+[] {{EXPIRY_MINUTES}} in forgot psw email
