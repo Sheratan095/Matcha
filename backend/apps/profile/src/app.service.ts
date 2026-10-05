@@ -5,6 +5,7 @@ import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
 import { Profile, UserPicture, InterestTag, ProfileView, MAX_USER_PICTURES } from '@repo/shared-types';
+import { sendProfileViewNotification } from './utils/notification';
 
 // Services contain the core business logic like the db calls
 
@@ -79,12 +80,17 @@ export class AppService
 			}
 
 			// Views are only recorded if the requestor is not the owner of the profile.
-			// Failures here must never block the response.
+			// Once recorded, push a live 'profile-view' notification to the owner.
+			// Both steps are fire-and-forget: failures must never block the response.
 			if (userId !== requestorUserId)
 			{
-				this.dbService.addProfileView(requestorUserId, userId).catch(err =>
-					this.logger.warn(`Failed to record profile view for viewer ${requestorUserId}: ${err.message}`)
-				);
+				this.dbService.addProfileView(requestorUserId, userId)
+					.then(() => sendProfileViewNotification(userId, requestorUserId, this.httpService))
+					.catch(err =>
+						this.logger.warn(`Failed to record/notify profile view for viewer ${requestorUserId}: ${err.message}`)
+					);
+
+				this.logger.log(`Profile view recorded for user ID ${userId} by viewer ${requestorUserId}`);
 			}
 
 			return (profile);

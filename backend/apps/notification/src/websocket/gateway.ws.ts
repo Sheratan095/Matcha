@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage } from '@nestjs/websockets';
 import { env } from '@repo/config';
+import { NotificationType } from '@repo/shared-types';
 import { Socket } from 'socket.io';
 import { handleAnyEvent } from './switch.ws';
 import { WsManager } from './manager.ws';
@@ -50,6 +51,14 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 	count(): number
 	{
 		return (this.wsManager.count());
+	}
+
+	// Emit a notification to a user. The event name is the NotificationType value, so the browser
+	// listens per type (e.g. socket.on('profile-view', ...)). Returns false when the user was
+	// offline and the payload was queued instead. See docs/WEBSOCKETS.md.
+	sendToUser(userId: string, event: NotificationType, payload: any): boolean
+	{
+		return (this.wsManager.sendMessageToUser(userId, event, payload));
 	}
 
 	closeConnectionsForUser(userId: string): void

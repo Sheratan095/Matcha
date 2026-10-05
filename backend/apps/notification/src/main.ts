@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { env } from "@repo/config";
@@ -22,6 +22,10 @@ function swaggerSetup(app: any)
 async function bootstrap()
 {
 	const app = await NestFactory.create(AppModule);
+
+	// Strip unknown fields and run class-validator/class-transformer on request DTOs
+	// (matches the auth and profile services).
+	app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
 	swaggerSetup(app);
 

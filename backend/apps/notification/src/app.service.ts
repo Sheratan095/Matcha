@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, NotificationType, ProfileViewPayload } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
 
@@ -39,5 +39,20 @@ export class AppService
 		this.wsGateway.closeConnectionsForUser(userId);
 
 		return (`Closed all WebSocket connections for user ID ${userId}`);
+	}
+
+	// Composes the profile-view payload and pushes it to the recipient's socket(s).
+	// Returns { delivered: false } when the user was offline and it was queued instead.
+	notifyProfileView(recipientId: string, viewerId: string)
+	{
+		const payload: ProfileViewPayload =
+		{
+			viewerId,
+			createdAt: new Date().toISOString(),
+		};
+
+		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.PROFILE_VIEW, payload);
+
+		return ({ delivered });
 	}
 }
