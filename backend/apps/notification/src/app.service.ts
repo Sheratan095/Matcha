@@ -30,6 +30,11 @@ export class AppService
 		return ('Sending forgot password email to ' + email + ' with token ' + token);
 	}
 
+	async isUserOnline(userId: string): Promise<boolean>
+	{
+		return (this.wsGateway.isUserOnline(userId));
+	}
+
 	async getOnlineUsers()
 	{
 		return (this.wsGateway.count());

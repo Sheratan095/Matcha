@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { AppService } from './app.service';
-import { InternalKeyGuard } from '@repo/utils';
+import { AuthenticatedUserGuard, InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EmailVerificationDto, EmailVerificationResponseDto, ErrorDto } from './dto/email_verification.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto } from './dto/forgotPassword.dto';
@@ -67,6 +67,18 @@ export class AppController
 	closeWsConnections(@Body() req: CloseWsConnectionsDto)
 	{
 		return (this.appService.closeWsConnections(req.userId));
+	}
+
+	@Get('is-online/:userId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Check if user is online - INTERNAL 🔒', description: 'Checks if the specified user has any active WebSocket connections.' })
+	@ApiResponse({ status: 200, description: 'User online status retrieved successfully' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'User not found' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard) // This endpoint is protected and requires a valid JWT token
+	isUserOnline(@Body() req: CloseWsConnectionsDto)
+	{
+		return (this.appService.isUserOnline(req.userId));
 	}
 
 	@Post('notify/profile-view')

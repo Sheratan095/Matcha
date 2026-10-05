@@ -48,6 +48,13 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 		this.wsManager.removeClient(client);
 	}
 
+	isUserOnline(userId: string): boolean
+	{
+		const sockets = this.wsManager.getSocketsByUserId(userId);
+
+		return (sockets !== undefined && sockets.size > 0);
+	}
+
 	count(): number
 	{
 		return (this.wsManager.count());
