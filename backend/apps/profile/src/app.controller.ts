@@ -10,6 +10,7 @@ import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/
 import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
 import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
+import { IsOnlineDto, IsOnlineResponseDto, IsOnlineErrorDto } from './dto/is_online';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -190,10 +191,25 @@ export class AppController
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
 	@ApiResponse({ status: 500, type: IsProfileCompleteErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
 	async isProfileComplete(@Param() req: IsProfileCompleteDto)
 	{
 		const isComplete = await this.appService.isProfileComplete(req.userId);
 
 		return ({ isComplete });
+	}
+
+	@Get(':userId/is-online')
+	@ApiOperation({ summary: 'Check if user is online', description: 'INTERNAL endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
+	@ApiResponse({ status: 200, type: IsOnlineResponseDto, description: 'User online status' })
+	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
+	@ApiResponse({ status: 500, type: IsOnlineErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async isUserOnline(@Param() req: IsOnlineDto)
+	{
+		const isOnline = await this.appService.isUserOnline(req.userId);
+
+		return ({ isOnline });
 	}
 }

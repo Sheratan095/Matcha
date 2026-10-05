@@ -10,8 +10,8 @@ export class IsOnlineDto
 
 export class IsOnlineResponseDto
 {
-	@ApiProperty({ example: 'ok', description: 'Result status' })
-	status: string;
+	@ApiProperty({ example: 'true', description: 'Result status' })
+	isOnline: boolean;
 
 	@ApiProperty({ example: 'User is online', description: 'Optional message' })
 	message?: string;

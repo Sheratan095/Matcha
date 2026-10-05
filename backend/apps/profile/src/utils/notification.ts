@@ -20,3 +20,18 @@ export async function sendProfileViewNotification(recipientId: string, viewerId:
 		throw err;
 	}
 }
+
+export async function checkIsUserOnline(userId: string, httpService: HttpService): Promise<boolean>
+{
+	try
+	{
+		const response = await httpService.get(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/is-online/${userId}`).toPromise();
+
+		return (response.data.isOnline);
+	}
+	catch (err)
+	{
+		// Rethrow: the caller (profile app.service) keeps this non-blocking and just warns.
+		throw err;
+	}
+}

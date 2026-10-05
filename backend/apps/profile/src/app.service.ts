@@ -5,7 +5,7 @@ import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
 import { Profile, UserPicture, InterestTag, ProfileView, MAX_USER_PICTURES } from '@repo/shared-types';
-import { sendProfileViewNotification } from './utils/notification';
+import { sendProfileViewNotification, checkIsUserOnline } from './utils/notification';
 
 // Services contain the core business logic like the db calls
 
@@ -72,7 +72,6 @@ export class AppService
 		{
 			const profile: Profile | null = await this.dbService.getProfile(userId);
 
-
 			if (!profile)
 			{
 				this.logger.warn(`Profile not found for user ID ${userId}`);
@@ -93,7 +92,11 @@ export class AppService
 				this.logger.log(`Profile view recorded for user ID ${userId} by viewer ${requestorUserId}`);
 			}
 
-			return (profile);
+			// Online status lives in the notification service. Keep it non-blocking:
+			// a failure there must degrade to "offline", never break the profile fetch.
+			let	isOnline = await this.isUserOnline(userId);
+
+			return ({ ...profile, isOnline });
 		}
 		catch (error: any)
 		{
@@ -160,6 +163,22 @@ export class AppService
 		{
 			this.logger.error('Error fetching interests', error);
 			throw new InternalServerErrorException('Failed to fetch interests');
+		}
+	}
+
+	async isUserOnline(userId: string): Promise<boolean>
+	{
+		try
+		{
+			this.logger.log(`Checking online status for user ID ${userId}`);
+			return (await checkIsUserOnline(userId, this.httpService));
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error checking online status for user ID ${userId}`, error);
+
+			// Degrade gracefully: if the notification service is down, assume offline
+			return (false);
 		}
 	}
 

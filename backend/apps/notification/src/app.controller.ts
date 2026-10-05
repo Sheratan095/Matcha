@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { AppService } from './app.service';
-import { AuthenticatedUserGuard, InternalKeyGuard } from '@repo/utils';
+import { InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EmailVerificationDto, EmailVerificationResponseDto, ErrorDto } from './dto/email_verification.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto } from './dto/forgotPassword.dto';
@@ -75,10 +75,9 @@ export class AppController
 	@ApiResponse({ status: 200, description: 'User online status retrieved successfully' })
 	@ApiResponse({ status: 404, type: ErrorDto, description: 'User not found' })
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
-	@UseGuards(AuthenticatedUserGuard) // This endpoint is protected and requires a valid JWT token
-	isUserOnline(@Body() req: CloseWsConnectionsDto)
+	async isUserOnline(@Param('userId') userId: string)
 	{
-		return (this.appService.isUserOnline(req.userId));
+		return ({ isOnline: await this.appService.isUserOnline(userId) });
 	}
 
 	@Post('notify/profile-view')

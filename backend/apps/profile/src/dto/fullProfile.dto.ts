@@ -54,6 +54,10 @@ export class FullProfileDto
 	@ApiProperty({ type: [UserPictureDto] })
 	pictures: UserPictureDto[];
 
+	@ApiProperty({example: 'true', description: 'Whether the user is online or not'})
+	@IsBoolean()
+	isOnline: boolean;
+
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
 	createdAt: Date;
 
