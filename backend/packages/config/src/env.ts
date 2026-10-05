@@ -29,6 +29,8 @@ const envSchema = z.object({
 
 	NOTIFICATION_HOST: z.string().default("http://localhost"),
 	NOTIFICATION_PORT: z.coerce.number().default(3002),
+	// Max live notifications buffered per offline user; the oldest are dropped past this cap.
+	NOTIFICATION_MAX_PENDING_PER_USER: z.coerce.number().default(50),
 
 	PROFILE_HOST: z.string().default("http://localhost"),
 	PROFILE_PORT: z.coerce.number().default(3003),

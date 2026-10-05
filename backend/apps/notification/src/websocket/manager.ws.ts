@@ -1,5 +1,6 @@
 import { Socket } from "socket.io";
 import { Logger } from "@nestjs/common";
+import { env } from "@repo/config";
 
 export class WsManager
 {
@@ -36,7 +37,6 @@ export class WsManager
 
 		// If there are any pending notifications for this user, send them now
 		this.sendPendingNotifications(userId);
-		this.logger.log(`Sent pending notifications for user ID ${userId}`);
 	}
 
 	// Remove a client connection for a user
@@ -80,11 +80,9 @@ export class WsManager
 		}
 		else
 		{
-			// If the user is not connected, store the message in pending notifications
-			if (!this.pendingNotifications.has(userId))
-				this.pendingNotifications.set(userId, []);
+			// If the user is not connected, add the notification to the pending queue
+			this.addPendingNotification(userId, event, message);
 
-			this.pendingNotifications.get(userId)?.push({ event, message });
 			return (false);
 		}
 	}
@@ -106,11 +104,27 @@ export class WsManager
 		return (undefined);
 	}
 
+	addPendingNotification(userId: string, event: string, message: any): void
+	{
+		if (!this.pendingNotifications.has(userId))
+			this.pendingNotifications.set(userId, []);
+
+		const queue = this.pendingNotifications.get(userId)!;
+
+		queue.push({ event, message });
+
+		// Cap the per-user queue so an offline user can't grow it without bound; drop the oldest to keep the newest.
+		if (queue.length > env.NOTIFICATION_MAX_PENDING_PER_USER)
+			queue.shift();
+	}
+
 	sendPendingNotifications(userId: string): void
 	{
 		const	pending = this.pendingNotifications.get(userId);
 		if (!pending)
 			return;
+
+		this.logger.log(`Sent pending ${pending.length} notifications for user ID ${userId}`);
 
 		// Detach the queue up front: `pending` is now a PRIVATE SNAPSHOT, so nothing is mutated
 		// mid-iteration. Anything that fails to send is re-queued (in order) into a fresh list

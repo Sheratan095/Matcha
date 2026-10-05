@@ -59,7 +59,7 @@
 
 [] RATE LIMITING
 
-[] pending noiificaiton
+[x] pending noiificaiton
 
 [] Remove a previously given “like”. This will prevent further notifications from that
 user, and the chat function between them will be disabled.
@@ -92,3 +92,5 @@ user, and the chat function between them will be disabled.
 	think is should be to modify only with a real domain for prod
 
 [x] {{EXPIRY_MINUTES}} in forgot psw email
+
+[] store pending notification in database
