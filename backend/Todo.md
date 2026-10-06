@@ -101,4 +101,4 @@ user, and the chat function between them will be disabled.
 
 [x] report fake accounts
 
-[] remove createdAt date in profile-view ws
+[x] remove createdAt date in profile-view ws

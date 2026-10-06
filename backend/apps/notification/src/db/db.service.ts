@@ -38,6 +38,16 @@ export class DbService implements OnModuleInit
 		return (result.rows[0] ? result.rows[0].username : undefined);
 	}
 
+	async getProfilePictureUrl(userId: string): Promise<string | null>
+	{
+		const result = await this.pool.query(
+			'SELECT url FROM user_pictures WHERE user_id = $1 AND is_profile = true',
+			[userId],
+		);
+
+		return (result.rows[0]?.url ?? null);
+	}
+
 	// Stamps the user's last-online time. Called when their last WebSocket disconnects.
 	// Every user has a profiles row (created at registration), so a plain UPDATE suffices.
 	async updateLastSeen(userId: string): Promise<void>

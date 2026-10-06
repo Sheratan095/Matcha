@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SupportedLanguage, SupportedLanguages, NotificationType, ProfileViewPayload } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, NotificationType, IProfileView } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
 import { DbService } from './db/db.service';
@@ -52,11 +52,12 @@ export class AppService
 	// Returns { delivered: false } when the user was offline and it was queued instead.
 	async notifyProfileView(recipientId: string, viewerId: string)
 	{
-		const payload: ProfileViewPayload =
+		// REUSE the class used from /profile/viewers
+		const payload: IProfileView =
 		{
 			viewerId,
-			username: await this.dbService.getUsernameById(viewerId),
-			createdAt: new Date().toISOString(),
+			username:          await this.dbService.getUsernameById(viewerId),
+			profilePictureUrl: await this.dbService.getProfilePictureUrl(viewerId),
 		};
 
 		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.PROFILE_VIEW, payload);

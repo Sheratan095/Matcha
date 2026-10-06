@@ -11,13 +11,5 @@ export enum NotificationType
 	UNLIKE       = 'unlike',
 }
 
-// Payload emitted under the 'profile-view' event: who looked at the recipient's profile, and when.
-export interface ProfileViewPayload
-{
-	viewerId: string;
-	username: string;
-	createdAt: string; // ISO 8601
-}
-
 // Payloads for the remaining types are declared as their producing features land.
 // Keeping the enum complete lets the frontend and docs reference every planned event name today.
