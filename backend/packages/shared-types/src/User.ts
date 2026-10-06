@@ -72,6 +72,7 @@ export interface IProfile
 	biography: string | null;
 	interests: IInterestTag[];
 	pictures: IUserPicture[];
+	lastOnline: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -87,6 +88,7 @@ export class Profile implements IProfile
 	biography: string | null;
 	interests: IInterestTag[];
 	pictures: IUserPicture[];
+	lastOnline: Date | null;
 	createdAt: Date;
 	updatedAt: Date;
 
@@ -101,6 +103,7 @@ export class Profile implements IProfile
 		this.biography        = data.biography || null;
 		this.interests        = data.interests || [];
 		this.pictures         = data.pictures || [];
+		this.lastOnline       = data.lastOnline || null;
 		this.createdAt        = data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt);
 		this.updatedAt        = data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt);
 	}
@@ -117,6 +120,7 @@ export class Profile implements IProfile
 			biography:        row.biography || null,
 			interests,
 			pictures,
+			lastOnline:       row.last_online ? new Date(row.last_online) : null,
 			createdAt:        row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
 			updatedAt:        row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
 		}));

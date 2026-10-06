@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS profiles (
 	sexual_preference VARCHAR(10),
 	CHECK (sexual_preference IN ('male', 'female', 'both', 'other')), -- Mirrors SexualPreference union
 
+	-- Updated every time the user disconnects from EVERY websocket connection (more tab open)
+	last_seen TIMESTAMPTZ,
+
 	biography TEXT,
 
 	created_at TIMESTAMPTZ DEFAULT NOW(),

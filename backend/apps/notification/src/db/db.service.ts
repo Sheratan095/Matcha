@@ -37,4 +37,11 @@ export class DbService implements OnModuleInit
 		const result = await this.pool.query('SELECT username FROM users WHERE id = $1', [id]);
 		return (result.rows[0] ? result.rows[0].username : undefined);
 	}
+
+	// Stamps the user's last-online time. Called when their last WebSocket disconnects.
+	// Every user has a profiles row (created at registration), so a plain UPDATE suffices.
+	async updateLastSeen(userId: string): Promise<void>
+	{
+		await this.pool.query('UPDATE profiles SET last_seen = NOW() WHERE user_id = $1', [userId]);
+	}
 }

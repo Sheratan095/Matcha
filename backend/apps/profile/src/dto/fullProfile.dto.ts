@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsBoolean, IsString, IsUUID } from 'class-validator';
 
 export class InterestTagDto
 {
@@ -61,6 +61,9 @@ export class FullProfileDto
 	@ApiProperty({example: 'true', description: 'Whether the user is online or not'})
 	@IsBoolean()
 	isOnline: boolean;
+
+	@ApiProperty({ example: '2026-09-30T08:45:31.644Z', nullable: true, description: 'When the user was last online; null if they have never connected' })
+	lastOnline: Date | null;
 
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
 	createdAt: Date;

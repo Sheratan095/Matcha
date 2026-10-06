@@ -5,6 +5,7 @@ import { NotificationType } from '@repo/shared-types';
 import { Socket } from 'socket.io';
 import { handleAnyEvent } from './switch.ws';
 import { WsManager } from './manager.ws';
+import { DbService } from '../db/db.service';
 
 @WebSocketGateway({
 	namespace: '/notification',
@@ -15,7 +16,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 	private readonly logger : Logger;
 	private wsManager : WsManager;
 
-	constructor()
+	constructor(private readonly dbService: DbService)
 	{
 		this.logger = new Logger(WsGateway.name);
 		this.wsManager = new WsManager(this.logger);
@@ -43,9 +44,24 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 		});
 	}
 
-	handleDisconnect(client: Socket): void
+	async handleDisconnect(client: Socket): Promise<void>
 	{
-		this.wsManager.removeClient(client);
+		// removeClient returns the userId only when this was their LAST socket, so we stamp
+		// last-seen exactly once per user going fully offline.
+		const offlineUserId = this.wsManager.removeClient(client);
+
+		if (offlineUserId)
+		{
+			// A DB hiccup must not throw inside the socket lifecycle; just log it.
+			try
+			{
+				await this.dbService.updateLastSeen(offlineUserId);
+			}
+			catch (err: any)
+			{
+				this.logger.warn(`Failed to persist last_seen for user ${offlineUserId}: ${err.message}`);
+			}
+		}
 	}
 
 	isUserOnline(userId: string): boolean

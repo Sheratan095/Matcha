@@ -39,25 +39,33 @@ export class WsManager
 		this.sendPendingNotifications(userId);
 	}
 
-	// Remove a client connection for a user
-	removeClient(socket: Socket): void
+	// Remove a client connection for a user. Returns the userId when that was the user's
+	// LAST socket (they are now fully offline), or undefined otherwise, so the caller can
+	// persist a last-seen timestamp exactly once per user going offline.
+	removeClient(socket: Socket): string | undefined
 	{
 		// Find the user ID associated with the socket
 		const userId = this.getUserIdBySocket(socket);
 
-		// If the user has a set of sockets
-		if (userId !== undefined)
+		// Unknown socket: nothing to remove, nobody went offline.
+		if (userId === undefined)
+			return (undefined);
+
+		// Remove just the specific socket
+		this.clients.get(userId)?.delete(socket);
+
+		// If the user has no more sockets, remove the user from the map: THEY WENT OFFLINE.
+		let	wentOffline = false;
+		if (this.clients.get(userId)?.size === 0)
 		{
-			// Remove just the specific socket
-			this.clients.get(userId)?.delete(socket);
-
-			// If the user has no more sockets, remove the user from the map
-			if (this.clients.get(userId)?.size === 0)
-				this.clients.delete(userId);
-
-			const remainingSockets : number = this.clients.get(userId)?.size || 0;
-			this.logger.log(`Websocket disconnected: UserId: ${userId}, SocketId: ${socket.id}, RemainingSockets: ${remainingSockets}`);
+			this.clients.delete(userId);
+			wentOffline = true;
 		}
+
+		const remainingSockets : number = this.clients.get(userId)?.size || 0;
+		this.logger.log(`Websocket disconnected: UserId: ${userId}, SocketId: ${socket.id}, RemainingSockets: ${remainingSockets}`);
+
+		return (wentOffline ? userId : undefined);
 	}
 
 	// public method to get the total number of unique users currently connected via WebSocket

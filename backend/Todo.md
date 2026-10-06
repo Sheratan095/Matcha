@@ -97,6 +97,8 @@ user, and the chat function between them will be disabled.
 
 [x] GetProfile should return also username
 
-[] view the date and time of the last connection
+[x] view the date and time of the last connection
 
 [x] report fake accounts
+
+[] remove createdAt date in profile-view ws
