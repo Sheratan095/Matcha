@@ -66,6 +66,7 @@ export class AppService
 		}
 	}
 
+	// used both from GET profile/ and GET profile/:id endpoints
 	async getProfile(userId: string, requestorUserId: string)
 	{
 		try

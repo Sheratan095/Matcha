@@ -33,6 +33,10 @@ export class FullProfileDto
 	@IsUUID()
 	userId: string;
 
+	@ApiProperty({ example: 'alice', description: 'Username' })
+	@IsString()
+	username: string;
+
 	@ApiProperty({ example: 'Alice', description: 'First name', nullable: true })
 	firstName: string | null;
 

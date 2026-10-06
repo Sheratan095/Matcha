@@ -95,7 +95,7 @@ user, and the chat function between them will be disabled.
 
 [] store pending notification in database
 
-[] GetProfile should return also username
+[x] GetProfile should return also username
 
 [] view the date and time of the last connection
 

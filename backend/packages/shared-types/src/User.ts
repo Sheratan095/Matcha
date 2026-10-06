@@ -64,6 +64,7 @@ export const MAX_USER_PICTURES = 5;
 export interface IProfile
 {
 	userId: string;
+	username: string;
 	firstName: string | null;
 	lastName: string | null;
 	gender: Gender | null;
@@ -78,6 +79,7 @@ export interface IProfile
 export class Profile implements IProfile
 {
 	userId: string;
+	username: string;
 	firstName: string | null;
 	lastName: string | null;
 	gender: Gender | null;
@@ -91,6 +93,7 @@ export class Profile implements IProfile
 	constructor(data: IProfile)
 	{
 		this.userId           = data.userId;
+		this.username         = data.username;
 		this.firstName        = data.firstName || null;
 		this.lastName         = data.lastName || null;
 		this.gender           = data.gender || null;
@@ -106,6 +109,7 @@ export class Profile implements IProfile
 	{
 		return (new Profile({
 			userId:           row.user_id,
+			username:         row.username,
 			firstName:        row.first_name || null,
 			lastName:         row.last_name || null,
 			gender:           row.gender || null,
