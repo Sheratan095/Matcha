@@ -7,11 +7,12 @@ import { CreateProfileDto, CreateProfileResponseDto, CreateProfileErrorDto } fro
 import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteErrorDto } from './dto/isProfileComplete.dto';
 import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
 import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
+import { GetMyLikesResponseDto } from './dto/GetMyLikes.dto';
 import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
 import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 import { IsOnlineDto, IsOnlineResponseDto, IsOnlineErrorDto } from './dto/is_online';
-import { ReportUserDto, ReportUserResponseDto, ReportUserErrorDto } from './dto/reportUser.dto';
+import { ReportUserDto, ReportUserErrorDto } from './dto/reportUser.dto';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -74,6 +75,19 @@ export class AppController
 		const viewers = await this.appService.getProfileViewers(userId);
 
 		return ({ viewers });
+	}
+
+	@Get('likes')
+	@ApiOperation({ summary: 'Get my likes', description: 'Returns the list of user IDs that have liked the authenticated user' })
+	@ApiResponse({ status: 200, type: GetMyLikesResponseDto, description: 'Likes retrieved successfully' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getMyLikes(@CurrentUser() userId: string)
+	{
+		const likes = await this.appService.getMyLikes(userId);
+
+		return ({ likes });
 	}
 
 	// Declared before the ':userId' route below, otherwise '/interests' would be captured as a userId.
@@ -224,5 +238,33 @@ export class AppController
 	async reportUser( @Param('userId', ParseUUIDPipe) reportedId: string, @Body() body: ReportUserDto, @CurrentUser() userId: string)
 	{
 		await this.appService.reportFakeAccount(reportedId, body.reason ?? null, userId);
+	}
+
+	@Post(':userId/like')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Like a user', description: 'Records that the authenticated user likes the target user. Idempotent: liking the same user more than once has no additional effect.' })
+	@ApiResponse({ status: 200, description: 'User liked successfully' })
+	@ApiResponse({ status: 400, description: 'Cannot like yourself / invalid user id' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, description: 'User not found' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async likeUser(@Param('userId', ParseUUIDPipe) likedId: string, @CurrentUser() userId: string)
+	{
+		// it returns just CODES and takes just param from the request so no need of dto
+		await this.appService.likeUser(likedId, userId);
+	}
+
+	@Delete(':userId/like')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Unlike a user', description: 'Removes a previously given like. Idempotent: unliking a user that was not liked has no effect.' })
+	@ApiResponse({ status: 200, description: 'User unliked successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid user id' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async unlikeUser(@Param('userId', ParseUUIDPipe) likedId: string, @CurrentUser() userId: string)
+	{
+		await this.appService.unlikeUser(likedId, userId);
 	}
 }

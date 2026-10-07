@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
-import { Profile, UserPicture, InterestTag, ProfileView, MAX_USER_PICTURES } from '@repo/shared-types';
+import { Profile, UserPicture, InterestTag, ProfileView, Like, MAX_USER_PICTURES } from '@repo/shared-types';
 import { sendProfileViewNotification, checkIsUserOnline } from './utils/notification';
 
 // Services contain the core business logic like the db calls
@@ -145,12 +145,30 @@ export class AppService
 	{
 		try
 		{
+			this.logger.log(`My likes requested for user ID ${userId}`);
+
 			return (await this.dbService.getProfileViewers(userId));
 		}
 		catch (error: any)
 		{
 			this.logger.error(`Error fetching profile viewers for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to fetch profile viewers');
+		}
+	}
+
+	// Returns the users who liked userId (the "who liked me" list).
+	async getMyLikes(userId: string): Promise<Like[]>
+	{
+		try
+		{
+			this.logger.log(`My likes requested for user ID ${userId}`);
+
+			return (await this.dbService.getLikers(userId));
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error fetching likers for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch likers');
 		}
 	}
 
@@ -184,6 +202,60 @@ export class AppService
 		}
 	}
 
+	// Records that likerId liked likedId. Idempotent: liking the same user twice still resolves
+	// successfully, so the client never learns whether a prior like existed.
+	async likeUser(likedId: string, likerId: string)
+	{
+		if (likedId === likerId)
+			throw new BadRequestException('You cannot like yourself');
+
+		try
+		{
+			const	created = await this.dbService.addLike(likerId, likedId);
+
+			if (created)
+				this.logger.log(`User ${likedId} liked by ${likerId}`);
+			else
+				this.logger.log(`Duplicate like for user ${likedId} by ${likerId} ignored`);
+
+			return ({ liked: true });
+		}
+		catch (error: any)
+		{
+			// Foreign key violation: the liked user does not exist.
+			if (error && error.code === '23503')
+				throw new NotFoundException('User not found');
+
+			this.logger.error(`Error liking user ${likedId} by ${likerId}`, error);
+			throw new InternalServerErrorException('Failed to like user');
+		}
+	}
+
+	// Removes a previously given like. Idempotent: unliking a user that wasn't liked still
+	// resolves successfully.
+	async unlikeUser(likedId: string, likerId: string)
+	{
+		if (likedId === likerId)
+			throw new BadRequestException('You cannot unlike yourself');
+
+		try
+		{
+			const	removed = await this.dbService.removeLike(likerId, likedId);
+
+			if (removed)
+				this.logger.log(`User ${likedId} unliked by ${likerId}`);
+			else
+				this.logger.log(`Unlike for user ${likedId} by ${likerId} had no existing like to remove`);
+
+			return ({ liked: false });
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error unliking user ${likedId} by ${likerId}`, error);
+			throw new InternalServerErrorException('Failed to unlike user');
+		}
+	}
+
 	async getAllInterests(): Promise<InterestTag[]>
 	{
 		try
@@ -202,6 +274,7 @@ export class AppService
 		try
 		{
 			this.logger.log(`Checking online status for user ID ${userId}`);
+
 			return (await checkIsUserOnline(userId, this.httpService));
 		}
 		catch (error: any)

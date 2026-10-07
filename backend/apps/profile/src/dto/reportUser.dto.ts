@@ -12,10 +12,13 @@ export class ReportUserDto
 	reason?: string;
 }
 
-export class ReportUserResponseDto
-{
+// Not reply on successful report, just 204 no content. Do no response dto is needed.
+//	It's done to avoid spamming the report button, and to avoid revealing whether the user exists or not.
 
-}
+// export class ReportUserResponseDto
+// {
+
+// }
 
 export class ReportUserErrorDto
 {

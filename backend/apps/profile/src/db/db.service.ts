@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { Profile, InterestTag, UserPicture, ProfileView } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture, ProfileView, Like } from '@repo/shared-types';
 
 @Injectable()
 
@@ -405,6 +405,70 @@ export class DbService implements OnModuleInit
 		);
 
 		return ((result.rowCount ?? 0) > 0);
+	}
+
+	// Records that likerId liked likedId. Idempotent: a second like for the same pair is a
+	// no-op (ON CONFLICT DO NOTHING). Returns true when a new like was stored, false when the
+	// like already existed. A missing likedId trips the users(id) foreign key (error code
+	// 23503), which the service layer translates into a 404.
+	async addLike(likerId: string, likedId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`INSERT INTO likes (liker_id, liked_id)
+			 VALUES ($1, $2)
+			 ON CONFLICT (liker_id, liked_id) DO NOTHING`,
+			[likerId, likedId]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+
+	// Removes a previously given like. Idempotent: removing a like that isn't there is a no-op.
+	// Returns true when a like was actually removed, false when there was nothing to remove.
+	async removeLike(likerId: string, likedId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`DELETE FROM likes
+			 WHERE liker_id = $1 AND liked_id = $2`,
+			[likerId, likedId]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+
+	// Two users are connected (a "match") when the like exists in both directions. The order of
+	// the two ids does not matter: the EXISTS checks one direction and the implicit reverse pair
+	// the other. Returns true only when both rows are present.
+	async areConnected(userAId: string, userBId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`SELECT EXISTS (
+				SELECT 1 FROM likes a
+				INNER JOIN likes b
+					ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
+				WHERE a.liker_id = $1 AND a.liked_id = $2
+			 ) AS connected`,
+			[userAId, userBId]
+		);
+
+		return (result.rows[0].connected === true);
+	}
+
+	// Lists the users who liked likedId (the "who liked me" view). Mirrors getProfileViewers:
+	// joins the username and the profile picture (LEFT JOIN, so a user with no picture still
+	// shows up with a null url). Filters on liked_id, served by idx_likes_liked_id.
+	async getLikers(likedId: string): Promise<Like[]>
+	{
+		const result = await this.pool.query(
+			`SELECT l.liker_id, u.username, up.url AS profile_picture_url
+			 FROM likes l
+			 INNER JOIN users u ON l.liker_id = u.id
+			 LEFT JOIN user_pictures up ON up.user_id = l.liker_id AND up.is_profile
+			 WHERE l.liked_id = $1`,
+			[likedId]
+		);
+
+		return (result.rows.map(row => Like.fromDbRow(row)));
 	}
 
 	async getProfileViewers(viewedId: string): Promise<ProfileView[]>
