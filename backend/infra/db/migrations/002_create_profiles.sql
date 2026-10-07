@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 	gender VARCHAR(10),
 	CHECK (gender IN ('male', 'female', 'other')), -- Mirrors the Gender union in shared-types
 
-	sexual_preference VARCHAR(10),
-	CHECK (sexual_preference IN ('male', 'female', 'both', 'other')), -- Mirrors SexualPreference union
+	sexual_preference VARCHAR(10) DEFAULT 'both',
+	CHECK (sexual_preference IN ('male', 'female', 'both', 'other')) , -- Mirrors SexualPreference union
 
 	-- Updated every time the user disconnects from EVERY websocket connection (more tab open)
 	last_seen TIMESTAMPTZ,

@@ -11,8 +11,13 @@ ON CONFLICT DO NOTHING;
 INSERT INTO profiles (user_id, first_name, last_name, biography, gender, sexual_preference)
 VALUES
 	((SELECT id FROM users WHERE username = 'admin'), 'Admin', 'User', 'I am the admin of this site.', 'other', 'other'),
-	((SELECT id FROM users WHERE username = 'testuser'), 'Test', 'User', 'I am a test user for this site.', 'other', 'other'),
-	((SELECT id FROM users WHERE username = 'alice'), 'Alice', 'Wonderland', 'Curiouser and curiouser.', 'female', 'both')
+	((SELECT id FROM users WHERE username = 'testuser'), 'Test', 'User', 'I am a test user for this site.', 'other', 'other')
+ON CONFLICT DO NOTHING;
+
+-- Done to try defualt bisexual preference for alice
+INSERT INTO profiles (user_id, first_name, last_name, biography, gender)
+VALUES
+	((SELECT id FROM users WHERE username = 'alice'), 'Alice', 'Wonderland', 'Curiouser and curiouser.', 'female')
 ON CONFLICT DO NOTHING;
 
 -- insert some interest tags for testing
