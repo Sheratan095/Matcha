@@ -27,3 +27,12 @@ export class Like implements ILike
 		}));
 	}
 }
+
+// Pushed on the 'match' event to BOTH users when a like completes a mutual like. Each recipient
+// gets the OTHER user (otherId), so the same shape serves both sides of the match.
+export interface IMatched
+{
+	otherId: string;
+	username: string;
+	profilePictureUrl: string | null;
+}

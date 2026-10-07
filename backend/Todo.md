@@ -102,3 +102,7 @@ user, and the chat function between them will be disabled.
 [x] report fake accounts
 
 [x] remove createdAt date in profile-view ws
+
+[] get my likes should not include the user already connected
+
+[] unlike notification when connected

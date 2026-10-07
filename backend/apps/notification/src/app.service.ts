@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SupportedLanguage, SupportedLanguages, NotificationType, IProfileView } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, NotificationType, IProfileView, ILike, IMatched } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
 import { DbService } from './db/db.service';
@@ -61,6 +61,44 @@ export class AppService
 		};
 
 		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.PROFILE_VIEW, payload);
+
+		return ({ delivered });
+	}
+
+	async notifyProfileLike(likedId: string, likerId: string, matched: boolean)
+	{
+		const payload: ILike =
+		{
+			likerId,
+			username:          await this.dbService.getUsernameById(likerId),
+			profilePictureUrl: await this.dbService.getProfilePictureUrl(likerId),
+		};
+
+		const delivered = this.wsGateway.sendToUser(likedId, NotificationType.PROFILE_LIKE, payload);
+
+		this.logger.log('notifyProfileLike: sent notification to user ' + likedId + ' from liker ' + likerId);
+
+		if (matched)
+		{
+			const matchPayloadToLiker: IMatched =
+			{
+				otherId:         likedId,
+				username:          await this.dbService.getUsernameById(likedId),
+				profilePictureUrl: await this.dbService.getProfilePictureUrl(likedId),
+			};
+
+			const matchPayloadToLiked: IMatched =
+			{
+				otherId:         likerId,
+				username:          await this.dbService.getUsernameById(likerId),
+				profilePictureUrl: await this.dbService.getProfilePictureUrl(likerId),
+			};
+
+			this.wsGateway.sendToUser(likedId, NotificationType.MATCHED, matchPayloadToLiked);
+			this.wsGateway.sendToUser(likerId, NotificationType.MATCHED, matchPayloadToLiker);
+
+			this.logger.log('notifyProfileLike: users ' + likedId + ' and ' + likerId + ' matched!');
+		}
 
 		return ({ delivered });
 	}

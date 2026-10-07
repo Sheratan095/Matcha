@@ -5,8 +5,8 @@
 export enum NotificationType
 {
 	PROFILE_VIEW = 'profile-view',
-	LIKE         = 'like',
-	MATCH        = 'match',
+	PROFILE_LIKE = 'profile-like',
+	MATCHED      = 'match',
 	MESSAGE      = 'message',
 	UNLIKE       = 'unlike',
 }

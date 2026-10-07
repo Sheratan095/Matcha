@@ -5,7 +5,8 @@ import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EmailVerificationDto, EmailVerificationResponseDto, ErrorDto } from './dto/email_verification.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto } from './dto/forgotPassword.dto';
 import { CloseWsConnectionsDto } from './dto/ws_endpoints.dto';
-import { ProfileViewNotifyDto, ProfileViewNotifyResponseDto } from './dto/notify.dto';
+import { ProfileViewNotifyDto, ProfileViewNotifyResponseDto } from './dto/notifyView.dto';
+import { ProfileLikeNotifyDto, ProfileLikeNotifyResponseDto } from './dto/notifyLike.dto';
 
 
 // Specify that this class is a NestJS controller
@@ -91,4 +92,17 @@ export class AppController
 	{
 		return ( await this.appService.notifyProfileView(req.recipientId, req.viewerId));
 	}
+
+	@Post('notify/profile-like')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Notify a profile like - INTERNAL 🔒', description: "Pushes a 'profile-like' notification to the liked user over WebSocket (queued if they are offline)." })
+	@ApiBody({ type: ProfileLikeNotifyDto })
+	@ApiResponse({ status: 200, type: ProfileLikeNotifyResponseDto, description: 'Notification delivered or queued' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	async notifyProfileLike(@Body() req: ProfileLikeNotifyDto)
+	{
+		return ( await this.appService.notifyProfileLike(req.likedId, req.likerId, req.matched));
+	}
+
 }
