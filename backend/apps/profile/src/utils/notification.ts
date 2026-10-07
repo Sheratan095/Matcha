@@ -35,3 +35,23 @@ export async function checkIsUserOnline(userId: string, httpService: HttpService
 		throw err;
 	}
 }
+
+export async function sendProfileLikeNotification(recipientId: string, likerId: string, matched: boolean, httpService: HttpService)
+{
+	try
+	{
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/notify/profile-like`,
+		{
+			// Map the name so DTO doesn't reject it
+			likedId: recipientId,
+			likerId,
+			matched,
+		}).toPromise();
+	}
+	catch (err)
+	{
+		console.log(err);
+		// Rethrow: the caller (profile app.service) keeps this non-blocking and just warns.
+		throw err;
+	}
+}

@@ -1,11 +1,11 @@
-import { Injectable, Logger, ConflictException, ForbiddenException, InternalServerErrorException, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
+import { Injectable, Logger, ConflictException, InternalServerErrorException, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
 import { Profile, UserPicture, InterestTag, ProfileView, Like, MAX_USER_PICTURES } from '@repo/shared-types';
-import { sendProfileViewNotification, checkIsUserOnline } from './utils/notification';
+import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification } from './utils/notification';
 
 // Services contain the core business logic like the db calls
 
@@ -217,6 +217,11 @@ export class AppService
 				this.logger.log(`User ${likedId} liked by ${likerId}`);
 			else
 				this.logger.log(`Duplicate like for user ${likedId} by ${likerId} ignored`);
+
+			// Check if the like resulted in a match (mutual like) and send a notification to the liked user.
+			// If they are matched, another notitification will be sent to both users ws: MATCHED event.
+			const nowMatched = await this.dbService.areConnected(likerId, likedId);
+			await sendProfileLikeNotification(likedId, likerId, nowMatched, this.httpService);
 
 			return ({ liked: true });
 		}
