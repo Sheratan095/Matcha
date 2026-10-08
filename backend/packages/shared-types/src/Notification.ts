@@ -6,9 +6,9 @@ export enum NotificationType
 {
 	PROFILE_VIEW = 'profile-view',
 	PROFILE_LIKE = 'profile-like',
+	UNLIKE       = 'profile-unlike',
 	MATCHED      = 'match',
 	MESSAGE      = 'message',
-	UNLIKE       = 'unlike',
 }
 
 // Payloads for the remaining types are declared as their producing features land.

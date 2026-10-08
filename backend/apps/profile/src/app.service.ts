@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
-import { Profile, UserPicture, InterestTag, ProfileView, Like, MAX_USER_PICTURES } from '@repo/shared-types';
+import { Profile, UserPicture, InterestTag, StdPayload, MAX_USER_PICTURES } from '@repo/shared-types';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification } from './utils/notification';
 
 // Services contain the core business logic like the db calls
@@ -141,7 +141,8 @@ export class AppService
 		}
 	}
 
-	async getProfileViewers(userId: string): Promise<ProfileView[]>
+	// Returns the users who viewed the profile of userId (the "who viewed my profile" list).
+	async getProfileViewers(userId: string): Promise<StdPayload[]>
 	{
 		try
 		{
@@ -157,7 +158,7 @@ export class AppService
 	}
 
 	// Returns the users who liked userId (the "who liked me" list).
-	async getMyLikes(userId: string): Promise<Like[]>
+	async getMyLikes(userId: string): Promise<StdPayload[]>
 	{
 		try
 		{

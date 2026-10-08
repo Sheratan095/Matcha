@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SupportedLanguage, SupportedLanguages, NotificationType, IProfileView, ILike, IMatched } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
 import { DbService } from './db/db.service';
@@ -53,9 +53,9 @@ export class AppService
 	async notifyProfileView(recipientId: string, viewerId: string)
 	{
 		// REUSE the class used from /profile/viewers
-		const payload: IProfileView =
+		const payload: StdPayload =
 		{
-			viewerId,
+			userId: viewerId,
 			username:          await this.dbService.getUsernameById(viewerId),
 			profilePictureUrl: await this.dbService.getProfilePictureUrl(viewerId),
 		};
@@ -67,9 +67,9 @@ export class AppService
 
 	async notifyProfileLike(likedId: string, likerId: string, matched: boolean)
 	{
-		const payload: ILike =
+		const payload: StdPayload =
 		{
-			likerId,
+			userId: likerId,
 			username:          await this.dbService.getUsernameById(likerId),
 			profilePictureUrl: await this.dbService.getProfilePictureUrl(likerId),
 		};
@@ -80,16 +80,16 @@ export class AppService
 
 		if (matched)
 		{
-			const matchPayloadToLiker: IMatched =
+			const matchPayloadToLiker: StdPayload =
 			{
-				otherId:         likedId,
+				userId:         likedId,
 				username:          await this.dbService.getUsernameById(likedId),
 				profilePictureUrl: await this.dbService.getProfilePictureUrl(likedId),
 			};
 
-			const matchPayloadToLiked: IMatched =
+			const matchPayloadToLiked: StdPayload =
 			{
-				otherId:         likerId,
+				userId:         likerId,
 				username:          await this.dbService.getUsernameById(likerId),
 				profilePictureUrl: await this.dbService.getProfilePictureUrl(likerId),
 			};

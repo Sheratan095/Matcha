@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { Profile, InterestTag, UserPicture, ProfileView, Like } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture, StdPayload } from '@repo/shared-types';
 
 @Injectable()
 
@@ -457,7 +457,7 @@ export class DbService implements OnModuleInit
 	// Lists the users who liked likedId (the "who liked me" view). Mirrors getProfileViewers:
 	// joins the username and the profile picture (LEFT JOIN, so a user with no picture still
 	// shows up with a null url). Filters on liked_id, served by idx_likes_liked_id.
-	async getLikers(likedId: string): Promise<Like[]>
+	async getLikers(likedId: string): Promise<StdPayload[]>
 	{
 		const result = await this.pool.query(
 			`SELECT l.liker_id, u.username, up.url AS profile_picture_url
@@ -468,10 +468,10 @@ export class DbService implements OnModuleInit
 			[likedId]
 		);
 
-		return (result.rows.map(row => Like.fromDbRow(row)));
+		return (result.rows.map(row => StdPayload.fromLikeData(row)));
 	}
 
-	async getProfileViewers(viewedId: string): Promise<ProfileView[]>
+	async getProfileViewers(viewedId: string): Promise<StdPayload[]>
 	{
 		const result = await this.pool.query(
 			`SELECT pv.viewer_id, u.username, up.url AS profile_picture_url
@@ -482,6 +482,6 @@ export class DbService implements OnModuleInit
 			[viewedId]
 		);
 
-		return (result.rows.map(row => ProfileView.fromDbRow(row)));
+		return (result.rows.map(row => StdPayload.fromViewData(row)));
 	}
 }
