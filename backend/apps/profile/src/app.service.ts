@@ -215,14 +215,18 @@ export class AppService
 			const	created = await this.dbService.addLike(likerId, likedId);
 
 			if (created)
+			{
 				this.logger.log(`User ${likedId} liked by ${likerId}`);
+
+				// Send notification just if a new like was created
+
+				// Check if the like resulted in a match (mutual like) and send a notification to the liked user.
+				// If they are matched, another notitification will be sent to both users ws: MATCHED event.
+				const nowMatched = await this.dbService.areConnected(likerId, likedId);
+				await sendProfileLikeNotification(likedId, likerId, nowMatched, this.httpService);
+			}
 			else
 				this.logger.log(`Duplicate like for user ${likedId} by ${likerId} ignored`);
-
-			// Check if the like resulted in a match (mutual like) and send a notification to the liked user.
-			// If they are matched, another notitification will be sent to both users ws: MATCHED event.
-			const nowMatched = await this.dbService.areConnected(likerId, likedId);
-			await sendProfileLikeNotification(likedId, likerId, nowMatched, this.httpService);
 
 			return ({ liked: true });
 		}
@@ -252,6 +256,9 @@ export class AppService
 				this.logger.log(`User ${likedId} unliked by ${likerId}`);
 			else
 				this.logger.log(`Unlike for user ${likedId} by ${likerId} had no existing like to remove`);
+
+			//TODO : send notification to liked user that they were unliked (if they were previously liked)
+			// only if they were connected
 
 			return ({ liked: false });
 		}

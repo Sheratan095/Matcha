@@ -103,4 +103,4 @@ user, and the chat function between them will be disabled.
 
 [] add somenthing like "relation" to GET /profile/:userId (what about for yourself?)
 
-[] rename ws viewer/liker .... to otherId
+[z] rename ws viewer/liker .... to otherId
