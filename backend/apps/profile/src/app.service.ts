@@ -5,7 +5,7 @@ import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
 import { Profile, UserPicture, InterestTag, StdPayload, MAX_USER_PICTURES } from '@repo/shared-types';
-import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification } from './utils/notification';
+import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
 
 // Services contain the core business logic like the db calls
 
@@ -250,10 +250,18 @@ export class AppService
 
 		try
 		{
+			const wereConnected = await this.dbService.areConnected(likerId, likedId);
+
 			const	removed = await this.dbService.removeLike(likerId, likedId);
 
 			if (removed)
+			{
+				// Send notification only if they were previusly connected
+				if (wereConnected)
+					await sendProfileUnlikeNotification(likedId, likerId, this.httpService);
+
 				this.logger.log(`User ${likedId} unliked by ${likerId}`);
+			}
 			else
 				this.logger.log(`Unlike for user ${likedId} by ${likerId} had no existing like to remove`);
 

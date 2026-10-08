@@ -99,8 +99,10 @@ user, and the chat function between them will be disabled.
 
 [x] remove createdAt date in profile-view ws
 
-[] unlike notification when connected
+[x] unlike notification when connected
 
 [] add somenthing like "relation" to GET /profile/:userId (what about for yourself?)
 
-[z] rename ws viewer/liker .... to otherId
+[x] rename ws viewer/liker .... to otherId
+
+[] my matches?

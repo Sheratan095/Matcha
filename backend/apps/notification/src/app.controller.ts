@@ -114,7 +114,7 @@ export class AppController
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	async notifyProfileUnlike(@Body() req: ProfileLikeNotifyDto)
 	{
-		return ( await this.appService.notifyProfileLike(req.likedId, req.likerId, req.matched));
+		return ( await this.appService.notifyProfileUnlike(req.likedId, req.likerId));
 	}
 ù
 }

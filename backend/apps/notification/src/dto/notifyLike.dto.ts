@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID, IsNotEmpty, IsBoolean } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsBoolean, IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 // One trigger DTO per notification type. Producers POST these to the internal /notify/* routes;
@@ -19,10 +19,10 @@ export class ProfileLikeNotifyDto
 	@Transform(({ value }) => value?.trim())
 	likerId: string;
 
-	@ApiProperty({example: 'true', description: 'Are the users matched? (true if the liker has also liked the liked user)'})
+	@ApiProperty({ example: 'true', required: false, description: 'Are the users matched? (true if the liker has also liked the liked user), Empty for unlike notification' })
+	@IsOptional()
 	@IsBoolean()
-	@IsNotEmpty()
-	matched: boolean;
+	matched?: boolean;
 }
 
 export class ProfileLikeNotifyResponseDto

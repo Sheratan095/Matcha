@@ -55,3 +55,22 @@ export async function sendProfileLikeNotification(recipientId: string, likerId: 
 		throw err;
 	}
 }
+
+export async function sendProfileUnlikeNotification(recipientId: string, likerId: string, httpService: HttpService)
+{
+	try
+	{
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/notify/profile-unlike`,
+		{
+			// Map the name so DTO doesn't reject it
+			likedId: recipientId,
+			likerId,
+		}).toPromise();
+	}
+	catch (err)
+	{
+		console.log(err);
+		// Rethrow: the caller (profile app.service) keeps this non-blocking and just warns.
+		throw err;
+	}
+}

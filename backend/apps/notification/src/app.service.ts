@@ -102,4 +102,28 @@ export class AppService
 
 		return ({ delivered });
 	}
+
+	// Just send the notification to both users if they were connected, and send the UNMATCHED event to both of them.
+	async notifyProfileUnlike(unlikedId: string, unlikerId: string)
+	{
+		const payloadToUnliker: StdPayload =
+		{
+			userId:            unlikedId,
+			username:          await this.dbService.getUsernameById(unlikedId),
+			profilePictureUrl: await this.dbService.getProfilePictureUrl(unlikedId),
+		};
+
+		const payloadToUnliked: StdPayload =
+		{
+			userId:            unlikerId,
+			username:          await this.dbService.getUsernameById(unlikerId),
+			profilePictureUrl: await this.dbService.getProfilePictureUrl(unlikerId),
+		};
+
+		this.wsGateway.sendToUser(unlikerId, NotificationType.UNMATCHED, payloadToUnliker);
+		this.wsGateway.sendToUser(unlikedId, NotificationType.UNMATCHED, payloadToUnliked);
+
+		this.logger.log('notifyProfileUnlike: sent UNMATCHED notification to users ' + unlikerId + ' and ' + unlikedId);
+
+	}
 }
