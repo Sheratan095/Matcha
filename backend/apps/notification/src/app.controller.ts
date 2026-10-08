@@ -105,4 +105,16 @@ export class AppController
 		return ( await this.appService.notifyProfileLike(req.likedId, req.likerId, req.matched));
 	}
 
+	@Post('notify/profile-unlike')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Notify a profile like - INTERNAL 🔒', description: "Pushes a 'profile-like' notification to the liked user over WebSocket (queued if they are offline)." })
+	@ApiBody({ type: ProfileLikeNotifyDto })
+	@ApiResponse({ status: 200, type: ProfileLikeNotifyResponseDto, description: 'Notification delivered or queued' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	async notifyProfileUnlike(@Body() req: ProfileLikeNotifyDto)
+	{
+		return ( await this.appService.notifyProfileLike(req.likedId, req.likerId, req.matched));
+	}
+ù
 }

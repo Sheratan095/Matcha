@@ -57,7 +57,7 @@
 
 [x] Trim all dtos
 
-[] RATE LIMITING
+[] RATE LIMITING (also in garage)
 
 [x] pending noiificaiton
 
@@ -68,15 +68,11 @@ user, and the chat function between them will be disabled.
 
 [x] ALLOW JUST AUTHENTICATED USER TO CONNECT TO WS
 
-[] should the user be able to make request also with non-completed profile??
-
 [x] UserID UUID string or int?? IN WHOLE PROJECT
 
 [x] wtf is photo position??
 
 [x] verify user completition and check that the api isn't callable from out
-
-[] reasons for not completed profile??
 
 [x] /profile/viewers should return also name and profile pic link?
 
@@ -103,6 +99,8 @@ user, and the chat function between them will be disabled.
 
 [x] remove createdAt date in profile-view ws
 
-[] get my likes should not include the user already connected
-
 [] unlike notification when connected
+
+[] add somenthing like "relation" to GET /profile/:userId (what about for yourself?)
+
+[] rename ws viewer/liker .... to otherId

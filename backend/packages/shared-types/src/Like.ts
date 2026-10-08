@@ -36,3 +36,24 @@ export interface IMatched
 	username: string;
 	profilePictureUrl: string | null;
 }
+
+export interface IUnLike
+{
+	unLikerId: string;
+	username: string;
+	profilePictureUrl: string | null;
+}
+
+export class Unike implements Unike
+{
+	unLikerId: string;
+	username: string;
+	profilePictureUrl: string | null;
+
+	constructor(data: Unike)
+	{
+		this.unLikerId           = data.unLikerId;
+		this.username          = data.username;
+		this.profilePictureUrl = data.profilePictureUrl;
+	}
+}
