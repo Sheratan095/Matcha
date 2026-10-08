@@ -8,6 +8,7 @@ import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteEr
 import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
 import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
 import { GetMyLikesResponseDto } from './dto/GetMyLikes.dto';
+import { GetMatchesResponseDto, GetMatchesDto, GetMatchesErrorDto } from './dto/getMatches.dto';
 import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
 import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
@@ -88,6 +89,19 @@ export class AppController
 		const likes = await this.appService.getMyLikes(userId);
 
 		return ({ likes });
+	}
+
+	@Get('matches')
+	@ApiOperation({ summary: 'Get my matches', description: 'Returns the users the authenticated user is connected to (mutual like).' })
+	@ApiResponse({ status: 200, type: GetMatchesResponseDto, description: 'Matches retrieved successfully' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: GetMatchesErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getMyMatches(@CurrentUser() userId: string)
+	{
+		const matches = await this.appService.getMyMatches(userId);
+
+		return ({ matches });
 	}
 
 	// Declared before the ':userId' route below, otherwise '/interests' would be captured as a userId.

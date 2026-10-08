@@ -484,4 +484,24 @@ export class DbService implements OnModuleInit
 
 		return (result.rows.map(row => StdPayload.fromViewData(row)));
 	}
+
+	// Lists the users userId is connected to (a mutual like exists in both directions). `mine`
+	// are the likes userId gave; `theirs` is the reciprocal like back. The PK on (liker_id,
+	// liked_id) guarantees at most one row per direction, so each connection appears once with
+	// no need for DISTINCT. Joins username + profile picture of the other user, served by the
+	// (liker_id, liked_id) PK one way and idx_likes_liked_id the other.
+	async getMatches(userId: string): Promise<StdPayload[]>
+	{
+		const result = await this.pool.query(
+			`SELECT other.id AS connection_id, other.username, up.url AS profile_picture_url
+			 FROM likes mine
+			 INNER JOIN likes theirs ON theirs.liker_id = mine.liked_id AND theirs.liked_id = mine.liker_id
+			 INNER JOIN users other ON other.id = mine.liked_id
+			 LEFT JOIN user_pictures up ON up.user_id = mine.liked_id AND up.is_profile
+			 WHERE mine.liker_id = $1`,
+			[userId]
+		);
+
+		return (result.rows.map(row => StdPayload.fromConnectionData(row)));
+	}
 }

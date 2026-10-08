@@ -105,4 +105,12 @@ user, and the chat function between them will be disabled.
 
 [x] rename ws viewer/liker .... to otherId
 
-[] my matches?
+[x] my matches?
+
+[] check what goes on with stdPayload in case of no profile pic set
+
+[] check if ther's a way to use the stdPayload also in some Dto
+
+[] fromViewData/fromLikeData read camelCase keys (row.userId, row.profilePictureUrl) that pg never emits, so /likes and /viewers currently return those two fields as undefined. One-line fix each (read row.viewer_id/row.liker_id + row.profile_picture_url), keeping them separate as you want — want me to apply it?
+
+[] /notify/profile-like returns 400 — the profile producer sends recipientId but notifyLike.dto.ts requires likedId. I was interrupted before fixing profile/utils/notification.ts. Want that fix now too?

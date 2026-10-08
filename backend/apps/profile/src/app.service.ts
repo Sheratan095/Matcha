@@ -173,6 +173,22 @@ export class AppService
 		}
 	}
 
+	// Returns the users userId is connected to (mutual like).
+	async getMyMatches(userId: string): Promise<StdPayload[]>
+	{
+		try
+		{
+			this.logger.log(`Matches requested for user ID ${userId}`);
+
+			return (await this.dbService.getMatches(userId));
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error fetching matches for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch matches');
+		}
+	}
+
 	// Flags reportedId as a fake account on behalf of reporterId. Idempotent: reporting the
 	// same user twice still resolves successfully, so the client never learns whether a prior
 	// report existed.
