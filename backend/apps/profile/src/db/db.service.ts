@@ -502,6 +502,6 @@ export class DbService implements OnModuleInit
 			[userId]
 		);
 
-		return (result.rows.map(row => StdPayload.fromConnectionData(row)));
+		return (result.rows.map(row => StdPayload.fromMatchData(row)));
 	}
 }

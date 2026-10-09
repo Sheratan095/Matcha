@@ -43,7 +43,7 @@ export class StdPayload implements IStdPayload
 
 	// A connection is the "other" user in a mutual like; the query aliases their id as
 	// connection_id (see DbService.getConnections).
-	static fromConnectionData(row: any): StdPayload
+	static fromMatchData(row: any): StdPayload
 	{
 		return (new StdPayload({
 			userId:            row.connection_id,
