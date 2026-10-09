@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS profiles (
 	first_name VARCHAR(50),
 	last_name VARCHAR(50),
 
+	latitude DOUBLE PRECISION,
+	longitude DOUBLE PRECISION,
+
 	-- ON DELETE CASCADE ENSURES THAT IF A USER IS DELETED FROM THE "users" TABLE, THEIR ASSOCIATED PROFILE IS ALSO DELETED.
 	--	it's possible because profile and auth aren in the same db, just in different schemas, so we can reference the users table here.
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

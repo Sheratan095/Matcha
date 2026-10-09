@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AppService } from './app.service';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
@@ -15,6 +15,7 @@ import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterest
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 import { IsOnlineDto, IsOnlineResponseDto, IsOnlineErrorDto } from './dto/is_online';
 import { ReportUserDto, ReportUserErrorDto } from './dto/reportUser.dto';
+import { UpdateLocationDto, UpdateLocationResponseDto, UpdateLocationErrorDto } from './dto/updateLocation.dto';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -147,6 +148,21 @@ export class AppController
 		const { interests, ...fields } = body;
 
 		return (await this.appService.updateProfile(userId, fields, interests));
+	}
+
+	@Put('location')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Update my location', description: "Stores the authenticated user's location coordinates (from a map pin or GPS). Used by the matching algorithm; the frontend reverse-geocodes for a label when needed." })
+	@ApiBody({ type: UpdateLocationDto })
+	@ApiResponse({ status: 200, type: UpdateLocationResponseDto, description: 'Location updated successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid coordinates' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: UpdateLocationErrorDto, description: 'Profile not found' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async updateLocation(@Body() body: UpdateLocationDto, @CurrentUser() userId: string)
+	{
+		return (await this.appService.updateLocation(userId, body.latitude, body.longitude));
 	}
 
 	@Post('pictures')

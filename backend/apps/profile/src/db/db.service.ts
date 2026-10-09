@@ -380,6 +380,20 @@ export class DbService implements OnModuleInit
 		return (this.getProfile(userId));
 	}
 
+	// Stores the user's location coordinates (set client-side from a map pin or GPS). Returns
+	// false when no profile row exists for the user (should not happen for an authenticated user).
+	async updateLocation(userId: string, latitude: number, longitude: number): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`UPDATE profiles
+			 SET latitude = $2, longitude = $3, updated_at = NOW()
+			 WHERE user_id = $1`,
+			[userId, latitude, longitude]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+
 	async addProfileView(viewerId: string, viewedId: string): Promise<void>
 	{
 		await this.pool.query(

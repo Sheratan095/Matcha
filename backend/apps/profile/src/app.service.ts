@@ -162,6 +162,34 @@ export class AppService
 		}
 	}
 
+	// Stores the user's location (coordinates from a client-side map pin or GPS). The backend keeps
+	// only the raw coordinates; the frontend reverse-geocodes for a label when it needs one.
+	async updateLocation(userId: string, latitude: number, longitude: number)
+	{
+		try
+		{
+			const	updated = await this.dbService.updateLocation(userId, latitude, longitude);
+
+			if (!updated)
+			{
+				this.logger.warn(`Profile not found for user ID ${userId} during location update`);
+				throw new NotFoundException('Profile not found');
+			}
+
+			this.logger.log(`Location updated for user ID ${userId}`);
+
+			return ({ updated: true });
+		}
+		catch (error: any)
+		{
+			if (error instanceof HttpException)
+				throw (error);
+
+			this.logger.error(`Error updating location for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to update location');
+		}
+	}
+
 	// Returns the users who viewed the profile of userId (the "who viewed my profile" list).
 	async getProfileViewers(userId: string): Promise<StdPayload[]>
 	{
