@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { IsUUID, IsOptional } from 'class-validator';
 import { FullProfileDto } from './fullProfile.dto';
 
 export class GetProfileDto
@@ -9,8 +9,23 @@ export class GetProfileDto
 	userId: string;
 }
 
+export class ProfileRelationDto
+{
+	@ApiProperty({ example: true, description: 'The logged-in user has liked this profile' })
+	liked: boolean;
+
+	@ApiProperty({ example: false, description: 'This profile has liked the logged-in user' })
+	likesYou: boolean;
+
+	@ApiProperty({ example: false, description: 'Mutual like: the two users are matched' })
+	matched: boolean;
+}
+
 export class GetProfileResponseDto extends FullProfileDto
 {
+	@ApiProperty({ type: ProfileRelationDto, description: 'Like/match relation between the logged-in user and this profile' })
+	@IsOptional()
+	relation: ProfileRelationDto;
 }
 
 export class GetProfileErrorDto

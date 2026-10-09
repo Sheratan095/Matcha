@@ -454,6 +454,25 @@ export class DbService implements OnModuleInit
 		return (result.rows[0].connected === true);
 	}
 
+	// Directional like state between a viewer and a target, in a single round trip:
+	// `liked`    = the viewer has liked the target (viewer -> target),
+	// `likesYou` = the target has liked the viewer (target -> viewer).
+	// The caller derives "matched" as liked && likesYou.
+	async getLikeRelation(viewerId: string, targetId: string): Promise<{ liked: boolean; likesYou: boolean }>
+	{
+		const result = await this.pool.query(
+			`SELECT
+				EXISTS(SELECT 1 FROM likes WHERE liker_id = $1 AND liked_id = $2) AS liked,
+				EXISTS(SELECT 1 FROM likes WHERE liker_id = $2 AND liked_id = $1) AS likes_you`,
+			[viewerId, targetId]
+		);
+
+		return ({
+			liked:    result.rows[0].liked === true,
+			likesYou: result.rows[0].likes_you === true,
+		});
+	}
+
 	// Lists the users who liked likedId (the "who liked me" view). Mirrors getProfileViewers:
 	// joins the username and the profile picture (LEFT JOIN, so a user with no picture still
 	// shows up with a null url). Filters on liked_id, served by idx_likes_liked_id.

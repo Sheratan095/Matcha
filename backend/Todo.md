@@ -116,3 +116,7 @@ user, and the chat function between them will be disabled.
 [x] /notify/profile-like returns 400 — the profile producer sends recipientId but notifyLike.dto.ts requires likedId. I was interrupted before fixing profile/utils/notification.ts. Want that fix now too?
 
 [] block internal endpointss!!!
+
+[] removing is online from get my profile?? right as it's done for relations in get profile dto
+
+[] get likes shuld include also when they're metched??

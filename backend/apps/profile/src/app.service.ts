@@ -104,6 +104,18 @@ export class AppService
 			// a failure there must degrade to "offline", never break the profile fetch.
 			let	isOnline = await this.isUserOnline(userId);
 
+			// When viewing someone else's profile, tell the frontend the like/match relation so it
+			// can render the like button state and a "likes you" / "matched" badge. (A BLOCK WOULD
+			// HAVE 404'D ABOVE, so a visible profile is never blocked — no block flag is needed.)
+			if (userId !== requestorUserId)
+			{
+				const	{ liked, likesYou } = await this.dbService.getLikeRelation(requestorUserId, userId);
+
+				const	relation = { liked, likesYou, matched: liked && likesYou };
+
+				return ({ ...profile, isOnline, relation });
+			}
+
 			return ({ ...profile, isOnline });
 		}
 		catch (error: any)
@@ -248,13 +260,13 @@ export class AppService
 
 			if (created)
 			{
-				this.logger.log(`User ${likedId} liked by ${likerId}`);
+				// Check if the like resulted in a match (mutual like).
+				const nowMatched = await this.dbService.areConnected(likerId, likedId);
+
+				this.logger.log(`User ${likedId} liked by ${likerId}; Matched: ${nowMatched}`);
 
 				// Send notification just if a new like was created
-
-				// Check if the like resulted in a match (mutual like) and send a notification to the liked user.
 				// If they are matched, another notitification will be sent to both users ws: MATCHED event.
-				const nowMatched = await this.dbService.areConnected(likerId, likedId);
 				await sendProfileLikeNotification(likedId, likerId, nowMatched, this.httpService);
 			}
 			else
