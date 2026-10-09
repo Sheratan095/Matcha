@@ -107,7 +107,7 @@ user, and the chat function between them will be disabled.
 
 [x] my matches?
 
-[] check what goes on with stdPayload in case of no profile pic set
+[x] check what goes on with stdPayload in case of no profile pic set
 
 [x] check if ther's a way to use the stdPayload also in some Dto
 

@@ -63,7 +63,7 @@ export class FullProfileDto
 	isOnline: boolean;
 
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z', nullable: true, description: 'When the user was last online; null if they have never connected' })
-	lastOnline: Date | null;
+	lastSeen: Date | null;
 
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
 	createdAt: Date;

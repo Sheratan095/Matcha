@@ -18,6 +18,9 @@ export class StdPayload implements IStdPayload
 		this.profilePictureUrl = data.profilePictureUrl;
 	}
 
+	// all profile_pics are ?? null, so we can safely use the nullish coalescing operator here.
+	//	=> so the frontend never receives UNDEFINED for profilePictureUrl
+
 	// getProfileViewers selects pv.viewer_id, u.username, up.url AS profile_picture_url.
 	static fromViewData(row: any): StdPayload
 	{

@@ -46,7 +46,7 @@ export class DbService implements OnModuleInit
 	async getProfile(userId: string): Promise<Profile | null>
 	{
 		const result = await this.pool.query(
-			`SELECT p.user_id, u.username, p.first_name, p.last_name, p.gender, p.sexual_preference, p.biography, p.last_seen AS last_online, p.created_at, p.updated_at
+			`SELECT p.user_id, u.username, p.first_name, p.last_name, p.gender, p.sexual_preference, p.biography, p.last_seen, p.created_at, p.updated_at
 			 FROM profiles p
 			 INNER JOIN users u ON u.id = p.user_id
 			 WHERE p.user_id = $1`,
