@@ -121,4 +121,4 @@ user, and the chat function between them will be disabled.
 
 [x] get likes shuld include also when they're metched??
 
-[] fix timezone
+[x] fix timezone SAVED IN UTC ON DB, FRONTEND SHOULD 'cast' to the correct TIME ZONE
