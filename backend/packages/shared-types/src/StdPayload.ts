@@ -18,21 +18,23 @@ export class StdPayload implements IStdPayload
 		this.profilePictureUrl = data.profilePictureUrl;
 	}
 
+	// getProfileViewers selects pv.viewer_id, u.username, up.url AS profile_picture_url.
 	static fromViewData(row: any): StdPayload
 	{
 		return (new StdPayload({
-			userId: row.userId,
-			username: row.username,
-			profilePictureUrl: row.profilePictureUrl,
+			userId:            row.viewer_id,
+			username:          row.username,
+			profilePictureUrl: row.profile_picture_url ?? null,
 		}));
 	}
 
+	// getLikers selects l.liker_id, u.username, up.url AS profile_picture_url.
 	static fromLikeData(row: any): StdPayload
 	{
 		return (new StdPayload({
-			userId: row.userId,
-			username: row.username,
-			profilePictureUrl: row.profilePictureUrl,
+			userId:            row.liker_id,
+			username:          row.username,
+			profilePictureUrl: row.profile_picture_url ?? null,
 		}));
 	}
 

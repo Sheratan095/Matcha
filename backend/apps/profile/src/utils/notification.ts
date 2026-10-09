@@ -36,40 +36,36 @@ export async function checkIsUserOnline(userId: string, httpService: HttpService
 	}
 }
 
-export async function sendProfileLikeNotification(recipientId: string, likerId: string, matched: boolean, httpService: HttpService)
+export async function sendProfileLikeNotification(likedId: string, likerId: string, matched: boolean, httpService: HttpService)
 {
 	try
 	{
 		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/notify/profile-like`,
 		{
-			// Map the name so DTO doesn't reject it
-			likedId: recipientId,
+			likedId,
 			likerId,
 			matched,
 		}).toPromise();
 	}
 	catch (err)
 	{
-		console.log(err);
 		// Rethrow: the caller (profile app.service) keeps this non-blocking and just warns.
 		throw err;
 	}
 }
 
-export async function sendProfileUnlikeNotification(recipientId: string, likerId: string, httpService: HttpService)
+export async function sendProfileUnlikeNotification(likedId: string, likerId: string, httpService: HttpService)
 {
 	try
 	{
 		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/notify/profile-unlike`,
 		{
-			// Map the name so DTO doesn't reject it
-			likedId: recipientId,
+			likedId,
 			likerId,
 		}).toPromise();
 	}
 	catch (err)
 	{
-		console.log(err);
 		// Rethrow: the caller (profile app.service) keeps this non-blocking and just warns.
 		throw err;
 	}
