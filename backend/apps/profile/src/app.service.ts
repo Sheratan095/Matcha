@@ -100,15 +100,17 @@ export class AppService
 				this.logger.log(`Profile view recorded for user ID ${userId} by viewer ${requestorUserId}`);
 			}
 
-			// Online status lives in the notification service. Keep it non-blocking:
-			// a failure there must degrade to "offline", never break the profile fetch.
-			let	isOnline = await this.isUserOnline(userId);
-
-			// When viewing someone else's profile, tell the frontend the like/match relation so it
-			// can render the like button state and a "likes you" / "matched" badge. (A BLOCK WOULD
-			// HAVE 404'D ABOVE, so a visible profile is never blocked — no block flag is needed.)
+			// Only when viewing someone else's profile: add the online status and the like/match
+			// relation so the frontend can render presence, the like button state and a
+			// "likes you" / "matched" badge. Both are meaningless on your own profile — and
+			// isOnline would otherwise cost a notification-service round trip on every self-fetch.
+			// (A block would have 404'd above, so a visible profile is never blocked.)
 			if (userId !== requestorUserId)
 			{
+				// Online status lives in the notification service. Keep it non-blocking:
+				// a failure there degrades to "offline", never breaks the profile fetch.
+				const	isOnline = await this.isUserOnline(userId);
+
 				const	{ liked, likesYou } = await this.dbService.getLikeRelation(requestorUserId, userId);
 
 				const	relation = { liked, likesYou, matched: liked && likesYou };
@@ -116,7 +118,7 @@ export class AppService
 				return ({ ...profile, isOnline, relation });
 			}
 
-			return ({ ...profile, isOnline });
+			return (profile);
 		}
 		catch (error: any)
 		{

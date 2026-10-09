@@ -23,6 +23,9 @@ export class ProfileRelationDto
 
 export class GetProfileResponseDto extends FullProfileDto
 {
+	@ApiProperty({ example: true, description: 'Whether this user is currently online' })
+	isOnline: boolean;
+
 	@ApiProperty({ type: ProfileRelationDto, description: 'Like/match relation between the logged-in user and this profile' })
 	@IsOptional()
 	relation: ProfileRelationDto;
