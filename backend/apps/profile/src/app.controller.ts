@@ -9,6 +9,7 @@ import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto, GetMyProfileR
 import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
 import { GetMyLikesResponseDto } from './dto/GetMyLikes.dto';
 import { GetMatchesResponseDto, GetMatchesDto, GetMatchesErrorDto } from './dto/getMatches.dto';
+import { GetBlockedResponseDto, GetBlockedErrorDto } from './dto/getBlocked.dto';
 import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
 import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
@@ -102,6 +103,19 @@ export class AppController
 		const matches = await this.appService.getMyMatches(userId);
 
 		return ({ matches });
+	}
+
+	@Get('blocks')
+	@ApiOperation({ summary: 'Get my blocked users', description: 'Returns the users the authenticated user has blocked.' })
+	@ApiResponse({ status: 200, type: GetBlockedResponseDto, description: 'Blocked users retrieved successfully' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: GetBlockedErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getBlockedUsers(@CurrentUser() userId: string)
+	{
+		const blocks = await this.appService.getBlockedUsers(userId);
+
+		return ({ blocks });
 	}
 
 	// Declared before the ':userId' route below, otherwise '/interests' would be captured as a userId.
@@ -280,5 +294,32 @@ export class AppController
 	async unlikeUser(@Param('userId', ParseUUIDPipe) likedId: string, @CurrentUser() userId: string)
 	{
 		await this.appService.unlikeUser(likedId, userId);
+	}
+
+	@Post(':userId/block')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Block a user', description: 'Blocks the target user. Mutual effect, dissolves any existing match, and suppresses notifications both ways. Idempotent.' })
+	@ApiResponse({ status: 200, description: 'User blocked successfully' })
+	@ApiResponse({ status: 400, description: 'Cannot block yourself / invalid user id' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, description: 'User not found' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async blockUser(@Param('userId', ParseUUIDPipe) blockedId: string, @CurrentUser() userId: string)
+	{
+		await this.appService.blockUser(blockedId, userId);
+	}
+
+	@Delete(':userId/block')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Unblock a user', description: 'Removes a block. Idempotent: unblocking a user that was not blocked has no effect. The previous match is not restored.' })
+	@ApiResponse({ status: 200, description: 'User unblocked successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid user id' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async unblockUser(@Param('userId', ParseUUIDPipe) blockedId: string, @CurrentUser() userId: string)
+	{
+		await this.appService.unblockUser(blockedId, userId);
 	}
 }

@@ -464,7 +464,12 @@ export class DbService implements OnModuleInit
 			 FROM likes l
 			 INNER JOIN users u ON l.liker_id = u.id
 			 LEFT JOIN user_pictures up ON up.user_id = l.liker_id AND up.is_profile
-			 WHERE l.liked_id = $1`,
+			 WHERE l.liked_id = $1
+			   AND NOT EXISTS (
+				SELECT 1 FROM blocks bl
+				WHERE (bl.blocker_id = $1 AND bl.blocked_id = l.liker_id)
+				   OR (bl.blocker_id = l.liker_id AND bl.blocked_id = $1)
+			   )`,
 			[likedId]
 		);
 
@@ -478,7 +483,12 @@ export class DbService implements OnModuleInit
 			 FROM profile_views pv
 			 INNER JOIN users u ON pv.viewer_id = u.id
 			 LEFT JOIN user_pictures up ON up.user_id = pv.viewer_id AND up.is_profile
-			 WHERE pv.viewed_id = $1`,
+			 WHERE pv.viewed_id = $1
+			   AND NOT EXISTS (
+				SELECT 1 FROM blocks bl
+				WHERE (bl.blocker_id = $1 AND bl.blocked_id = pv.viewer_id)
+				   OR (bl.blocker_id = pv.viewer_id AND bl.blocked_id = $1)
+			   )`,
 			[viewedId]
 		);
 
@@ -498,10 +508,115 @@ export class DbService implements OnModuleInit
 			 INNER JOIN likes theirs ON theirs.liker_id = mine.liked_id AND theirs.liked_id = mine.liker_id
 			 INNER JOIN users other ON other.id = mine.liked_id
 			 LEFT JOIN user_pictures up ON up.user_id = mine.liked_id AND up.is_profile
-			 WHERE mine.liker_id = $1`,
+			 WHERE mine.liker_id = $1
+			   AND NOT EXISTS (
+				SELECT 1 FROM blocks bl
+				WHERE (bl.blocker_id = $1 AND bl.blocked_id = other.id)
+				   OR (bl.blocker_id = other.id AND bl.blocked_id = $1)
+			   )`,
 			[userId]
 		);
 
 		return (result.rows.map(row => StdPayload.fromMatchData(row)));
+	}
+
+	// Blocks blockedId on behalf of blockerId and dissolves any relationship between the pair.
+	// Runs in a transaction: records whether the two were matched (mutual like) BEFORE deleting,
+	// inserts the block idempotently (ON CONFLICT DO NOTHING), then deletes the likes in BOTH
+	// directions so an existing match ends immediately. Returns { created, wasMatched } so the
+	// service can push an unmatch notification only when a match actually existed. A missing
+	// blockedId trips the users(id) foreign key (error code 23503), translated into a 404.
+	async addBlock(blockerId: string, blockedId: string): Promise<{ created: boolean; wasMatched: boolean }>
+	{
+		const client = await this.pool.connect();
+
+		try
+		{
+			await client.query('BEGIN');
+
+			const matchResult = await client.query(
+				`SELECT EXISTS (
+					SELECT 1 FROM likes a
+					INNER JOIN likes b
+						ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
+					WHERE a.liker_id = $1 AND a.liked_id = $2
+				 ) AS connected`,
+				[blockerId, blockedId]
+			);
+			const wasMatched = matchResult.rows[0].connected === true;
+
+			const blockResult = await client.query(
+				`INSERT INTO blocks (blocker_id, blocked_id)
+				 VALUES ($1, $2)
+				 ON CONFLICT (blocker_id, blocked_id) DO NOTHING`,
+				[blockerId, blockedId]
+			);
+
+			// Dissolve the relationship: remove likes in both directions between the pair.
+			await client.query(
+				`DELETE FROM likes
+				 WHERE (liker_id = $1 AND liked_id = $2)
+				    OR (liker_id = $2 AND liked_id = $1)`,
+				[blockerId, blockedId]
+			);
+
+			await client.query('COMMIT');
+
+			return ({ created: (blockResult.rowCount ?? 0) > 0, wasMatched });
+		}
+		catch (err)
+		{
+			await client.query('ROLLBACK');
+			throw (err);
+		}
+		finally
+		{
+			client.release();
+		}
+	}
+
+	// Removes a block. Idempotent: unblocking when no block exists is a no-op. Only the caller's
+	// own block row (blocker_id = blockerId) is removed; a block the other user holds is untouched.
+	async removeBlock(blockerId: string, blockedId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`DELETE FROM blocks
+			 WHERE blocker_id = $1 AND blocked_id = $2`,
+			[blockerId, blockedId]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+
+	// True when a block exists in EITHER direction between the two users (mutual effect gate for
+	// likes and profile views).
+	async isBlocked(userAId: string, userBId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`SELECT EXISTS (
+				SELECT 1 FROM blocks
+				WHERE (blocker_id = $1 AND blocked_id = $2)
+				   OR (blocker_id = $2 AND blocked_id = $1)
+			 ) AS blocked`,
+			[userAId, userBId]
+		);
+
+		return (result.rows[0].blocked === true);
+	}
+
+	// Lists the users userId has blocked (directional: blocker_id = userId), for the "my blocks"
+	// view. Mirrors getLikers: username + profile picture of the blocked user.
+	async getBlockedUsers(userId: string): Promise<StdPayload[]>
+	{
+		const result = await this.pool.query(
+			`SELECT b.blocked_id, u.username, up.url AS profile_picture_url
+			 FROM blocks b
+			 INNER JOIN users u ON b.blocked_id = u.id
+			 LEFT JOIN user_pictures up ON up.user_id = b.blocked_id AND up.is_profile
+			 WHERE b.blocker_id = $1`,
+			[userId]
+		);
+
+		return (result.rows.map(row => StdPayload.fromBlockData(row)));
 	}
 }

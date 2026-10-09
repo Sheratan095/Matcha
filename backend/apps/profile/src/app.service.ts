@@ -71,6 +71,13 @@ export class AppService
 	{
 		try
 		{
+			// Check block before fetching the profile
+			if (userId !== requestorUserId && await this.dbService.isBlocked(userId, requestorUserId))
+			{
+				this.logger.warn(`Profile ${userId} hidden from ${requestorUserId} due to a block`);
+				throw new NotFoundException('Profile not found');
+			}
+
 			const profile: Profile | null = await this.dbService.getProfile(userId);
 
 			if (!profile)
@@ -226,6 +233,15 @@ export class AppService
 		if (likedId === likerId)
 			throw new BadRequestException('You cannot like yourself');
 
+		// A block in either direction hides the target: report it as not found — identical to a
+		// nonexistent user (the FK-miss 404 below) — so a block is never distinguishable from
+		// "user doesn't exist", matching how getProfile hides a blocked profile.
+		if (await this.dbService.isBlocked(likerId, likedId))
+		{
+			this.logger.warn(`Like attempt from ${likerId} to ${likedId} blocked due to a block`);
+			throw new NotFoundException('User not found');
+		}
+
 		try
 		{
 			const	created = await this.dbService.addLike(likerId, likedId);
@@ -290,6 +306,82 @@ export class AppService
 		{
 			this.logger.error(`Error unliking user ${likedId} by ${likerId}`, error);
 			throw new InternalServerErrorException('Failed to unlike user');
+		}
+	}
+
+	// Blocks blockedId on behalf of blockerId. Mutual effect + dissolves any existing match.
+	// Idempotent: blocking the same user twice still resolves successfully.
+	async blockUser(blockedId: string, blockerId: string)
+	{
+		if (blockedId === blockerId)
+			throw new BadRequestException('You cannot block yourself');
+
+		try
+		{
+			const	{ created, wasMatched } = await this.dbService.addBlock(blockerId, blockedId);
+
+			if (created)
+				this.logger.log(`User ${blockedId} blocked by ${blockerId}`);
+			else
+				this.logger.log(`Duplicate block for user ${blockedId} by ${blockerId} ignored`);
+
+			// If a match was dissolved, clear both sides' match/chat views with the existing
+			// unmatch push. To the blocked user this is indistinguishable from a normal unmatch,
+			// so the block itself is never revealed.
+			if (wasMatched)
+				await sendProfileUnlikeNotification(blockedId, blockerId, this.httpService);
+
+			return ({ blocked: true });
+		}
+		catch (error: any)
+		{
+			// Foreign key violation: the blocked user does not exist.
+			if (error && error.code === '23503')
+				throw new NotFoundException('User not found');
+
+			this.logger.error(`Error blocking user ${blockedId} by ${blockerId}`, error);
+			throw new InternalServerErrorException('Failed to block user');
+		}
+	}
+
+	// Removes a block. Idempotent: unblocking a user that wasn't blocked still resolves. The
+	// previous match is NOT restored — the users must like each other again.
+	async unblockUser(blockedId: string, blockerId: string)
+	{
+		if (blockedId === blockerId)
+			throw new BadRequestException('You cannot unblock yourself');
+
+		try
+		{
+			const	removed = await this.dbService.removeBlock(blockerId, blockedId);
+
+			if (removed)
+				this.logger.log(`User ${blockedId} unblocked by ${blockerId}`);
+			else
+				this.logger.log(`Unblock for user ${blockedId} by ${blockerId} had no existing block to remove`);
+
+			return ({ blocked: false });
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error unblocking user ${blockedId} by ${blockerId}`, error);
+			throw new InternalServerErrorException('Failed to unblock user');
+		}
+	}
+
+	// Returns the users blocked by userId (the "my blocks" list).
+	async getBlockedUsers(userId: string): Promise<StdPayload[]>
+	{
+		try
+		{
+			this.logger.log(`Blocked users requested for user ID ${userId}`);
+
+			return (await this.dbService.getBlockedUsers(userId));
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error fetching blocked users for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch blocked users');
 		}
 	}
 

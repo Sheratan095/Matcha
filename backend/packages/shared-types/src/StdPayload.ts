@@ -51,4 +51,14 @@ export class StdPayload implements IStdPayload
 			profilePictureUrl: row.profile_picture_url ?? null,
 		}));
 	}
+
+	// getBlockedUsers selects b.blocked_id, u.username, up.url AS profile_picture_url.
+	static fromBlockData(row: any): StdPayload
+	{
+		return (new StdPayload({
+			userId:            row.blocked_id,
+			username:          row.username,
+			profilePictureUrl: row.profile_picture_url ?? null,
+		}));
+	}
 }
