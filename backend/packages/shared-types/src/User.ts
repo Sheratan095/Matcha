@@ -73,6 +73,8 @@ export interface IProfile
 	interests: IInterestTag[];
 	pictures: IUserPicture[];
 	lastSeen: Date | null;
+	latitude: number | null;
+	longitude: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -89,6 +91,8 @@ export class Profile implements IProfile
 	interests: IInterestTag[];
 	pictures: IUserPicture[];
 	lastSeen: Date | null;
+	latitude: number | null;
+	longitude: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 
@@ -104,6 +108,8 @@ export class Profile implements IProfile
 		this.interests        = data.interests || [];
 		this.pictures         = data.pictures || [];
 		this.lastSeen         = data.lastSeen || null;
+		this.latitude         = data.latitude ?? null;
+		this.longitude        = data.longitude ?? null;
 		this.createdAt        = data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt);
 		this.updatedAt        = data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt);
 	}
@@ -121,6 +127,8 @@ export class Profile implements IProfile
 			interests,
 			pictures,
 			lastSeen:       row.last_seen ? new Date(row.last_seen) : null,
+			latitude:         row.latitude ?? null,
+			longitude:        row.longitude ?? null,
 			createdAt:        row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
 			updatedAt:        row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
 		}));

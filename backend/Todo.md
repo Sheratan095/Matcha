@@ -122,3 +122,5 @@ user, and the chat function between them will be disabled.
 [x] get likes shuld include also when they're metched??
 
 [x] fix timezone SAVED IN UTC ON DB, FRONTEND SHOULD 'cast' to the correct TIME ZONE
+
+[] find a way to don't show the exact location (using apporoximante location)??? + location tester!!
