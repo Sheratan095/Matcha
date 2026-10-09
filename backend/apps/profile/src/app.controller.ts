@@ -80,7 +80,7 @@ export class AppController
 	}
 
 	@Get('likes')
-	@ApiOperation({ summary: 'Get my likes', description: 'Returns the list of user IDs that have liked the authenticated user' })
+	@ApiOperation({ summary: 'Get my likes', description: 'Returns the list of user IDs that have liked the authenticated user, excludind the ones which has a match with' })
 	@ApiResponse({ status: 200, type: GetMyLikesResponseDto, description: 'Likes retrieved successfully' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })

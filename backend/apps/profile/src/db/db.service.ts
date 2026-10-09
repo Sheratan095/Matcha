@@ -473,9 +473,9 @@ export class DbService implements OnModuleInit
 		});
 	}
 
-	// Lists the users who liked likedId (the "who liked me" view). Mirrors getProfileViewers:
-	// joins the username and the profile picture (LEFT JOIN, so a user with no picture still
-	// shows up with a null url). Filters on liked_id, served by idx_likes_liked_id.
+	// Lists the users who liked likedId but whom likedId has NOT liked back — i.e. pending
+	// admirers, excluding matches (those live in getMatches) and blocked pairs. Mirrors
+	// getProfileViewers for the join; filters on liked_id, served by idx_likes_liked_id.
 	async getLikers(likedId: string): Promise<StdPayload[]>
 	{
 		const result = await this.pool.query(
@@ -484,6 +484,10 @@ export class DbService implements OnModuleInit
 			 INNER JOIN users u ON l.liker_id = u.id
 			 LEFT JOIN user_pictures up ON up.user_id = l.liker_id AND up.is_profile
 			 WHERE l.liked_id = $1
+			   AND NOT EXISTS (
+				SELECT 1 FROM likes mine
+				WHERE mine.liker_id = $1 AND mine.liked_id = l.liker_id
+			   )
 			   AND NOT EXISTS (
 				SELECT 1 FROM blocks bl
 				WHERE (bl.blocker_id = $1 AND bl.blocked_id = l.liker_id)

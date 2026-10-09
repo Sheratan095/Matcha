@@ -119,6 +119,6 @@ user, and the chat function between them will be disabled.
 
 [x] removing is online from get my profile?? right as it's done for relations in get profile dto
 
-[] get likes shuld include also when they're metched??
+[x] get likes shuld include also when they're metched??
 
 [] fix timezone
