@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseUUIDPipe, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { AppService } from './app.service';
 import { AuthenticatedUserGuard, CurrentUser, InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -8,6 +8,7 @@ import { CloseWsConnectionsDto } from './dto/ws_endpoints.dto';
 import { ProfileViewNotifyDto, ProfileViewNotifyResponseDto } from './dto/notifyView.dto';
 import { ProfileLikeNotifyDto, ProfileLikeNotifyResponseDto } from './dto/notifyLike.dto';
 import { ChatMessageDto, ChatMessageResponseDto } from './dto/chatMessage.dto';
+import { ChatHistoryResponseDto, ChatListResponseDto } from './dto/chat.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -117,7 +118,7 @@ export class AppController
 		return ( await this.appService.notifyProfileUnlike(req.likedId, req.likerId));
 	}
 
-	@Post('notify/message')
+	@Post('chat/message')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Send a private message', description: "Send a private message to the specified user." })
 	@ApiBody({ type: ChatMessageDto })
@@ -128,5 +129,33 @@ export class AppController
 	async notifyPrivateMessage(@Body() req: ChatMessageDto, @CurrentUser() userId: string)
 	{
 		return ( await this.appService.sendPrivateMessage(userId, req.toUserId, req.content));
+	}
+
+	@Get('chat')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'List my chats', description: 'Returns the authenticated user\'s conversations, each with the other participant and a preview of the latest message, newest first.' })
+	@ApiResponse({ status: 200, type: ChatListResponseDto, description: 'Conversation list' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getChatList(@CurrentUser() userId: string)
+	{
+		const chats = await this.appService.getChatList(userId);
+
+		return ({ chats });
+	}
+
+	@Get('chat/:userId')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Get conversation history', description: 'Returns the messages exchanged between the authenticated user and the given user, oldest first.' })
+	@ApiResponse({ status: 200, type: ChatHistoryResponseDto, description: 'Conversation history' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid user id / conversation with yourself' })
+	@ApiResponse({ status: 403, type: ErrorDto, description: 'Not matched with this user' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getChatHistory(@Param('userId', ParseUUIDPipe) otherUserId: string, @CurrentUser() userId: string)
+	{
+		const messages = await this.appService.getChatHistory(userId, otherUserId);
+
+		return ({ messages });
 	}
 }

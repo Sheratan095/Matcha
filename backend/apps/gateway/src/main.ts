@@ -188,6 +188,24 @@ async function bootstrap()
 		} as any),
 	);
 
+	// Client-facing chat history. GET /notification/chat/:userId/messages -> /chat/:userId/messages.
+	// Same dual-guard as send: inject the internal key; the global middleware injects x-user-id.
+	app.use( '/notification/chat',
+		createProxyMiddleware({
+			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			changeOrigin: true,
+			pathRewrite: { '^/': '/chat/' },
+			on:
+			{
+				proxyReq: (proxyReq: ClientRequest) =>
+				{
+					if (env.INTERNAL_KEY)
+						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
+				},
+			},
+		} as any),
+	);
+
 	// Handle the notification socket HANDSHAKE over HTTP long-polling (socket.io's
 	// fallback transport). We authenticate only the initial handshake (no sid yet);
 	// subsequent polls carry a sid and reuse the already-authenticated session.

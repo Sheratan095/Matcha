@@ -5,3 +5,4 @@ export * from './User';
 export * from './StdPayload';
 export * from './Notification';
 export * from './MessagePayload';
+export * from './ChatListItem';

@@ -148,4 +148,23 @@ export class AppService
 
 		return ({ delivered });
 	}
+
+	// Conversation history between the caller and otherUserId, oldest first. Same eligibility gate
+	// as sending (matches only; blocking dissolves the match, so it also covers blocks).
+	async getChatHistory(userId: string, otherUserId: string): Promise<MessagePayload[]>
+	{
+		if (userId === otherUserId)
+			throw new BadRequestException('You cannot open a conversation with yourself');
+
+		if (await this.dbService.areUsersConnected(userId, otherUserId) === false)
+			throw new ForbiddenException('You can only read conversations with your matches');
+
+		return (await this.dbService.getConversation(userId, otherUserId));
+	}
+
+	// Lists the caller's conversations (latest message per partner, newest first).
+	async getChatList(userId: string)
+	{
+		return (await this.dbService.getChatList(userId));
+	}
 }

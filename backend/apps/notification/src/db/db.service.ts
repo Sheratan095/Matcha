@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
 import { env } from "@repo/config";
-import { MessagePayload, SupportedLanguage } from '@repo/shared-types';
+import { MessagePayload, ChatListItem, SupportedLanguage } from '@repo/shared-types';
 import { User } from '@repo/shared-types';
 
 @Injectable()
@@ -79,6 +79,60 @@ export class DbService implements OnModuleInit
 			username:          await this.getUsernameById(senderId) ?? '',
 			profilePictureUrl: await this.getProfilePictureUrl(senderId),
 		}));
+	}
+
+	// Conversation history between two users, oldest first. Joins the sender's username + profile
+	// picture so each message carries its author (the rich MessagePayload shape), aliasing the
+	// columns to the names fromDbRow reads. The (sender_id, recipient_id, created_at) index serves
+	// both directions of the OR.
+	async getConversation(userId: string, otherUserId: string): Promise<MessagePayload[]>
+	{
+		const result = await this.pool.query(
+			`SELECT m.id AS message_id, m.content, m.created_at,
+			        m.sender_id AS user_id, u.username, up.url AS profile_picture_url
+			 FROM messages m
+			 INNER JOIN users u ON u.id = m.sender_id
+			 LEFT JOIN user_pictures up ON up.user_id = m.sender_id AND up.is_profile
+			 WHERE (m.sender_id = $1 AND m.recipient_id = $2)
+			    OR (m.sender_id = $2 AND m.recipient_id = $1)
+			 ORDER BY m.created_at ASC`,
+			[userId, otherUserId],
+		);
+
+		return (result.rows.map(row => MessagePayload.fromDbRow(row)));
+	}
+
+	// Lists the caller's conversations: one row per partner the caller has exchanged messages with,
+	// carrying the latest message of each, newest conversation first. DISTINCT ON picks the most
+	// recent message per partner; the EXISTS keeps only partners the caller is still matched with
+	// (so unmatched / blocked conversations drop off, consistent with the send/history gate).
+	async getChatList(userId: string): Promise<ChatListItem[]>
+	{
+		const result = await this.pool.query(
+			`SELECT last.partner_id AS user_id, u.username, up.url AS profile_picture_url,
+			        last.content AS last_message, last.created_at AS last_created_at, last.sender_id AS last_sender_id
+			 FROM (
+				SELECT DISTINCT ON (partner_id) partner_id, content, created_at, sender_id
+				FROM (
+					SELECT CASE WHEN sender_id = $1 THEN recipient_id ELSE sender_id END AS partner_id,
+					       content, created_at, sender_id
+					FROM messages
+					WHERE sender_id = $1 OR recipient_id = $1
+				) conv
+				ORDER BY partner_id, created_at DESC
+			 ) last
+			 INNER JOIN users u ON u.id = last.partner_id
+			 LEFT JOIN user_pictures up ON up.user_id = last.partner_id AND up.is_profile
+			 WHERE EXISTS (
+				SELECT 1 FROM likes a
+				INNER JOIN likes b ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
+				WHERE a.liker_id = $1 AND a.liked_id = last.partner_id
+			 )
+			 ORDER BY last.created_at DESC`,
+			[userId],
+		);
+
+		return (result.rows.map(row => ChatListItem.fromDbRow(row)));
 	}
 
 	// Two users are "connected" (may chat) when a mutual like exists — the same self-join the
