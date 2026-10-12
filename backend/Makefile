@@ -42,6 +42,9 @@ up:
 down:
 	pnpm docker:down
 
+db-migrate:
+	./infra/garage/init.sh
+
 # Reset Database: Stop containers, remove volumes, and start again to trigger init scripts.
 # Garage volumes are wiped too: the picture URLs lived in the database that was just reset.
 db-reset:

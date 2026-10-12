@@ -62,16 +62,19 @@ export class DbService implements OnModuleInit
 	async storeMessage(senderId: string, recipientId: string, content: string): Promise<MessagePayload>
 	{
 		const result = await this.pool.query(
-			`INSERT INTO messages (sender_id, recipient_id, content, timestamp)
-			 VALUES ($1, $2, $3, NOW())
-			 RETURNING id, timestamp`,
+			`INSERT INTO messages (sender_id, recipient_id, content)
+			 VALUES ($1, $2, $3)
+			 RETURNING id, created_at`,
 			[senderId, recipientId, content],
 		);
 
+		// The INSERT can only return columns of the messages table, so username / profile picture
+		// (which live in users / user_pictures) are fetched separately and the payload is built by
+		// hand rather than via fromDbRow. The sender always exists, so username is never empty.
 		return (new MessagePayload({
 			messageId:         result.rows[0].id,
 			content,
-			timestamp:         new Date(result.rows[0].timestamp).getTime(),
+			timestamp:         new Date(result.rows[0].created_at).getTime(),
 			userId:            senderId,
 			username:          await this.getUsernameById(senderId) ?? '',
 			profilePictureUrl: await this.getProfilePictureUrl(senderId),

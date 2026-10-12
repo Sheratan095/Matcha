@@ -32,12 +32,15 @@ export class MessagePayload implements IMessagePayload
 		this.profilePictureUrl = data.profilePictureUrl;
 	}
 
+	// For conversation history: the SELECT joins users / user_pictures and aliases the sender id
+	// and picture to user_id / profile_picture_url, and selects the real created_at column (not
+	// aliased), which is converted here to the epoch-ms number the payload exposes.
 	static fromDbRow(row: any): MessagePayload
 	{
 		return (new MessagePayload({
 			messageId: row.message_id,
 			content:      row.content,
-			timestamp: row.timestamp,
+			timestamp: new Date(row.created_at).getTime(),
 
 			userId:   row.user_id,
 			username: row.username,
