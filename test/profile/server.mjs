@@ -178,6 +178,11 @@ async function handleApi(req, res, url)
 		return (sendGateway(res, await gateway('GET', '/profile/interests')));
 	}
 
+	if (path === '/api/matches/map' && method === 'GET')
+	{
+		return (sendGateway(res, await gateway('GET', '/profile/matches/map')));
+	}
+
 	if (path === '/api/profile' && method === 'PATCH')
 	{
 		const	body = await readBody(req);
@@ -258,6 +263,14 @@ const	server = createServer(async (req, res) =>
 			return;
 		}
 
+		if (url.pathname === '/map')
+		{
+			res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+			res.end(MAP_PAGE);
+
+			return;
+		}
+
 		if (url.pathname.startsWith('/api/'))
 		{
 			await handleApi(req, res, url);
@@ -332,6 +345,20 @@ const	PAGE = /* html */ `<!doctype html>
 	}
 	header h1 { font-size: 20px; font-weight: 800; margin: 0; letter-spacing: .3px; }
 	header .leaf { font-size: 26px; filter: drop-shadow(0 2px 3px rgba(95,150,87,.3)); }
+	.navlink
+	{
+		text-decoration: none;
+		font-weight: 700;
+		font-size: 13px;
+		color: var(--accent-dark);
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 6px 14px;
+		box-shadow: var(--shadow);
+		transition: border-color .15s, transform .08s;
+	}
+	.navlink:hover { border-color: var(--accent); transform: translateY(-1px); }
 	.status
 	{
 		margin-left: auto;
@@ -517,6 +544,7 @@ const	PAGE = /* html */ `<!doctype html>
 <header>
 	<span class="leaf">🍵</span>
 	<h1>Matcha · Profile Tester</h1>
+	<a class="navlink" href="/map">🗺️ Matches map →</a>
 	<span class="status" id="status">checking…</span>
 </header>
 
@@ -1174,6 +1202,323 @@ const	PAGE = /* html */ `<!doctype html>
 		await login();
 		await loadInterests();
 		await getMe();
+	})();
+</script>
+</body>
+</html>`;
+
+// --- the matches map page ------------------------------------------------------
+
+const	MAP_PAGE = /* html */ `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Matcha · Matches Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+	integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+	:root
+	{
+		--bg: #f1efe4;
+		--panel: #fffdf7;
+		--border: #e7e1d1;
+		--text: #3b463a;
+		--muted: #93998a;
+		--accent: #7fae6f;
+		--accent-dark: #5f9657;
+		--err: #e2727f;
+		--radius: 18px;
+		--shadow: 0 8px 24px rgba(90, 110, 80, .10);
+	}
+	* { box-sizing: border-box; }
+	html, body { height: 100%; }
+	body
+	{
+		margin: 0;
+		background:
+			radial-gradient(1200px 500px at 110% -10%, #e4efd6 0%, transparent 55%),
+			radial-gradient(900px 500px at -10% 0%, #fae7dd 0%, transparent 50%),
+			var(--bg);
+		color: var(--text);
+		font: 15px/1.55 "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+	}
+	header
+	{
+		padding: 16px 24px;
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		flex-wrap: wrap;
+		flex: 0 0 auto;
+	}
+	header h1 { font-size: 20px; font-weight: 800; margin: 0; }
+	header .leaf { font-size: 26px; }
+	.navlink
+	{
+		text-decoration: none;
+		font-weight: 700;
+		font-size: 13px;
+		color: var(--accent-dark);
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 6px 14px;
+		box-shadow: var(--shadow);
+	}
+	.navlink:hover { border-color: var(--accent); }
+	.status
+	{
+		margin-left: auto;
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 6px 14px;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--muted);
+		box-shadow: var(--shadow);
+	}
+	.status b { color: var(--accent-dark); }
+
+	.layout
+	{
+		flex: 1 1 auto;
+		display: grid;
+		grid-template-columns: 320px 1fr;
+		gap: 16px;
+		padding: 0 24px 24px;
+		min-height: 0;
+	}
+	@media (max-width: 820px) { .layout { grid-template-columns: 1fr; } #map { min-height: 50vh; } }
+
+	.side
+	{
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		box-shadow: var(--shadow);
+		padding: 14px;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+	.sidehead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+	.sidehead h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent-dark); margin: 0; }
+	#count { font-size: 12px; font-weight: 700; color: var(--muted); }
+	button
+	{
+		padding: 7px 14px;
+		background: var(--accent);
+		border: 1px solid var(--accent);
+		border-radius: 999px;
+		color: #fff;
+		cursor: pointer;
+		font: inherit;
+		font-weight: 700;
+	}
+	button:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+	#list { overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+	.item
+	{
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px;
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		cursor: pointer;
+		background: #fff;
+	}
+	.item:hover { border-color: var(--accent); }
+	.item.nolocation { opacity: .55; cursor: default; }
+	.item img, .item .noimg
+	{
+		width: 42px;
+		height: 42px;
+		border-radius: 50%;
+		object-fit: cover;
+		background: #eef3e8;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 20px;
+		flex: 0 0 auto;
+	}
+	.item .meta { min-width: 0; }
+	.item .meta b { display: block; }
+	.item .sub { font-size: 12px; color: var(--muted); }
+	.empty { color: var(--muted); font-weight: 600; padding: 18px 4px; }
+
+	#map
+	{
+		border-radius: var(--radius);
+		border: 1px solid var(--border);
+		box-shadow: var(--shadow);
+		overflow: hidden;
+		min-height: 0;
+		z-index: 0;
+	}
+	.pop { display: flex; gap: 10px; align-items: center; font-family: "Nunito", sans-serif; }
+	.pop img, .pop .noimg
+	{
+		width: 46px; height: 46px; border-radius: 50%; object-fit: cover;
+		background: #eef3e8; display: flex; align-items: center; justify-content: center; font-size: 22px;
+	}
+	.pop .pid { font-size: 10px; color: #93998a; word-break: break-all; }
+	.pop .pll { font-size: 11px; color: #5f9657; font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+	<span class="leaf">🗺️</span>
+	<h1>Matcha · Matches Map</h1>
+	<a class="navlink" href="/">← Profile tester</a>
+	<span class="status" id="status">checking…</span>
+</header>
+
+<div class="layout">
+	<section class="side">
+		<div class="sidehead">
+			<h2>Matches</h2>
+			<button onclick="loadMatches()">↻ Refresh</button>
+		</div>
+		<span id="count"></span>
+		<div id="list" style="margin-top:10px"></div>
+	</section>
+	<div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+	integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+	const	statusEl = document.getElementById('status');
+	const	listEl   = document.getElementById('list');
+	const	countEl  = document.getElementById('count');
+
+	let	map   = null;
+	let	layer = null;
+
+	function escapeHtml(s)
+	{
+		return (String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])));
+	}
+
+	function initMap()
+	{
+		map = L.map('map').setView([41.9028, 12.4964], 4);
+
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+		{
+			maxZoom: 19,
+			attribution: '&copy; OpenStreetMap contributors',
+		}).addTo(map);
+
+		layer = L.layerGroup().addTo(map);
+
+		setTimeout(() => map.invalidateSize(), 0);
+	}
+
+	// Reuse whatever session the server jar already holds; only auto-login if there is none,
+	// so opening this page standalone still works (default seeded testuser / 1234).
+	async function ensureSession()
+	{
+		let	s = await fetch('/api/status').then(r => r.json()).catch(() => null);
+
+		if (!(s && s.loggedIn))
+		{
+			await fetch('/api/login',
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ username: 'testuser', password: '1234' }),
+			}).catch(() => {});
+
+			s = await fetch('/api/status').then(r => r.json()).catch(() => null);
+		}
+
+		statusEl.innerHTML = (s && s.loggedIn)
+			? ('logged in as <b>' + (s.userId || '?') + '</b>')
+			: 'not logged in';
+	}
+
+	async function loadMatches()
+	{
+		const	data    = await fetch('/api/matches/map').then(r => r.json()).catch(() => null);
+		const	matches = (data && Array.isArray(data.matches)) ? data.matches : [];
+
+		render(matches);
+	}
+
+	function picHtml(url, cls)
+	{
+		if (url)
+			return ('<img class="' + cls + '" src="' + url + '" onerror="this.style.opacity=.25" />');
+
+		return ('<div class="noimg">🙂</div>');
+	}
+
+	function render(matches)
+	{
+		layer.clearLayers();
+		listEl.innerHTML = '';
+
+		const	located = matches.filter(m => m.latitude != null && m.longitude != null);
+		const	points  = [];
+
+		// Markers (only matches that actually have coordinates).
+		for (const m of located)
+		{
+			const	popup =
+				'<div class="pop">' + picHtml(m.profilePictureUrl, '') +
+				'<div><b>' + escapeHtml(m.username) + '</b>' +
+				'<div class="pll">' + m.latitude.toFixed(4) + ', ' + m.longitude.toFixed(4) + '</div>' +
+				'<div class="pid">' + escapeHtml(m.userId) + '</div></div></div>';
+
+			layer.addLayer(L.marker([m.latitude, m.longitude]).bindPopup(popup));
+			points.push([m.latitude, m.longitude]);
+		}
+
+		// Side list (every match; those without a location are dimmed and not clickable).
+		if (matches.length === 0)
+		{
+			listEl.innerHTML = '<div class="empty">No matches yet — like someone who likes you back.</div>';
+		}
+
+		for (const m of matches)
+		{
+			const	has = m.latitude != null && m.longitude != null;
+			const	row = document.createElement('div');
+
+			row.className = 'item' + (has ? '' : ' nolocation');
+			row.innerHTML =
+				picHtml(m.profilePictureUrl, '') +
+				'<div class="meta"><b>' + escapeHtml(m.username) + '</b>' +
+				'<div class="sub">' + (has ? (m.latitude.toFixed(4) + ', ' + m.longitude.toFixed(4)) : 'no location set') + '</div></div>';
+
+			if (has)
+				row.onclick = () => map.setView([m.latitude, m.longitude], 12);
+
+			listEl.appendChild(row);
+		}
+
+		countEl.textContent = matches.length + ' matches · ' + located.length + ' on the map';
+
+		if (points.length > 0)
+			map.fitBounds(L.latLngBounds(points).pad(0.25));
+	}
+
+	(async function init()
+	{
+		initMap();
+		await ensureSession();
+		await loadMatches();
 	})();
 </script>
 </body>
