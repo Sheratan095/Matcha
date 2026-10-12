@@ -168,6 +168,26 @@ async function bootstrap()
 		} as any),
 	);
 
+	// Client-facing chat send. The notification controller guards this route with BOTH
+	// InternalKeyGuard (class) and AuthenticatedUserGuard (method), so we inject the internal key
+	// here while the global identity middleware above injects the trusted x-user-id from the
+	// cookie — both guards then pass. Maps POST /notification/message -> POST /notify/message.
+	app.use( '/notification/message',
+		createProxyMiddleware({
+			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			changeOrigin: true,
+			pathRewrite: { '^/': '/notify/message' },
+			on:
+			{
+				proxyReq: (proxyReq: ClientRequest) =>
+				{
+					if (env.INTERNAL_KEY)
+						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
+				},
+			},
+		} as any),
+	);
+
 	// Handle the notification socket HANDSHAKE over HTTP long-polling (socket.io's
 	// fallback transport). We authenticate only the initial handshake (no sid yet);
 	// subsequent polls carry a sid and reuse the already-authenticated session.

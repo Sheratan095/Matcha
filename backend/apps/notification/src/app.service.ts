@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload, MessagePayload } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
@@ -129,10 +129,15 @@ export class AppService
 
 	async sendPrivateMessage(senderId: string, recipientId: string, content: string)
 	{
+		if (senderId === recipientId)
+			throw new BadRequestException('You cannot message yourself');
+
+		// Chat is allowed only between matches (mutual like); blocking dissolves the match, so
+		// this also covers the block rule. ForbiddenException => 403 (a plain Error => 500).
 		if (await this.dbService.areUsersConnected(senderId, recipientId) === false)
 		{
 			this.logger.warn('sendPrivateMessage: users ' + senderId + ' and ' + recipientId + ' are not connected. Message not sent.');
-			throw new Error('Users are not connected. Cannot send message.');
+			throw new ForbiddenException('You can only message your matches');
 		}
 
 		const payload: MessagePayload = await this.dbService.storeMessage(senderId, recipientId, content);

@@ -55,31 +55,44 @@ export class DbService implements OnModuleInit
 		await this.pool.query('UPDATE profiles SET last_seen = NOW() WHERE user_id = $1', [userId]);
 	}
 
+	// Persists one message and returns the payload to deliver. The sender's id/content come from
+	// the arguments; only the generated id and timestamp come back from the INSERT. (Build the
+	// payload directly — do NOT route the hand-built object through fromDbRow, which expects
+	// snake_case DB columns.)
 	async storeMessage(senderId: string, recipientId: string, content: string): Promise<MessagePayload>
 	{
 		const result = await this.pool.query(
-			'INSERT INTO messages (sender_id, recipient_id, content, timestamp) VALUES ($1, $2, $3, NOW()) RETURNING id',
+			`INSERT INTO messages (sender_id, recipient_id, content, timestamp)
+			 VALUES ($1, $2, $3, NOW())
+			 RETURNING id, timestamp`,
 			[senderId, recipientId, content],
 		);
 
-		return (MessagePayload.fromDbRow({
-			messageId: result.rows[0].id,
-			content: result.rows[0].content,
-			timestamp: result.rows[0].timestamp,
-
-			userId: result.rows[0].sender_id,
-			username: await this.getUsernameById(result.rows[0].sender_id),
-			profilePictureUrl: await this.getProfilePictureUrl(result.rows[0].sender_id),
+		return (new MessagePayload({
+			messageId:         result.rows[0].id,
+			content,
+			timestamp:         new Date(result.rows[0].timestamp).getTime(),
+			userId:            senderId,
+			username:          await this.getUsernameById(senderId) ?? '',
+			profilePictureUrl: await this.getProfilePictureUrl(senderId),
 		}));
 	}
 
+	// Two users are "connected" (may chat) when a mutual like exists — the same self-join the
+	// profile service uses for matches. Because blocking dissolves the likes in both directions,
+	// a blocked pair is never connected, so this one check also enforces the block rule.
 	async areUsersConnected(userId1: string, userId2: string): Promise<boolean>
 	{
 		const result = await this.pool.query(
-			'SELECT COUNT(*) FROM connections WHERE (user_id = $1 AND connection_id = $2) OR (user_id = $2 AND connection_id = $1)',
+			`SELECT EXISTS (
+				SELECT 1 FROM likes a
+				INNER JOIN likes b
+					ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
+				WHERE a.liker_id = $1 AND a.liked_id = $2
+			 ) AS connected`,
 			[userId1, userId2],
 		);
 
-		return (result.rows[0].count > 0);
+		return (result.rows[0].connected === true);
 	}
 }

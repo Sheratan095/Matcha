@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID, IsNotEmpty, IsBoolean, Length, IsString } from 'class-validator';
+import { IsUUID, IsNotEmpty, Length, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 // One trigger DTO per notification type. Producers POST these to the internal /notify/* routes;
@@ -23,8 +23,8 @@ export class ChatMessageDto
 
 export class ChatMessageResponseDto
 {
-	@ApiProperty({ example: 'ok', description: 'Result status' })
-	delivered: string;
+	@ApiProperty({ example: true, description: 'True if delivered to a live socket, false if the recipient was offline' })
+	delivered: boolean;
 }
 
 // TODO unify ErrorDto making it global??
