@@ -209,6 +209,17 @@ export class DbService implements OnModuleInit
 		}
 	}
 
+	async hasAnyPicture(userId: string) : Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`SELECT COUNT(*) AS count
+			 FROM user_pictures
+			 WHERE user_id = $1`,
+			[userId]
+		);
+		return (parseInt(result.rows[0].count, 10) > 0);
+	}
+
 	// Returns false if the picture doesn't exist or doesn't belong to the user.
 	async setProfilePicture(userId: string, pictureId: string): Promise<boolean>
 	{

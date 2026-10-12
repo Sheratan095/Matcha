@@ -1,4 +1,4 @@
-import { Injectable, Logger, ConflictException, InternalServerErrorException, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
+import { Injectable, Logger, ConflictException, InternalServerErrorException, BadRequestException, NotFoundException, HttpException, ForbiddenException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
@@ -297,6 +297,12 @@ export class AppService
 		{
 			this.logger.warn(`Like attempt from ${likerId} to ${likedId} blocked due to a block`);
 			throw new NotFoundException('User not found');
+		}
+
+		if (await this.dbService.hasAnyPicture(likerId) === false)
+		{
+			this.logger.warn(`Like attempt from ${likerId} to ${likedId} failed: user has no pictures`);
+			throw new ForbiddenException('You must have at least one picture to like other users');
 		}
 
 		try
