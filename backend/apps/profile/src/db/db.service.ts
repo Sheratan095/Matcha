@@ -591,6 +591,32 @@ export class DbService implements OnModuleInit
 	// directions so an existing match ends immediately. Returns { created, wasMatched } so the
 	// service can push an unmatch notification only when a match actually existed. A missing
 	// blockedId trips the users(id) foreign key (error code 23503), translated into a 404.
+	// Creates the chat for a newly matched pair, stored canonically (user_a < user_b). Idempotent:
+	// a second call for the same pair is a no-op. A chat row existing == the pair is matched, which
+	// is what the notification service checks before allowing messages.
+	async createChat(userId1: string, userId2: string): Promise<void>
+	{
+		const [userA, userB] = [userId1, userId2].sort();
+
+		await this.pool.query(
+			`INSERT INTO chats (user_a, user_b)
+			 VALUES ($1, $2)
+			 ON CONFLICT (user_a, user_b) DO NOTHING`,
+			[userA, userB],
+		);
+	}
+
+	// Deletes the chat for a pair whose match dissolved (unmatch). The chat's messages cascade away.
+	async deleteChat(userId1: string, userId2: string): Promise<void>
+	{
+		const [userA, userB] = [userId1, userId2].sort();
+
+		await this.pool.query(
+			'DELETE FROM chats WHERE user_a = $1 AND user_b = $2',
+			[userA, userB],
+		);
+	}
+
 	async addBlock(blockerId: string, blockedId: string): Promise<{ created: boolean; wasMatched: boolean }>
 	{
 		const client = await this.pool.connect();
@@ -622,6 +648,14 @@ export class DbService implements OnModuleInit
 				`DELETE FROM likes
 				 WHERE (liker_id = $1 AND liked_id = $2)
 				    OR (liker_id = $2 AND liked_id = $1)`,
+				[blockerId, blockedId]
+			);
+
+			// Remove the chat too (cascade wipes its messages). LEAST/GREATEST match the canonical
+			// (user_a < user_b) ordering the chats table is stored in.
+			await client.query(
+				`DELETE FROM chats
+				 WHERE user_a = LEAST($1, $2) AND user_b = GREATEST($1, $2)`,
 				[blockerId, blockedId]
 			);
 

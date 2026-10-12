@@ -316,6 +316,10 @@ export class AppService
 
 				this.logger.log(`User ${likedId} liked by ${likerId}; Matched: ${nowMatched}`);
 
+				// A new match opens a chat (the notification service keys messaging off this row).
+				if (nowMatched)
+					await this.dbService.createChat(likerId, likedId);
+
 				// Send notification just if a new like was created
 				// If they are matched, another notitification will be sent to both users ws: MATCHED event.
 				await sendProfileLikeNotification(likedId, likerId, nowMatched, this.httpService);
@@ -351,9 +355,13 @@ export class AppService
 
 			if (removed)
 			{
-				// Send notification only if they were previusly connected
+				// Unliking a match dissolves it: close the chat (cascade removes its messages) and
+				// tell both users. Only when they were actually connected.
 				if (wereConnected)
+				{
+					await this.dbService.deleteChat(likerId, likedId);
 					await sendProfileUnlikeNotification(likedId, likerId, this.httpService);
+				}
 
 				this.logger.log(`User ${likedId} unliked by ${likerId}`);
 			}

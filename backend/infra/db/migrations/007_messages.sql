@@ -1,27 +1,46 @@
--- Private chat messages between two users. A conversation is just the rows between a given
--- (sender, recipient) pair in either direction; eligibility (the two must be matched, and not
--- blocked) is enforced in the notification service, not here. ON DELETE CASCADE means that
--- deleting a user removes their messages.
+-- Chat conversations and their messages (Option A: a chat IS a match).
+--
+-- Exactly one chat row per matched pair, created on a mutual like and removed on unmatch / block.
+-- The two users are stored canonically (user_a < user_b) with a UNIQUE constraint, so a pair maps
+-- to one chat regardless of who liked first — the app sorts the two ids before insert / lookup.
+-- Because messages.chat_id cascades, deleting a chat (on unmatch / block) wipes its messages.
 
-CREATE TABLE IF NOT EXISTS messages (
-	id				UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS chats (
+	id			UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-	sender_id		UUID NOT NULL,
-	recipient_id	UUID NOT NULL,
+	user_a		UUID NOT NULL,
+	user_b		UUID NOT NULL,
 
-	content			TEXT NOT NULL,
+	created_at	TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- == matchedAt
 
-	created_at		TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	CHECK (user_a < user_b), -- canonical ordering => one chat per pair, and no self-chat
 
-	STATUS VARCHAR(10) NOT NULL DEFAULT 'sent', -- sent, delivered, read
-	CHECK (STATUS IN ('sent', 'delivered', 'read')),
+	UNIQUE (user_a, user_b),
 
-	CHECK (sender_id != recipient_id), -- a user cannot message themselves
-
-	FOREIGN KEY (sender_id)    REFERENCES users(id) ON DELETE CASCADE,
-	FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
+	FOREIGN KEY (user_a) REFERENCES users(id) ON DELETE CASCADE,
+	FOREIGN KEY (user_b) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Conversation history: both directions of a pair are (sender_id, recipient_id) prefix lookups,
--- so this one composite index serves the whole "messages between A and B, oldest first" query.
-CREATE INDEX IF NOT EXISTS idx_messages_sender_recipient_created ON messages (sender_id, recipient_id, created_at);
+-- "Which chats is this user in?" — a user may sit on either side of the ordered pair.
+CREATE INDEX IF NOT EXISTS idx_chats_user_a ON chats (user_a);
+CREATE INDEX IF NOT EXISTS idx_chats_user_b ON chats (user_b);
+
+CREATE TABLE IF NOT EXISTS messages (
+	id			UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+	chat_id		UUID NOT NULL,
+	sender_id	UUID NOT NULL, -- always one of the chat's two participants (enforced in the app)
+
+	content		TEXT NOT NULL,
+
+	status		VARCHAR(10) NOT NULL DEFAULT 'sent', -- sent | delivered | read
+	CHECK (status IN ('sent', 'delivered', 'read')),
+
+	created_at	TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+	FOREIGN KEY (chat_id)   REFERENCES chats(id) ON DELETE CASCADE,
+	FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Conversation history and "latest message in a chat": a chat_id range scan ordered by time.
+CREATE INDEX IF NOT EXISTS idx_messages_chat_created ON messages (chat_id, created_at);

@@ -59,33 +59,48 @@ export class DbService implements OnModuleInit
 	// the arguments; only the generated id and timestamp come back from the INSERT. (Build the
 	// payload directly — do NOT route the hand-built object through fromDbRow, which expects
 	// snake_case DB columns.)
-	async storeMessage(senderId: string, recipientId: string, content: string): Promise<MessagePayload>
+	// Canonical pair lookup: a chat is stored with user_a < user_b, so sort the two ids before
+	// querying. Returns the chat id, or null when the two users have no chat (i.e. not matched).
+	async getChatId(userId1: string, userId2: string): Promise<string | null>
 	{
+		const [userA, userB] = [userId1, userId2].sort();
+
 		const result = await this.pool.query(
-			`INSERT INTO messages (sender_id, recipient_id, content)
-			 VALUES ($1, $2, $3)
-			 RETURNING id, created_at`,
-			[senderId, recipientId, content],
+			'SELECT id FROM chats WHERE user_a = $1 AND user_b = $2',
+			[userA, userB],
 		);
 
-		// The INSERT can only return columns of the messages table, so username / profile picture
-		// (which live in users / user_pictures) are fetched separately and the payload is built by
-		// hand rather than via fromDbRow. The sender always exists, so username is never empty.
-		return (new MessagePayload({
-			messageId:         result.rows[0].id,
-			content,
-			timestamp:         new Date(result.rows[0].created_at).getTime(),
-			userId:            senderId,
-			username:          await this.getUsernameById(senderId) ?? '',
-			profilePictureUrl: await this.getProfilePictureUrl(senderId),
-		}));
+		return (result.rows[0]?.id ?? null);
+	}
+
+	// Persists one message into an existing chat and returns the payload to deliver. A single CTE
+	// does the INSERT and joins the sender's username / profile picture, so it is one round trip
+	// and the row feeds fromDbRow directly.
+	async storeMessage(chatId: string, senderId: string, content: string): Promise<MessagePayload>
+	{
+		const result = await this.pool.query(
+			`WITH ins AS (
+				INSERT INTO messages (chat_id, sender_id, content)
+				VALUES ($1, $2, $3)
+				RETURNING id, sender_id, content, created_at
+			 )
+			 SELECT ins.id AS message_id, ins.content, ins.created_at,
+			        ins.sender_id AS user_id, u.username, up.url AS profile_picture_url
+			 FROM ins
+			 INNER JOIN users u ON u.id = ins.sender_id
+			 LEFT JOIN user_pictures up ON up.user_id = ins.sender_id AND up.is_profile`,
+			[chatId, senderId, content],
+		);
+
+		return (MessagePayload.fromDbRow(result.rows[0]));
 	}
 
 	// Conversation history between two users, oldest first. Joins the sender's username + profile
 	// picture so each message carries its author (the rich MessagePayload shape), aliasing the
 	// columns to the names fromDbRow reads. The (sender_id, recipient_id, created_at) index serves
 	// both directions of the OR.
-	async getConversation(userId: string, otherUserId: string): Promise<MessagePayload[]>
+	// Full history of one chat, oldest first — a single range scan on (chat_id, created_at).
+	async getConversation(chatId: string): Promise<MessagePayload[]>
 	{
 		const result = await this.pool.query(
 			`SELECT m.id AS message_id, m.content, m.created_at,
@@ -93,10 +108,9 @@ export class DbService implements OnModuleInit
 			 FROM messages m
 			 INNER JOIN users u ON u.id = m.sender_id
 			 LEFT JOIN user_pictures up ON up.user_id = m.sender_id AND up.is_profile
-			 WHERE (m.sender_id = $1 AND m.recipient_id = $2)
-			    OR (m.sender_id = $2 AND m.recipient_id = $1)
+			 WHERE m.chat_id = $1
 			 ORDER BY m.created_at ASC`,
-			[userId, otherUserId],
+			[chatId],
 		);
 
 		return (result.rows.map(row => MessagePayload.fromDbRow(row)));
@@ -109,25 +123,20 @@ export class DbService implements OnModuleInit
 	async getChatList(userId: string): Promise<ChatListItem[]>
 	{
 		const result = await this.pool.query(
-			`SELECT last.partner_id AS user_id, u.username, up.url AS profile_picture_url,
+			`SELECT other.id AS user_id, other.username, up.url AS profile_picture_url,
 			        last.content AS last_message, last.created_at AS last_created_at, last.sender_id AS last_sender_id
-			 FROM (
-				SELECT DISTINCT ON (partner_id) partner_id, content, created_at, sender_id
-				FROM (
-					SELECT CASE WHEN sender_id = $1 THEN recipient_id ELSE sender_id END AS partner_id,
-					       content, created_at, sender_id
-					FROM messages
-					WHERE sender_id = $1 OR recipient_id = $1
-				) conv
-				ORDER BY partner_id, created_at DESC
-			 ) last
-			 INNER JOIN users u ON u.id = last.partner_id
-			 LEFT JOIN user_pictures up ON up.user_id = last.partner_id AND up.is_profile
-			 WHERE EXISTS (
-				SELECT 1 FROM likes a
-				INNER JOIN likes b ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
-				WHERE a.liker_id = $1 AND a.liked_id = last.partner_id
-			 )
+			 FROM chats c
+			 INNER JOIN users other
+				ON other.id = CASE WHEN c.user_a = $1 THEN c.user_b ELSE c.user_a END
+			 LEFT JOIN user_pictures up ON up.user_id = other.id AND up.is_profile
+			 INNER JOIN LATERAL (
+				SELECT content, created_at, sender_id
+				FROM messages m
+				WHERE m.chat_id = c.id
+				ORDER BY m.created_at DESC
+				LIMIT 1
+			 ) last ON TRUE
+			 WHERE c.user_a = $1 OR c.user_b = $1
 			 ORDER BY last.created_at DESC`,
 			[userId],
 		);
@@ -138,18 +147,4 @@ export class DbService implements OnModuleInit
 	// Two users are "connected" (may chat) when a mutual like exists — the same self-join the
 	// profile service uses for matches. Because blocking dissolves the likes in both directions,
 	// a blocked pair is never connected, so this one check also enforces the block rule.
-	async areUsersConnected(userId1: string, userId2: string): Promise<boolean>
-	{
-		const result = await this.pool.query(
-			`SELECT EXISTS (
-				SELECT 1 FROM likes a
-				INNER JOIN likes b
-					ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
-				WHERE a.liker_id = $1 AND a.liked_id = $2
-			 ) AS connected`,
-			[userId1, userId2],
-		);
-
-		return (result.rows[0].connected === true);
-	}
 }

@@ -132,15 +132,17 @@ export class AppService
 		if (senderId === recipientId)
 			throw new BadRequestException('You cannot message yourself');
 
-		// Chat is allowed only between matches (mutual like); blocking dissolves the match, so
-		// this also covers the block rule. ForbiddenException => 403 (a plain Error => 500).
-		if (await this.dbService.areUsersConnected(senderId, recipientId) === false)
+		// A chat row exists only for a matched pair (created on mutual like, deleted on unmatch /
+		// block), so "no chat" == not allowed to message. ForbiddenException => 403.
+		const chatId = await this.dbService.getChatId(senderId, recipientId);
+
+		if (chatId === null)
 		{
-			this.logger.warn('sendPrivateMessage: users ' + senderId + ' and ' + recipientId + ' are not connected. Message not sent.');
+			this.logger.warn('sendPrivateMessage: no chat for users ' + senderId + ' and ' + recipientId + '. Message not sent.');
 			throw new ForbiddenException('You can only message your matches');
 		}
 
-		const payload: MessagePayload = await this.dbService.storeMessage(senderId, recipientId, content);
+		const payload: MessagePayload = await this.dbService.storeMessage(chatId, senderId, content);
 
 		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload);
 
@@ -156,10 +158,12 @@ export class AppService
 		if (userId === otherUserId)
 			throw new BadRequestException('You cannot open a conversation with yourself');
 
-		if (await this.dbService.areUsersConnected(userId, otherUserId) === false)
+		const chatId = await this.dbService.getChatId(userId, otherUserId);
+
+		if (chatId === null)
 			throw new ForbiddenException('You can only read conversations with your matches');
 
-		return (await this.dbService.getConversation(userId, otherUserId));
+		return (await this.dbService.getConversation(chatId));
 	}
 
 	// Lists the caller's conversations (latest message per partner, newest first).
