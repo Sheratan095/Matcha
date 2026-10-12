@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
 import { env } from "@repo/config";
-import { SupportedLanguage } from '@repo/shared-types';
+import { MessagePayload, SupportedLanguage } from '@repo/shared-types';
 import { User } from '@repo/shared-types';
 
 @Injectable()
@@ -53,5 +53,33 @@ export class DbService implements OnModuleInit
 	async updateLastSeen(userId: string): Promise<void>
 	{
 		await this.pool.query('UPDATE profiles SET last_seen = NOW() WHERE user_id = $1', [userId]);
+	}
+
+	async storeMessage(senderId: string, recipientId: string, content: string): Promise<MessagePayload>
+	{
+		const result = await this.pool.query(
+			'INSERT INTO messages (sender_id, recipient_id, content, timestamp) VALUES ($1, $2, $3, NOW()) RETURNING id',
+			[senderId, recipientId, content],
+		);
+
+		return (MessagePayload.fromDbRow({
+			messageId: result.rows[0].id,
+			content: result.rows[0].content,
+			timestamp: result.rows[0].timestamp,
+
+			userId: result.rows[0].sender_id,
+			username: await this.getUsernameById(result.rows[0].sender_id),
+			profilePictureUrl: await this.getProfilePictureUrl(result.rows[0].sender_id),
+		}));
+	}
+
+	async areUsersConnected(userId1: string, userId2: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			'SELECT COUNT(*) FROM connections WHERE (user_id = $1 AND connection_id = $2) OR (user_id = $2 AND connection_id = $1)',
+			[userId1, userId2],
+		);
+
+		return (result.rows[0].count > 0);
 	}
 }

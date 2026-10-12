@@ -4,3 +4,4 @@ export * from './languages';
 export * from './User';
 export * from './StdPayload';
 export * from './Notification';
+export * from './MessagePayload';

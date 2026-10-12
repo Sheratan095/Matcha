@@ -1,13 +1,13 @@
 import { Controller, Get, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { AppService } from './app.service';
-import { InternalKeyGuard } from '@repo/utils';
+import { AuthenticatedUserGuard, CurrentUser, InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EmailVerificationDto, EmailVerificationResponseDto, ErrorDto } from './dto/email_verification.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto } from './dto/forgotPassword.dto';
 import { CloseWsConnectionsDto } from './dto/ws_endpoints.dto';
 import { ProfileViewNotifyDto, ProfileViewNotifyResponseDto } from './dto/notifyView.dto';
 import { ProfileLikeNotifyDto, ProfileLikeNotifyResponseDto } from './dto/notifyLike.dto';
-
+import { ChatMessageDto, ChatMessageResponseDto } from './dto/chatMessage.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -116,5 +116,17 @@ export class AppController
 	{
 		return ( await this.appService.notifyProfileUnlike(req.likedId, req.likerId));
 	}
-ù
+
+	@Post('notify/message')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Send a private message', description: "Send a private message to the specified user." })
+	@ApiBody({ type: ChatMessageDto })
+	@ApiResponse({ status: 200, type: ChatMessageResponseDto, description: 'Notification delivered or queued' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async notifyPrivateMessage(@Body() req: ChatMessageDto, @CurrentUser() userId: string)
+	{
+		return ( await this.appService.sendPrivateMessage(userId, req.toUserId, req.content));
+	}
 }

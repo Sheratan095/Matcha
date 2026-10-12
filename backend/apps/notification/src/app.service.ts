@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload, MessagePayload } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
 import { DbService } from './db/db.service';
@@ -125,5 +125,22 @@ export class AppService
 
 		this.logger.log('notifyProfileUnlike: sent UNMATCHED notification to users ' + unlikerId + ' and ' + unlikedId);
 
+	}
+
+	async sendPrivateMessage(senderId: string, recipientId: string, content: string)
+	{
+		if (await this.dbService.areUsersConnected(senderId, recipientId) === false)
+		{
+			this.logger.warn('sendPrivateMessage: users ' + senderId + ' and ' + recipientId + ' are not connected. Message not sent.');
+			throw new Error('Users are not connected. Cannot send message.');
+		}
+
+		const payload: MessagePayload = await this.dbService.storeMessage(senderId, recipientId, content);
+
+		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload);
+
+		this.logger.log('sendPrivateMessage: sent message from user ' + senderId + ' to user ' + recipientId);
+
+		return ({ delivered });
 	}
 }
