@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
-import { Profile, UserPicture, InterestTag, StdPayload, MAX_USER_PICTURES } from '@repo/shared-types';
+import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, MAX_USER_PICTURES } from '@repo/shared-types';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
 
 // Services contain the core business logic like the db calls
@@ -235,6 +235,21 @@ export class AppService
 		{
 			this.logger.error(`Error fetching matches for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to fetch matches');
+		}
+	}
+
+	async getMyMatchesMap(userId: string): Promise<StdPayloadGeo[]>
+	{
+		try
+		{
+			this.logger.log(`Matches for map requested for user ID ${userId}`);
+
+			return (await this.dbService.getMatchesMap(userId));
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error fetching matches for map for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch matches for map');
 		}
 	}
 

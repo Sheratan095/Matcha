@@ -62,3 +62,36 @@ export class StdPayload implements IStdPayload
 		}));
 	}
 }
+
+export interface IStdPayloadGeo extends IStdPayload
+{
+	latitude: number | null;
+	longitude: number | null;
+}
+
+// StdPayload plus the user's coordinates — for the matches map, where each match needs a location.
+export class StdPayloadGeo extends StdPayload implements IStdPayloadGeo
+{
+	latitude: number | null;
+	longitude: number | null;
+
+	constructor(data: IStdPayloadGeo)
+	{
+		super(data);
+		this.latitude  = data.latitude ?? null;
+		this.longitude = data.longitude ?? null;
+	}
+
+	// getMatchesMap selects other.id AS user_id, other.username, up.url AS profile_picture_url,
+	// p.latitude, p.longitude.
+	static fromMatchMapData(row: any): StdPayloadGeo
+	{
+		return (new StdPayloadGeo({
+			userId:            row.user_id,
+			username:          row.username,
+			profilePictureUrl: row.profile_picture_url ?? null,
+			latitude:          row.latitude ?? null,
+			longitude:         row.longitude ?? null,
+		}));
+	}
+}

@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { Profile, InterestTag, UserPicture, StdPayload } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo } from '@repo/shared-types';
 
 @Injectable()
 
@@ -539,22 +539,39 @@ export class DbService implements OnModuleInit
 	// (liker_id, liked_id) PK one way and idx_likes_liked_id the other.
 	async getMatches(userId: string): Promise<StdPayload[]>
 	{
+		//	No block filter needed: addBlock() deletes the likes in both directions, so a
+		//  blocked pair can never have a mutual like (hence never a match) to begin with.
+
 		const result = await this.pool.query(
 			`SELECT other.id AS connection_id, other.username, up.url AS profile_picture_url
 			 FROM likes mine
 			 INNER JOIN likes theirs ON theirs.liker_id = mine.liked_id AND theirs.liked_id = mine.liker_id
 			 INNER JOIN users other ON other.id = mine.liked_id
 			 LEFT JOIN user_pictures up ON up.user_id = mine.liked_id AND up.is_profile
-			 WHERE mine.liker_id = $1
-			   AND NOT EXISTS (
-				SELECT 1 FROM blocks bl
-				WHERE (bl.blocker_id = $1 AND bl.blocked_id = other.id)
-				   OR (bl.blocker_id = other.id AND bl.blocked_id = $1)
-			   )`,
+			 WHERE mine.liker_id = $1`,
 			[userId]
 		);
 
 		return (result.rows.map(row => StdPayload.fromMatchData(row)));
+	}
+
+	async getMatchesMap(userId: string): Promise<StdPayloadGeo[]>
+	{
+		//	No block filter needed: addBlock() deletes the likes in both directions, so a
+		//  blocked pair can never have a mutual like (hence never a match) to begin with.
+
+		const result = await this.pool.query(
+			`SELECT other.id AS user_id, other.username, up.url AS profile_picture_url, p.latitude, p.longitude
+			 FROM likes mine
+			 INNER JOIN likes theirs ON theirs.liker_id = mine.liked_id AND theirs.liked_id = mine.liker_id
+			 INNER JOIN users other ON other.id = mine.liked_id
+			 INNER JOIN profiles p ON p.user_id = mine.liked_id
+			 LEFT JOIN user_pictures up ON up.user_id = mine.liked_id AND up.is_profile
+			 WHERE mine.liker_id = $1`,
+			[userId]
+		);
+
+		return (result.rows.map(row => StdPayloadGeo.fromMatchMapData(row)));
 	}
 
 	// Blocks blockedId on behalf of blockerId and dissolves any relationship between the pair.

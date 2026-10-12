@@ -8,7 +8,7 @@ import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteEr
 import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
 import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
 import { GetMyLikesResponseDto } from './dto/GetMyLikes.dto';
-import { GetMatchesResponseDto, GetMatchesDto, GetMatchesErrorDto } from './dto/getMatches.dto';
+import { GetMatchesResponseDto, GetMatchesErrorDto } from './dto/getMatches.dto';
 import { GetBlockedResponseDto, GetBlockedErrorDto } from './dto/getBlocked.dto';
 import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
 import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
@@ -16,6 +16,7 @@ import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/uti
 import { IsOnlineDto, IsOnlineResponseDto, IsOnlineErrorDto } from './dto/is_online';
 import { ReportUserDto, ReportUserErrorDto } from './dto/reportUser.dto';
 import { UpdateLocationDto, UpdateLocationResponseDto, UpdateLocationErrorDto } from './dto/updateLocation.dto';
+import { MatchesMapResponseDto, GetMatchesMapResponseDto, GetMatchesMapErrorDto } from './dto/getMatchesMap.dto';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -102,6 +103,19 @@ export class AppController
 	async getMyMatches(@CurrentUser() userId: string)
 	{
 		const matches = await this.appService.getMyMatches(userId);
+
+		return ({ matches });
+	}
+
+	@Get('matches/map')
+	@ApiOperation({ summary: 'Get my matches for map', description: 'Returns the users the authenticated user is connected to (mutual like) with their location coordinates.' })
+	@ApiResponse({ status: 200, type: GetMatchesMapResponseDto, description: 'Matches retrieved successfully' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: GetMatchesMapErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getMyMatchesMap(@CurrentUser() userId: string)
+	{
+		const matches = await this.appService.getMyMatchesMap(userId);
 
 		return ({ matches });
 	}

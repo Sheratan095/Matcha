@@ -7,11 +7,12 @@
 //     server holds the cookies in a server-side jar and forwards them to the gateway — exactly
 //     the credentials a real logged-in user would carry.
 //
-// Zero dependencies: Node 18+ globals (fetch / FormData / Blob) and the built-in http module.
+// Zero backend dependencies: Node 18+ globals (fetch / FormData / Blob) and the built-in http
+// module. The page itself loads Leaflet (map) and Nominatim (reverse geocode) from public CDNs.
 //
 // Run:
-//   node docs/test/profile/server.mjs
-//   GATEWAY_URL=http://localhost:3000 PORT=4100 node docs/test/profile/server.mjs
+//   node test/profile/server.mjs
+//   GATEWAY_URL=http://localhost:3000 PORT=4100 node test/profile/server.mjs
 //
 // Then open http://localhost:4100 . Default login is the seeded testuser / 1234
 // (see infra/db/seeds/001_users.sql).
@@ -188,6 +189,18 @@ async function handleApi(req, res, url)
 		})));
 	}
 
+	// Set the logged-in user's location (coordinates from the interactive map).
+	if (path === '/api/location' && method === 'PUT')
+	{
+		const	body = await readBody(req);
+
+		return (sendGateway(res, await gateway('PUT', '/profile/location',
+		{
+			headers: { 'content-type': 'application/json' },
+			body:    body,
+		})));
+	}
+
 	// GET /api/profile/:userId
 	const	byId = path.match(/^\/api\/profile\/([^/]+)$/);
 
@@ -275,158 +288,242 @@ const	PAGE = /* html */ `<!doctype html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Profile Tester</title>
+<title>Matcha · Profile Tester</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+	integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <style>
 	:root
 	{
-		--bg: #0f1115;
-		--panel: #171a21;
-		--border: #262b36;
-		--text: #e5e9f0;
-		--muted: #8b93a7;
-		--accent: #7aa2f7;
-		--ok: #9ece6a;
-		--err: #f7768e;
+		--bg: #f1efe4;
+		--panel: #fffdf7;
+		--border: #e7e1d1;
+		--text: #3b463a;
+		--muted: #93998a;
+		--accent: #7fae6f;
+		--accent-dark: #5f9657;
+		--peach: #eca98e;
+		--ok: #5f9657;
+		--err: #e2727f;
+		--radius: 18px;
+		--shadow: 0 8px 24px rgba(90, 110, 80, .10);
 	}
 	* { box-sizing: border-box; }
 	body
 	{
 		margin: 0;
-		background: var(--bg);
+		background:
+			radial-gradient(1200px 500px at 110% -10%, #e4efd6 0%, transparent 55%),
+			radial-gradient(900px 500px at -10% 0%, #fae7dd 0%, transparent 50%),
+			var(--bg);
+		min-height: 100vh;
 		color: var(--text);
-		font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+		font: 15px/1.55 "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
 	}
 	header
 	{
-		padding: 14px 20px;
-		border-bottom: 1px solid var(--border);
+		padding: 18px 24px;
 		display: flex;
 		align-items: center;
-		gap: 16px;
+		gap: 14px;
 		flex-wrap: wrap;
 	}
-	header h1 { font-size: 15px; margin: 0; letter-spacing: .5px; }
-	.status { color: var(--muted); }
-	.status b { color: var(--ok); }
-	.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+	header h1 { font-size: 20px; font-weight: 800; margin: 0; letter-spacing: .3px; }
+	header .leaf { font-size: 26px; filter: drop-shadow(0 2px 3px rgba(95,150,87,.3)); }
+	.status
+	{
+		margin-left: auto;
+		background: var(--panel);
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		padding: 6px 14px;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--muted);
+		box-shadow: var(--shadow);
+	}
+	.status b { color: var(--accent-dark); }
+	.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 8px 24px 28px; }
 	@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 	.panel
 	{
 		background: var(--panel);
 		border: 1px solid var(--border);
-		border-radius: 10px;
-		padding: 14px 16px;
+		border-radius: var(--radius);
+		padding: 18px 20px;
+		box-shadow: var(--shadow);
 	}
-	.panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 12px; }
-	label { display: block; color: var(--muted); margin: 8px 0 3px; font-size: 12px; }
-	label.inline { display: flex; align-items: center; gap: 6px; }
+	.panel h2
+	{
+		font-size: 13px;
+		text-transform: uppercase;
+		letter-spacing: 1.2px;
+		color: var(--accent-dark);
+		margin: 0 0 14px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	label { display: block; color: var(--muted); margin: 10px 0 4px; font-size: 12px; font-weight: 700; }
+	label.inline { display: flex; align-items: center; gap: 7px; font-weight: 600; }
 	label.inline input { width: auto; }
 	input, select
 	{
 		width: 100%;
-		padding: 7px 9px;
-		background: #0c0e13;
+		padding: 9px 12px;
+		background: #fbfaf3;
 		border: 1px solid var(--border);
-		border-radius: 6px;
+		border-radius: 11px;
 		color: var(--text);
 		font: inherit;
+		transition: border-color .15s, box-shadow .15s;
 	}
-	.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+	input:focus, select:focus
+	{
+		outline: none;
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px rgba(127, 174, 111, .18);
+	}
+	.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
 	.row > * { flex: 1; min-width: 120px; }
 	button
 	{
-		padding: 7px 12px;
-		background: #222838;
+		padding: 9px 16px;
+		background: #fff;
 		border: 1px solid var(--border);
-		border-radius: 6px;
+		border-radius: 999px;
 		color: var(--text);
 		cursor: pointer;
 		font: inherit;
+		font-weight: 700;
+		transition: transform .08s, border-color .15s, background .15s;
 	}
-	button:hover { border-color: var(--accent); }
-	button.primary { background: var(--accent); color: #0b0d12; border-color: var(--accent); font-weight: 600; }
+	button:hover { border-color: var(--accent); transform: translateY(-1px); }
+	button:active { transform: translateY(0); }
+	button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+	button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 	button.danger { color: var(--err); }
-	.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-	.pics { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+	button.danger:hover { border-color: var(--err); }
+	.btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+	.pics { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
 	.pic
 	{
 		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 6px;
-		width: 128px;
+		border-radius: 14px;
+		padding: 7px;
+		width: 132px;
+		background: #fff;
 	}
-	.pic.isprofile { border-color: var(--ok); }
-	.pic img { width: 100%; height: 100px; object-fit: cover; border-radius: 5px; background: #000; display: block; }
-	.pic .id { font-size: 10px; color: var(--muted); word-break: break-all; margin: 5px 0; }
-	.pic .pbtns { display: flex; gap: 4px; }
-	.pic .pbtns button { flex: 1; padding: 4px; font-size: 11px; }
-	.badge { font-size: 10px; color: var(--ok); }
+	.pic.isprofile { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(127,174,111,.18); }
+	.pic img { width: 100%; height: 104px; object-fit: cover; border-radius: 10px; background: #eee; display: block; }
+	.pic .id { font-size: 10px; color: var(--muted); word-break: break-all; margin: 6px 0; }
+	.pic .pbtns { display: flex; gap: 5px; }
+	.pic .pbtns button { flex: 1; padding: 5px; font-size: 11px; }
+	.badge { font-size: 11px; color: var(--accent-dark); font-weight: 700; }
+
+	/* location / map */
+	#map
+	{
+		height: 280px;
+		border-radius: 14px;
+		border: 1px solid var(--border);
+		overflow: hidden;
+		margin-bottom: 10px;
+		z-index: 0;
+	}
+	.coords
+	{
+		display: flex;
+		gap: 10px;
+		flex-wrap: wrap;
+		font-size: 13px;
+	}
+	.coords .pill
+	{
+		background: #f0f5ea;
+		border: 1px solid #dce7d3;
+		border-radius: 999px;
+		padding: 4px 12px;
+		font-weight: 700;
+		color: var(--accent-dark);
+	}
+	#place { color: var(--muted); font-weight: 600; margin-top: 8px; min-height: 18px; }
 
 	/* interest picker */
-	.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+	.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 7px; }
 	.chip
 	{
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		background: #222838;
-		border: 1px solid var(--border);
+		background: #f0f5ea;
+		border: 1px solid #dce7d3;
 		border-radius: 999px;
-		padding: 3px 6px 3px 10px;
+		padding: 4px 7px 4px 12px;
 		font-size: 12px;
+		font-weight: 700;
+		color: var(--accent-dark);
 	}
-	.chip button { padding: 0 5px; border: none; background: transparent; color: var(--muted); font-size: 13px; line-height: 1; }
-	.chip button:hover { color: var(--err); }
+	.chip button { padding: 0 5px; border: none; background: transparent; color: var(--muted); font-size: 14px; line-height: 1; }
+	.chip button:hover { color: var(--err); transform: none; }
 	.combo { position: relative; }
 	.dropdown
 	{
 		position: absolute;
-		z-index: 10;
+		z-index: 400;
 		left: 0;
 		right: 0;
-		margin-top: 2px;
-		background: #0c0e13;
+		margin-top: 3px;
+		background: #fff;
 		border: 1px solid var(--border);
-		border-radius: 6px;
+		border-radius: 11px;
 		max-height: 200px;
 		overflow: auto;
 		display: none;
+		box-shadow: var(--shadow);
 	}
 	.dropdown.open { display: block; }
-	.opt { padding: 7px 10px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
-	.opt:hover, .opt.active { background: #222838; }
+	.opt { padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+	.opt:hover, .opt.active { background: #f0f5ea; }
 	.opt .tag { color: var(--muted); font-size: 11px; }
-	.opt.create { color: var(--accent); }
+	.opt.create { color: var(--accent-dark); font-weight: 700; }
 
 	#outWrap { grid-column: 1 / -1; }
 	.outhead { display: flex; justify-content: space-between; align-items: center; }
 	pre#out
 	{
-		background: #0c0e13;
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 12px;
+		background: #2f352c;
+		color: #e9 efe3;
+		color: #eaf0e3;
+		border: 1px solid #272c24;
+		border-radius: 12px;
+		padding: 14px;
 		max-height: 340px;
 		overflow: auto;
 		white-space: pre-wrap;
 		word-break: break-word;
-		margin: 10px 0 0;
+		margin: 12px 0 0;
+		font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+		font-size: 13px;
 	}
-	.code-ok { color: var(--ok); }
-	.code-err { color: var(--err); }
-	small.hint { color: var(--muted); }
+	.code-ok { color: var(--ok); font-weight: 800; }
+	.code-err { color: var(--err); font-weight: 800; }
+	small.hint { color: var(--muted); font-weight: 600; }
 </style>
 </head>
 <body>
 <header>
-	<h1>PROFILE TESTER</h1>
+	<span class="leaf">🍵</span>
+	<h1>Matcha · Profile Tester</h1>
 	<span class="status" id="status">checking…</span>
 </header>
 
 <div class="layout">
 
 	<section class="panel">
-		<h2>Auth</h2>
+		<h2>🔑 Auth</h2>
 		<div class="row">
 			<div>
 				<label>username</label>
@@ -446,7 +543,7 @@ const	PAGE = /* html */ `<!doctype html>
 	</section>
 
 	<section class="panel">
-		<h2>Read</h2>
+		<h2>👀 Read</h2>
 		<div class="btns">
 			<button onclick="getMe()">GET my profile</button>
 			<button onclick="getViewers()">GET viewers</button>
@@ -459,7 +556,22 @@ const	PAGE = /* html */ `<!doctype html>
 	</section>
 
 	<section class="panel">
-		<h2>Update profile (PATCH)</h2>
+		<h2>📍 Location</h2>
+		<div id="map"></div>
+		<div class="coords">
+			<span class="pill">lat <span id="lat">—</span></span>
+			<span class="pill">lng <span id="lng">—</span></span>
+		</div>
+		<div id="place">click the map or drag the pin to pick a spot</div>
+		<div class="btns">
+			<button onclick="useGps()">📡 Use my GPS</button>
+			<button class="primary" onclick="saveLocation()">💾 Save location</button>
+		</div>
+		<small class="hint">Saving sends decimal coordinates to PUT /profile/location.</small>
+	</section>
+
+	<section class="panel">
+		<h2>✏️ Update profile (PATCH)</h2>
 		<small class="hint">Leave a field blank to omit it.</small>
 		<div class="row">
 			<div>
@@ -512,7 +624,7 @@ const	PAGE = /* html */ `<!doctype html>
 	</section>
 
 	<section class="panel">
-		<h2>Pictures</h2>
+		<h2>🖼️ Pictures</h2>
 		<label>Upload a picture (jpeg / png / webp, max 5)</label>
 		<div class="row">
 			<input type="file" id="file" accept="image/jpeg,image/png,image/webp" />
@@ -526,7 +638,7 @@ const	PAGE = /* html */ `<!doctype html>
 
 	<section class="panel" id="outWrap">
 		<div class="outhead">
-			<h2>Last response</h2>
+			<h2>📨 Last response</h2>
 			<span id="code"></span>
 		</div>
 		<pre id="out">—</pre>
@@ -534,6 +646,8 @@ const	PAGE = /* html */ `<!doctype html>
 
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+	integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 	const	out    = document.getElementById('out');
 	const	codeEl = document.getElementById('code');
@@ -588,9 +702,9 @@ const	PAGE = /* html */ `<!doctype html>
 		const	el = document.getElementById('status');
 
 		if (s && s.loggedIn)
-			el.innerHTML = 'logged in as <b>' + (s.userId || '?') + '</b> · gateway ' + s.gateway;
+			el.innerHTML = 'logged in as <b>' + (s.userId || '?') + '</b>';
 		else
-			el.textContent = 'not logged in · gateway ' + (s ? s.gateway : '?');
+			el.textContent = 'not logged in';
 	}
 
 	async function login()
@@ -625,6 +739,7 @@ const	PAGE = /* html */ `<!doctype html>
 
 		renderPictures(data);
 		syncInterestsFromProfile(data);
+		updateLocationUI(data);
 	}
 
 	async function getViewers()
@@ -640,6 +755,113 @@ const	PAGE = /* html */ `<!doctype html>
 			return (show(0, { error: 'enter a userId first' }));
 
 		await call('GET', '/api/profile/' + encodeURIComponent(id));
+	}
+
+	// ---- location / map -----------------------------------------------------
+
+	let	map        = null;
+	let	marker     = null;
+	let	pendingLat = null;   // coords staged by a click/drag/GPS, not yet saved
+	let	pendingLng = null;
+
+	function initMap()
+	{
+		// Default view: roughly centred on Italy until we know the user's spot.
+		map = L.map('map').setView([41.9028, 12.4964], 4);
+
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+		{
+			maxZoom: 19,
+			attribution: '&copy; OpenStreetMap contributors',
+		}).addTo(map);
+
+		map.on('click', ev => setPin(ev.latlng.lat, ev.latlng.lng));
+
+		// The map is created before its panel has settled its size, so recompute once.
+		setTimeout(() => map.invalidateSize(), 0);
+	}
+
+	// Places / moves the pin, stages the coords and shows them. Does NOT save on its own.
+	function setPin(lat, lng, recenter)
+	{
+		pendingLat = lat;
+		pendingLng = lng;
+
+		if (!marker)
+		{
+			marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+
+			marker.on('dragend', () =>
+			{
+				const	p = marker.getLatLng();
+
+				setPin(p.lat, p.lng, false);
+			});
+		}
+		else
+			marker.setLatLng([lat, lng]);
+
+		if (recenter)
+			map.setView([lat, lng], 13);
+
+		document.getElementById('lat').textContent = lat.toFixed(6);
+		document.getElementById('lng').textContent = lng.toFixed(6);
+
+		reverseGeocode(lat, lng);
+	}
+
+	// Display-only: asks Nominatim for a human label. The backend stores only coordinates,
+	// so this is purely a nicety and failures are silent.
+	async function reverseGeocode(lat, lng)
+	{
+		const	el = document.getElementById('place');
+
+		el.textContent = 'locating…';
+
+		try
+		{
+			const	url = 'https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&lat=' + lat + '&lon=' + lng;
+			const	r   = await fetch(url, { headers: { 'accept': 'application/json' } });
+			const	d   = await r.json();
+
+			el.textContent = d.display_name || '(unknown place)';
+		}
+		catch
+		{
+			el.textContent = '(label unavailable)';
+		}
+	}
+
+	// Reflects the loaded profile's stored coordinates on the map (null = nothing set yet).
+	function updateLocationUI(profile)
+	{
+		if (!profile || profile.latitude == null || profile.longitude == null)
+			return;
+
+		setPin(profile.latitude, profile.longitude, true);
+	}
+
+	function useGps()
+	{
+		if (!navigator.geolocation)
+			return (show(0, { error: 'geolocation not supported by this browser' }));
+
+		navigator.geolocation.getCurrentPosition(
+			pos => setPin(pos.coords.latitude, pos.coords.longitude, true),
+			err => show(0, { error: 'GPS: ' + err.message }),
+		);
+	}
+
+	async function saveLocation()
+	{
+		if (pendingLat == null || pendingLng == null)
+			return (show(0, { error: 'drop a pin on the map first (click it or use GPS)' }));
+
+		await call('PUT', '/api/location',
+		{
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ latitude: pendingLat, longitude: pendingLng }),
+		});
 	}
 
 	// ---- interest picker ----------------------------------------------------
@@ -865,6 +1087,7 @@ const	PAGE = /* html */ `<!doctype html>
 
 		renderPictures(data);
 		syncInterestsFromProfile(data);
+		updateLocationUI(data);
 		loadInterests(); // a newly created interest is now in the DB, refresh the suggestions
 	}
 
@@ -943,9 +1166,10 @@ const	PAGE = /* html */ `<!doctype html>
 		}
 	}
 
-	// Auto-login as the seeded tester on load, then load interests + profile.
+	// Auto-login as the seeded tester on load, then load interests + profile + map.
 	(async function init()
 	{
+		initMap();
 		await refreshStatus();
 		await login();
 		await loadInterests();
