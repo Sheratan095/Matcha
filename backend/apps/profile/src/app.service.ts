@@ -360,9 +360,6 @@ export class AppService
 			else
 				this.logger.log(`Unlike for user ${likedId} by ${likerId} had no existing like to remove`);
 
-			//TODO : send notification to liked user that they were unliked (if they were previously liked)
-			// only if they were connected
-
 			return ({ liked: false });
 		}
 		catch (error: any)
