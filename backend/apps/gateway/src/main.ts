@@ -168,29 +168,13 @@ async function bootstrap()
 		} as any),
 	);
 
-	// Client-facing chat send. The notification controller guards this route with BOTH
-	// InternalKeyGuard (class) and AuthenticatedUserGuard (method), so we inject the internal key
-	// here while the global identity middleware above injects the trusted x-user-id from the
-	// cookie — both guards then pass. Maps POST /notification/message -> POST /notify/message.
-	app.use( '/notification/message',
-		createProxyMiddleware({
-			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
-			changeOrigin: true,
-			pathRewrite: { '^/': '/notify/message' },
-			on:
-			{
-				proxyReq: (proxyReq: ClientRequest) =>
-				{
-					if (env.INTERNAL_KEY)
-						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
-				},
-			},
-		} as any),
-	);
-
-	// Client-facing chat history. GET /notification/chat/:userId/messages -> /chat/:userId/messages.
-	// Same dual-guard as send: inject the internal key; the global middleware injects x-user-id.
-	app.use( '/notification/chat',
+	// All client-facing chat traffic goes to the notification service.
+	// Covers:
+	// POST /chat/message (send)
+	// GET /chat (list)
+	// GET /chat/:userId (history)
+	// Express strips the /chat mount prefix, so the rewrite re-adds it (e.g. /message -> /chat/message).
+	app.use( '/chat',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
 			changeOrigin: true,
