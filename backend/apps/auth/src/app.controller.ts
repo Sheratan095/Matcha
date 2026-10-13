@@ -106,11 +106,14 @@ export class AppController
 
 	@Post('logout')
 	@HttpCode(HttpStatus.OK)
+	@UseGuards(AuthenticatedUserGuard) // needs the authenticated userId (injected by the gateway)
 	@ApiOperation({ summary: 'Logout', description: 'Clears the authentication cookies.' })
+	@ApiCookieAuth('access_token')
 	@ApiResponse({ status: 200, type: LogoutResponseDto })
-	async logout(@Res({ passthrough: true }) res: Response)
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	async logout(@CurrentUser() userId: string, @Res({ passthrough: true }) res: Response)
 	{
-		return (await this.appService.logout(res));
+		return (await this.appService.logout(userId, res));
 	}
 
 	@Get('validate')

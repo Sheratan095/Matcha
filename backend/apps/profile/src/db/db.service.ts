@@ -476,7 +476,7 @@ export class DbService implements OnModuleInit
 				if (nowMatched)
 					await client.query(
 						`INSERT INTO chats (user_a, user_b)
-						 VALUES (LEAST($1, $2), GREATEST($1, $2))
+						 VALUES (LEAST($1::uuid, $2::uuid), GREATEST($1::uuid, $2::uuid))
 						 ON CONFLICT (user_a, user_b) DO NOTHING`,
 						[likerId, likedId]
 					);
@@ -534,7 +534,7 @@ export class DbService implements OnModuleInit
 			if (removed && wasMatched)
 				await client.query(
 					`DELETE FROM chats
-					 WHERE user_a = LEAST($1, $2) AND user_b = GREATEST($1, $2)`,
+					 WHERE user_a = LEAST($1::uuid, $2::uuid) AND user_b = GREATEST($1::uuid, $2::uuid)`,
 					[likerId, likedId]
 				);
 
@@ -706,7 +706,7 @@ export class DbService implements OnModuleInit
 			// (user_a < user_b) ordering the chats table is stored in.
 			await client.query(
 				`DELETE FROM chats
-				 WHERE user_a = LEAST($1, $2) AND user_b = GREATEST($1, $2)`,
+				 WHERE user_a = LEAST($1::uuid, $2::uuid) AND user_b = GREATEST($1::uuid, $2::uuid)`,
 				[blockerId, blockedId]
 			);
 

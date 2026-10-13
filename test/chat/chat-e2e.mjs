@@ -2,25 +2,22 @@ import { io } from 'socket.io-client';
 
 // End-to-end chat tester driving TWO users (testuser + alice) through the gateway.
 //
-// It logs both in, opens both notification sockets (forwarding the httpOnly auth cookies in the
-// handshake, like a browser), ensures they are matched (so a chat exists), then exercises every
-// chat endpoint and asserts the realtime events + status transitions:
-//   POST /chat/message        send  (A -> B), B receives 'message' live, status -> delivered
-//   GET  /chat                list  (the conversation shows up with its chatId)
-//   GET  /chat/:chatId        history (B reads -> B's view marks A's message read, A gets 'chat-seen')
-//   plus negative cases: self-message (400), non-match (403), foreign chat history (403)
+// Covers the whole feature: match -> chat creation, send + live delivery, multi-device fan-out,
+// sent -> delivered -> read transitions + read receipts, list, history, burst ordering, input
+// validation, auth (401), the offline -> reconnect / pending-queue path, and teardown (unlike /
+// block dissolve the chat). It also probes whether logout closes the socket (informational).
 //
-// Zero assertions library — just a tiny check() that tallies failures and sets the exit code,
-// so it doubles as a CI smoke test. Needs socket.io-client (npm install).
+// Zero assertion lib — a tiny check() tallies failures and sets the exit code, so it doubles as a
+// CI smoke test. Needs socket.io-client (npm install).
 //
-// Run (stack up, DB migrated + seeded, the two users matched-able):
+// Run (stack up, DB migrated + seeded, the two users matchable):
 //   cd backend/test/chat && npm install && npm run test:chat
-//   GATEWAY_URL=http://localhost:3000 USER_A=testuser USER_B=alice node chat-e2e.mjs
 
 const	GATEWAY_URL   = process.env.GATEWAY_URL || 'http://localhost:3000';
 const	USER_A        = { username: process.env.USER_A || 'testuser', password: process.env.PASS_A || '1234' };
 const	USER_B        = { username: process.env.USER_B || 'alice',    password: process.env.PASS_B || '1234' };
 const	EVENT_TIMEOUT = Number(process.env.EVENT_TIMEOUT || 5000); // well under the 10s realtime budget
+const	OFFLINE_WAIT  = Number(process.env.OFFLINE_WAIT || 1500);  // let the server register a disconnect
 
 let	failures = 0;
 
@@ -33,6 +30,16 @@ function check(label, ok, detail)
 		failures++;
 		console.error(`  \x1b[31mFAIL\x1b[0m ${label}${detail ? ' — ' + detail : ''}`);
 	}
+}
+
+function info(label, detail)
+{
+	console.log(`  \x1b[36mINFO\x1b[0m ${label}${detail ? ' — ' + detail : ''}`);
+}
+
+function sleep(ms)
+{
+	return (new Promise(resolve => setTimeout(resolve, ms)));
 }
 
 // Keep only the name=value part of each Set-Cookie line (drop Path/HttpOnly/… attributes).
@@ -61,14 +68,19 @@ async function login(user)
 	return (buildCookieHeader(lines));
 }
 
-// Every gateway call carries the user's cookie; returns { status, body } with body parsed as JSON
-// when possible.
+// Every gateway call; pass cookie = undefined to send NO auth (for the 401 checks). Returns
+// { status, body } with body parsed as JSON when possible.
 async function api(method, path, cookie, body)
 {
+	const	headers = { 'Content-Type': 'application/json' };
+
+	if (cookie)
+		headers.Cookie = cookie;
+
 	const	res = await fetch(`${GATEWAY_URL}${path}`,
 	{
 		method,
-		headers: { 'Content-Type': 'application/json', Cookie: cookie },
+		headers,
 		body: body !== undefined ? JSON.stringify(body) : undefined,
 	});
 
@@ -103,7 +115,6 @@ function connectSocket(cookie, label)
 		reconnection: false,
 	});
 
-	// Log every inbound event so a run doubles as a live trace.
 	socket.onAny((event, payload) => console.log(`  [ws:${label}] ${event} ${JSON.stringify(payload)}`));
 
 	return (socket);
@@ -119,17 +130,43 @@ function waitConnect(socket, label)
 	}));
 }
 
-// Resolves with the event payload, or null if nothing arrives within EVENT_TIMEOUT.
-function waitForEvent(socket, event)
+// Resolves with the first matching event payload, or null on timeout. When `predicate` is given,
+// only a payload satisfying it resolves (others are ignored) — needed when several events of the
+// same name may arrive.
+function waitForEvent(socket, event, predicate)
 {
 	return (new Promise(resolve =>
 	{
-		const	timer = setTimeout(() => resolve(null), EVENT_TIMEOUT);
+		const	timer = setTimeout(() =>
+		{
+			socket.off(event, handler);
+			resolve(null);
+		}, EVENT_TIMEOUT);
 
-		socket.once(event, payload =>
+		function handler(payload)
+		{
+			if (predicate && !predicate(payload))
+				return;
+
+			clearTimeout(timer);
+			socket.off(event, handler);
+			resolve(payload);
+		}
+
+		socket.on(event, handler);
+	}));
+}
+
+function waitForDisconnect(socket)
+{
+	return (new Promise(resolve =>
+	{
+		const	timer = setTimeout(() => resolve(false), EVENT_TIMEOUT);
+
+		socket.once('disconnect', () =>
 		{
 			clearTimeout(timer);
-			resolve(payload);
+			resolve(true);
 		});
 	}));
 }
@@ -137,6 +174,8 @@ function waitForEvent(socket, event)
 async function main()
 {
 	console.log(`Gateway: ${GATEWAY_URL}  (A=${USER_A.username}, B=${USER_B.username})\n`);
+
+	const	MESSAGE = `e2e ${Date.now()}`; // unique per run so lookups never hit a stale copy
 
 	// --- auth + identity ------------------------------------------------------
 	const	cookieA = await login(USER_A);
@@ -146,17 +185,17 @@ async function main()
 
 	check('resolved both user ids', Boolean(idA && idB && idA !== idB), `A=${idA} B=${idB}`);
 
-	// --- sockets --------------------------------------------------------------
-	const	sockA = connectSocket(cookieA, USER_A.username);
-	const	sockB = connectSocket(cookieB, USER_B.username);
+	// --- sockets (B opens TWO, to test multi-device fan-out) ------------------
+	const	sockA  = connectSocket(cookieA, USER_A.username);
+	const	sockB  = connectSocket(cookieB, USER_B.username + '#1');
+	const	sockB2 = connectSocket(cookieB, USER_B.username + '#2');
 
 	await waitConnect(sockA, USER_A.username);
-	await waitConnect(sockB, USER_B.username);
-	check('both sockets connected', true);
+	await waitConnect(sockB, USER_B.username + '#1');
+	await waitConnect(sockB2, USER_B.username + '#2');
+	check('all sockets connected (A + B×2)', true);
 
 	// --- establish a match so a chat exists -----------------------------------
-	// Each likes the other; a mutual like creates the chat. (Liking requires the liker to have a
-	// profile picture — if this 403s, seed pictures for the two users first.)
 	const	likeAB = await api('POST', `/profile/${idB}/like`, cookieA);
 	const	likeBA = await api('POST', `/profile/${idA}/like`, cookieB);
 
@@ -164,76 +203,145 @@ async function main()
 	if (likeAB.status === 403 || likeBA.status === 403)
 		console.warn('  \x1b[33mNOTE\x1b[0m liking returned 403 — the users likely need a profile picture; chat tests will fail until they are matched.');
 
-	// --- send: A -> B ---------------------------------------------------------
-	const	messageAtB = waitForEvent(sockB, 'message');   // B should receive it live
-	const	seenAtA    = waitForEvent(sockA, 'chat-seen');  // later, when B opens the chat
+	// --- send: A -> B, delivered to BOTH of B's devices -----------------------
+	const	atB1    = waitForEvent(sockB,  'message', p => p.content === MESSAGE);
+	const	atB2    = waitForEvent(sockB2, 'message', p => p.content === MESSAGE);
+	const	seenAtA = waitForEvent(sockA,  'chat-seen');
 
-	const	send = await api('POST', '/chat/message', cookieA, { toUserId: idB, content: 'hey alice' });
+	const	send = await api('POST', '/chat/message', cookieA, { toUserId: idB, content: MESSAGE });
 
 	check('POST /chat/message -> 200', send.status === 200, `status=${send.status} body=${JSON.stringify(send.body)}`);
 
-	const	live = await messageAtB;
+	const	[live1, live2] = await Promise.all([atB1, atB2]);
 
-	check("B received 'message' over WS", live !== null, 'no message event within timeout');
-	if (live)
-		check('delivered payload content matches', live.content === 'hey alice', JSON.stringify(live));
+	check("B device #1 received 'message'", live1 !== null);
+	check("B device #2 received 'message' (multi-device fan-out)", live2 !== null);
 
-	// --- list: A --------------------------------------------------------------
+	// --- list -----------------------------------------------------------------
 	const	list = await api('GET', '/chat', cookieA);
 
 	check('GET /chat -> 200', list.status === 200);
 
 	const	convo = Array.isArray(list.body?.chats) ? list.body.chats.find(c => c.userId === idB) : null;
 
-	check('conversation appears in A\'s list with a chatId', Boolean(convo?.chatId), JSON.stringify(list.body));
-	check('list preview shows the last message', convo?.lastMessage === 'hey alice', JSON.stringify(convo));
+	check('conversation listed with a chatId', Boolean(convo?.chatId), JSON.stringify(list.body));
+	check('list preview shows the last message', convo?.lastMessage === MESSAGE, JSON.stringify(convo));
 
 	const	chatId = convo?.chatId;
 
+	// --- delivered -> read ----------------------------------------------------
 	if (chatId)
 	{
-		// A reads its own view: its outgoing message should already be 'delivered' (B was online),
-		// and reading as the sender must NOT change its own message's status.
 		const	histA = await api('GET', `/chat/${chatId}`, cookieA);
-		const	mineAtA = histA.body?.messages?.find(m => m.content === 'hey alice');
+		const	mineAtA = histA.body?.messages?.find(m => m.content === MESSAGE);
 
 		check('GET /chat/:chatId -> 200 (A)', histA.status === 200);
 		check("A's sent message status is 'delivered'", mineAtA?.status === 'delivered', `status=${mineAtA?.status}`);
 
-		// B opens the chat: marks A's message read + pushes 'chat-seen' to A.
 		const	histB = await api('GET', `/chat/${chatId}`, cookieB);
-		const	msgAtB = histB.body?.messages?.find(m => m.content === 'hey alice');
 
 		check('GET /chat/:chatId -> 200 (B)', histB.status === 200);
-		check('history contains the message', Boolean(msgAtB), JSON.stringify(histB.body));
+		check('history contains the message', Boolean(histB.body?.messages?.find(m => m.content === MESSAGE)), JSON.stringify(histB.body));
 
-		const	seen = await seenAtA;
+		check("A received 'chat-seen' after B read", (await seenAtA) !== null);
 
-		check("A received 'chat-seen' over WS after B read", seen !== null, 'no chat-seen within timeout');
-
-		// Re-fetch: the message is now 'read'.
 		const	histB2 = await api('GET', `/chat/${chatId}`, cookieB);
-		const	msgRead = histB2.body?.messages?.find(m => m.content === 'hey alice');
+		const	msgRead = histB2.body?.messages?.find(m => m.content === MESSAGE);
 
 		check("message status is 'read' after B opened the chat", msgRead?.status === 'read', `status=${msgRead?.status}`);
+
+		// --- burst ordering ---------------------------------------------------
+		const	burst = Array.from({ length: 5 }, (_, i) => `burst ${Date.now()} #${i}`);
+
+		for (const text of burst)
+			await api('POST', '/chat/message', cookieA, { toUserId: idB, content: text });
+
+		const	histBurst = await api('GET', `/chat/${chatId}`, cookieA);
+		const	seq = (histBurst.body?.messages || []).map(m => m.content).filter(c => burst.includes(c));
+
+		check('burst messages preserved in send order', JSON.stringify(seq) === JSON.stringify(burst), JSON.stringify(seq));
 	}
 
-	// --- negative cases -------------------------------------------------------
-	const	self = await api('POST', '/chat/message', cookieA, { toUserId: idA, content: 'x' });
+	// --- input validation (expect 400, never 500) ----------------------------
+	const	longText = 'x'.repeat(1001);
+	const	cases =
+	[
+		['empty content',       { toUserId: idB, content: '' }],
+		['content > 1000 chars', { toUserId: idB, content: longText }],
+		['missing toUserId',    { content: 'x' }],
+		['toUserId not a uuid',  { toUserId: 'not-a-uuid', content: 'x' }],
+	];
 
-	check('message to self -> 400', self.status === 400, `status=${self.status}`);
+	for (const [label, body] of cases)
+	{
+		const	res = await api('POST', '/chat/message', cookieA, body);
+
+		check(`validation: ${label} -> 400`, res.status === 400, `status=${res.status}`);
+	}
+
+	// --- auth: no cookie -> 401 ----------------------------------------------
+	check('unauth POST /chat/message -> 401', (await api('POST', '/chat/message', undefined, { toUserId: idB, content: 'x' })).status === 401);
+	check('unauth GET /chat -> 401',          (await api('GET', '/chat', undefined)).status === 401);
+	if (chatId)
+		check('unauth GET /chat/:chatId -> 401', (await api('GET', `/chat/${chatId}`, undefined)).status === 401);
+
+	// --- negative cases -------------------------------------------------------
+	check('message to self -> 400', (await api('POST', '/chat/message', cookieA, { toUserId: idA, content: 'x' })).status === 400);
 
 	const	strangerId = '00000000-0000-4000-8000-000000000000';
-	const	nonMatch = await api('POST', '/chat/message', cookieA, { toUserId: strangerId, content: 'x' });
 
-	check('message to a non-match -> 403', nonMatch.status === 403, `status=${nonMatch.status}`);
+	check('message to a non-match -> 403', (await api('POST', '/chat/message', cookieA, { toUserId: strangerId, content: 'x' })).status === 403);
+	check('history of a chat you are not in -> 403', (await api('GET', `/chat/${strangerId}`, cookieA)).status === 403);
 
-	const	foreign = await api('GET', `/chat/${strangerId}`, cookieA);
+	// --- offline -> reconnect / pending queue ---------------------------------
+	const	offlineMsg = `offline ${Date.now()}`;
 
-	check('history of a chat you are not in -> 403', foreign.status === 403, `status=${foreign.status}`);
+	sockB.close();
+	sockB2.close();
+	await sleep(OFFLINE_WAIT); // let the server process both disconnects (B now fully offline)
+
+	const	offlineSend = await api('POST', '/chat/message', cookieA, { toUserId: idB, content: offlineMsg });
+
+	check('offline send -> 200', offlineSend.status === 200, `status=${offlineSend.status}`);
+	check('offline send reports not-delivered-live (false)', offlineSend.body === false, `body=${JSON.stringify(offlineSend.body)}`);
+
+	const	sockB3    = connectSocket(cookieB, USER_B.username + '#reconnect');
+	const	queued    = waitForEvent(sockB3, 'message', p => p.content === offlineMsg);
+
+	await waitConnect(sockB3, USER_B.username + '#reconnect');
+
+	check('queued message pushed on reconnect', (await queued) !== null, 'pending-queue push not received');
+	if (chatId)
+		check('offline message present in history', Boolean((await api('GET', `/chat/${chatId}`, cookieB)).body?.messages?.find(m => m.content === offlineMsg)));
+
+	sockB3.close();
+
+	// --- teardown: unlike dissolves the chat ----------------------------------
+	check('DELETE /profile/:id/like -> 200', (await api('DELETE', `/profile/${idB}/like`, cookieA)).status === 200);
+	if (chatId)
+		check('history of the dissolved chat -> 403', (await api('GET', `/chat/${chatId}`, cookieA)).status === 403);
+	check('message after unlike -> 403', (await api('POST', '/chat/message', cookieA, { toUserId: idB, content: 'x' })).status === 403);
+
+	const	listGone = await api('GET', '/chat', cookieA);
+
+	check('dissolved conversation no longer listed', Array.isArray(listGone.body?.chats) && !listGone.body.chats.some(c => c.userId === idB), JSON.stringify(listGone.body));
+
+	// --- teardown: block dissolves the chat -----------------------------------
+	await api('POST', `/profile/${idB}/like`, cookieA); // re-form the match (B still likes A) -> new chat
+
+	check('POST /profile/:id/block -> 200', (await api('POST', `/profile/${idB}/block`, cookieA)).status === 200);
+	check('message after block -> 403', (await api('POST', '/chat/message', cookieA, { toUserId: idB, content: 'x' })).status === 403);
+
+	// Restore clean state for the next run (a lingering block would break the next like-setup).
+	check('DELETE /profile/:id/block -> 200 (cleanup)', (await api('DELETE', `/profile/${idB}/block`, cookieA)).status === 200);
+
+	// --- informational: does logout close the live socket? --------------------
+	const	aClosed = waitForDisconnect(sockA);
+
+	await api('POST', '/auth/logout', cookieA);
+	info('logout closed A\'s socket?', String(await aClosed) + '  (false = socket outlives the session — decide if that is intended)');
 
 	sockA.close();
-	sockB.close();
 
 	console.log(`\n${failures === 0 ? '\x1b[32mALL CHECKS PASSED\x1b[0m' : `\x1b[31m${failures} CHECK(S) FAILED\x1b[0m`}`);
 	process.exit(failures === 0 ? 0 : 1);

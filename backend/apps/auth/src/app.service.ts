@@ -196,13 +196,17 @@ export class AppService implements OnModuleInit
 		return ({ message: 'Email verified successfully', userId: verificationTokenRecord.user_id });
 	}
 
-	async logout(res: any)
+	async logout(userId: string, res: any)
 	{
-		closeWsConnections(res.userId, this.httpService); // Close all WebSocket connections for the user
-		this.logger.log(`User ID ${res.userId} logged out, WebSocket connections closed`);
+		// Fire-and-forget: a notification-service hiccup must not fail the logout.
+		closeWsConnections(userId, this.httpService)
+			.catch(err => this.logger.warn(`Failed to close WebSocket connections for user ${userId}: ${err.message}`));
 
-		// Refresh token is also removed from db
-		await this.jwtHelper.revokeTokens(res, this.dbService);
+		this.logger.log(`User ID ${userId} logged out, closing WebSocket connections`);
+
+		// Clears the auth cookies (res) AND deletes the refresh token from the DB (userId) so a
+		// stolen refresh token can't outlive the logout.
+		await this.jwtHelper.revokeTokens(res, this.dbService, userId);
 
 		return ({ message: 'Logged out successfully' });
 	}

@@ -128,7 +128,7 @@ export class DbService implements OnModuleInit
 	async getConversation(chatId: string): Promise<MessagePayload[]>
 	{
 		const result = await this.pool.query(
-			`SELECT m.id AS message_id, m.content, m.created_at,
+			`SELECT m.id AS message_id, m.content, m.created_at, m.status,
 			        m.sender_id AS user_id, u.username, up.url AS profile_picture_url
 			 FROM messages m
 			 INNER JOIN users u ON u.id = m.sender_id

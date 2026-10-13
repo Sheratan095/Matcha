@@ -23,18 +23,24 @@ npm run test:chat
 | `USER_A`/`PASS_A` | `testuser` / `1234`   | First user (the sender)            |
 | `USER_B`/`PASS_B` | `alice` / `1234`      | Second user (the recipient)        |
 | `EVENT_TIMEOUT` | `5000`                  | ms to wait for a WS event          |
+| `OFFLINE_WAIT`  | `1500`                  | ms to let the server register a disconnect before the offline-send check |
 
 ## What it checks
 
-1. Both users log in and resolve distinct ids; both sockets connect.
+1. Both users log in and resolve distinct ids; A + two B sockets connect.
 2. Setup: each likes the other so a **chat** exists (a mutual like creates it).
-3. `POST /chat/message` (A→B) returns 200, **B receives `message` live**.
+3. `POST /chat/message` (A→B) → 200, delivered live to **both of B's devices** (multi-device fan-out).
 4. `GET /chat` lists the conversation with its `chatId` and last-message preview.
-5. `GET /chat/:chatId` as A shows A's message as **`delivered`** (B was online).
-6. `GET /chat/:chatId` as B returns the history, flips A's message to **`read`**, and **A receives `chat-seen`**.
-7. Negative cases: message to self → **400**, to a non-match → **403**, history of a foreign chat → **403**.
+5. `GET /chat/:chatId` as A shows A's message **`delivered`** (B online); as B returns the history, flips it to **`read`**, and **A receives `chat-seen`**.
+6. **Burst ordering** — 5 rapid messages come back in send order.
+7. **Validation → 400** — empty / >1000-char / missing `toUserId` / non-UUID `toUserId`.
+8. **Auth → 401** — the three chat endpoints with no cookie.
+9. **Negatives** — self → 400, non-match → 403, foreign chat → 403.
+10. **Offline → reconnect** — send while B is disconnected reports not-delivered-live, the message is **queued and pushed on reconnect**, and is present in history.
+11. **Teardown** — **unlike** and **block** each dissolve the chat (history/send → 403, conversation drops off the list); unblock restores a clean state.
+12. **Informational** — whether logout closes A's live socket.
 
-Exit code is `0` when all checks pass, `1` otherwise (CI-friendly).
+Exit code is `0` when all checks pass, `1` otherwise (CI-friendly). The logout probe is informational (an `INFO` line), not a pass/fail.
 
 ## Prerequisites
 
