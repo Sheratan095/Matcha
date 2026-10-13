@@ -61,7 +61,7 @@
 
 [x] pending noiificaiton
 
-[] Remove a previously given “like”. This will prevent further notifications from that
+[x] Remove a previously given “like”. This will prevent further notifications from that
 user, and the chat function between them will be disabled.
 
 [x] login with not verified email doesn't works,should sent another code
@@ -89,7 +89,7 @@ user, and the chat function between them will be disabled.
 
 [x] {{EXPIRY_MINUTES}} in forgot psw email
 
-[] store pending notification in database
+[x] store pending notification in database
 
 [x] GetProfile should return also username
 

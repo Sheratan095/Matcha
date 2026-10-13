@@ -316,26 +316,36 @@ async function main()
 	check('message to a non-match -> 403', (await api('POST', '/chat/message', cookieA, { toUserId: strangerId, content: 'x' })).status === 403);
 	check('history of a chat you are not in -> 403', (await api('GET', `/chat/${strangerId}`, cookieA)).status === 403);
 
-	// --- offline -> reconnect / pending queue ---------------------------------
+	// --- offline -> reconnect --------------------------------------------------
+	// Two distinct behaviours now: chat messages are recovered via HISTORY (not queued), while
+	// durable notifications (profile-view / like / match) are WRITTEN THROUGH to the DB while the
+	// recipient is offline and pushed on reconnect.
 	const	offlineMsg = `offline ${Date.now()}`;
 
 	sockB.close();
 	sockB2.close();
-	await sleep(OFFLINE_WAIT); // let the server process both disconnects (B now fully offline)
+	await sleep(OFFLINE_WAIT); // let the server register both disconnects (B now fully offline)
 
+	// (a) chat message while offline — not pushed on reconnect, recovered from history.
 	const	offlineSend = await api('POST', '/chat/message', cookieA, { toUserId: idB, content: offlineMsg });
 
-	check('offline send -> 200', offlineSend.status === 200, `status=${offlineSend.status}`);
-	check('offline send reports not-delivered-live (false)', offlineSend.body === false, `body=${JSON.stringify(offlineSend.body)}`);
+	check('offline chat send -> 200', offlineSend.status === 200, `status=${offlineSend.status}`);
+	check('offline chat send reports not-delivered-live (false)', offlineSend.body === false, `body=${JSON.stringify(offlineSend.body)}`);
 
-	const	sockB3    = connectSocket(cookieB, USER_B.username + '#reconnect');
-	const	queued    = waitForEvent(sockB3, 'message', p => p.content === offlineMsg);
+	// (b) durable notification while offline — A viewing B's profile notifies (offline) B.
+	await api('GET', `/profile/${idB}`, cookieA);
+
+	// Reconnect: the write-through notification should be drained to the fresh socket.
+	const	sockB3  = connectSocket(cookieB, USER_B.username + '#reconnect');
+	const	drained = waitForEvent(sockB3, 'profile-view');
 
 	await waitConnect(sockB3, USER_B.username + '#reconnect');
 
-	check('queued message pushed on reconnect', (await queued) !== null, 'pending-queue push not received');
+	check('durable notification queued while offline is pushed on reconnect (write-through)', (await drained) !== null, 'drain not received');
+
+	// The chat message was NOT queued — it comes back via history instead.
 	if (chatId)
-		check('offline message present in history', Boolean((await api('GET', `/chat/${chatId}`, cookieB)).body?.messages?.find(m => m.content === offlineMsg)));
+		check('offline chat message recovered via history', Boolean((await api('GET', `/chat/${chatId}`, cookieB)).body?.messages?.find(m => m.content === offlineMsg)));
 
 	sockB3.close();
 

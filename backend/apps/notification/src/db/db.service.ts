@@ -199,6 +199,40 @@ export class DbService implements OnModuleInit
 		);
 	}
 
+	// Persists one pending notification for an OFFLINE recipient (write-through from the ws layer).
+	// Only ever called off the live path. Keeps the per-user queue bounded: after inserting, trims
+	// to the newest NOTIFICATION_MAX_PENDING_PER_USER rows so an absent user can't grow it forever.
+	async addPendingNotification(userId: string, event: string, payload: any): Promise<void>
+	{
+		await this.pool.query(
+			'INSERT INTO notifications (user_id, event, payload) VALUES ($1, $2, $3)',
+			[userId, event, JSON.stringify(payload)],
+		);
+
+		await this.pool.query(
+			`DELETE FROM notifications
+			 WHERE user_id = $1 AND id NOT IN (
+				SELECT id FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2
+			 )`,
+			[userId, env.NOTIFICATION_MAX_PENDING_PER_USER],
+		);
+	}
+
+	// Atomically returns AND removes every pending notification for a user (drained on reconnect),
+	// oldest first. DELETE ... RETURNING means notifications inserted after the drain starts are
+	// kept, not lost.
+	async drainPendingNotifications(userId: string): Promise<{ event: string; payload: any }[]>
+	{
+		const result = await this.pool.query(
+			'DELETE FROM notifications WHERE user_id = $1 RETURNING event, payload, created_at',
+			[userId],
+		);
+
+		return (result.rows
+			.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+			.map(r => ({ event: r.event, payload: r.payload })));
+	}
+
 	// Two users are "connected" (may chat) when a mutual like exists — the same self-join the
 	// profile service uses for matches. Because blocking dissolves the likes in both directions,
 	// a blocked pair is never connected, so this one check also enforces the block rule.

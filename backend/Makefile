@@ -1,4 +1,4 @@
-.PHONY: install build dev up down clean db-reset storage seed-pictures generate_env
+.PHONY: install build dev up down clean db-migrate db-reset storage seed-pictures generate_env
 
 # Build all apps and packages
 build:
@@ -42,8 +42,16 @@ up:
 down:
 	pnpm docker:down
 
+# Apply any NEW SQL migrations to the ALREADY-RUNNING database — no reset, no data loss, no
+# re-seeding. Runs the migration files inside the postgres container (where infra/db/migrations is
+# mounted at /init-scripts/migrations). Every migration uses CREATE ... IF NOT EXISTS / ADD COLUMN
+# IF NOT EXISTS, so re-running already-applied ones is a harmless no-op — only new ones take effect.
+# Use this after adding a migration; use db-reset only when you want a clean slate.
 db-migrate:
-	./infra/garage/init.sh
+	@echo "Applying migrations to the running database..."
+	docker compose up -d --wait postgres
+	docker compose exec -T postgres sh -c 'for f in /init-scripts/migrations/*.sql; do echo "-- applying $$(basename $$f)"; psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -f "$$f"; done'
+	@echo "Migrations applied (no reset, data preserved)."
 
 # Reset Database: Stop containers, remove volumes, and start again to trigger init scripts.
 # Garage volumes are wiped too: the picture URLs lived in the database that was just reset.

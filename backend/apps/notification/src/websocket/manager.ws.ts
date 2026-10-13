@@ -1,6 +1,5 @@
 import { Socket } from "socket.io";
 import { Logger } from "@nestjs/common";
-import { env } from "@repo/config";
 import { DbService } from '../db/db.service';
 import { NotificationType, MessageStatus } from "@repo/shared-types";
 
@@ -10,8 +9,8 @@ export class WsManager
 	// This allows for multiple connections per user (e.g., from different devices or browser tabs)
 	private clients: Map<string, Set<Socket>>;
 
-	// Map to hold pending notifications for users who are not currently connected
-	private pendingNotifications: Map<string, any[]>;
+	// Pending notifications for offline users are persisted in the DB (write-through), not held in
+	// memory, so they survive restarts and aren't lost on a crash.
 
 	private logger: Logger;
 	private dbService: DbService;
@@ -20,7 +19,6 @@ export class WsManager
 	{
 		// Initialize the clients map
 		this.clients = new Map();
-		this.pendingNotifications = new Map();
 
 		this.logger = logger;
 		this.dbService = dbService;
@@ -39,8 +37,10 @@ export class WsManager
 		const totalSockets : number = this.clients.get(userId)?.size || 0;
 		this.logger.log(`Websocket connected: UserId: ${userId}, SocketId: ${socket.id}, TotalSockets: ${totalSockets}`);
 
-		// If there are any pending notifications for this user, send them now
-		this.sendPendingNotifications(userId);
+		// Deliver anything that queued while they were offline. Fire-and-forget so a slow DB drain
+		// never blocks the connection handshake.
+		this.sendPendingNotifications(userId).catch(err =>
+			this.logger.warn(`Failed to drain pending notifications for user ${userId}: ${err.message}`));
 	}
 
 	// Remove a client connection for a user. Returns the userId when that was the user's
@@ -97,9 +97,11 @@ export class WsManager
 		}
 		else
 		{
-			// If the user is not connected, add the notification to the pending queue
+			// Offline: persist durable notifications so the user catches up on reconnect. Chat
+			// messages (store = false) are recovered via history instead, and ephemeral events
+			// like chat-seen are simply dropped.
 			if (store)
-				this.addPendingNotification(userId, event, message);
+				await this.dbService.addPendingNotification(userId, event, message);
 
 			return (false);
 		}
@@ -122,34 +124,18 @@ export class WsManager
 		return (undefined);
 	}
 
-	addPendingNotification(userId: string, event: string, message: any): void
+	// Drains the user's persisted pending notifications and emits them. store = false on re-send so
+	// a re-drop (if they vanish mid-drain) isn't re-persisted. Called fire-and-forget on connect.
+	async sendPendingNotifications(userId: string): Promise<void>
 	{
-		if (!this.pendingNotifications.has(userId))
-			this.pendingNotifications.set(userId, []);
+		const	pending = await this.dbService.drainPendingNotifications(userId);
 
-		const queue = this.pendingNotifications.get(userId)!;
-
-		queue.push({ event, message });
-
-		// Cap the per-user queue so an offline user can't grow it without bound; drop the oldest to keep the newest.
-		if (queue.length > env.NOTIFICATION_MAX_PENDING_PER_USER)
-			queue.shift();
-	}
-
-	sendPendingNotifications(userId: string): void
-	{
-		const	pending = this.pendingNotifications.get(userId);
-		if (!pending)
+		if (pending.length === 0)
 			return;
 
-		this.logger.log(`Sent pending ${pending.length} notifications for user ID ${userId}`);
+		this.logger.log(`Delivering ${pending.length} pending notifications to user ID ${userId}`);
 
-		// Detach the queue up front: `pending` is now a PRIVATE SNAPSHOT, so nothing is mutated
-		// mid-iteration. Anything that fails to send is re-queued (in order) into a fresh list
-		// by sendMessageToUser(), since the key is already gone from the map.
-		this.pendingNotifications.delete(userId);
-
-		for (const { event, message } of pending)
-			this.sendMessageToUser(userId, event, message, true);
+		for (const { event, payload } of pending)
+			await this.sendMessageToUser(userId, event, payload, false);
 	}
 }

@@ -164,7 +164,9 @@ export class AppService
 
 		const payload: MessagePayload = await this.dbService.storeMessage(chatId, senderId, content);
 
-		const delivered = await this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload, true);
+		// store = false: an offline recipient recovers the message from history (the messages table),
+		// not from the notification queue — so it is never persisted twice.
+		const delivered = await this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload, false);
 
 		if (delivered === true)
 			await this.dbService.updateMessageStatus(payload.messageId, MessageStatus.DELIVERED);
