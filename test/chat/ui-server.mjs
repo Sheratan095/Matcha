@@ -158,7 +158,18 @@ async function handleApi(req, res, url)
 	const	hist = path.match(/^\/api\/chat\/([^/]+)$/);
 
 	if (hist && method === 'GET')
-		return (sendGateway(res, await gateway('GET', `/chat/${encodeURIComponent(hist[1])}`)));
+	{
+		const	after = url.searchParams.get('after');
+		const	qs    = after ? `?after=${encodeURIComponent(after)}` : '';
+
+		return (sendGateway(res, await gateway('GET', `/chat/${encodeURIComponent(hist[1])}${qs}`)));
+	}
+
+	// Mark a chat as seen (read receipts); no history fetch needed.
+	const	seen = path.match(/^\/api\/chat\/([^/]+)\/seen$/);
+
+	if (seen && method === 'POST')
+		return (sendGateway(res, await gateway('POST', `/chat/${encodeURIComponent(seen[1])}/seen`)));
 
 	// Send a message.
 	if (path === '/api/message' && method === 'POST')
@@ -291,6 +302,16 @@ const	PAGE = /* html */ `<!doctype html>
 	.composer button { padding: 10px 18px; border: none; border-radius: 999px; background: var(--accent); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
 	.composer button:hover { background: var(--accent-dark); }
 	.composer button:disabled { opacity: .5; cursor: default; }
+
+	/* toasts: one pops for every inbound websocket event */
+	.toasts { position: fixed; top: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; max-width: 320px; }
+	.toast { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; box-shadow: var(--shadow); padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start; animation: toastin .18s ease; }
+	.toast .ico { font-size: 20px; line-height: 1; }
+	.toast .tt { font-weight: 800; font-size: 13px; }
+	.toast .tx { font-size: 12px; color: var(--muted); word-break: break-word; }
+	.toast .ev { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+	.toast.out { opacity: 0; transform: translateX(12px); transition: opacity .3s, transform .3s; }
+	@keyframes toastin { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
 </style>
 </head>
 <body>
@@ -313,6 +334,7 @@ const	PAGE = /* html */ `<!doctype html>
 		</div>
 	</section>
 </div>
+<div class="toasts" id="toasts"></div>
 <script>
 	var myId = null;
 	var matches = [];                 // [{ userId, username, profilePictureUrl }]
@@ -381,12 +403,13 @@ const	PAGE = /* html */ `<!doctype html>
 
 		if (activeChat)
 		{
-			// One fetch when the conversation is opened: loads history AND marks it read server-side.
+			// Load history (a pure read now), then mark it seen via the dedicated endpoint.
 			var h = await getJson('/api/chat/' + encodeURIComponent(activeChat));
 
 			thread = (h && h.messages) || [];
 			renderThread();
-			reload(); // refresh sidebar previews / cleared unread (chat list does not mark read)
+			fetch('/api/chat/' + encodeURIComponent(activeChat) + '/seen', { method: 'POST' });
+			reload(); // refresh sidebar previews / cleared unread
 		}
 		else
 		{
@@ -465,8 +488,45 @@ const	PAGE = /* html */ `<!doctype html>
 		es.onmessage = function (ev)
 		{
 			var data; try { data = JSON.parse(ev.data); } catch (e) { return; }
+			showToast(data.event, data.payload); // a toast for EVERY inbound ws event
 			handleEvent(data.event, data.payload);
 		};
+	}
+
+	// Maps a ws event to an icon + title + one-line body for the toast.
+	function toastInfo(event, payload)
+	{
+		var name = (payload && payload.username) ? esc(payload.username) : '';
+
+		if (event === 'message')      return ({ ico: '💬', title: 'New message',  text: (name ? name + ': ' : '') + esc(payload && payload.content) });
+		if (event === 'chat-seen')    return ({ ico: '👀', title: 'Seen',         text: 'Your messages were read' });
+		if (event === 'match')        return ({ ico: '💚', title: 'New match',    text: name });
+		if (event === 'profile-like') return ({ ico: '❤️', title: 'New like',     text: name });
+		if (event === 'profile-view') return ({ ico: '👁️', title: 'Profile view', text: name });
+		if (event === 'unmatch')      return ({ ico: '💔', title: 'Unmatched',    text: name });
+
+		return ({ ico: '🔔', title: event, text: '' }); // unknown event: still show it
+	}
+
+	function showToast(event, payload)
+	{
+		var info = toastInfo(event, payload);
+		var el   = document.createElement('div');
+
+		el.className = 'toast';
+		el.innerHTML =
+			'<div class="ico">' + info.ico + '</div>' +
+			'<div><div class="ev">' + esc(event) + '</div><div class="tt">' + esc(info.title) + '</div>' +
+			(info.text ? '<div class="tx">' + info.text + '</div>' : '') + '</div>';
+
+		document.getElementById('toasts').appendChild(el);
+
+		// Auto-dismiss after 4s (fade out first).
+		setTimeout(function ()
+		{
+			el.classList.add('out');
+			setTimeout(function () { el.remove(); }, 300);
+		}, 4000);
 	}
 
 	async function handleEvent(event, payload)
@@ -480,10 +540,9 @@ const	PAGE = /* html */ `<!doctype html>
 				thread.push(payload);
 				renderThread();
 
-				// Persist "read" for the message we just received, without re-rendering from the
-				// response. This is the ONLY history call on an incoming message, and it emits a
-				// single chat-seen that the sender handles locally (no ping-pong).
-				fetch('/api/chat/' + encodeURIComponent(activeChat));
+				// Mark it seen via the dedicated endpoint (no history fetch). It emits a single
+				// chat-seen that the sender handles locally (no ping-pong).
+				fetch('/api/chat/' + encodeURIComponent(activeChat) + '/seen', { method: 'POST' });
 			}
 			else if (payload.userId === activeUser && !activeChat)
 			{

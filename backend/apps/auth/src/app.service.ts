@@ -234,7 +234,7 @@ export class AppService implements OnModuleInit
 		try
 		{
 			const userId: string = await this.jwtHelper.validateAccessToken(token);
-			this.logger.log(`Token valid for user ID: ${userId}`);
+			// this.logger.log(`Token valid for user ID: ${userId}`);
 
 			return ({ valid: true, userId });
 		}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, ParseUUIDPipe, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, ParseUUIDPipe, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { AppService } from './app.service';
 import { AuthenticatedUserGuard, CurrentUser, InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -146,16 +146,30 @@ export class AppController
 
 	@Get('chat/:chatId')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Get conversation history', description: 'Returns the messages of the given chat, oldest first. The caller must be a participant of the chat.' })
+	@ApiOperation({ summary: 'Get conversation history', description: 'Messages of the given chat, oldest first. Pure read (no read-marking) — pass ?after=<epoch ms> to get only messages newer than the client already has. The caller must be a participant.' })
 	@ApiResponse({ status: 200, type: ChatHistoryResponseDto, description: 'Conversation history' })
 	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid chat id' })
 	@ApiResponse({ status: 403, type: ErrorDto, description: 'Not a participant of this chat' })
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
-	async getChatHistory(@Param('chatId', ParseUUIDPipe) chatId: string, @CurrentUser() userId: string)
+	async getChatHistory(@Param('chatId', ParseUUIDPipe) chatId: string, @Query('after') after: string | undefined, @CurrentUser() userId: string)
 	{
-		const messages = await this.appService.getChatHistory(userId, chatId);
+		const	afterMs = after !== undefined ? Number(after) : undefined;
+		const	messages = await this.appService.getChatHistory(userId, chatId, Number.isFinite(afterMs) ? afterMs : undefined);
 
 		return ({ messages });
+	}
+
+	@Post('chat/:chatId/seen')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Mark a chat as seen', description: "Marks the other participant's messages in the chat as read and notifies them (chat-seen). The caller must be a participant." })
+	@ApiResponse({ status: 200, description: 'Chat marked as seen' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid chat id' })
+	@ApiResponse({ status: 403, type: ErrorDto, description: 'Not a participant of this chat' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async markChatSeen(@Param('chatId', ParseUUIDPipe) chatId: string, @CurrentUser() userId: string)
+	{
+		return (await this.appService.markChatSeen(userId, chatId));
 	}
 }

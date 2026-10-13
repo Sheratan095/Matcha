@@ -240,15 +240,20 @@ async function main()
 
 		const	histB = await api('GET', `/chat/${chatId}`, cookieB);
 
-		check('GET /chat/:chatId -> 200 (B)', histB.status === 200);
+		check('GET /chat/:chatId -> 200 (B, pure read)', histB.status === 200);
 		check('history contains the message', Boolean(histB.body?.messages?.find(m => m.content === MESSAGE)), JSON.stringify(histB.body));
 
-		check("A received 'chat-seen' after B read", (await seenAtA) !== null);
+		// Reading no longer marks read — B explicitly marks the chat seen, which flips A's message
+		// to 'read' and pushes 'chat-seen' to A.
+		const	seen = await api('POST', `/chat/${chatId}/seen`, cookieB);
+
+		check('POST /chat/:chatId/seen -> 200 (B)', seen.status === 200, `status=${seen.status}`);
+		check("A received 'chat-seen' after B marked seen", (await seenAtA) !== null);
 
 		const	histB2 = await api('GET', `/chat/${chatId}`, cookieB);
 		const	msgRead = histB2.body?.messages?.find(m => m.content === MESSAGE);
 
-		check("message status is 'read' after B opened the chat", msgRead?.status === 'read', `status=${msgRead?.status}`);
+		check("message status is 'read' after B marked seen", msgRead?.status === 'read', `status=${msgRead?.status}`);
 
 		// --- burst ordering ---------------------------------------------------
 		const	burst = Array.from({ length: 5 }, (_, i) => `burst ${Date.now()} #${i}`);
@@ -257,9 +262,27 @@ async function main()
 			await api('POST', '/chat/message', cookieA, { toUserId: idB, content: text });
 
 		const	histBurst = await api('GET', `/chat/${chatId}`, cookieA);
-		const	seq = (histBurst.body?.messages || []).map(m => m.content).filter(c => burst.includes(c));
+		const	all = histBurst.body?.messages || [];
+		const	seq = all.map(m => m.content).filter(c => burst.includes(c));
 
 		check('burst messages preserved in send order', JSON.stringify(seq) === JSON.stringify(burst), JSON.stringify(seq));
+
+		// --- delta fetch (?after=<epoch ms cursor>) ---------------------------
+		// Using the second-to-last message's timestamp as the cursor must return only the tail
+		// (the final message), not the whole history. (ms-vs-µs truncation may re-include the
+		// cursor message itself, so we assert "a small tail", which the client would dedupe.)
+		const	cursorMsg = all[all.length - 2];
+		const	lastMsg   = all[all.length - 1];
+
+		if (cursorMsg && lastMsg)
+		{
+			const	delta = await api('GET', `/chat/${chatId}?after=${cursorMsg.timestamp}`, cookieA);
+			const	ids   = (delta.body?.messages || []).map(m => m.messageId);
+
+			check('?after returns only the newest messages (a delta, not the full history)',
+				ids.includes(lastMsg.messageId) && ids.length >= 1 && ids.length <= 2 && ids.length < all.length,
+				`got ${ids.length} of ${all.length}`);
+		}
 	}
 
 	// --- input validation (expect 400, never 500) ----------------------------

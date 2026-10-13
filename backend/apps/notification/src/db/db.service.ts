@@ -125,17 +125,29 @@ export class DbService implements OnModuleInit
 	}
 
 	// Full history of one chat, oldest first — a single range scan on (chat_id, created_at).
-	async getConversation(chatId: string): Promise<MessagePayload[]>
+	// Conversation history oldest-first. With `afterMs` (epoch ms of the client's last-known
+	// message) it returns ONLY newer messages — a delta the client merges — served by the
+	// (chat_id, created_at) index. Without it, the full history.
+	async getConversation(chatId: string, afterMs?: number): Promise<MessagePayload[]>
 	{
+		const	params: any[] = [chatId];
+		let		cursor = '';
+
+		if (afterMs !== undefined)
+		{
+			params.push(afterMs);
+			cursor = ' AND m.created_at > to_timestamp($2 / 1000.0)';
+		}
+
 		const result = await this.pool.query(
 			`SELECT m.id AS message_id, m.content, m.created_at, m.status,
 			        m.sender_id AS user_id, u.username, up.url AS profile_picture_url
 			 FROM messages m
 			 INNER JOIN users u ON u.id = m.sender_id
 			 LEFT JOIN user_pictures up ON up.user_id = m.sender_id AND up.is_profile
-			 WHERE m.chat_id = $1
+			 WHERE m.chat_id = $1` + cursor + `
 			 ORDER BY m.created_at ASC`,
-			[chatId],
+			params,
 		);
 
 		return (result.rows.map(row => MessagePayload.fromDbRow(row)));

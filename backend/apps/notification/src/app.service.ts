@@ -176,23 +176,37 @@ export class AppService
 
 	// Conversation history between the caller and otherUserId, oldest first. Same eligibility gate
 	// as sending (matches only; blocking dissolves the match, so it also covers blocks).
-	async getChatHistory(userId: string, chatId: string): Promise<MessagePayload[]>
+	// Pure read: returns the conversation (optionally only messages newer than `after`, epoch ms).
+	// It has NO side effects — marking read is a separate call (markChatSeen) so fetching history
+	// never mutates state or emits events. The caller must be a participant of the chat.
+	async getChatHistory(userId: string, chatId: string, after?: number): Promise<MessagePayload[]>
 	{
-		// Reading by chat id is a direct lookup, but the caller must be a participant of that chat
-		// (and it must exist) — otherwise a known chat id would expose someone else's conversation.
 		if (await this.dbService.isChatParticipant(chatId, userId) === false)
 			throw new ForbiddenException('You are not a participant of this chat');
 
-		// Update all messages in this chat to READ for the caller, and notify the other user that the caller has seen the chat.
+		return (await this.dbService.getConversation(chatId, after));
+	}
+
+	// Marks the OTHER participant's messages in the chat as read and notifies them (so their ticks
+	// flip to read live). The caller must be a participant.
+	async markChatSeen(userId: string, chatId: string)
+	{
+		if (await this.dbService.isChatParticipant(chatId, userId) === false)
+			throw new ForbiddenException('You are not a participant of this chat');
+
 		await this.dbService.updateMessagesStatusByChat(chatId, userId, MessageStatus.READ);
 		await this.notifyChatSeen(chatId, userId);
 
-		return (await this.dbService.getConversation(chatId));
+		this.logger.log('markChatSeen: user ' + userId + ' marked chat ' + chatId + ' as read');
+
+		return ({ seen: true });
 	}
 
 	// Lists the caller's conversations (latest message per partner, newest first).
 	async getChatList(userId: string)
 	{
+		this.logger.log('getChatList: user ' + userId + ' fetched their chat list');
+
 		return (await this.dbService.getChatList(userId));
 	}
 }
