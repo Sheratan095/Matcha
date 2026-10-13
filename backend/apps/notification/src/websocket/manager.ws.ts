@@ -81,7 +81,7 @@ export class WsManager
 
 	// send a message to all sockets associated with a specific user ID
 	// Store is used to avoid storing temporary messages like online/offline/chat-seen
-	sendMessageToUser(userId: string, event: string, message: any, store: boolean): boolean
+	async sendMessageToUser(userId: string, event: string, message: any, store: boolean): Promise<boolean>
 	{
 		const sockets = this.clients.get(userId);
 		if (sockets)
@@ -91,7 +91,7 @@ export class WsManager
 
 			// Update message status, not wait for it
 			if (event === NotificationType.MESSAGE)
-				this.dbService.updateMessageStatus(message.messageId, MessageStatus.SENT);
+				await this.dbService.updateMessageStatus(message.messageId, MessageStatus.SENT);
 
 			return (true);
 		}

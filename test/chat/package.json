@@ -1,0 +1,13 @@
+{
+	"name": "chat-e2e-tester",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "End-to-end chat tester: drives two users (testuser + alice) through every chat endpoint and the realtime events.",
+	"scripts": {
+		"test:chat": "node chat-e2e.mjs"
+	},
+	"dependencies": {
+		"socket.io-client": "^4.8.1"
+	}
+}

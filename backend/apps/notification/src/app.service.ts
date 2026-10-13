@@ -60,7 +60,7 @@ export class AppService
 			profilePictureUrl: await this.dbService.getProfilePictureUrl(viewerId),
 		};
 
-		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.PROFILE_VIEW, payload, true);
+		const delivered = await this.wsGateway.sendToUser(recipientId, NotificationType.PROFILE_VIEW, payload, true);
 
 		return ({ delivered });
 	}
@@ -74,7 +74,7 @@ export class AppService
 			profilePictureUrl: await this.dbService.getProfilePictureUrl(likerId),
 		};
 
-		const delivered = this.wsGateway.sendToUser(likedId, NotificationType.PROFILE_LIKE, payload, true);
+		const delivered = await this.wsGateway.sendToUser(likedId, NotificationType.PROFILE_LIKE, payload, true);
 
 		this.logger.log('notifyProfileLike: sent notification to user ' + likedId + ' from liker ' + likerId);
 
@@ -94,8 +94,8 @@ export class AppService
 				profilePictureUrl: await this.dbService.getProfilePictureUrl(likerId),
 			};
 
-			this.wsGateway.sendToUser(likedId, NotificationType.MATCHED, matchPayloadToLiked, true);
-			this.wsGateway.sendToUser(likerId, NotificationType.MATCHED, matchPayloadToLiker, true);
+			await this.wsGateway.sendToUser(likedId, NotificationType.MATCHED, matchPayloadToLiked, true);
+			await this.wsGateway.sendToUser(likerId, NotificationType.MATCHED, matchPayloadToLiker, true);
 
 			this.logger.log('notifyProfileLike: users ' + likedId + ' and ' + likerId + ' matched!');
 		}
@@ -103,15 +103,22 @@ export class AppService
 		return ({ delivered });
 	}
 
-	async notifyChatSeen(chatId: string, userId: string)
+	// readerId just opened the chat and read its messages: tell the OTHER participant (the sender)
+	// so their sent messages flip to "read" live. The payload's userId is the reader (who saw it).
+	async notifyChatSeen(chatId: string, readerId: string)
 	{
-		const payload: ChatReadPayload = new ChatReadPayload({ chatId, userId });
+		const otherId = await this.dbService.getOtherParticipant(chatId, readerId);
 
-		// Not store the notification if pending
-		// because the user will fetch the chat history at new connection and the messages will already be marked as read in the DB
-		const delivered = this.wsGateway.sendToUser(userId, NotificationType.CHAT_SEEN, payload, false);
+		if (otherId === null)
+			return ({ delivered: false });
 
-		this.logger.log('notifyChatSeen: sent notification to user ' + userId + ' for chat ' + chatId);
+		const payload: ChatReadPayload = new ChatReadPayload({ chatId, userId: readerId });
+
+		// CHAT_SEEN is ephemeral (store = false): not queued for an offline recipient, since on
+		// reconnect their history fetch already reflects the read state in the DB.
+		const delivered = await this.wsGateway.sendToUser(otherId, NotificationType.CHAT_SEEN, payload, false);
+
+		this.logger.log('notifyChatSeen: told user ' + otherId + ' that ' + readerId + ' read chat ' + chatId);
 
 		return ({ delivered });
 	}
@@ -133,8 +140,8 @@ export class AppService
 			profilePictureUrl: await this.dbService.getProfilePictureUrl(unlikerId),
 		};
 
-		this.wsGateway.sendToUser(unlikerId, NotificationType.UNMATCHED, payloadToUnliker, true);
-		this.wsGateway.sendToUser(unlikedId, NotificationType.UNMATCHED, payloadToUnliked, true);
+		await this.wsGateway.sendToUser(unlikerId, NotificationType.UNMATCHED, payloadToUnliker, true);
+		await this.wsGateway.sendToUser(unlikedId, NotificationType.UNMATCHED, payloadToUnliked, true);
 
 		this.logger.log('notifyProfileUnlike: sent UNMATCHED notification to users ' + unlikerId + ' and ' + unlikedId);
 
@@ -157,7 +164,7 @@ export class AppService
 
 		const payload: MessagePayload = await this.dbService.storeMessage(chatId, senderId, content);
 
-		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload, true);
+		const delivered = await this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload, true);
 
 		if (delivered === true)
 			await this.dbService.updateMessageStatus(payload.messageId, MessageStatus.DELIVERED);
@@ -176,7 +183,9 @@ export class AppService
 		if (await this.dbService.isChatParticipant(chatId, userId) === false)
 			throw new ForbiddenException('You are not a participant of this chat');
 
-		await this.dbService.updateMessagesStatusByChat(chatId, MessageStatus.READ);
+		// Update all messages in this chat to READ for the caller, and notify the other user that the caller has seen the chat.
+		await this.dbService.updateMessagesStatusByChat(chatId, userId, MessageStatus.READ);
+		await this.notifyChatSeen(chatId, userId);
 
 		return (await this.dbService.getConversation(chatId));
 	}

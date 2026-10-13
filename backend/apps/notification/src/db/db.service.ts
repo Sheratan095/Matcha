@@ -83,7 +83,7 @@ export class DbService implements OnModuleInit
 				VALUES ($1, $2, $3)
 				RETURNING id, sender_id, content, created_at, status
 			 )
-			 SELECT ins.id AS message_id, ins.content, ins.created_at,
+			 SELECT ins.id AS message_id, ins.content, ins.created_at, ins.status,
 			        ins.sender_id AS user_id, u.username, up.url AS profile_picture_url
 			 FROM ins
 			 INNER JOIN users u ON u.id = ins.sender_id
@@ -108,6 +108,20 @@ export class DbService implements OnModuleInit
 		);
 
 		return ((result.rowCount ?? 0) > 0);
+	}
+
+	// Given a chat and one of its participants, returns the OTHER participant's id — or null when
+	// the chat doesn't exist or userId isn't part of it.
+	async getOtherParticipant(chatId: string, userId: string): Promise<string | null>
+	{
+		const result = await this.pool.query(
+			`SELECT CASE WHEN user_a = $2 THEN user_b ELSE user_a END AS other_id
+			 FROM chats
+			 WHERE id = $1 AND (user_a = $2 OR user_b = $2)`,
+			[chatId, userId],
+		);
+
+		return (result.rows[0]?.other_id ?? null);
 	}
 
 	// Full history of one chat, oldest first — a single range scan on (chat_id, created_at).
@@ -163,11 +177,13 @@ export class DbService implements OnModuleInit
 		);
 	}
 
-	async updateMessagesStatusByChat(chatId: string, status: MessageStatus): Promise<void>
+	async updateMessagesStatusByChat(chatId: string, readerId: string, status: MessageStatus): Promise<void>
 	{
+		// Update all messages in this chat
+		// Just those that are not already READ and not sent by the reader
 		await this.pool.query(
-			'UPDATE messages SET status = $1 WHERE chat_id = $2',
-			[status, chatId],
+			'UPDATE messages SET status = $1 WHERE chat_id = $2 AND status != $3 AND sender_id <> $4',
+			[status, chatId, MessageStatus.READ, readerId],
 		);
 	}
 
