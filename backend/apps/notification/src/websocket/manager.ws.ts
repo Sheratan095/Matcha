@@ -1,6 +1,8 @@
 import { Socket } from "socket.io";
 import { Logger } from "@nestjs/common";
 import { env } from "@repo/config";
+import { DbService } from '../db/db.service';
+import { NotificationType, MessageStatus } from "@repo/shared-types";
 
 export class WsManager
 {
@@ -12,14 +14,16 @@ export class WsManager
 	private pendingNotifications: Map<string, any[]>;
 
 	private logger: Logger;
+	private dbService: DbService;
 
-	constructor(logger: Logger)
+	constructor(logger: Logger, dbService: DbService)
 	{
 		// Initialize the clients map
 		this.clients = new Map();
 		this.pendingNotifications = new Map();
 
 		this.logger = logger;
+		this.dbService = dbService;
 	}
 
 	// Add a new client connection for a user
@@ -83,6 +87,10 @@ export class WsManager
 		{
 			for (const socket of sockets)
 				socket.emit(event, message);
+
+			// Update message status, not wait for it
+			if (event === NotificationType.MESSAGE)
+				this.dbService.updateMessageStatus(message.messageId, MessageStatus.SENT);
 
 			return (true);
 		}

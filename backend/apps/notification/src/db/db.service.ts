@@ -163,6 +163,14 @@ export class DbService implements OnModuleInit
 		);
 	}
 
+	async updateMessagesStatusByChat(chatId: string, status: MessageStatus): Promise<void>
+	{
+		await this.pool.query(
+			'UPDATE messages SET status = $1 WHERE chat_id = $2',
+			[status, chatId],
+		);
+	}
+
 	// Two users are "connected" (may chat) when a mutual like exists — the same self-join the
 	// profile service uses for matches. Because blocking dissolves the likes in both directions,
 	// a blocked pair is never connected, so this one check also enforces the block rule.

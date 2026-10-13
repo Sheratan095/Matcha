@@ -19,7 +19,7 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 	constructor(private readonly dbService: DbService)
 	{
 		this.logger = new Logger(WsGateway.name);
-		this.wsManager = new WsManager(this.logger);
+		this.wsManager = new WsManager(this.logger, this.dbService);
 	}
 
 	handleConnection(client: Socket): void

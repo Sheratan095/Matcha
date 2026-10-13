@@ -163,6 +163,8 @@ export class AppService
 		if (await this.dbService.isChatParticipant(chatId, userId) === false)
 			throw new ForbiddenException('You are not a participant of this chat');
 
+		await this.dbService.updateMessagesStatusByChat(chatId, MessageStatus.READ);
+
 		return (await this.dbService.getConversation(chatId));
 	}
 
