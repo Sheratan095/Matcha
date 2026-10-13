@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsUUID, IsNotEmpty, Length, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { ChatMessageItemDto } from './chat.dto';
 
 // One trigger DTO per notification type. Producers POST these to the internal /notify/* routes;
 // the app.service turns them into the payload emitted over the socket. Add a new DTO per type.

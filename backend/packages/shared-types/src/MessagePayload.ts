@@ -1,10 +1,20 @@
 import { IStdPayload } from './StdPayload';
 
+// public WebSocket API — see docs/WEBSOCKETS.md.
+export enum MessageStatus
+{
+	SENT = 'sent',
+	DELIVERED = 'delivered',
+	READ = 'read',
+}
+
 export interface IMessagePayload extends IStdPayload
 {
 	messageId: string;
 	content:      string;
 	timestamp: number;
+	status: MessageStatus;
+
 	userId: string;
 	username: string;
 	profilePictureUrl: string | null;
@@ -15,6 +25,7 @@ export class MessagePayload implements IMessagePayload
 	messageId: string;
 	content:      string;
 	timestamp: number;
+	status: MessageStatus;
 
 	// IStdPayload properties
 	userId: string;
@@ -24,6 +35,7 @@ export class MessagePayload implements IMessagePayload
 	constructor(data: IMessagePayload)
 	{
 		this.messageId = data.messageId;
+		this.status = data.status;
 		this.content      = data.content;
 		this.timestamp = data.timestamp;
 
@@ -41,6 +53,7 @@ export class MessagePayload implements IMessagePayload
 			messageId: row.message_id,
 			content:      row.content,
 			timestamp: new Date(row.created_at).getTime(),
+			status: row.status as MessageStatus,
 
 			userId:   row.user_id,
 			username: row.username,

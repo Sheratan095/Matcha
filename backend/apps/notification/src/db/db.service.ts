@@ -1,8 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
 import { env } from "@repo/config";
-import { MessagePayload, ChatListItem, SupportedLanguage } from '@repo/shared-types';
-import { User } from '@repo/shared-types';
+import { MessagePayload, ChatListItem, MessageStatus } from '@repo/shared-types';
 
 @Injectable()
 
@@ -82,7 +81,7 @@ export class DbService implements OnModuleInit
 			`WITH ins AS (
 				INSERT INTO messages (chat_id, sender_id, content)
 				VALUES ($1, $2, $3)
-				RETURNING id, sender_id, content, created_at
+				RETURNING id, sender_id, content, created_at, status
 			 )
 			 SELECT ins.id AS message_id, ins.content, ins.created_at,
 			        ins.sender_id AS user_id, u.username, up.url AS profile_picture_url
@@ -154,6 +153,14 @@ export class DbService implements OnModuleInit
 		);
 
 		return (result.rows.map(row => ChatListItem.fromDbRow(row)));
+	}
+
+	async updateMessageStatus(messageId: string, status: MessageStatus): Promise<void>
+	{
+		await this.pool.query(
+			'UPDATE messages SET status = $1 WHERE id = $2',
+			[status, messageId],
+		);
 	}
 
 	// Two users are "connected" (may chat) when a mutual like exists — the same self-join the

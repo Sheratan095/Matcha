@@ -18,6 +18,9 @@ export class ChatMessageItemDto
 	@ApiProperty({ example: 'alice', description: 'Sender username' })
 	username: string;
 
+	@ApiProperty({ example: 'sent', description: 'Message status: sent, delivered, or read' })
+	status: string;
+
 	@ApiProperty({ example: 'https://.../pic.webp', description: "Sender's profile picture URL, or null if none", nullable: true })
 	profilePictureUrl: string | null;
 }

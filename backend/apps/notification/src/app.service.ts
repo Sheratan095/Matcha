@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload, MessagePayload } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload, MessagePayload, MessageStatus } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
 import { DbService } from './db/db.service';
@@ -127,7 +127,7 @@ export class AppService
 
 	}
 
-	async sendPrivateMessage(senderId: string, recipientId: string, content: string)
+	async sendPrivateMessage(senderId: string, recipientId: string, content: string) : Promise<boolean>
 	{
 		if (senderId === recipientId)
 			throw new BadRequestException('You cannot message yourself');
@@ -146,9 +146,12 @@ export class AppService
 
 		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload);
 
+		if (delivered === true)
+			await this.dbService.updateMessageStatus(payload.messageId, MessageStatus.DELIVERED);
+
 		this.logger.log('sendPrivateMessage: sent message from user ' + senderId + ' to user ' + recipientId);
 
-		return ({ delivered });
+		return (delivered);
 	}
 
 	// Conversation history between the caller and otherUserId, oldest first. Same eligibility gate
