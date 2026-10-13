@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsNotEmpty, Length, IsString, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, Length, IsString } from 'class-validator';
 import { PasswordDto } from './register.dto';
 
 

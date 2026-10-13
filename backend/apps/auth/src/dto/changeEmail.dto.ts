@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
+import { IsEmail, IsNotEmpty, Length } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class ChangeEmailDto

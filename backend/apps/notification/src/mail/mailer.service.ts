@@ -12,6 +12,31 @@ export enum EmailType
 	PasswordReset = 'password_reset',
 }
 
+// HTML-escape a value destined for an email body/attribute. Covers the five characters that can
+// break out of HTML text or a quoted attribute.
+function escapeHtml(value: unknown): string
+{
+	return (String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string)));
+}
+
+// Fills {{KEY}} placeholders in a template. Every value is HTML-ESCAPED BY DEFAULT, so any field
+// (including anything user-derived added later) is safe to drop in without a second thought. Keys
+// in `rawHtmlKeys` are inserted verbatim — use ONLY for values that are intentional, trusted HTML
+// (e.g. a pre-built <li> list whose inner text was already escaped).
+function renderTemplate(template: string, values: Record<string, unknown>, rawHtmlKeys: string[] = []): string
+{
+	let	out = template;
+
+	for (const [key, value] of Object.entries(values))
+	{
+		const	replacement = rawHtmlKeys.includes(key) ? String(value ?? '') : escapeHtml(value);
+
+		out = out.split(`{{${key}}}`).join(replacement);
+	}
+
+	return (out);
+}
+
 @Injectable()
 export class MailerService
 {
@@ -69,28 +94,33 @@ export class MailerService
 			);
 			const htmlTemplate = fs.readFileSync(templatePath, 'utf8');
 
-			// Generate security points HTML
+			// Security points are the one intentional-HTML value: a <li> list. Escape each point's
+			// TEXT, then wrap in <li>, and pass it through as raw HTML below.
 			const securityPointsHtml = langPack.securityPoints
-				.map((point) => `<li>${point}</li>`)
+				.map((point) => `<li>${escapeHtml(point)}</li>`)
 				.join('');
 
-			// Replace all placeholders with language pack values and dynamic content
-			htmlContent = htmlTemplate
-				.replace(/{{LANGUAGE}}/g, language)
-				.replace(/{{TITLE}}/g, langPack.title)
-				.replace(/{{GREETING}}/g, langPack.greeting)
-				.replace(/{{MESSAGE}}/g, langPack.message)
-				.replace(/{{VERIFICATION_LINK}}/g, verificationLink || '#')
-				.replace(/{{OTP_LABEL}}/g, langPack.otpLabel)
-				.replace(/{{OTP_CODE}}/g, otpCode)
-				.replace(/{{EXPIRY_TEXT}}/g, langPack.expiryText)
-				.replace(/{{SECURITY_TITLE}}/g, langPack.securityTitle)
-				.replace(/{{SECURITY_POINTS}}/g, securityPointsHtml)
-				.replace(/{{FOOTER_MESSAGE}}/g, langPack.footerMessage)
-				.replace(/{{FOOTER_TEXT}}/g, langPack.footerText)
-				// Resolve {{EXPIRY_MINUTES}} last: it lives inside langPack strings (expiryText,
-				// securityPoints) that were just substituted into the HTML above.
-				.replace(/{{EXPIRY_MINUTES}}/g, expiryMinutes);
+			// Every value is HTML-escaped by renderTemplate (except SECURITY_POINTS, already-safe
+			// markup) — so adding a user-derived placeholder here later is safe automatically.
+			htmlContent = renderTemplate(htmlTemplate,
+			{
+				LANGUAGE:         language,
+				TITLE:            langPack.title,
+				GREETING:         langPack.greeting,
+				MESSAGE:          langPack.message,
+				VERIFICATION_LINK: verificationLink || '#',
+				OTP_LABEL:        langPack.otpLabel,
+				OTP_CODE:         otpCode,
+				EXPIRY_TEXT:      langPack.expiryText,
+				SECURITY_TITLE:   langPack.securityTitle,
+				SECURITY_POINTS:  securityPointsHtml,
+				FOOTER_MESSAGE:   langPack.footerMessage,
+				FOOTER_TEXT:      langPack.footerText,
+			}, ['SECURITY_POINTS']);
+
+			// Resolve {{EXPIRY_MINUTES}} last: it lives inside langPack strings (expiryText,
+			// securityPoints) that were just substituted into the HTML above. It is a number.
+			htmlContent = htmlContent.split('{{EXPIRY_MINUTES}}').join(escapeHtml(expiryMinutes));
 		}
 		catch (error: unknown)
 		{
@@ -158,31 +188,36 @@ export class MailerService
 			);
 			const htmlTemplate = fs.readFileSync(templatePath, 'utf8');
 
-			// Generate security points HTML
+			// Security points are the one intentional-HTML value: a <li> list. Escape each point's
+			// TEXT, then wrap in <li>, and pass it through as raw HTML below.
 			const securityPointsHtml = langPack.securityPoints
-				.map((point) => `<li>${point}</li>`)
+				.map((point) => `<li>${escapeHtml(point)}</li>`)
 				.join('');
 
-			// Replace all placeholders with language pack values and dynamic content
-			htmlContent = htmlTemplate
-				.replace(/{{LANGUAGE}}/g, language)
-				.replace(/{{TITLE}}/g, langPack.title)
-				.replace(/{{GREETING}}/g, langPack.greeting)
-				.replace(/{{MESSAGE}}/g, langPack.message)
-				.replace(/{{ALERT_MESSAGE}}/g, langPack.alertMessage)
-				.replace(/{{BUTTON_TEXT}}/g, langPack.buttonText)
-				.replace(/{{RESET_LINK}}/g, resetLink || '#')
-				.replace(/{{OTP_LABEL}}/g, langPack.otpLabel)
-				.replace(/{{OTP_CODE}}/g, resetCode)
-				.replace(/{{EXPIRY_TEXT}}/g, langPack.expiryText)
-				.replace(/{{SECURITY_TITLE}}/g, langPack.securityTitle)
-				.replace(/{{SECURITY_POINTS}}/g, securityPointsHtml)
-				.replace(/{{FOOTER_MESSAGE}}/g, langPack.footerMessage)
-				.replace(/{{FOOTER_TEXT}}/g, langPack.footerText)
-				.replace(/{{ALL_RIGHTS_RESERVED}}/g, langPack.allRightsReserved)
-				// Resolve {{EXPIRY_MINUTES}} last: it lives inside langPack strings (expiryText,
-				// securityPoints) that were just substituted into the HTML above.
-				.replace(/{{EXPIRY_MINUTES}}/g, expiryMinutes);
+			// Every value is HTML-escaped by renderTemplate (except SECURITY_POINTS, already-safe
+			// markup) — so adding a user-derived placeholder here later is safe automatically.
+			htmlContent = renderTemplate(htmlTemplate,
+			{
+				LANGUAGE:            language,
+				TITLE:               langPack.title,
+				GREETING:            langPack.greeting,
+				MESSAGE:             langPack.message,
+				ALERT_MESSAGE:       langPack.alertMessage,
+				BUTTON_TEXT:         langPack.buttonText,
+				RESET_LINK:          resetLink || '#',
+				OTP_LABEL:           langPack.otpLabel,
+				OTP_CODE:            resetCode,
+				EXPIRY_TEXT:         langPack.expiryText,
+				SECURITY_TITLE:      langPack.securityTitle,
+				SECURITY_POINTS:     securityPointsHtml,
+				FOOTER_MESSAGE:      langPack.footerMessage,
+				FOOTER_TEXT:         langPack.footerText,
+				ALL_RIGHTS_RESERVED: langPack.allRightsReserved,
+			}, ['SECURITY_POINTS']);
+
+			// Resolve {{EXPIRY_MINUTES}} last: it lives inside langPack strings (expiryText,
+			// securityPoints) that were just substituted into the HTML above. It is a number.
+			htmlContent = htmlContent.split('{{EXPIRY_MINUTES}}').join(escapeHtml(expiryMinutes));
 		}
 		catch (error: unknown)
 		{

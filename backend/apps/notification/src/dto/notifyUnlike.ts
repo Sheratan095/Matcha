@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID, IsNotEmpty, IsBoolean } from 'class-validator';
+import { IsUUID, IsNotEmpty } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 // One trigger DTO per notification type. Producers POST these to the internal /notify/* routes;
