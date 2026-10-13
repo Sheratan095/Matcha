@@ -101,7 +101,7 @@ user, and the chat function between them will be disabled.
 
 [x] unlike notification when connected
 
-[] add somenthing like "relation" to GET /profile/:userId (what about for yourself?)
+[x] add somenthing like "relation" to GET /profile/:userId (what about for yourself?)
 
 [x] rename ws viewer/liker .... to otherId
 
@@ -125,4 +125,4 @@ user, and the chat function between them will be disabled.
 
 [] find a way to don't show the exact location (using apporoximante location)??? + location tester!!
 
-[] msg status? sent, delivered, seen
+[x] msg status? sent, delivered, seen
