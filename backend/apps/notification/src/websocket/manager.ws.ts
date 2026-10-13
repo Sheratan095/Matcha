@@ -80,7 +80,8 @@ export class WsManager
 	}
 
 	// send a message to all sockets associated with a specific user ID
-	sendMessageToUser(userId: string, event: string, message: any): boolean
+	// Store is used to avoid storing temporary messages like online/offline/chat-seen
+	sendMessageToUser(userId: string, event: string, message: any, store: boolean): boolean
 	{
 		const sockets = this.clients.get(userId);
 		if (sockets)
@@ -97,7 +98,8 @@ export class WsManager
 		else
 		{
 			// If the user is not connected, add the notification to the pending queue
-			this.addPendingNotification(userId, event, message);
+			if (store)
+				this.addPendingNotification(userId, event, message);
 
 			return (false);
 		}
@@ -148,6 +150,6 @@ export class WsManager
 		this.pendingNotifications.delete(userId);
 
 		for (const { event, message } of pending)
-			this.sendMessageToUser(userId, event, message);
+			this.sendMessageToUser(userId, event, message, true);
 	}
 }

@@ -79,9 +79,9 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 	// Emit a notification to a user. The event name is the NotificationType value, so the browser
 	// listens per type (e.g. socket.on('profile-view', ...)). Returns false when the user was
 	// offline and the payload was queued instead. See docs/WEBSOCKETS.md.
-	sendToUser(userId: string, event: NotificationType, payload: any): boolean
+	sendToUser(userId: string, event: NotificationType, payload: any, store: boolean): boolean
 	{
-		return (this.wsManager.sendMessageToUser(userId, event, payload));
+		return (this.wsManager.sendMessageToUser(userId, event, payload, store));
 	}
 
 	closeConnectionsForUser(userId: string): void

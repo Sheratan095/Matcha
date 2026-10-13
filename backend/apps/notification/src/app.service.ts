@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload, MessagePayload, MessageStatus } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload, MessagePayload, MessageStatus, ChatReadPayload } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
 import { DbService } from './db/db.service';
@@ -60,7 +60,7 @@ export class AppService
 			profilePictureUrl: await this.dbService.getProfilePictureUrl(viewerId),
 		};
 
-		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.PROFILE_VIEW, payload);
+		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.PROFILE_VIEW, payload, true);
 
 		return ({ delivered });
 	}
@@ -74,7 +74,7 @@ export class AppService
 			profilePictureUrl: await this.dbService.getProfilePictureUrl(likerId),
 		};
 
-		const delivered = this.wsGateway.sendToUser(likedId, NotificationType.PROFILE_LIKE, payload);
+		const delivered = this.wsGateway.sendToUser(likedId, NotificationType.PROFILE_LIKE, payload, true);
 
 		this.logger.log('notifyProfileLike: sent notification to user ' + likedId + ' from liker ' + likerId);
 
@@ -94,11 +94,24 @@ export class AppService
 				profilePictureUrl: await this.dbService.getProfilePictureUrl(likerId),
 			};
 
-			this.wsGateway.sendToUser(likedId, NotificationType.MATCHED, matchPayloadToLiked);
-			this.wsGateway.sendToUser(likerId, NotificationType.MATCHED, matchPayloadToLiker);
+			this.wsGateway.sendToUser(likedId, NotificationType.MATCHED, matchPayloadToLiked, true);
+			this.wsGateway.sendToUser(likerId, NotificationType.MATCHED, matchPayloadToLiker, true);
 
 			this.logger.log('notifyProfileLike: users ' + likedId + ' and ' + likerId + ' matched!');
 		}
+
+		return ({ delivered });
+	}
+
+	async notifyChatSeen(chatId: string, userId: string)
+	{
+		const payload: ChatReadPayload = new ChatReadPayload({ chatId, userId });
+
+		// Not store the notification if pending
+		// because the user will fetch the chat history at new connection and the messages will already be marked as read in the DB
+		const delivered = this.wsGateway.sendToUser(userId, NotificationType.CHAT_SEEN, payload, false);
+
+		this.logger.log('notifyChatSeen: sent notification to user ' + userId + ' for chat ' + chatId);
 
 		return ({ delivered });
 	}
@@ -120,8 +133,8 @@ export class AppService
 			profilePictureUrl: await this.dbService.getProfilePictureUrl(unlikerId),
 		};
 
-		this.wsGateway.sendToUser(unlikerId, NotificationType.UNMATCHED, payloadToUnliker);
-		this.wsGateway.sendToUser(unlikedId, NotificationType.UNMATCHED, payloadToUnliked);
+		this.wsGateway.sendToUser(unlikerId, NotificationType.UNMATCHED, payloadToUnliker, true);
+		this.wsGateway.sendToUser(unlikedId, NotificationType.UNMATCHED, payloadToUnliked, true);
 
 		this.logger.log('notifyProfileUnlike: sent UNMATCHED notification to users ' + unlikerId + ' and ' + unlikedId);
 
@@ -144,7 +157,7 @@ export class AppService
 
 		const payload: MessagePayload = await this.dbService.storeMessage(chatId, senderId, content);
 
-		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload);
+		const delivered = this.wsGateway.sendToUser(recipientId, NotificationType.MESSAGE, payload, true);
 
 		if (delivered === true)
 			await this.dbService.updateMessageStatus(payload.messageId, MessageStatus.DELIVERED);
