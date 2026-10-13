@@ -31,6 +31,9 @@ export class ChatHistoryResponseDto
 // One conversation in the "my chats" list: the other participant + a preview of the last message.
 export class ChatListItemDto
 {
+	@ApiProperty({ example: 'c0ffee00-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'The conversation id (pass to GET /chat/:chatId)' })
+	chatId: string;
+
 	@ApiProperty({ example: 'a1b2c3d4-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'The other participant' })
 	userId: string;
 

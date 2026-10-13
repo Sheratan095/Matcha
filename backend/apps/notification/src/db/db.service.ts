@@ -99,6 +99,18 @@ export class DbService implements OnModuleInit
 	// picture so each message carries its author (the rich MessagePayload shape), aliasing the
 	// columns to the names fromDbRow reads. The (sender_id, recipient_id, created_at) index serves
 	// both directions of the OR.
+	// True when the chat exists and userId is one of its two participants — the authorization check
+	// for reading a conversation by its id (so a known/guessed chatId can't expose someone else's).
+	async isChatParticipant(chatId: string, userId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			'SELECT 1 FROM chats WHERE id = $1 AND (user_a = $2 OR user_b = $2)',
+			[chatId, userId],
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+
 	// Full history of one chat, oldest first — a single range scan on (chat_id, created_at).
 	async getConversation(chatId: string): Promise<MessagePayload[]>
 	{
@@ -123,7 +135,7 @@ export class DbService implements OnModuleInit
 	async getChatList(userId: string): Promise<ChatListItem[]>
 	{
 		const result = await this.pool.query(
-			`SELECT other.id AS user_id, other.username, up.url AS profile_picture_url,
+			`SELECT c.id AS chat_id, other.id AS user_id, other.username, up.url AS profile_picture_url,
 			        last.content AS last_message, last.created_at AS last_created_at, last.sender_id AS last_sender_id
 			 FROM chats c
 			 INNER JOIN users other

@@ -1,7 +1,9 @@
-// One entry in the "my chats" list: the other participant plus a preview of the latest message
-// in that conversation. There is no unread count yet (no read-state is tracked server-side).
+// One entry in the "my chats" list: the conversation id, the other participant, and a preview of
+// the latest message. chatId is what the client passes to GET /chat/:chatId for the history.
+// There is no unread count yet (no read-state is tracked server-side).
 export interface IChatListItem
 {
+	chatId: string;             // the conversation id (chats.id)
 	userId: string;             // the other participant
 	username: string;
 	profilePictureUrl: string | null;
@@ -12,6 +14,7 @@ export interface IChatListItem
 
 export class ChatListItem implements IChatListItem
 {
+	chatId: string;
 	userId: string;
 	username: string;
 	profilePictureUrl: string | null;
@@ -21,6 +24,7 @@ export class ChatListItem implements IChatListItem
 
 	constructor(data: IChatListItem)
 	{
+		this.chatId            = data.chatId;
 		this.userId            = data.userId;
 		this.username          = data.username;
 		this.profilePictureUrl = data.profilePictureUrl;
@@ -29,12 +33,13 @@ export class ChatListItem implements IChatListItem
 		this.lastSenderId      = data.lastSenderId;
 	}
 
-	// getChatList aliases the partner id + picture to user_id / profile_picture_url and returns the
-	// latest message's content / created_at / sender_id as last_message / last_created_at /
-	// last_sender_id.
+	// getChatList returns the chat id as chat_id, the other participant as user_id, their picture
+	// as profile_picture_url, and the latest message's content / created_at / sender_id as
+	// last_message / last_created_at / last_sender_id.
 	static fromDbRow(row: any): ChatListItem
 	{
 		return (new ChatListItem({
+			chatId:            row.chat_id,
 			userId:            row.user_id,
 			username:          row.username,
 			profilePictureUrl: row.profile_picture_url ?? null,

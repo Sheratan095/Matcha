@@ -153,15 +153,12 @@ export class AppService
 
 	// Conversation history between the caller and otherUserId, oldest first. Same eligibility gate
 	// as sending (matches only; blocking dissolves the match, so it also covers blocks).
-	async getChatHistory(userId: string, otherUserId: string): Promise<MessagePayload[]>
+	async getChatHistory(userId: string, chatId: string): Promise<MessagePayload[]>
 	{
-		if (userId === otherUserId)
-			throw new BadRequestException('You cannot open a conversation with yourself');
-
-		const chatId = await this.dbService.getChatId(userId, otherUserId);
-
-		if (chatId === null)
-			throw new ForbiddenException('You can only read conversations with your matches');
+		// Reading by chat id is a direct lookup, but the caller must be a participant of that chat
+		// (and it must exist) — otherwise a known chat id would expose someone else's conversation.
+		if (await this.dbService.isChatParticipant(chatId, userId) === false)
+			throw new ForbiddenException('You are not a participant of this chat');
 
 		return (await this.dbService.getConversation(chatId));
 	}

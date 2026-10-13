@@ -144,17 +144,17 @@ export class AppController
 		return ({ chats });
 	}
 
-	@Get('chat/:userId')
+	@Get('chat/:chatId')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Get conversation history', description: 'Returns the messages exchanged between the authenticated user and the given user, oldest first.' })
+	@ApiOperation({ summary: 'Get conversation history', description: 'Returns the messages of the given chat, oldest first. The caller must be a participant of the chat.' })
 	@ApiResponse({ status: 200, type: ChatHistoryResponseDto, description: 'Conversation history' })
-	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid user id / conversation with yourself' })
-	@ApiResponse({ status: 403, type: ErrorDto, description: 'Not matched with this user' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid chat id' })
+	@ApiResponse({ status: 403, type: ErrorDto, description: 'Not a participant of this chat' })
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
-	async getChatHistory(@Param('userId', ParseUUIDPipe) otherUserId: string, @CurrentUser() userId: string)
+	async getChatHistory(@Param('chatId', ParseUUIDPipe) chatId: string, @CurrentUser() userId: string)
 	{
-		const messages = await this.appService.getChatHistory(userId, otherUserId);
+		const messages = await this.appService.getChatHistory(userId, chatId);
 
 		return ({ messages });
 	}
