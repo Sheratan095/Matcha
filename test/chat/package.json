@@ -5,7 +5,9 @@
 	"type": "module",
 	"description": "End-to-end chat tester: drives two users (testuser + alice) through every chat endpoint and the realtime events.",
 	"scripts": {
-		"test:chat": "node chat-e2e.mjs"
+		"test:chat": "node chat-e2e.mjs",
+		"ui:a": "PORT=4300 TEST_USER=testuser node ui-server.mjs",
+		"ui:b": "PORT=4301 TEST_USER=alice node ui-server.mjs"
 	},
 	"dependencies": {
 		"socket.io-client": "^4.8.1"

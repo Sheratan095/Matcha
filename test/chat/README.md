@@ -7,13 +7,31 @@ endpoint plus the realtime events and the `sent → delivered → read` transiti
 A conversation needs both sides, so this is a single orchestrating script rather than two
 separate clients. For a one-user live socket listener, use `../ws` instead.
 
-## Run
+## Run (headless assertions)
 
 ```bash
 cd backend/test/chat
 npm install        # first time only, pulls socket.io-client
 npm run test:chat
 ```
+
+## Run (browser UI)
+
+A small chat UI, one server per user. Each holds that user's auth cookie, opens the notification
+socket on the browser's behalf, and relays live events to the page over SSE; the page sends over
+plain HTTP. Open both pages in two tabs and chat live.
+
+```bash
+cd backend/test/chat
+npm install
+npm run ui:a   # http://localhost:4300  (testuser)
+npm run ui:b   # http://localhost:4301  (alice), in another terminal
+```
+
+The sidebar lists your **matches** (from `/profile/matches`, so even message-less matches show
+up); pick one to open the thread. Sent messages show `✓ sent → ✓✓ delivered → ✓✓ read` ticks that
+update live as the other side receives/opens the chat. Env vars: `GATEWAY_URL`, `PORT`,
+`TEST_USER`, `TEST_PASS`.
 
 ## Config (env vars)
 
