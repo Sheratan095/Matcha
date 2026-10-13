@@ -436,49 +436,126 @@ export class DbService implements OnModuleInit
 	// no-op (ON CONFLICT DO NOTHING). Returns true when a new like was stored, false when the
 	// like already existed. A missing likedId trips the users(id) foreign key (error code
 	// 23503), which the service layer translates into a 404.
-	async addLike(likerId: string, likedId: string): Promise<boolean>
+	// Likes likedId on behalf of likerId and, atomically, opens the chat if this completes a mutual
+	// like. One transaction, so a match can never exist without its chat (nor vice versa). Returns
+	// whether a new like was stored and whether the pair is now matched. A missing likedId trips
+	// the users(id) foreign key (error code 23503), which the service layer translates into a 404.
+	async addLikeAndMatch(likerId: string, likedId: string): Promise<{ created: boolean; nowMatched: boolean }>
 	{
-		const result = await this.pool.query(
-			`INSERT INTO likes (liker_id, liked_id)
-			 VALUES ($1, $2)
-			 ON CONFLICT (liker_id, liked_id) DO NOTHING`,
-			[likerId, likedId]
-		);
+		const client = await this.pool.connect();
 
-		return ((result.rowCount ?? 0) > 0);
+		try
+		{
+			await client.query('BEGIN');
+
+			const likeResult = await client.query(
+				`INSERT INTO likes (liker_id, liked_id)
+				 VALUES ($1, $2)
+				 ON CONFLICT (liker_id, liked_id) DO NOTHING`,
+				[likerId, likedId]
+			);
+			const created = (likeResult.rowCount ?? 0) > 0;
+
+			let	nowMatched = false;
+
+			// Only a brand-new like can create a match, so skip the work on a duplicate.
+			if (created)
+			{
+				const matchResult = await client.query(
+					`SELECT EXISTS (
+						SELECT 1 FROM likes a
+						INNER JOIN likes b
+							ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
+						WHERE a.liker_id = $1 AND a.liked_id = $2
+					 ) AS connected`,
+					[likerId, likedId]
+				);
+				nowMatched = matchResult.rows[0].connected === true;
+
+				// A new match opens its chat, stored canonically (user_a < user_b), in the same tx.
+				if (nowMatched)
+					await client.query(
+						`INSERT INTO chats (user_a, user_b)
+						 VALUES (LEAST($1, $2), GREATEST($1, $2))
+						 ON CONFLICT (user_a, user_b) DO NOTHING`,
+						[likerId, likedId]
+					);
+			}
+
+			await client.query('COMMIT');
+
+			return ({ created, nowMatched });
+		}
+		catch (err)
+		{
+			await client.query('ROLLBACK');
+			throw (err);
+		}
+		finally
+		{
+			client.release();
+		}
 	}
 
 	// Removes a previously given like. Idempotent: removing a like that isn't there is a no-op.
 	// Returns true when a like was actually removed, false when there was nothing to remove.
-	async removeLike(likerId: string, likedId: string): Promise<boolean>
+	// Removes likerId's like of likedId and, atomically, closes the chat if this breaks a match.
+	// One transaction, so a dissolved match never leaves its chat (and messages) behind. Returns
+	// whether a like was actually removed and whether the pair had been matched (so the service
+	// notifies only on a real unmatch). Removing a like that isn't there is a no-op.
+	async removeLikeAndUnmatch(likerId: string, likedId: string): Promise<{ removed: boolean; wasMatched: boolean }>
 	{
-		const result = await this.pool.query(
-			`DELETE FROM likes
-			 WHERE liker_id = $1 AND liked_id = $2`,
-			[likerId, likedId]
-		);
+		const client = await this.pool.connect();
 
-		return ((result.rowCount ?? 0) > 0);
+		try
+		{
+			await client.query('BEGIN');
+
+			// Capture the match state BEFORE removing the like (removing it breaks the mutual).
+			const matchResult = await client.query(
+				`SELECT EXISTS (
+					SELECT 1 FROM likes a
+					INNER JOIN likes b
+						ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
+					WHERE a.liker_id = $1 AND a.liked_id = $2
+				 ) AS connected`,
+				[likerId, likedId]
+			);
+			const wasMatched = matchResult.rows[0].connected === true;
+
+			const deleteResult = await client.query(
+				`DELETE FROM likes
+				 WHERE liker_id = $1 AND liked_id = $2`,
+				[likerId, likedId]
+			);
+			const removed = (deleteResult.rowCount ?? 0) > 0;
+
+			// The removed like broke the match => close the chat (cascade wipes its messages).
+			if (removed && wasMatched)
+				await client.query(
+					`DELETE FROM chats
+					 WHERE user_a = LEAST($1, $2) AND user_b = GREATEST($1, $2)`,
+					[likerId, likedId]
+				);
+
+			await client.query('COMMIT');
+
+			return ({ removed, wasMatched });
+		}
+		catch (err)
+		{
+			await client.query('ROLLBACK');
+			throw (err);
+		}
+		finally
+		{
+			client.release();
+		}
 	}
 
 	// Two users are connected (a "match") when the like exists in both directions. The order of
 	// the two ids does not matter: the EXISTS checks one direction and the implicit reverse pair
 	// the other. Returns true only when both rows are present.
-	async areConnected(userAId: string, userBId: string): Promise<boolean>
-	{
-		const result = await this.pool.query(
-			`SELECT EXISTS (
-				SELECT 1 FROM likes a
-				INNER JOIN likes b
-					ON a.liker_id = b.liked_id AND a.liked_id = b.liker_id
-				WHERE a.liker_id = $1 AND a.liked_id = $2
-			 ) AS connected`,
-			[userAId, userBId]
-		);
-
-		return (result.rows[0].connected === true);
-	}
-
 	// Directional like state between a viewer and a target, in a single round trip:
 	// `liked`    = the viewer has liked the target (viewer -> target),
 	// `likesYou` = the target has liked the viewer (target -> viewer).
@@ -591,32 +668,6 @@ export class DbService implements OnModuleInit
 	// directions so an existing match ends immediately. Returns { created, wasMatched } so the
 	// service can push an unmatch notification only when a match actually existed. A missing
 	// blockedId trips the users(id) foreign key (error code 23503), translated into a 404.
-	// Creates the chat for a newly matched pair, stored canonically (user_a < user_b). Idempotent:
-	// a second call for the same pair is a no-op. A chat row existing == the pair is matched, which
-	// is what the notification service checks before allowing messages.
-	async createChat(userId1: string, userId2: string): Promise<void>
-	{
-		const [userA, userB] = [userId1, userId2].sort();
-
-		await this.pool.query(
-			`INSERT INTO chats (user_a, user_b)
-			 VALUES ($1, $2)
-			 ON CONFLICT (user_a, user_b) DO NOTHING`,
-			[userA, userB],
-		);
-	}
-
-	// Deletes the chat for a pair whose match dissolved (unmatch). The chat's messages cascade away.
-	async deleteChat(userId1: string, userId2: string): Promise<void>
-	{
-		const [userA, userB] = [userId1, userId2].sort();
-
-		await this.pool.query(
-			'DELETE FROM chats WHERE user_a = $1 AND user_b = $2',
-			[userA, userB],
-		);
-	}
-
 	async addBlock(blockerId: string, blockedId: string): Promise<{ created: boolean; wasMatched: boolean }>
 	{
 		const client = await this.pool.connect();

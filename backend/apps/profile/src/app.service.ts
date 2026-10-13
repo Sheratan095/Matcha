@@ -307,21 +307,15 @@ export class AppService
 
 		try
 		{
-			const	created = await this.dbService.addLike(likerId, likedId);
+			// One transaction records the like and, if it completes a match, opens the chat.
+			const	{ created, nowMatched } = await this.dbService.addLikeAndMatch(likerId, likedId);
 
 			if (created)
 			{
-				// Check if the like resulted in a match (mutual like).
-				const nowMatched = await this.dbService.areConnected(likerId, likedId);
-
 				this.logger.log(`User ${likedId} liked by ${likerId}; Matched: ${nowMatched}`);
 
-				// A new match opens a chat (the notification service keys messaging off this row).
-				if (nowMatched)
-					await this.dbService.createChat(likerId, likedId);
-
-				// Send notification just if a new like was created
-				// If they are matched, another notitification will be sent to both users ws: MATCHED event.
+				// Notify only on a new like. If they are now matched, a MATCHED event is also sent
+				// to both users over the websocket.
 				await sendProfileLikeNotification(likedId, likerId, nowMatched, this.httpService);
 			}
 			else
@@ -349,19 +343,14 @@ export class AppService
 
 		try
 		{
-			const wereConnected = await this.dbService.areConnected(likerId, likedId);
-
-			const	removed = await this.dbService.removeLike(likerId, likedId);
+			// One transaction removes the like and, if it broke a match, closes the chat.
+			const	{ removed, wasMatched } = await this.dbService.removeLikeAndUnmatch(likerId, likedId);
 
 			if (removed)
 			{
-				// Unliking a match dissolves it: close the chat (cascade removes its messages) and
-				// tell both users. Only when they were actually connected.
-				if (wereConnected)
-				{
-					await this.dbService.deleteChat(likerId, likedId);
+				// Notify both users only when a real match was dissolved.
+				if (wasMatched)
 					await sendProfileUnlikeNotification(likedId, likerId, this.httpService);
-				}
 
 				this.logger.log(`User ${likedId} unliked by ${likerId}`);
 			}
