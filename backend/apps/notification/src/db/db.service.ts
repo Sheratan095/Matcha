@@ -204,8 +204,12 @@ export class DbService implements OnModuleInit
 	// to the newest NOTIFICATION_MAX_PENDING_PER_USER rows so an absent user can't grow it forever.
 	async addPendingNotification(userId: string, event: string, payload: any): Promise<void>
 	{
+		// Dedupe identical pending notifications: the same (recipient, event, payload) queues once.
+		// On a repeat we just bump created_at so it keeps its place as the most recent activity.
 		await this.pool.query(
-			'INSERT INTO notifications (user_id, event, payload) VALUES ($1, $2, $3)',
+			`INSERT INTO notifications (user_id, event, payload)
+			 VALUES ($1, $2, $3)
+			 ON CONFLICT (user_id, event, payload) DO UPDATE SET created_at = NOW()`,
 			[userId, event, JSON.stringify(payload)],
 		);
 

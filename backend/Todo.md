@@ -127,5 +127,5 @@ user, and the chat function between them will be disabled.
 
 [x] msg status? sent, delivered, seen
 
-[] what about an hash table for pending notification or a way to avoid sendind duplicate notification when user reconnect?
+[x] what about an hash table for pending notification or a way to avoid sendind duplicate notification when user reconnect?
 maybe just add check for two users and event in db
