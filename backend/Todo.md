@@ -115,7 +115,7 @@ user, and the chat function between them will be disabled.
 
 [x] /notify/profile-like returns 400 — the profile producer sends recipientId but notifyLike.dto.ts requires likedId. I was interrupted before fixing profile/utils/notification.ts. Want that fix now too?
 
-[] block internal endpointss!!!
+[x] block internal endpointss!!!
 
 [x] removing is online from get my profile?? right as it's done for relations in get profile dto
 
@@ -129,3 +129,5 @@ user, and the chat function between them will be disabled.
 
 [x] what about an hash table for pending notification or a way to avoid sendind duplicate notification when user reconnect?
 maybe just add check for two users and event in db
+
+[] protects docs?

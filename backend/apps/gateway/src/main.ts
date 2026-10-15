@@ -62,6 +62,31 @@ async function bootstrap()
 		next();
 	});
 
+	// SECURITY BOUNDARY: internal (service-to-service) endpoints must never be reachable from the
+	// outside. This runs BEFORE every proxy and rejects any path containing an `internal` segment.
+	//
+	// It is needed because the /auth and /profile proxies below are catch-all AND inject the
+	// internal key on every request — so InternalKeyGuard alone cannot tell a browser from a
+	// service. Services call each other DIRECTLY (host:port), bypassing this gateway, so they are
+	// unaffected. Blocking the whole segment is secure by default: a new /internal/* route is
+	// unreachable externally without anyone maintaining an allowlist.
+	app.use((req: IncomingMessage, res: ServerResponse, next: () => void) =>
+	{
+		const	path = (req.url || '').split('?')[0];
+
+		if (/(^|\/)internal(\/|$)/.test(path))
+		{
+			logger.warn(`Blocked external request to an internal endpoint: ${req.method} ${path}`);
+			res.statusCode = 404;
+			res.setHeader('content-type', 'application/json');
+			res.end(JSON.stringify({ statusCode: 404, message: 'Not Found' }));
+
+			return;
+		}
+
+		next();
+	});
+
 	// Register proxy middleware directly on the Express app
 	app.use( '/auth',
 		createProxyMiddleware({

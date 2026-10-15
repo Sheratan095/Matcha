@@ -8,7 +8,7 @@ export async function sendProfileViewNotification(recipientId: string, viewerId:
 {
 	try
 	{
-		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/notify/profile-view`,
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/notify/profile-view`,
 		{
 			recipientId,
 			viewerId,
@@ -25,7 +25,7 @@ export async function checkIsUserOnline(userId: string, httpService: HttpService
 {
 	try
 	{
-		const response = await httpService.get(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/is-online/${userId}`).toPromise();
+		const response = await httpService.get(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/is-online/${userId}`).toPromise();
 
 		return (response.data.isOnline);
 	}
@@ -40,7 +40,7 @@ export async function sendProfileLikeNotification(likedId: string, likerId: stri
 {
 	try
 	{
-		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/notify/profile-like`,
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/notify/profile-like`,
 		{
 			likedId,
 			likerId,
@@ -58,7 +58,7 @@ export async function sendProfileUnlikeNotification(likedId: string, likerId: st
 {
 	try
 	{
-		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/notify/profile-unlike`,
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/notify/profile-unlike`,
 		{
 			likedId,
 			likerId,

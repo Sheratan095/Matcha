@@ -7,7 +7,7 @@ export async function sendEmailVerification(email: string, token: string, langua
 	// HttpService is already configured with internal-key header in app.module
 	try
 	{
-		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/email-verification`, 
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/email-verification`, 
 		{
 			email,
 			token,
@@ -27,7 +27,7 @@ export async function sendForgotPasswordEmail(email: string, token: string, lang
 	// HttpService is already configured with internal-key header in app.module
 	try
 	{
-		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/forgot-password`, 
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/forgot-password`, 
 		{
 			email,
 			token,
@@ -47,7 +47,7 @@ export async function closeWsConnections(userId: string, httpService: HttpServic
 	// HttpService is already configured with internal-key header in app.module
 	try
 	{
-		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/close-ws-connections`, 
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/close-ws-connections`, 
 		{
 			userId
 		}).toPromise();
