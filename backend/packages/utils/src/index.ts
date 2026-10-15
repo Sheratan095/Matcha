@@ -1,5 +1,5 @@
 import { env } from '@repo/config';
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 
 // JWT / authenticated-user helpers, shared by every service that needs to know
 // WHO is calling (see auth.ts). Re-exported here so consumers keep importing from '@repo/utils'.
@@ -61,4 +61,60 @@ export class InternalKeyGuard implements CanActivate
 
 		return (true);
 	}
+}
+
+// Matches every path SwaggerModule serves: the UI ('/docs'), the spec ('/docs-json'),
+// the UI's static assets ('/docs/swagger-ui-bundle.js') and the notification service's
+// extra '/docs-json' mount ('/docs-json-json').
+const	DOCS_PATH = /^\/docs([-/]|$)/;
+
+// Only the few members the middleware below touches, so this package does not need
+// @types/node or @types/express just to describe a request it merely inspects.
+type	DocsRequest = { url?: string; method?: string; headers: Record<string, unknown> };
+type	DocsResponse = { statusCode: number; setHeader: (name: string, value: string) => void; end: (body?: string) => void };
+
+/**
+ * @brief Make a microservice's own Swagger docs internal-only.
+ *
+ * Every service mounts its docs at '/docs' on its OWN port, reachable by anyone who can
+ * hit that port — the gateway's DOCS_USER/DOCS_PASSWORD only guards what goes THROUGH the
+ * gateway. This middleware closes that door by requiring the same 'x-internal-key' as every
+ * other internal endpoint, so a service's docs are readable only via the gateway (which
+ * injects the key when proxying) and therefore only behind the gateway's Basic auth.
+ *
+ * It has to be MIDDLEWARE rather than `InternalKeyGuard`: SwaggerModule.setup() registers
+ * raw Express handlers, not Nest controllers, so guards never run for them. For the same
+ * reason it must be registered BEFORE the SwaggerModule.setup() calls — hence each service
+ * calls it as the FIRST statement of its own swaggerSetup(), so docs can never be mounted
+ * without their guard.
+ *
+ * The path deliberately stays '/docs' instead of moving under '/internal/': the gateway
+ * rejects any path containing an 'internal' segment before its proxies run, which would
+ * 404 the aggregate docs page's own spec fetches.
+ *
+ * Answers 404 instead of 401 — like the gateway's internal blocker — so an outside caller
+ * cannot even confirm the docs exist.
+ *
+ * @param app The Nest application, before swagger is set up on it.
+ * @param serviceName Name used for the log line when a request is blocked.
+ */
+export function	protectDocsWithInternalKey(app: any, serviceName: string): void
+{
+	const	logger = new Logger(`${serviceName} Docs`);
+
+	app.use((req: DocsRequest, res: DocsResponse, next: () => void) =>
+	{
+		const	path = (req.url || '').split('?')[0];
+
+		if (!DOCS_PATH.test(path))
+			return (next());
+
+		if (validateInternalKey(req.headers['x-internal-key'] as string | undefined))
+			return (next());
+
+		logger.warn(`Blocked direct docs request without a valid internal key: ${req.method} ${path}`);
+		res.statusCode = 404;
+		res.setHeader('content-type', 'application/json');
+		res.end(JSON.stringify({ statusCode: 404, message: 'Not Found' }));
+	});
 }

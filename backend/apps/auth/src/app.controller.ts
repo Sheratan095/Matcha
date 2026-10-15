@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { env, FRONTEND_BASE_URL } from '@repo/config';
+import { FRONTEND_BASE_URL } from '@repo/config';
 import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto, LoginErrorDto, LogoutResponseDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto, ValidateTokenResponseDto } from './dto/refresh.dto';
