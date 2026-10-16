@@ -26,7 +26,7 @@ export class AppController
 		return ('OK');
 	}
 
-	@Post('email-verification')
+	@Post('internal/email-verification')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Send verification email - INTERNAL 🔒', description: 'Sends a verification email to the user with the provided token.' })
 	@ApiBody({ type: EmailVerificationDto })
@@ -38,7 +38,7 @@ export class AppController
 		return (this.appService.sendVerificationEmail(req.email, req.token, req.language));
 	}
 
-	@Post('forgot-password')
+	@Post('internal/forgot-password')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Send forgot password email - INTERNAL 🔒', description: 'Sends a forgot password email to the user with the provided token.' })
 	@ApiBody({ type: ForgotPasswordDto })
@@ -52,7 +52,7 @@ export class AppController
 
 	@Get('online')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Get number of online users - INTERNAL 🔒', description: 'Returns the number of active WebSocket connections to the notification service.' })
+	@ApiOperation({ summary: 'Get number of online users', description: 'Returns the number of active WebSocket connections to the notification service.' })
 	@ApiResponse({ status: 200, description: 'Number of online users retrieved successfully' })
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	getOnlineUsers()
@@ -60,7 +60,7 @@ export class AppController
 		return (this.appService.getOnlineUsers());
 	}
 
-	@Post('close-ws-connections')
+	@Post('internal/close-ws-connections')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Close WebSocket connections - INTERNAL 🔒', description: 'Closes all active WebSocket connections for the specified user.' })
 	@ApiBody({ type: CloseWsConnectionsDto })
@@ -71,7 +71,7 @@ export class AppController
 		return (this.appService.closeWsConnections(req.userId));
 	}
 
-	@Get('is-online/:userId')
+	@Get('internal/is-online/:userId')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Check if user is online - INTERNAL 🔒', description: 'Checks if the specified user has any active WebSocket connections.' })
 	@ApiResponse({ status: 200, description: 'User online status retrieved successfully' })
@@ -82,7 +82,7 @@ export class AppController
 		return ({ isOnline: await this.appService.isUserOnline(userId) });
 	}
 
-	@Post('notify/profile-view')
+	@Post('internal/notify/profile-view')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Notify a profile view - INTERNAL 🔒', description: "Pushes a 'profile-view' notification to the profile owner over WebSocket (queued if they are offline)." })
 	@ApiBody({ type: ProfileViewNotifyDto })
@@ -94,7 +94,7 @@ export class AppController
 		return ( await this.appService.notifyProfileView(req.recipientId, req.viewerId));
 	}
 
-	@Post('notify/profile-like')
+	@Post('internal/notify/profile-like')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Notify a profile like - INTERNAL 🔒', description: "Pushes a 'profile-like' notification to the liked user over WebSocket (queued if they are offline)." })
 	@ApiBody({ type: ProfileLikeNotifyDto })
@@ -106,7 +106,7 @@ export class AppController
 		return ( await this.appService.notifyProfileLike(req.likedId, req.likerId, req.matched));
 	}
 
-	@Post('notify/profile-unlike')
+	@Post('internal/notify/profile-unlike')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Notify a profile like - INTERNAL 🔒', description: "Pushes a 'profile-like' notification to the liked user over WebSocket (queued if they are offline)." })
 	@ApiBody({ type: ProfileLikeNotifyDto })

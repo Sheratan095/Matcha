@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { env, FRONTEND_BASE_URL } from "@repo/config";
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ClientRequest, IncomingMessage, ServerResponse } from 'http';
+import { timingSafeEqual } from 'node:crypto';
 import { setupSwagger } from './swagger';
 import { Microservice } from './Models/Microservice';
 import { Logger } from '@nestjs/common';
@@ -21,6 +22,30 @@ const	services : Microservice[] =
 	new Microservice('notification', env.NOTIFICATION_HOST, env.NOTIFICATION_PORT, '/notification/docs-json'),
 	new Microservice('profile', env.PROFILE_HOST, env.PROFILE_PORT, '/profile/docs-json'),
 ];
+
+/**
+ * @brief Validate an `Authorization: Basic ...` header against DOCS_USER / DOCS_PASSWORD.
+ *
+ * Compared with timingSafeEqual so a wrong guess cannot be narrowed down by response timing.
+ * The password is rejoined on ':' because only the FIRST colon separates user from password.
+ */
+function hasValidDocsCredentials(header?: string): boolean
+{
+	if (!header || !header.startsWith('Basic '))
+		return (false);
+
+	const	decoded = Buffer.from(header.slice('Basic '.length), 'base64').toString('utf8');
+	const	separator = decoded.indexOf(':');
+
+	if (separator === -1)
+		return (false);
+
+	const	provided = Buffer.from(`${decoded.slice(0, separator)}:${decoded.slice(separator + 1)}`);
+	const	expected = Buffer.from(`${env.DOCS_USER}:${env.DOCS_PASSWORD}`);
+
+	// timingSafeEqual throws on differing lengths, so the length check must come first.
+	return (provided.length === expected.length && timingSafeEqual(provided, expected));
+}
 
 // This is the bootstrap file, it imports NestFactory and you root module to spin up the http server
 
@@ -57,6 +82,64 @@ async function bootstrap()
 			const	userId = await authenticateRequest(req);
 			if (userId)
 				req.headers[USER_ID_HEADER] = userId;
+		}
+
+		next();
+	});
+
+	// SECURITY BOUNDARY: the Swagger docs are a full inventory of the API surface (every route,
+	// DTO and error shape), so they are not public. This runs before the proxies AND before
+	// setupSwagger's own routes, covering the gateway's /docs + /docs-json, the swagger-ui assets
+	// under /docs/*, and the per-service /<service>/docs* reached through the catch-all proxies.
+	//
+	// Fail closed: with no DOCS_USER/DOCS_PASSWORD configured the docs are not served at all.
+	app.use((req: IncomingMessage, res: ServerResponse, next: () => void) =>
+	{
+		const	path = (req.url || '').split('?')[0];
+
+		if (!/(^|\/)docs(-json)?(\/|$)/.test(path))
+			return (next());
+
+		if (!env.DOCS_USER || !env.DOCS_PASSWORD)
+		{
+			logger.warn(`Blocked docs request (DOCS_USER/DOCS_PASSWORD not configured): ${req.method} ${path}`);
+			res.statusCode = 404;
+			res.setHeader('content-type', 'application/json');
+			res.end(JSON.stringify({ statusCode: 404, message: 'Not Found' }));
+
+			return;
+		}
+
+		if (hasValidDocsCredentials(req.headers.authorization))
+			return (next());
+
+		logger.warn(`Rejected docs request with missing/invalid credentials: ${req.method} ${path}`);
+		res.statusCode = 401;
+		// Makes a browser show the credentials prompt instead of a blank 401.
+		res.setHeader('WWW-Authenticate', 'Basic realm="Matcha API docs", charset="UTF-8"');
+		res.end('Unauthorized');
+	});
+
+	// SECURITY BOUNDARY: internal (service-to-service) endpoints must never be reachable from the
+	// outside. This runs BEFORE every proxy and rejects any path containing an `internal` segment.
+	//
+	// It is needed because the /auth and /profile proxies below are catch-all AND inject the
+	// internal key on every request — so InternalKeyGuard alone cannot tell a browser from a
+	// service. Services call each other DIRECTLY (host:port), bypassing this gateway, so they are
+	// unaffected. Blocking the whole segment is secure by default: a new /internal/* route is
+	// unreachable externally without anyone maintaining an allowlist.
+	app.use((req: IncomingMessage, res: ServerResponse, next: () => void) =>
+	{
+		const	path = (req.url || '').split('?')[0];
+
+		if (/(^|\/)internal(\/|$)/.test(path))
+		{
+			logger.warn(`Blocked external request to an internal endpoint: ${req.method} ${path}`);
+			res.statusCode = 404;
+			res.setHeader('content-type', 'application/json');
+			res.end(JSON.stringify({ statusCode: 404, message: 'Not Found' }));
+
+			return;
 		}
 
 		next();
@@ -141,7 +224,17 @@ async function bootstrap()
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
 			changeOrigin: true,
 			pathRewrite: { '^/': '/docs-json' },
-		}),
+			// The service's docs are internal-only (protectDocsWithInternalKey), so the spec is
+			// only readable through here — i.e. only behind the docs Basic auth above.
+			on:
+			{
+				proxyReq: (proxyReq: ClientRequest) =>
+				{
+					if (env.INTERNAL_KEY)
+						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
+				},
+			},
+		} as any),
 	);
 
 	app.use( '/notification/health',

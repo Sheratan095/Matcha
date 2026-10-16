@@ -38,7 +38,7 @@ async function validateAccessTokenCookie(cookieHeader?: string): Promise<string 
 
 	try
 	{
-		const response = await axios.get(`${env.AUTH_HOST}:${env.AUTH_PORT}/validate`,
+		const response = await axios.get(`${env.AUTH_HOST}:${env.AUTH_PORT}/internal/validate`,
 		{
 			headers:
 			{

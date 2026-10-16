@@ -21,3 +21,9 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 -- Drain "all pending for this user, oldest first".
 CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications (user_id, created_at);
+
+-- Dedupe: the same (recipient, event, payload) queues once, not N times — e.g. the same person
+-- viewing your profile repeatedly while you're offline surfaces as a single "X viewed you" on
+-- reconnect. jsonb takes a btree unique index and these payloads are small (StdPayload), so it is
+-- within the btree row-size limit. The write path uses INSERT ... ON CONFLICT to dedupe atomically.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_notifications_user_event_payload ON notifications (user_id, event, payload);

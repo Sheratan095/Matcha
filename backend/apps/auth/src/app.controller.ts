@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { env, FRONTEND_BASE_URL } from '@repo/config';
+import { FRONTEND_BASE_URL } from '@repo/config';
 import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
 import { LoginDto, LoginResponseDto, LoginErrorDto, LogoutResponseDto } from './dto/login.dto';
 import { RefreshResponseDto, RefreshErrorDto, ValidateTokenResponseDto } from './dto/refresh.dto';
@@ -116,7 +116,7 @@ export class AppController
 		return (await this.appService.logout(userId, res));
 	}
 
-	@Get('validate')
+	@Get('internal/validate')
 	@ApiCookieAuth('access_token')
 	@ApiOperation({ summary: 'INTERNAL 🔒 Validate access token', description: 'Endpoint intended to be called by the API Gateway to authorize incoming requests. Validates the JWT cookie and returns user context.' })
 	@ApiResponse({ status: 200, type: ValidateTokenResponseDto })

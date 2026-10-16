@@ -39,7 +39,7 @@ export class AppController
 		return ('OK');
 	}
 
-	@Post()
+	@Post('internal/create')
 	@HttpCode(HttpStatus.OK) // Override default 201 for consistency with the other services
 	@ApiOperation({ summary: 'Create user profile', description: 'INTERNAL endpoint, called only by the AUTH service right after a user is registered, to create the matching profile row.' })
 	@ApiBody({ type: CreateProfileDto })
@@ -258,8 +258,8 @@ export class AppController
 		return (profile);
 	}
 
-	@Get(':userId/is-complete')
-	@ApiOperation({ summary: 'Check if user profile is complete', description: 'INTERNAL endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
+	@Get('internal/:userId/is-complete')
+	@ApiOperation({ summary: 'Check if user profile is complete', description: 'INTERNAL 🔒 endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
 	@ApiResponse({ status: 200, type: IsProfileCompleteResponseDto, description: 'Profile completeness status' })
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
@@ -271,8 +271,8 @@ export class AppController
 		return ({ isComplete });
 	}
 
-	@Get(':userId/is-online')
-	@ApiOperation({ summary: 'Check if user is online', description: 'INTERNAL endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
+	@Get('internal/:userId/is-online')
+	@ApiOperation({ summary: 'Check if user is online', description: 'INTERNAL 🔒 endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
 	@ApiResponse({ status: 200, type: IsOnlineResponseDto, description: 'User online status' })
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })

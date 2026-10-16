@@ -21,6 +21,12 @@ const envSchema = z.object({
 
 	INTERNAL_KEY: z.string().default("1234abc"),
 
+	// HTTP Basic credentials guarding the Swagger docs at the gateway (/docs, /docs-json and the
+	// per-service /<service>/docs*). Left unset the docs are NOT served at all (fail closed), so a
+	// deployment never exposes the whole API surface by accident.
+	DOCS_USER: z.string().optional(),
+	DOCS_PASSWORD: z.string().optional(),
+
 	GATEWAY_HOST: z.string().default("http://localhost"),
 	GATEWAY_PORT: z.coerce.number().default(3000),
 
