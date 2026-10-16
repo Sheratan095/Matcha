@@ -405,6 +405,42 @@ export class DbService implements OnModuleInit
 		return ((result.rowCount ?? 0) > 0);
 	}
 
+	// Whole kilometres between two users, for the "N km away" shown on someone else's profile.
+	// Returns null when either user has no location set (distance_km is STRICT).
+	//
+	// Only the TARGET is snapped: the viewer already knows their own position, so quantizing it
+	// would only add error. Snapping the target is what caps what repeated probes can learn —
+	// an attacker who moves around and re-reads this can at best recover the ~1 km grid cell.
+	//
+	// Rounded to whole kilometres because the snap already costs up to ~1.5 km of accuracy;
+	// reporting decimals would claim a precision this number does not have.
+	//
+	// Floored at 1 km: a literal 0 reads like a bug, and it is also the most sensitive answer
+	// this endpoint can give, since it places the target within ~500 m of the viewer.
+	async getDistanceKm(fromUserId: string, toUserId: string): Promise<number | null>
+	{
+		const result = await this.pool.query(
+			`SELECT ROUND(distance_km(viewer.latitude, viewer.longitude,
+									  snap_coord(target.latitude), snap_coord(target.longitude)))::int AS distance_km
+			 FROM profiles viewer, profiles target
+			 WHERE viewer.user_id = $1 AND target.user_id = $2`,
+			[fromUserId, toUserId]
+		);
+
+		const	distanceKm = result.rows[0]?.distance_km ?? null;
+
+		// A user with no location must stay null, never become "1 km away". Hence the clamp is
+		// HERE and not GREATEST(1, ...) in the query above: GREATEST IGNORES NULLS in Postgres,
+		// so GREATEST(1, NULL) is 1, not NULL.
+		if (distanceKm === null)
+			return (null);
+
+		// Clamped on the way OUT, never inside an ORDER BY: when the discovery query starts
+		// sorting candidates by distance it must sort on the real distance_km(), otherwise every
+		// nearby candidate collapses into a single tie and "nearest first" stops meaning anything.
+		return (Math.max(1, distanceKm));
+	}
+
 	async addProfileView(viewerId: string, viewedId: string): Promise<void>
 	{
 		await this.pool.query(
@@ -648,8 +684,11 @@ export class DbService implements OnModuleInit
 		//	No block filter needed: addBlock() deletes the likes in both directions, so a
 		//  blocked pair can never have a mutual like (hence never a match) to begin with.
 
+		// snap_coord: a match's position is pinned on a map, so it must be quantized to the
+		// ~1 km grid before it leaves the DB (see 002_create_profiles.sql).
 		const result = await this.pool.query(
-			`SELECT other.id AS user_id, other.username, up.url AS profile_picture_url, p.latitude, p.longitude
+			`SELECT other.id AS user_id, other.username, up.url AS profile_picture_url,
+					snap_coord(p.latitude) AS latitude, snap_coord(p.longitude) AS longitude
 			 FROM likes mine
 			 INNER JOIN likes theirs ON theirs.liker_id = mine.liked_id AND theirs.liked_id = mine.liker_id
 			 INNER JOIN users other ON other.id = mine.liked_id

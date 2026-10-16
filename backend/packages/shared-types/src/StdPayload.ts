@@ -69,21 +69,40 @@ export interface IStdPayloadGeo extends IStdPayload
 	longitude: number | null;
 }
 
+/**
+ * @brief Quantize a coordinate to a ~1 km grid, mirroring snap_coord() in 002_create_profiles.sql.
+ *
+ * An exact coordinate is a home address, so no published position may carry full precision.
+ * The queries already snap, but this runs again on the way out because THIS is the last gate
+ * before a coordinate reaches a WebSocket payload or an HTTP response — a future query that
+ * forgets to snap is then still safe. Snapping is idempotent (Math.round, not Math.floor), so
+ * doing it twice costs nothing.
+ */
+export function	snapCoord(coord: number | null | undefined): number | null
+{
+	if (coord === null || coord === undefined)
+		return (null);
+
+	return (Math.round(coord * 100) / 100);
+}
+
 // StdPayload plus the user's coordinates — for the matches map, where each match needs a location.
 export class StdPayloadGeo extends StdPayload implements IStdPayloadGeo
 {
 	latitude: number | null;
 	longitude: number | null;
 
+	// Snapped in the CONSTRUCTOR, not in the mapper below, so no way of building a
+	// StdPayloadGeo can carry an exact position.
 	constructor(data: IStdPayloadGeo)
 	{
-		super(data);
-		this.latitude  = data.latitude ?? null;
-		this.longitude = data.longitude ?? null;
+		super(data); // super means StdPayload constructor, which sets userId, username, and profilePictureUrl.
+		this.latitude  = snapCoord(data.latitude);
+		this.longitude = snapCoord(data.longitude);
 	}
 
 	// getMatchesMap selects other.id AS user_id, other.username, up.url AS profile_picture_url,
-	// p.latitude, p.longitude.
+	// and the already-snapped p.latitude, p.longitude.
 	static fromMatchMapData(row: any): StdPayloadGeo
 	{
 		return (new StdPayloadGeo({

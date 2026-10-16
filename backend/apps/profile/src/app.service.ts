@@ -104,20 +104,31 @@ export class AppService
 			// relation so the frontend can render presence, the like button state and a
 			// "likes you" / "matched" badge. Both are meaningless on your own profile — and
 			// isOnline would otherwise cost a notification-service round trip on every self-fetch.
+			// The distanceKm is also only relevant when viewing another user's profile
 			// (A block would have 404'd above, so a visible profile is never blocked.)
 			if (userId !== requestorUserId)
 			{
-				// Online status lives in the notification service. Keep it non-blocking:
-				// a failure there degrades to "offline", never breaks the profile fetch.
-				const	isOnline = await this.isUserOnline(userId);
-
-				const	{ liked, likesYou } = await this.dbService.getLikeRelation(requestorUserId, userId);
+				// Three independent lookups (one HTTP, two queries), so run them concurrently.
+				// Online status lives in the notification service; isUserOnline() swallows its
+				// own failures and degrades to "offline", so it never breaks the profile fetch.
+				const	[isOnline, { liked, likesYou }, distanceKm] = await Promise.all([
+					this.isUserOnline(userId),
+					this.dbService.getLikeRelation(requestorUserId, userId),
+					this.dbService.getDistanceKm(requestorUserId, userId),
+				]);
 
 				const	relation = { liked, likesYou, matched: liked && likesYou };
 
-				return ({ ...profile, isOnline, relation });
+				// Another user's coordinates NEVER leave the API: an exact position is a home
+				// address, and distance alone is enough for the UI. distanceKm is derived from a
+				// ~1 km-snapped position (see snap_coord in 002_create_profiles.sql), so an
+				// attacker who re-reads it while moving around cannot trilaterate past that cell.
+				const	{ latitude, longitude, ...withoutLocation } = profile;
+
+				return ({ ...withoutLocation, isOnline, relation, distanceKm });
 			}
 
+			// Own profile: full precision, so the frontend can place the user's own map pin.
 			return (profile);
 		}
 		catch (error: any)

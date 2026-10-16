@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsUUID } from 'class-validator';
-import { UserPictureDto } from './fullProfile.dto';
+import { UserPictureDto } from './profile.dto';
 
 export class PictureIdParamDto
 {
