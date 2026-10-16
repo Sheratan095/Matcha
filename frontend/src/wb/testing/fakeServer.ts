@@ -1,6 +1,6 @@
 /**
  * Test-only: a fake axios adapter with route handlers, installed on the default axios instance (the one
- * both engines and the interceptors use). Responses and errors are shaped like axios' own, so the
+ * the engine and the interceptors use). Responses and errors are shaped like axios' own, so the
  * interceptors of src/api/http.ts cannot tell the difference.
  */
 import axios, { AxiosError, AxiosHeaders, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'

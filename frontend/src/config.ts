@@ -18,8 +18,3 @@ export const API_URL: string = IS_MOCK_BACKEND
  */
 export const SOCIAL_URL: string =
   (import.meta.env.VITE_SOCIAL_URL as string | undefined) ?? `${MOCK_PREFIX}/social`
-
-/** Optional override for WaveBinder's license heartbeat server. */
-export const WAVEBINDER_LICENSE_SERVER_URL = import.meta.env.VITE_WAVEBINDER_LICENSE_SERVER_URL as
-  | string
-  | undefined

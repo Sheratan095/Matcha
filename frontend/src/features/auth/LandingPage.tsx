@@ -61,10 +61,9 @@ const TICKER = ['Fresh matches daily', 'Stone-ground in Paris', 'Ceremonial grad
 
 export default function LandingPage() {
   const demo = storeInfo.backend === 'mock'
-  // In these modes BuildMarkers hangs a short tab from the top edge: the masthead leaves it room.
-  const markers = demo || storeInfo.engine === 'preview'
+  // In demo mode BuildMarkers hangs a short tab from the top edge: the masthead leaves it room.
   return (
-    <div className={s.page} data-markers={markers ? '' : undefined}>
+    <div className={s.page} data-markers={demo ? '' : undefined}>
       <title>Matcha · It's a match, stone-ground</title>
 
       <header className={s.masthead}>
@@ -205,7 +204,7 @@ export default function LandingPage() {
       <footer className={s.colophon}>
         <ColorBar />
         <Label size="sm" tone="muted">
-          Matcha · Press edition Nº 01 · state by WaveBinder
+          Matcha · Press edition Nº 01
         </Label>
         <Link to="/styleguide" className={s.colophonLink}>
           Styleguide

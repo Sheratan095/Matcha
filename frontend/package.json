@@ -21,8 +21,7 @@
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
     "rxjs": "^7.8.2",
-    "socket.io-client": "^4.8.4",
-    "wave-binder": "^0.0.2"
+    "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

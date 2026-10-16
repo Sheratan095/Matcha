@@ -1,11 +1,11 @@
 /**
  * `run` and `refresh` (docs/ARCHITECTURE.md §4.4): node writes that wait for the request they cause.
  *
- * WaveBinder gives no handle on the request a write triggers, so it is recovered from the HTTP event
+ * The engine gives no handle on the request a write triggers, so it is recovered from the HTTP event
  * stream: watch the target node's requests (attributed by the registry), make the write, and take the
  * request(s) that start because of it. The request interceptor is synchronous, so such a request has
  * already started when the write returns; one macrotask of grace covers an asynchronous interceptor
- * chain. Once the request settles, a further wait lets the node take the response value (the library
+ * chain. Once the request settles, a further wait lets the node take the response value (the engine
  * applies it a few microtasks after the interceptor saw it), so a caller that reads the node after
  * `await` sees the new value.
  */
@@ -78,8 +78,8 @@ function watchRequests(node: HttpNodeName): RequestWatch {
 
 /**
  * Resolves once the node holds the value the request settled with (the response body, or `null` for a
- * failure), or at the next macrotask, whichever comes first. In a healthy engine the library applies the
- * value within microtasks, so the macrotask is only a safety net (dead engine, value superseded).
+ * failure), or at the next macrotask, whichever comes first. The engine applies the value within
+ * microtasks, so the macrotask is only a safety net (store stopped, value superseded).
  */
 function nodeTook(name: HttpNodeName, event: HttpEvent): Promise<void> {
   const node = nodeSubject(name)

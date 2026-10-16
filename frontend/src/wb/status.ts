@@ -1,7 +1,7 @@
 /**
  * Request status per HTTP node (docs/ARCHITECTURE.md §4.4).
  *
- * WaveBinder has no loading flag and no error channel (a node is just `null` while loading, after a
+ * The engine has no loading flag and no error channel (a node is just `null` while loading, after a
  * reset and after a failure), so the status comes from the HTTP event stream, attributed to a node by
  * the registry. Rules:
  * - a request start makes the node `loading`; only the most recently started request of a node may

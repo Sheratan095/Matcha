@@ -1,20 +1,7 @@
 /**
- * Types shim for wave-binder 0.0.2 (docs/WAVEBINDER.md §3.3 and §8).
- *
- * The package does not export its config types and types `la.type` & co. as enums that reject
- * string literals, so node definitions are authored with the literal mirrors below and cast once,
- * where the real engine is constructed. Everything here is type-only: importing this file never
- * evaluates the library.
+ * The node-graph vocabulary: the types the app's node definitions are authored in and the engine
+ * (src/wb/engine) interprets. Everything here is type-only.
  */
-import type { WaveBinder } from 'wave-binder'
-
-// ---- the library's own types, derived because they are not exported
-type CtorArgs = ConstructorParameters<typeof WaveBinder>
-export type WbLicense = CtorArgs[0]
-export type WbProtoNode = CtorArgs[1][number]
-export type WbServiceMap = CtorArgs[2]
-export type WbFunctionInstance = CtorArgs[3][number]
-export type WbInstance = WaveBinder
 
 // ---- authoring types: the string values the runtime compares against
 export type NodeType = 'SINGLE' | 'MULTI' | 'LIST' | 'COMPLEX'

@@ -1,5 +1,5 @@
 /**
- * Static checks on a node graph. wave-binder accepts almost anything silently (an unknown dependency
+ * Static checks on a node graph. The engine accepts almost anything silently (an unknown dependency
  * just means the node never loads), so the mistakes that are easy to make are caught here instead:
  * at store start-up and in the unit tests.
  */
@@ -50,7 +50,7 @@ export function validateGraph({ nodes, services, functions }: GraphInput): strin
         problems.push(`"${name}" calls the unknown function "${la.functionName ?? ''}" (its value would always be null)`)
       } else if (fn.length !== dep.length) {
         problems.push(
-          `"${name}": function "${la.functionName}" declares ${fn.length} parameter(s) for ${dep.length} dependencies (more makes the library append a snapshot argument)`,
+          `"${name}": function "${la.functionName}" declares ${fn.length} parameter(s) for ${dep.length} dependencies (more makes the engine append a snapshot argument)`,
         )
       }
       continue
@@ -85,7 +85,7 @@ export function validateGraph({ nodes, services, functions }: GraphInput): strin
     }
   }
 
-  // The library has no cycle detection: a cycle is an infinite synchronous loop.
+  // The engine has no cycle detection: a cycle is an infinite synchronous loop.
   const state = new Map<string, 'visiting' | 'done'>()
   const visit = (name: string, trail: string[]): void => {
     if (state.get(name) === 'done') return

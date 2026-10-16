@@ -1,20 +1,16 @@
 /**
- * The running store: one engine (docs/ARCHITECTURE.md §4.1) behind typed node accessors.
+ * The running store: the node-graph engine (docs/ARCHITECTURE.md §4.1) behind typed node accessors.
  *
- * - `startStore()` picks the engine: the real WaveBinder when `src/wb/license.json` exists, otherwise
- *   the preview interpreter. It is idempotent; tests may pass their own engine.
- * - Node accessors throw until the engine has been ready once. After the engine dies (license heartbeat
- *   failure) reads keep returning the last values so a mounted screen can finish rendering, while
- *   `isStoreLive()` turns false and `run` / `refresh` refuse to send.
+ * - `startStore()` creates the engine. It is idempotent; tests may pass their own engine.
+ * - Node accessors throw until the engine has been ready once. After `stopStore()` reads are refused
+ *   and `isStoreLive()` is false, so `run` / `refresh` refuse to send.
  */
-import { NEVER, ReplaySubject, type BehaviorSubject, type Observable } from 'rxjs'
+import type { BehaviorSubject, Observable } from 'rxjs'
 import { httpEvents$ } from '@/api/http'
-import { BACKEND, WAVEBINDER_LICENSE_SERVER_URL } from '@/config'
-import { createPreviewEngine } from './engine/preview'
-import type { EngineConfig, EngineKind, StoreEngine } from './engine/types'
-import { createWaveBinderEngine } from './engine/wavebinder'
+import { BACKEND } from '@/config'
+import { createGraphEngine } from './engine/graph'
+import type { EngineConfig, StoreEngine } from './engine/types'
 import { FUNCTIONS } from './functions'
-import { HAS_LICENSE, readLicense } from './license'
 import { NODES, type HttpNodeName, type NodeName, type NodeValue, type NodeValues, type WritableNodeName } from './nodes'
 import { validateGraph } from './nodes/validate'
 import { createRegistry } from './registry'
@@ -22,32 +18,26 @@ import { SERVICES } from './services'
 import { dropStaleLoads } from './stale'
 import { createStatusTracker, type NodeStatus, type StatusSource, type StatusTracker } from './status'
 
-/** The three inputs of `new WaveBinder(license, ...)`, shared by both engines. */
+/** The nodes, services and functions the engine runs. */
 export const GRAPH: EngineConfig = { nodes: NODES, services: SERVICES, functions: FUNCTIONS }
 
 /** Request -> node attribution, built once from the graph. */
 export const registry = createRegistry(NODES, SERVICES)
 
 export interface StoreInfo {
-  /** Which engine runs the graph; the UI shows a "PREVIEW STORE" marker for `preview`. */
-  readonly engine: EngineKind
   /** `real`: auth and profile hit the gateway; `mock`: everything is served in the browser. */
   readonly backend: 'real' | 'mock'
 }
 
 export const storeInfo: StoreInfo = Object.freeze({
-  engine: HAS_LICENSE ? 'wavebinder' : 'preview',
   backend: BACKEND,
 })
 
 /** What `main.tsx` needs to drive the boot screens. */
 export interface StoreHandle {
-  readonly kind: EngineKind
   /** true once the graph is live; false when the engine could not start. Never rejects. */
   readonly ready: Promise<boolean>
-  /** Emits once if the engine dies after being ready. Replays. */
-  readonly dead$: Observable<void>
-  /** Why the engine could not start or died; null while healthy. */
+  /** Why the engine could not start; null while healthy. */
   readonly failure: string | null
 }
 
@@ -57,7 +47,7 @@ interface ActiveStore {
   readonly handle: StoreHandle
   /** Became ready at least once: nodes may be read. */
   started: boolean
-  /** Ready and not dead: nodes may be written and requests sent. */
+  /** Ready and not stopped: nodes may be written and requests sent. */
   live: boolean
   readonly cleanups: (() => void)[]
   readonly once: Set<string>
@@ -66,11 +56,9 @@ interface ActiveStore {
 let active: ActiveStore | null = null
 
 /** An engine that never started, so a construction error reaches the failure screen like any other. */
-function failedEngine(kind: EngineKind, failure: string): StoreEngine {
+function failedEngine(failure: string): StoreEngine {
   return {
-    kind,
     ready: Promise.resolve(false),
-    dead$: NEVER,
     failure,
     getNode(name) {
       throw new Error(`Store node "${name}" not found: the store did not start`)
@@ -80,23 +68,17 @@ function failedEngine(kind: EngineKind, failure: string): StoreEngine {
 }
 
 function createEngine(): StoreEngine {
-  const kind: EngineKind = HAS_LICENSE ? 'wavebinder' : 'preview'
   const problems = validateGraph(GRAPH)
-  if (problems.length > 0) return failedEngine(kind, `The node graph is invalid:\n- ${problems.join('\n- ')}`)
-  if (!HAS_LICENSE) {
-    try {
-      return createPreviewEngine(GRAPH)
-    } catch (error) {
-      return failedEngine(kind, error instanceof Error ? error.message : String(error))
-    }
+  if (problems.length > 0) return failedEngine(`The node graph is invalid:\n- ${problems.join('\n- ')}`)
+  try {
+    return createGraphEngine(GRAPH)
+  } catch (error) {
+    return failedEngine(error instanceof Error ? error.message : String(error))
   }
-  const license = readLicense()
-  if (!license.ok) return failedEngine(kind, license.reason)
-  return createWaveBinderEngine(license.license, GRAPH, { licenseServerUrl: WAVEBINDER_LICENSE_SERVER_URL })
 }
 
 export interface StartOptions {
-  /** Use this engine instead of choosing one (tests). */
+  /** Use this engine instead of creating one (tests). */
   engine?: StoreEngine
 }
 
@@ -105,7 +87,6 @@ export function startStore(options: StartOptions = {}): StoreHandle {
   if (active) return active.handle
   const engine = options.engine ?? createEngine()
   const tracker = createStatusTracker(registry, httpEvents$, NODES)
-  const dead = new ReplaySubject<void>(1)
   let ownFailure: string | null = null
 
   const store: ActiveStore = {
@@ -116,7 +97,6 @@ export function startStore(options: StartOptions = {}): StoreHandle {
     cleanups: [],
     once: new Set(),
     handle: {
-      kind: engine.kind,
       // Resolved after the store's own wiring, so whoever awaits it can use nodes at once.
       ready: engine.ready.then(
         (ok) => {
@@ -138,20 +118,12 @@ export function startStore(options: StartOptions = {}): StoreHandle {
           return false
         },
       ),
-      dead$: dead.asObservable(),
       get failure() {
         return ownFailure ?? engine.failure
       },
     },
   }
   active = store
-
-  const deathWatch = engine.dead$.subscribe(() => {
-    if (active !== store) return
-    store.live = false
-    dead.next()
-  })
-  store.cleanups.push(() => deathWatch.unsubscribe())
   return store.handle
 }
 
@@ -249,8 +221,7 @@ export function statusSource(name: HttpNodeName): StatusSource {
   return started().tracker.source(name)
 }
 
-// A hot update of the state layer must not leave a second store (and, with a license, a second
-// heartbeating WaveBinder instance) behind: stop this one and reload the page.
+// A hot update of the state layer must not leave a second store behind: stop this one and reload the page.
 if (import.meta.hot) {
   import.meta.hot.dispose(() => stopStore())
   import.meta.hot.accept(() => window.location.reload())

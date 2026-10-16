@@ -1,6 +1,6 @@
 /**
  * The app root (rendered by main.tsx once the store is live): the router, the one Toaster, realtime
- * toasts, and the build markers (PREVIEW STORE / DEMO).
+ * toasts, and the build marker (DEMO).
  */
 import { Suspense, useSyncExternalStore } from 'react'
 import { RouterProvider } from 'react-router-dom'

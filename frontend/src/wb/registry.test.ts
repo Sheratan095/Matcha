@@ -77,7 +77,7 @@ describe('registry: specificity', () => {
 
 describe('graph validation', () => {
   const services: Record<string, ServiceDef> = { s: { target: '', secure: false, authorization: null } }
-  it('reports the mistakes the library would accept silently', () => {
+  it('reports the mistakes the engine would accept silently', () => {
     const nodes: NodeDef[] = [
       { name: 'p', path: '/p', type: 'SINGLE', dep: [{ nodeName: 'ghost', parameterName: 'g', isOptional: false, onUpdate: true }], la: { type: 'USER_SELECTION' } },
       {

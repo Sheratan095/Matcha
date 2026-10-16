@@ -1,17 +1,16 @@
 # Matcha frontend — architecture
 
-A Tinder-style SPA (React 19 + Vite + TypeScript) whose state lives in a **WaveBinder** node graph
-(`wave-binder`, an RxJS state manager). Companion documents in this folder:
+A Tinder-style SPA (React 19 + Vite + TypeScript) whose state lives in a **node graph** run by a small
+RxJS-based engine (`src/wb`). Companion document in this folder:
 
-- `WAVEBINDER.md` — what the library really does (researched from the package itself).
 - `API_CONTRACT.md` — what the backend really exposes (researched from the backend source).
 
 ## 1. Ground rules
 
-- **All domain state lives in WaveBinder nodes.** Components read nodes through hooks and never call
+- **All domain state lives in graph nodes.** Components read nodes through hooks and never call
   axios/fetch themselves. Ephemeral view state (an open menu, a drag offset, a form draft) stays in
   React or in local RxJS streams.
-- **Every HTTP call is a WaveBinder HTTP node.** Reads are `GET` nodes that depend on other nodes;
+- **Every HTTP call is an HTTP node.** Reads are `GET` nodes that depend on other nodes;
   writes are a `<name>Payload` node (`USER_SELECTION`) plus a `<name>Result` node (`POST`/`PATCH`/`DELETE`)
   that depends on it.
 - **The mock boundary is the URL, not the code.** Nodes do not know whether a service is real. Any URL
@@ -40,26 +39,25 @@ src/
   main.tsx             boot sequence                                   (state)
   api/types.ts         wire types shared by everything                 (fixed contract)
   api/http.ts          axios defaults, http event stream, 401 refresh  (state)
-  wb/                  WaveBinder layer: instance, engines, nodes, hooks, commands, actions  (state)
+  wb/                  state layer: engine, nodes, hooks, commands, actions                  (state)
   mock/                in-browser backend: adapter, db, seed, handlers, portraits            (mock)
   ui/                  design system: tokens, global css, components, AppShell               (design)
   app/                 router, guards
   features/<name>/     screens
 ```
 
-## 4. The WaveBinder layer (`src/wb`)
+## 4. The state layer (`src/wb`)
 
 ```
 src/wb/
   index.ts          the public surface (§4.6): screens import from '@/wb' only
-  types.ts          types shim for wave-binder (its config types are not exported)
-  engine/           StoreEngine interface, the wavebinder adapter, the preview interpreter, request building
+  types.ts          the node-graph vocabulary (NodeDef, DepDef, loading actions...)
+  engine/           StoreEngine interface, the graph interpreter, request building
   nodes/            the graph (§4.5): builders, one file per domain, static validation
   functions.ts      CUSTOM_FUNCTION implementations
   services.ts       the `api` and `social` services
   registry.ts       request (method + URL) -> HTTP node
-  license.ts        license file detection
-  store.ts          the running store: engine choice, typed node access, storeInfo
+  store.ts          the running store: engine start-up, typed node access, storeInfo
   status.ts         request status per HTTP node
   stale.ts          drops in-flight reads whose node was reset
   commands.ts       run() and refresh()
@@ -71,60 +69,38 @@ src/wb/
   testing/          test-only fake adapter / backend / harness
 ```
 
-### 4.1 Engines
+### 4.1 The engine
 
-WaveBinder 0.0.2 is license-gated (see `WAVEBINDER.md` §0): without a valid license file it destroys
-every node a few milliseconds after construction. The layer therefore has two interchangeable engines
-behind one interface (`src/wb/engine/types.ts`):
+The graph is run by an interpreter of the app's node definitions (`NodeDef[]`, services, custom
+functions) on plain RxJS `BehaviorSubject`s (`src/wb/engine/graph.ts`), behind one interface
+(`src/wb/engine/types.ts`):
 
 ```ts
 interface StoreEngine {
-  kind: 'wavebinder' | 'preview'
   /** Resolves true when the graph is live, false when it could not start. Never rejects. */
   ready: Promise<boolean>
   /** A BehaviorSubject: subscribe / getValue / next. Throws on an unknown name. */
   getNode(name: string): BehaviorSubject<unknown>
-  /** Emits once if the engine dies after being ready (license heartbeat failure). Replays. */
-  dead$: Observable<void>
-  /** Why `ready` resolved false or `dead$` fired; null while healthy. */
+  /** Why `ready` resolved false; null while healthy. */
   failure: string | null
   destroy(): void
 }
 ```
 
-- **`wavebinder` engine** (`engine/wavebinder.ts`) — the real library, constructed from
-  `src/wb/license.json` (`{ payload, payloadRaw, signature }`, git-ignored). The file is detected with
-  `import.meta.glob('./license.json', { query: '?raw', eager: true })`, so a missing file is not a build
-  error and a malformed one becomes a start-up failure. `wave-binder` is loaded with a dynamic `import()`
-  only when the file exists, because evaluating the module already runs license code (it lives in its own
-  chunk, never fetched otherwise). The adapter gives the library a `structuredClone` of the definitions
-  (it mutates them), the service objects by reference, sets `globalThis.WAVEBINDER_LICENSE_SERVER_URL`
-  when `VITE_WAVEBINDER_LICENSE_SERVER_URL` is set, calls `tangleNodes()`, awaits `waitUntilReady()` and
-  checks `isReady()`. Death is detected by the `complete` of one node (the library has no event). After
-  death the node objects stay readable (completed subjects) but nothing propagates any more.
-  **This path has not been executed** (no license was available); it was checked against a fake of the
-  library's documented API only.
-- **`preview` engine** (`engine/preview.ts`) — used only when there is no license file. An interpreter
-  of the *same* node definitions (`NodeDef[]`, services, custom functions) on plain RxJS
-  `BehaviorSubject`s, written against the library's source for the subset this app uses: top-level
-  `SINGLE` nodes, `USER_SELECTION` / `CUSTOM_FUNCTION` / HTTP loading actions, `isOptional` / `onUpdate`,
-  `PATH_VARIABLE` / `REQUEST_PARAMETER` / `BODY` dependencies, `bodyType`, `defaultValue`, the
-  argument mapping and snapshot of custom functions, `null` on a failed call (with the library's
-  `console.error`), one request per dependency while tangling, no cancellation. It comes alive
-  asynchronously like the real one (a value written before `ready` is reset by the tangle). Anything
-  outside the subset is rejected at construction. The UI shows a permanent "PREVIEW STORE" marker while
-  it is active (`storeInfo.engine === 'preview'`).
+It implements the subset this app uses: top-level `SINGLE` nodes, `USER_SELECTION` / `CUSTOM_FUNCTION` /
+HTTP loading actions, `isOptional` / `onUpdate`, `PATH_VARIABLE` / `REQUEST_PARAMETER` / `BODY`
+dependencies, `bodyType`, `defaultValue`, the argument mapping and snapshot of custom functions, `null`
+on a failed call (with a `console.error`), one request per dependency while tangling, no cancellation.
+The graph comes alive asynchronously (a value written before `ready` is reset by the tangle). Anything
+outside the subset is rejected at construction: no `LIST`, `COMPLEX` or `MULTI` nodes.
 
-`startStore()` (`store.ts`) picks the engine, validates the graph first (`nodes/validate.ts`: dangling
+`startStore()` (`store.ts`) creates the engine, validates the graph first (`nodes/validate.ts`: dangling
 dependencies, cycles, bad placeholders, mutations with a second dependency, wrong function arity...),
-and returns a handle `{ kind, ready, dead$, failure }`. Node accessors throw until the engine has been
-ready once; after a death reads still work but `run` / `refresh` refuse to send (`NOT_SENT`). A hot update
-of anything under `src/wb` stops the store and reloads the page (never two heartbeating instances).
+and returns a handle `{ ready, failure }`. Node accessors throw until the engine has been ready once;
+after `stopStore()` reads are refused and `run` / `refresh` refuse to send (`NOT_SENT`). A hot update of
+anything under `src/wb` stops the store and reloads the page (never two stores).
 
-Node definitions are written once and must behave the same on both engines. Only use the feature
-subset above: no `LIST`, `COMPLEX` or `MULTI` nodes (unverified or buggy in 0.0.2).
-
-### 4.2 Conventions that follow from WaveBinder's semantics
+### 4.2 Conventions that follow from the engine's semantics
 
 - `undefined` = never loaded, `null` = loading / reset / failed. A node value alone cannot tell loading
   from failure, so status comes from the HTTP event stream (4.4).
@@ -132,7 +108,7 @@ subset above: no `LIST`, `COMPLEX` or `MULTI` nodes (unverified or buggy in 0.0.
   - Reads that need a session depend on `sessionUserId` (non-optional, `onUpdate: true`, no `type`):
     they load on login and reset to `null` on logout. This also applies to the reads keyed by a
     selection (`apiProfile`, `socialProfile`, `chatMessages`), so nothing is ever sent while anonymous.
-    Consequence, verified on the preview engine: the graph sends **no request at all while tangling**
+    Consequence, verified: the graph sends **no request at all while tangling**
     and only `GET /auth/validate` while anonymous.
   - A **refresh trigger** is a `USER_SELECTION` nonce node (`<name>Refresh`) used as an *optional*
     dependency with `onUpdate: false` and no `type`: bumping it refetches without flashing to `null`.
@@ -145,8 +121,8 @@ subset above: no `LIST`, `COMPLEX` or `MULTI` nodes (unverified or buggy in 0.0.
   - Each dependency emission is one request: several filters are changed behind a closed gate
     (`filters.ts`: `filterAgeMin` is held at `null` while the others change, then written last).
 - Custom functions receive dependency values **in `dep` order** (never rely on parameter names: the
-  library falls back to order, and minifiers rename parameters). They declare exactly one parameter per
-  dependency (more makes the library append a snapshot). Their inputs are **optional** dependencies
+  engine falls back to order, and minifiers rename parameters). They declare exactly one parameter per
+  dependency (more makes the engine append a snapshot). Their inputs are **optional** dependencies
   without `onUpdate` (`input()` in `nodes/builders.ts`): a required input would freeze the derived node
   on its last value when the input resets to `null`.
 - Path values are inserted into the URL raw (not encoded): actions refuse ids that are not URL-safe
@@ -168,7 +144,7 @@ subset above: no `LIST`, `COMPLEX` or `MULTI` nodes (unverified or buggy in 0.0.
 
 ### 4.4 HTTP plumbing (`src/api/http.ts`, `src/wb/status.ts`, `src/wb/commands.ts`)
 
-WaveBinder uses the default axios instance and exposes neither status nor errors, so:
+The engine uses the default axios instance and exposes neither status nor errors, so:
 
 - Interceptors publish every request to `httpEvents$` (`start` / `success` / `error`, with an id per
   logical request, method, URL without query, status, data and a normalised `ApiError`). The request
@@ -182,7 +158,7 @@ WaveBinder uses the default axios instance and exposes neither status nor errors
   it. `success` drops to `idle` when the node is reset without a request; nodes depending on
   `sessionUserId` forget their outcome when the user changes.
 - Concurrent GETs of the same node: the newest wins (an older one settles with the newer outcome),
-  because the library applies responses in arrival order. A GET still in flight when its node is reset
+  because the engine applies responses in arrival order. A GET still in flight when its node is reset
   with no newer request (sign-out, a closed conversation) is **dropped** (`stale.ts` +
   `dropPendingRequests`): it fails with code `DROPPED` whatever the server answered, so the node stays
   `null`, and its status ends `idle`.
@@ -316,7 +292,7 @@ is `NodeValues[N] | null | undefined`.
   reacts to events (message → open chat then matches; match → matches and likes; like → likes) and, with
   the real backend, keeps the gateway's socket.io connection (`/notification`, websocket only) open while
   signed in, which only makes the user count in `onlineCount`.
-- `storeInfo` — `{ engine: 'wavebinder' | 'preview', backend: 'real' | 'mock' }`.
+- `storeInfo` — `{ backend: 'real' | 'mock' }`.
 - Errors: `isApiError`, `toApiError`, `LOCAL_ERROR` (`NETWORK`, `TIMEOUT`, `NOT_SENT`, `INVALID`,
   `NO_SESSION`, `UNAVAILABLE`, `DROPPED`).
 - Boot (only `src/main.tsx`): `installStoreHttp()`, `installMockBackend({ auth, getViewerId })` from

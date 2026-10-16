@@ -1,7 +1,7 @@
 # Matcha — frontend
 
-A Tinder-style dating app (React 19, Vite, TypeScript) whose state lives in a
-[WaveBinder](https://wavebinder.it/) node graph (`wave-binder`, an RxJS state manager), dressed in a
+A Tinder-style dating app (React 19, Vite, TypeScript) whose state lives in a node graph
+(`src/wb`, an interpreter built on RxJS), dressed in a
 tactile, poster-print design ("Press Edition": heavy Archivo lettering, ink outlines, hard shadows,
 stamps and halftones).
 
@@ -20,15 +20,6 @@ verification and password-reset emails appear in a "demo inbox" on the auth scre
 Other scripts: `npm test` (vitest), `npm run typecheck`, `npm run lint`, `npm run build`, `npm run build:demo`.
 The design system's styleguide is at `/styleguide` (or `styleguide.html` standalone).
 
-## WaveBinder license
-
-`wave-binder` only runs with a license file issued by its vendor (the "Get your License" form on
-wavebinder.it). Save it as `src/wb/license.json` (git-ignored) and restart the dev server. Without it the
-app runs the same node definitions on a built-in **preview engine** (plain RxJS) and shows a
-"PREVIEW STORE" marker. The licensed path has not been executed yet; see `docs/WAVEBINDER.md` for what is
-known about the library and its caveats (5-second license heartbeat, plain-`http` license server, one
-instance per tab).
-
 ## What is real and what is mocked
 
 The backend currently provides auth, your own profile, pictures, profile-by-id and viewer ids. Discovery,
@@ -41,10 +32,9 @@ anything under `/__mock` is answered in the browser. Details in `docs/API_CONTRA
 
 | Path | What |
 |---|---|
-| `docs/ARCHITECTURE.md` | how it fits together: engines, node graph, mock contract, routes, design direction |
+| `docs/ARCHITECTURE.md` | how it fits together: engine, node graph, mock contract, routes, design direction |
 | `docs/API_CONTRACT.md` | the real backend's client-facing contract, bugs and gaps |
-| `docs/WAVEBINDER.md` | wave-binder 0.0.2 reference, researched from the package |
-| `src/wb` | WaveBinder layer: engines, node definitions, hooks, `run`, `actions`, realtime |
+| `src/wb` | state layer: engine, node definitions, hooks, `run`, `actions`, realtime |
 | `src/api` | wire types, axios plumbing (status events, 401 refresh) |
 | `src/mock` | in-browser backend, seeded people, portraits |
 | `src/ui` | design system (`src/ui/README.md` documents every component) |

@@ -2,7 +2,7 @@
  * Small builders for node definitions. They encode the conventions of docs/ARCHITECTURE.md §4.2 once,
  * so the domain files read as a description of the graph and cannot get a flag wrong.
  *
- * Every node is a top-level `SINGLE` node (the only kind both engines support).
+ * Every node is a top-level `SINGLE` node (the only kind the engine supports).
  */
 import type { DepDef, HttpMethod, LoadingActionDef, NodeDef } from '../types'
 
@@ -127,7 +127,7 @@ function commandNodes(name: string, spec: CommandSpec): [SelectionSpec, HttpSpec
       spec.payload === 'none'
         ? { nodeName: payloadNode, parameterName: 'nonce', isOptional: false, onUpdate: true }
         : pathVariable(payloadNode, spec.payload.pathVariable)
-    // Without a BODY dependency the library would send an empty multipart form; ask for `{}` instead.
+    // Without a BODY dependency the engine would send an empty multipart form; ask for `{}` instead.
     la.bodyType = 'JSON_OBJECT'
   }
   return [selection(), { dep: [dep], la }]
@@ -143,7 +143,7 @@ export function commands<C>(specs: { [Name in keyof C & string]: CommandSpec }):
   return nodes as CommandSpecs<C>
 }
 
-/** Turns a record of specs into the flat list both engines take. Record order is tangle order. */
+/** Turns a record of specs into the flat list the engine takes. Record order is tangle order. */
 export function toNodeDefs(specs: Record<string, NodeSpec>): NodeDef[] {
   return Object.entries(specs).map(([name, spec]) => ({ name, path: `/${name}`, type: 'SINGLE', ...spec }))
 }
