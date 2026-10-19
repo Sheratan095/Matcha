@@ -75,6 +75,9 @@ export interface IProfile
 	lastSeen: Date | null;
 	latitude: number | null;
 	longitude: number | null;
+	// Public 0-100 popularity score. Stored denormalized on profiles and recomputed by the
+	// profile service; the formula lives in SQL (compute_fame_rating, 009_fame_rating.sql).
+	fameRating: number;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -93,6 +96,7 @@ export class Profile implements IProfile
 	lastSeen: Date | null;
 	latitude: number | null;
 	longitude: number | null;
+	fameRating: number;
 	createdAt: Date;
 	updatedAt: Date;
 
@@ -110,6 +114,8 @@ export class Profile implements IProfile
 		this.lastSeen         = data.lastSeen || null;
 		this.latitude         = data.latitude ?? null;
 		this.longitude        = data.longitude ?? null;
+		// ?? 50 and not || 50: a genuine fame of 0 must survive, and 0 is falsy.
+		this.fameRating       = data.fameRating ?? 50;
 		this.createdAt        = data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt);
 		this.updatedAt        = data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt);
 	}
@@ -129,6 +135,7 @@ export class Profile implements IProfile
 			lastSeen:       row.last_seen ? new Date(row.last_seen) : null,
 			latitude:         row.latitude ?? null,
 			longitude:        row.longitude ?? null,
+			fameRating:       row.fame_rating ?? 50,
 			createdAt:        row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
 			updatedAt:        row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
 		}));

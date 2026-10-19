@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Pool, QueryResult } from 'pg';
+import { Pool, PoolClient, QueryResult } from 'pg';
 import { env } from "@repo/config";
 import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo } from '@repo/shared-types';
 
@@ -46,7 +46,7 @@ export class DbService implements OnModuleInit
 	async getProfile(userId: string): Promise<Profile | null>
 	{
 		const result = await this.pool.query(
-			`SELECT p.user_id, u.username, p.first_name, p.last_name, p.gender, p.sexual_preference, p.biography, p.last_seen, p.latitude, p.longitude, p.created_at, p.updated_at
+			`SELECT p.user_id, u.username, p.first_name, p.last_name, p.gender, p.sexual_preference, p.biography, p.last_seen, p.latitude, p.longitude, p.fame_rating, p.created_at, p.updated_at
 			 FROM profiles p
 			 INNER JOIN users u ON u.id = p.user_id
 			 WHERE p.user_id = $1`,
@@ -135,6 +135,11 @@ export class DbService implements OnModuleInit
 				[userId, url, isProfile]
 			);
 
+			// A picture is part of the fame rating's completeness bonus, so the FIRST one can
+			// raise the score. Recomputing unconditionally keeps this cheap and correct without
+			// the method having to know whether this was the first.
+			await this.recomputeFameRating(userId, client);
+
 			await client.query('COMMIT');
 
 			return (UserPicture.fromDbRow(result.rows[0]));
@@ -193,6 +198,9 @@ export class DbService implements OnModuleInit
 					[userId]
 				);
 			}
+
+			// Deleting the LAST picture breaks profile completeness and costs the bonus.
+			await this.recomputeFameRating(userId, client);
 
 			await client.query('COMMIT');
 
@@ -376,6 +384,11 @@ export class DbService implements OnModuleInit
 				}
 			}
 
+			// The biography and the interest list both feed the fame rating's completeness bonus,
+			// so editing either can move the score. Recomputed before COMMIT so the returned
+			// profile below already carries the new value.
+			await this.recomputeFameRating(userId, client);
+
 			await client.query('COMMIT');
 		}
 		catch (err)
@@ -441,14 +454,38 @@ export class DbService implements OnModuleInit
 		return (Math.max(1, distanceKm));
 	}
 
+	// Recomputes and stores userId's fame rating from the current state of likes, profile views,
+	// reports, blocks and profile completeness. The formula itself lives in SQL
+	// (compute_fame_rating, see 009_fame_rating.sql) so this method and the migration's backfill
+	// can never disagree about what fame means.
+	//
+	// The optional client lets a caller run this INSIDE its own transaction: the score must commit
+	// together with the like/block that changed it, or a rolled-back like would leave the rating
+	// permanently wrong. Callers with no transaction pass nothing and get the pool.
+	async recomputeFameRating(userId: string, client?: PoolClient): Promise<void>
+	{
+		await (client ?? this.pool).query(
+			`UPDATE profiles
+			 SET fame_rating = compute_fame_rating($1)
+			 WHERE user_id = $1`,
+			[userId]
+		);
+	}
+
 	async addProfileView(viewerId: string, viewedId: string): Promise<void>
 	{
-		await this.pool.query(
+		const result = await this.pool.query(
 			`INSERT INTO profile_views (viewer_id, viewed_id)
 			 VALUES ($1, $2)
 			 ON CONFLICT (viewer_id, viewed_id) DO NOTHING`,
 			[viewerId, viewedId]
 		);
+
+		// Views are the DENOMINATOR of the fame rating, so a new viewer changes it. Guarded on
+		// rowCount because the table is keyed on (viewer_id, viewed_id): the same person opening
+		// a profile a second time inserts nothing and must not trigger a pointless UPDATE.
+		if ((result.rowCount ?? 0) > 0)
+			await this.recomputeFameRating(viewedId);
 	}
 
 	// Records that reporterId flagged reportedId as a fake account. Idempotent: a second
@@ -465,7 +502,13 @@ export class DbService implements OnModuleInit
 			[reporterId, reportedId, reason]
 		);
 
-		return ((result.rowCount ?? 0) > 0);
+		const	created = (result.rowCount ?? 0) > 0;
+
+		// A report costs the reported user fame (capped, see compute_fame_rating).
+		if (created)
+			await this.recomputeFameRating(reportedId);
+
+		return (created);
 	}
 
 	// Records that likerId liked likedId. Idempotent: a second like for the same pair is a
@@ -516,6 +559,10 @@ export class DbService implements OnModuleInit
 						 ON CONFLICT (user_a, user_b) DO NOTHING`,
 						[likerId, likedId]
 					);
+
+				// The liked user's fame rating counts likes received, so it moves on a new like.
+				// Inside the transaction on purpose: if the like rolls back, so must the score.
+				await this.recomputeFameRating(likedId, client);
 			}
 
 			await client.query('COMMIT');
@@ -573,6 +620,10 @@ export class DbService implements OnModuleInit
 					 WHERE user_a = LEAST($1::uuid, $2::uuid) AND user_b = GREATEST($1::uuid, $2::uuid)`,
 					[likerId, likedId]
 				);
+
+			// The liked user lost a like, so their fame rating drops. Same transaction as above.
+			if (removed)
+				await this.recomputeFameRating(likedId, client);
 
 			await client.query('COMMIT');
 
@@ -749,6 +800,19 @@ export class DbService implements OnModuleInit
 				[blockerId, blockedId]
 			);
 
+			// Both users move: the likes above were deleted in BOTH directions (each may have lost
+			// a like received), and the blocked user also takes the block penalty. Inside the
+			// transaction, so a rolled-back block cannot leave two wrong scores behind.
+			//
+			// Locked in a CANONICAL order (sorted ids) rather than (blocker, blocked): two users
+			// blocking each other at the same moment would otherwise lock the same two profiles
+			// rows in opposite orders and deadlock (40P01). Any consistent order fixes it, so a
+			// plain string sort is enough — the same reasoning behind chats' LEAST/GREATEST pair.
+			const	[firstId, secondId] = [blockerId, blockedId].sort();
+
+			await this.recomputeFameRating(firstId, client);
+			await this.recomputeFameRating(secondId, client);
+
 			await client.query('COMMIT');
 
 			return ({ created: (blockResult.rowCount ?? 0) > 0, wasMatched });
@@ -774,7 +838,14 @@ export class DbService implements OnModuleInit
 			[blockerId, blockedId]
 		);
 
-		return ((result.rowCount ?? 0) > 0);
+		const	removed = (result.rowCount ?? 0) > 0;
+
+		// Unblocking lifts the block penalty from the blocked user. The likes stay deleted, so
+		// this does NOT restore the score they had before the block.
+		if (removed)
+			await this.recomputeFameRating(blockedId);
+
+		return (removed);
 	}
 
 	// True when a block exists in EITHER direction between the two users (mutual effect gate for

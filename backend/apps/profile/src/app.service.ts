@@ -128,7 +128,9 @@ export class AppService
 				return ({ ...withoutLocation, isOnline, relation, distanceKm });
 			}
 
-			// Own profile: full precision, so the frontend can place the user's own map pin.
+			// Own profile: returned whole. Full-precision coordinates so the frontend can place the
+			// user's own map pin, and the fame rating too — it is a public number, so there is no
+			// reason to hide a user's own score from them.
 			return (profile);
 		}
 		catch (error: any)

@@ -61,6 +61,12 @@ export class FullProfileDto
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z', nullable: true, description: 'When the user was last online; null if they have never connected' })
 	lastSeen: Date | null;
 
+	// On the shared base, so it is returned for your OWN profile as well as for other users:
+	// the rating is public, and a user is entitled to see their own number. Already an integer
+	// in 0..100, so the frontend can render it verbatim without rounding or clamping.
+	@ApiProperty({ example: 55, minimum: 0, maximum: 100, description: 'Public fame rating: the share of this profile\'s viewers who liked it, adjusted for reports, blocks and profile completeness' })
+	fameRating: number;
+
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
 	createdAt: Date;
 
