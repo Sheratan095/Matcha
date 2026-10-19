@@ -1,14 +1,14 @@
 /**
  * HTTP plumbing shared by every request the app makes (docs/ARCHITECTURE.md §4.4).
  *
- * WaveBinder sends its requests on the default axios instance and exposes neither the status nor the
+ * The node-graph engine sends its requests on the default axios instance and exposes neither the status nor the
  * error of a call (a failed node is just `null`). Everything the app knows about a request therefore
  * comes from the interceptors installed here:
  *
  * - `httpEvents$` publishes `start` / `success` / `error` for every request;
  * - errors are normalised to `ApiError`;
  * - a 401 from a guarded gateway endpoint triggers one single-flight session refresh and one retry;
- * - an older GET never overwrites a newer GET of the same group (the library applies responses in
+ * - an older GET never overwrites a newer GET of the same group (the engine applies responses in
  *   arrival order with no cancellation), and a group's in-flight GETs can be dropped when their
  *   result is no longer wanted (`dropPendingRequests`).
  */
@@ -105,7 +105,7 @@ export interface HttpEvent {
 
 const events = new Subject<HttpEvent>()
 
-/** Every request made through the default axios instance, WaveBinder's included. */
+/** Every request made through the default axios instance, the node-graph engine's included. */
 export const httpEvents$: Observable<HttpEvent> = events.asObservable()
 
 // ---------------------------------------------------------------- install
@@ -126,7 +126,7 @@ export interface HttpOptions {
   /** The session could not be recovered: the app should re-probe it. Throttled. */
   onSessionLost?: () => void
   /**
-   * Groups GET requests that feed the same piece of state (same WaveBinder node). Within a group the
+   * Groups GET requests that feed the same piece of state (same node). Within a group the
    * most recently started request wins: an older one resolves with the newer one's outcome.
    */
   supersedeKey?: (method: string, url: string) => string | null
@@ -150,7 +150,7 @@ let dropGroup: ((key: string) => number) | null = null
 
 /**
  * Fails every in-flight GET of a supersede group when it settles, whatever the server answered, so
- * the library leaves its node `null` instead of applying a result nobody wants any more (the node was
+ * the engine leaves its node `null` instead of applying a result nobody wants any more (the node was
  * reset with no newer request to supersede the old one: sign-out, a closed conversation). The error is
  * an `ApiError` with code DROPPED. Returns how many requests were dropped.
  */
@@ -272,7 +272,7 @@ export function installHttp(options: HttpOptions = {}): () => void {
       pending.delete(meta.id)
       pendingGroup.delete(meta.id)
       if (dropped.delete(meta.id)) {
-        // Unwanted: fail it, so the library sets its node to null rather than to this result.
+        // Unwanted: fail it, so the engine sets its node to null rather than to this result.
         const error = droppedError()
         own?.reject(error)
         emitOutcome(meta, { ok: false, error })

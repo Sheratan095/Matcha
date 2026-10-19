@@ -1,7 +1,5 @@
 /**
- * How an HTTP node turns its dependency values into an axios request. This mirrors
- * wave-binder 0.0.2's HttpService line by line (docs/WAVEBINDER.md §4.3), including its quirks, so
- * the preview engine sends exactly what the real engine would send for the same node definition.
+ * How an HTTP node turns its dependency values into an axios request.
  */
 import type { AxiosRequestConfig } from 'axios'
 import type { NodeDef, ServiceDef } from '../types'
@@ -10,7 +8,7 @@ import type { NodeDef, ServiceDef } from '../types'
 export function serviceBase(service: ServiceDef | undefined): string {
   const target = service?.target ?? ''
   if (service?.secure !== true || !target) return target
-  // Same order as the library: a relative target (including a protocol-relative one) is left alone.
+  // A relative target (including a protocol-relative one) is left alone.
   if (target.startsWith('/')) return target
   if (target.startsWith('https://')) return target
   if (target.startsWith('http://')) return `https://${target.slice('http://'.length)}`

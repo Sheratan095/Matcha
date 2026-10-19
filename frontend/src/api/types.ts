@@ -1,5 +1,5 @@
 /**
- * Wire types shared by the WaveBinder node graph, the mock backend and the UI.
+ * Wire types shared by the node graph, the mock backend and the UI.
  * The "real" section mirrors backend/packages/shared-types as it appears on the wire
  * (docs/API_CONTRACT.md); the "social" section is the contract of the mocked endpoints.
  */

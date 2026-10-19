@@ -20,7 +20,7 @@ import {
   Text,
   TextField,
 } from '@/ui'
-import { actions, LICENSE_LOCATION, storeInfo, toApiError, useNodeStatus, useNodeValue } from '@/wb'
+import { actions, storeInfo, toApiError, useNodeStatus, useNodeValue } from '@/wb'
 import { describe, splitApiError } from './errors'
 import s from './AccountSettings.module.css'
 
@@ -270,7 +270,6 @@ function DemoDataSection() {
 // ---------------------------------------------------------------- about this build
 
 function AboutBuild() {
-  const engine = storeInfo.engine === 'wavebinder' ? 'WaveBinder' : 'Preview store'
   const profileBackend = storeInfo.backend === 'real' ? `Real gateway · ${API_URL}` : 'Mock, in this browser'
   const socialBackend = SOCIAL_URL.startsWith(MOCK_PREFIX) ? 'Mock, in this browser' : SOCIAL_URL
   return (
@@ -281,10 +280,6 @@ function AboutBuild() {
         </Headline>
         <dl className={s.specs}>
           <div>
-            <dt>State engine</dt>
-            <dd>{engine}</dd>
-          </div>
-          <div>
             <dt>Account & profile</dt>
             <dd>{profileBackend}</dd>
           </div>
@@ -293,15 +288,7 @@ function AboutBuild() {
             <dd>{socialBackend}</dd>
           </div>
         </dl>
-        {storeInfo.engine === 'preview' ? (
-          <p className={s.buildNote}>
-            No WaveBinder license is installed, so the app’s node graph runs on the built-in preview interpreter. Save a
-            license as <code>{LICENSE_LOCATION}</code> and reload to run it on WaveBinder.
-          </p>
-        ) : (
-          <p className={s.buildNote}>The app’s node graph runs on WaveBinder, with a license from this machine.</p>
-        )}
-        <Barcode value={`matcha-${storeInfo.engine}-${storeInfo.backend}`} height={28} tone="paper" caption />
+        <Barcode value={`matcha-${storeInfo.backend}`} height={28} tone="paper" caption />
       </Stack>
     </Card>
   )

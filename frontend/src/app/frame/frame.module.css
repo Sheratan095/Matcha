@@ -143,10 +143,6 @@
 .marker + .marker {
   border-left: var(--bw-thin) solid var(--c-ink);
 }
-.marker[data-kind='preview'] {
-  background: var(--c-blue);
-  color: var(--c-paper-hi);
-}
 .marker:focus-visible {
   outline: var(--bw) solid var(--c-focus);
   outline-offset: -3px;

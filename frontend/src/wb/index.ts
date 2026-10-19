@@ -10,11 +10,9 @@
 export { actions, MAX_MESSAGE_LENGTH, type Actions } from './actions'
 export { getViewerId, installStoreHttp } from './boot'
 export { refresh, run, type RunArgs } from './commands'
-export type { EngineKind } from './engine/types'
 export { DEFAULT_DISCOVER_FILTERS, DISCOVER_SORTS, normaliseTags, type DiscoverFilters } from './filters'
 export type { AuthStatus } from './functions'
 export { useFilters, useNode, useNodeStatus, useNodeValue } from './hooks'
-export { LICENSE_LOCATION } from './license'
 export {
   DEFAULT_FILTERS,
   type CommandName,

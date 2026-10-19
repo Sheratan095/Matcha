@@ -1,10 +1,10 @@
 /**
  * Custom functions of the node graph (`CUSTOM_FUNCTION` nodes).
  *
- * Rules that come from how wave-binder calls them (docs/WAVEBINDER.md §4.2):
- * - arguments arrive in `dep` order (the library only maps by name when every parameter name equals
+ * Rules that come from how the engine calls them (src/wb/engine/graph.ts, `callFunction`):
+ * - arguments arrive in `dep` order (the engine only maps by name when every parameter name equals
  *   a dependency `parameterName`, which a minifier breaks), so parameters are declared in `dep` order;
- * - plain `function` declarations with exactly one simple parameter per dependency: the library
+ * - plain `function` declarations with exactly one simple parameter per dependency: the engine
  *   parses `fn.toString()`, and an extra parameter makes it append a snapshot argument;
  * - synchronous and pure; every input may be `null` (reset / failed) or `undefined` (never loaded).
  */

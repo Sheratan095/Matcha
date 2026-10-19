@@ -8,7 +8,7 @@
  *   rejected before sending, NOT_SENT when the store is not running);
  * - an action rejects only when its own request fails: a follow-up refresh that fails does not undo a
  *   successful mutation, its error is on `useNodeStatus(<node>)`;
- * - ids that end up in a URL path are checked to be URL-safe, because the library inserts path values
+ * - ids that end up in a URL path are checked to be URL-safe, because the engine inserts path values
  *   without encoding them.
  */
 import { apiError, LOCAL_ERROR, toApiError } from '@/api/http'
@@ -57,7 +57,7 @@ function invalid(message: string): never {
 
 const URL_SAFE = /^[A-Za-z0-9._~-]+$/
 
-/** The library puts path values into the URL raw: refuse anything that would change its shape. */
+/** The engine puts path values into the URL raw: refuse anything that would change its shape. */
 function pathId(value: string, what: string): string {
   if (typeof value !== 'string' || !URL_SAFE.test(value)) invalid(`Invalid ${what}.`)
   return value

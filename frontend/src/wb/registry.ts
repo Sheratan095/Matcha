@@ -1,7 +1,7 @@
 /**
  * Maps a request back to the HTTP node that sent it (docs/ARCHITECTURE.md §4.4).
  *
- * WaveBinder does not tell which node issued a request, so the node is recovered from the method and
+ * The engine does not tell which node issued a request, so the node is recovered from the method and
  * the URL: each HTTP node contributes the pattern `service target + addr`, where a `{placeholder}`
  * matches exactly one path segment. When several patterns match, the most specific wins, comparing
  * segments left to right with a literal beating a placeholder: `/profile/viewers` resolves to the

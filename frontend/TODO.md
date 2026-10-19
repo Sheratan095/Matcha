@@ -1,0 +1,8 @@
+- [x] remove wavebinder dependencies
+- [ ] remove support without backend
+- [ ] Automatic(test) card creation needs to be handled in a more customizable approach. ex(asset usage)
+- [ ] design needs heavy adjustement on mobile side
+- [ ] User map shared among friends (leaflet implementation)
+- [ ] design document draft
+- [ ] location fetching at runtime
+- [ ] 
