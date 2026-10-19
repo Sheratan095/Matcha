@@ -131,3 +131,14 @@ user, and the chat function between them will be disabled.
 maybe just add check for two users and event in db
 
 [x] protects docs?
+
+[] redesign emails	
+
+[] verification emails? 
+	keep in this way
+	allow just verification with link?
+	allow just verification by code after verification in the same page?
+
+[] wtf style guide?? cool but really needed?
+
+[] logo maybe could be changed
