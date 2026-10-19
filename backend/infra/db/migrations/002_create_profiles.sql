@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 	first_name VARCHAR(50),
 	last_name VARCHAR(50),
 
+	-- FULL precision on purpose: the matching algorithm sorts by distance. Nothing that leaves
+	-- the API may carry this precision — see snap_coord() below.
 	latitude DOUBLE PRECISION,
 	longitude DOUBLE PRECISION,
 
@@ -30,6 +32,45 @@ CREATE TABLE IF NOT EXISTS profiles (
 	--	it's possible because profile and auth aren in the same db, just in different schemas, so we can reference the users table here.
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+---------------------LOCATION MASKING---------------------
+
+-- An exact coordinate is a home address, so no coordinate ever leaves the API unmasked.
+-- Kept in SQL (rather than in the services) so the raw values never travel to the application
+-- just to be thrown away, and so the future discovery/browse query can sort by distance
+-- server-side instead of fetching every candidate's position.
+
+-- Quantizes a coordinate to a ~1 km grid (2 decimal places: ~1.11 km of latitude, and ~0.83 km
+-- of longitude at Rome's latitude). The subject only requires neighbourhood-level accuracy.
+--
+-- Quantizing is what defeats trilateration, and it works ONLY because it is deterministic:
+-- merely ROUNDING THE REPORTED DISTANCE is not enough, because an attacker who moves their own
+-- position and re-reads the distance gains a fresh constraint on the true point every time and
+-- intersects them (this is how Tinder and Grindr were de-anonymized in 2014). Deriving every
+-- public number from the SAME snapped point means a thousand probes reveal no more than one.
+--
+-- ROUND and not FLOOR/TRUNC so the function is IDEMPOTENT in floating point: snapping an
+-- already-snapped value must not shift it into the neighbouring cell, because the callers
+-- apply it defensively at more than one layer.
+CREATE OR REPLACE FUNCTION snap_coord(coord DOUBLE PRECISION)
+RETURNS DOUBLE PRECISION
+AS $$
+	SELECT ROUND($1::numeric, 2)::double precision;
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+-- Great-circle distance in kilometres (haversine, mean Earth radius 6371 km).
+-- STRICT: a user who never set a location yields NULL instead of a bogus 0 km.
+CREATE OR REPLACE FUNCTION distance_km(lat1 DOUBLE PRECISION, lng1 DOUBLE PRECISION,
+										lat2 DOUBLE PRECISION, lng2 DOUBLE PRECISION)
+RETURNS DOUBLE PRECISION
+AS $$
+	-- LEAST(1, ...) clamps the asin() argument: for two nearly antipodal points the floating
+	-- point arithmetic can overshoot 1, and asin() would then raise a domain error.
+	SELECT 2 * 6371 * asin(LEAST(1, sqrt(
+		power(sin(radians($3 - $1) / 2), 2)
+		+ cos(radians($1)) * cos(radians($3)) * power(sin(radians($4 - $2) / 2), 2)
+	)));
+$$ LANGUAGE SQL IMMUTABLE STRICT;
 
 ---------------------INTEREST TAGS AND USER INTERESTS---------------------
 

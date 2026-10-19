@@ -61,15 +61,21 @@ export class FullProfileDto
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z', nullable: true, description: 'When the user was last online; null if they have never connected' })
 	lastSeen: Date | null;
 
-	@ApiProperty({ example: 41.905333, nullable: true, description: 'Latitude in decimal degrees; null if no location set' })
-	latitude: number | null;
-
-	@ApiProperty({ example: 12.542861, nullable: true, description: 'Longitude in decimal degrees; null if no location set' })
-	longitude: number | null;
-
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
 	createdAt: Date;
 
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
 	updatedAt: Date;
+}
+
+// Coordinates deliberately live HERE and not on FullProfileDto, so they can only ever be part
+// of a response describing the caller's OWN profile. Another user's profile reports a distance
+// instead (see GetProfileResponseDto): exact coordinates would let anyone read a home address.
+export class OwnProfileDto extends FullProfileDto
+{
+	@ApiProperty({ example: 41.905333, nullable: true, description: 'Your latitude in decimal degrees, at full precision; null if no location set' })
+	latitude: number | null;
+
+	@ApiProperty({ example: 12.542861, nullable: true, description: 'Your longitude in decimal degrees, at full precision; null if no location set' })
+	longitude: number | null;
 }

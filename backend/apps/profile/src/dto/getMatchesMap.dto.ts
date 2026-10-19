@@ -16,11 +16,14 @@ export class MatchesMapResponseDto
 	@ApiProperty({ example: 'https://.../pic.webp', description: "Connected user's profile picture URL, or null if they have none", nullable: true })
 	profilePictureUrl: string | null;
 
-	@ApiProperty({ example: 37.7749, description: "Connected user's latitude coordinate" })
-	latitude: number;
+	// A map needs a point rather than a distance, so this is the one place another user's
+	// position is returned — quantized to a ~1 km grid, which is all the "up to their
+	// neighbourhood" accuracy the subject asks for.
+	@ApiProperty({ example: 41.91, nullable: true, description: "Connected user's latitude, snapped to a ~1 km grid; null if they have no location set" })
+	latitude: number | null;
 
-	@ApiProperty({ example: -122.4194, description: "Connected user's longitude coordinate" })
-	longitude: number;
+	@ApiProperty({ example: 12.54, nullable: true, description: "Connected user's longitude, snapped to a ~1 km grid; null if they have no location set" })
+	longitude: number | null;
 }
 
 export class GetMatchesMapResponseDto

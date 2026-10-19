@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { InterestTagDto } from './fullProfile.dto';
+import { InterestTagDto } from './profile.dto';
 
 export class GetInterestsResponseDto
 {

@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { FullProfileDto } from './fullProfile.dto';
+import { OwnProfileDto } from './profile.dto';
 
 export class UpdateProfileDto
 {
@@ -48,7 +48,9 @@ export class UpdateProfileDto
 	interests?: string[];
 }
 
-export class UpdateProfileResponseDto extends FullProfileDto {}
+// OwnProfileDto: this endpoint only ever returns the caller's own profile, so it carries
+// full-precision coordinates (unlike another user's profile, which reports a distance).
+export class UpdateProfileResponseDto extends OwnProfileDto {}
 
 export class UpdateProfileErrorDto
 {
