@@ -4,7 +4,8 @@ import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
-import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, MAX_USER_PICTURES } from '@repo/shared-types';
+import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, MAX_USER_PICTURES } from '@repo/shared-types';
+import { DiscoverQueryDto } from './dto/discover.dto';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
 import { getDateOfBirthError, isInvalidDateOfBirth, INVALID_DATE_OF_BIRTH } from './utils/dateOfBirth';
 
@@ -351,6 +352,38 @@ export class AppService
 
 			this.logger.error(`Error recording pass for user ${passerId} on ${passedId}`, error);
 			throw new InternalServerErrorException('Failed to record pass');
+		}
+	}
+
+	// The browsing deck (subject IV.3): profiles compatible with this user, weighted by proximity,
+	// common tags and fame. The eligibility rules and the score live in SQL (discover_candidates,
+	// 011_browsing.sql); this method only validates the request and hands it to the query builder.
+	//
+	// Does NOT record a profile view: views are the fame rating's denominator and are only written
+	// when someone opens a FULL profile, so counting deck impressions would push every popular
+	// user's like-rate down (see the note in 009_fame_rating.sql).
+	async discoverProfiles(userId: string, query: DiscoverQueryDto): Promise<DiscoverCard[]>
+	{
+		// An inverted range is a client bug that would silently return an empty deck, which is
+		// indistinguishable from "you have seen everyone". Say so instead.
+		if (query.minAge !== undefined && query.maxAge !== undefined && query.minAge > query.maxAge)
+			throw new BadRequestException('minAge cannot be greater than maxAge');
+
+		if (query.minFame !== undefined && query.maxFame !== undefined && query.minFame > query.maxFame)
+			throw new BadRequestException('minFame cannot be greater than maxFame');
+
+		try
+		{
+			const	cards = await this.dbService.getDiscoverCandidates(userId, query);
+
+			this.logger.log(`Discover: ${cards.length} card(s) for user ID ${userId} (sort=${query.sort}, offset=${query.offset})`);
+
+			return (cards);
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error fetching suggestions for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch suggestions');
 		}
 	}
 

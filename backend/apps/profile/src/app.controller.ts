@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Put, Delete, Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Body, Param, Query, ParseUUIDPipe, HttpCode, HttpStatus, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AppService } from './app.service';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
@@ -17,6 +17,7 @@ import { IsOnlineDto, IsOnlineResponseDto, IsOnlineErrorDto } from './dto/is_onl
 import { ReportUserDto, ReportUserErrorDto } from './dto/reportUser.dto';
 import { UpdateLocationDto, UpdateLocationResponseDto, UpdateLocationErrorDto } from './dto/updateLocation.dto';
 import { GetMatchesMapResponseDto, GetMatchesMapErrorDto } from './dto/getMatchesMap.dto';
+import { DiscoverQueryDto, DiscoverCardDto, DiscoverErrorDto } from './dto/discover.dto';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -145,6 +146,23 @@ export class AppController
 		const interests = await this.appService.getAllInterests();
 
 		return ({ interests });
+	}
+
+	// Declared ABOVE @Get(':userId'): Nest matches routes in declaration order, so the wildcard
+	// below would otherwise capture 'discover' and try to parse it as a UUID.
+	@Get('discover')
+	@ApiOperation({
+		summary: 'Browse suggested profiles',
+		description: 'The swipe deck (subject IV.3): profiles compatible with you in BOTH directions, weighted by proximity, common tags and fame. Only complete profiles are suggested, and users you already liked or blocked are excluded. Profiles you passed on sink to the bottom instead of disappearing, so the deck never dead-ends. Fewer than `limit` cards means you have reached the end. Does NOT count as a profile view.',
+	})
+	@ApiResponse({ status: 200, type: [DiscoverCardDto], description: 'Suggestions retrieved successfully' })
+	@ApiResponse({ status: 400, description: 'Invalid filter, sort or inverted range (minAge > maxAge)' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: DiscoverErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async discover(@Query() query: DiscoverQueryDto, @CurrentUser() userId: string)
+	{
+		return (await this.appService.discoverProfiles(userId, query));
 	}
 
 	@Patch()

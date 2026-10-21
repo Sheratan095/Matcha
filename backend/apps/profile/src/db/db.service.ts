@@ -1,7 +1,24 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, PoolClient, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo, DiscoverCard, DiscoverSort, DiscoverOrder } from '@repo/shared-types';
+
+// One browsing request's shape. Every filter is optional; sort/limit/offset are defaulted by the
+// DTO, so they are required here and the query builder never has to second-guess them.
+export interface DiscoverQuery
+{
+	sort: DiscoverSort;
+	order?: DiscoverOrder;
+	limit: number;
+	offset: number;
+	minAge?: number;
+	maxAge?: number;
+	maxDistanceKm?: number;
+	minFame?: number;
+	maxFame?: number;
+	tags?: string[];
+	minCommonTags?: number;
+}
 
 @Injectable()
 
@@ -10,6 +27,18 @@ import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo } from '@r
 export class DbService implements OnModuleInit
 {
 	private pool: Pool;
+
+	// Sort key -> column WHITELIST for the browsing deck. The only strings ever interpolated into
+	// the discovery SQL come from here, so a crafted ?sort= value cannot reach the query.
+	// Each key also carries the direction that is sensible by default, which ?order= overrides.
+	private static readonly DISCOVER_SORTS: Record<DiscoverSort, { column: string; defaultOrder: 'ASC' | 'DESC' }> =
+	{
+		best:     { column: 'd.match_score',      defaultOrder: 'DESC' },
+		distance: { column: 'd.distance_km',      defaultOrder: 'ASC'  },
+		age:      { column: 'd.age',              defaultOrder: 'ASC'  },
+		fame:     { column: 'd.fame_rating',      defaultOrder: 'DESC' },
+		tags:     { column: 'd.common_tag_count', defaultOrder: 'DESC' },
+	};
 
 	// The onModuleInit method is called by the NestJS framework when the module is initialized.
 	// It creates a new connection pool to the PostgreSQL database using the configuration values from the environment variables.
@@ -914,5 +943,96 @@ export class DbService implements OnModuleInit
 		);
 
 		return ((result.rowCount ?? 0) > 0);
+	}
+
+	// ---------------------BROWSING / SUGGESTIONS (subject IV.3)---------------------
+
+	// Who MAY appear in a deck, how far away they are, how many tags they share and how well they
+	// match all live in SQL (discover_candidates, see 011_browsing.sql) — those are invariants.
+	// This method only shapes ONE REQUEST around that call: which filters, which sort, which page.
+	//
+	// The function is an inlinable LANGUAGE SQL STABLE single-SELECT, so Postgres folds it into
+	// the statement below like a view: the WHERE and ORDER BY here are pushed DOWN into it instead
+	// of running over a fully materialized candidate set.
+	async getDiscoverCandidates(viewerId: string, opts: DiscoverQuery): Promise<DiscoverCard[]>
+	{
+		const	conditions: string[] = [];
+		const	params: any[]        = [viewerId]; // $1 is always the viewer
+		let		paramIndex           = 2;
+
+		// Each filter is OPTIONAL and parameterized; an absent one adds no SQL at all.
+		const	ranges: [number | undefined, string][] = [
+			[opts.minAge,         'd.age >= '],
+			[opts.maxAge,         'd.age <= '],
+			[opts.maxDistanceKm,  'd.distance_km <= '],
+			[opts.minFame,        'd.fame_rating >= '],
+			[opts.maxFame,        'd.fame_rating <= '],
+			[opts.minCommonTags,  'd.common_tag_count >= '],
+		];
+
+		for (const [value, predicate] of ranges)
+		{
+			if (value !== undefined)
+			{
+				conditions.push(`${predicate}$${paramIndex}`);
+				params.push(value);
+				paramIndex++;
+			}
+		}
+
+		// Explicit tag filter: the candidate must carry EVERY requested tag (a narrowing filter),
+		// which is a different question from minCommonTags ("shares at least N tags with ME").
+		if (opts.tags !== undefined && opts.tags.length > 0)
+		{
+			conditions.push(
+				`(SELECT COUNT(DISTINCT it.name)
+				    FROM user_interests ui
+				    INNER JOIN interest_tags it ON it.id = ui.tag_id
+				   WHERE ui.user_id = d.user_id AND it.name = ANY($${paramIndex}::text[])
+				 ) = cardinality($${paramIndex}::text[])`
+			);
+			params.push(opts.tags);
+			paramIndex++;
+		}
+
+		// The sort key is looked up in a WHITELIST and never interpolated from user input, so the
+		// only thing that reaches the SQL string is one of these five fixed column names.
+		const	sort      = DbService.DISCOVER_SORTS[opts.sort];
+		const	direction = opts.order === undefined
+							? sort.defaultOrder
+							: (opts.order === 'asc' ? 'ASC' : 'DESC');
+
+		const	whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+		const	limitIndex  = paramIndex++;
+		const	offsetIndex = paramIndex++;
+
+		params.push(opts.limit, opts.offset);
+
+		const result = await this.pool.query(
+			// distance_km is rounded and floored HERE, on the way out, while the ORDER BY below
+			// sorts on the RAW value — rounding before sorting would collapse every nearby
+			// candidate into a single tie and make "nearest first" meaningless.
+			//
+			// The CASE is load-bearing: GREATEST IGNORES NULLS in Postgres, so a plain
+			// GREATEST(1, NULL) would report a viewer with no location as "1 km away".
+			`SELECT d.user_id, d.username, d.first_name, d.age,
+					CASE WHEN d.distance_km IS NULL
+						 THEN NULL
+						 ELSE GREATEST(1, ROUND(d.distance_km)::int)
+					END AS distance_km,
+					d.likes_you, d.profile_picture_url
+			 FROM discover_candidates($1) d
+			 ${whereClause}
+			 -- Passed profiles sink to the BOTTOM rather than disappearing, so the deck never
+			 -- dead-ends; false sorts before true. NULLS LAST keeps a missing distance out of the
+			 -- way in both directions, and user_id is a stable tiebreaker so paging by OFFSET
+			 -- cannot skip or repeat a row when the sort key ties.
+			 ORDER BY d.already_passed ASC, ${sort.column} ${direction} NULLS LAST, d.user_id
+			 LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+			params
+		);
+
+		return (result.rows.map(row => DiscoverCard.fromDbRow(row)));
 	}
 }
