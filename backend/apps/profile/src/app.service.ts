@@ -327,11 +327,28 @@ export class AppService
 	}
 
 	// Left swipe. Intentionally empty for now.
-	// TODO: store the pass (a `passes` table mirroring `likes`) and exclude passed users from
-	// discovery. Until then the discover deck can show the same people again after a full run
-	// of left swipes, since the frontend paginates by refetching.
+	// Records that passerId passed on passedId (left swipe). Idempotent: passing the same user
+	// twice still resolves successfully. Returns 404 if passedId doesn't exist (FK error 23503).
 	async passUser(passedId: string, passerId: string)
 	{
+		try
+		{
+			const	created = await this.dbService.passUser(passerId, passedId);
+
+			if (created)
+				this.logger.log(`User ${passerId} passed on ${passedId}`);
+			else
+				this.logger.log(`User ${passerId} already passed on ${passedId}`);
+		}
+		catch (error: any)
+		{
+			// FK error 23503: passedId doesn't exist
+			if (error && error.code === '23503')
+				throw new NotFoundException('User not found');
+
+			this.logger.error(`Error recording pass for user ${passerId} on ${passedId}`, error);
+			throw new InternalServerErrorException('Failed to record pass');
+		}
 	}
 
 	// Records that likerId liked likedId. Idempotent: liking the same user twice still resolves

@@ -16,7 +16,7 @@ import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/uti
 import { IsOnlineDto, IsOnlineResponseDto, IsOnlineErrorDto } from './dto/is_online';
 import { ReportUserDto, ReportUserErrorDto } from './dto/reportUser.dto';
 import { UpdateLocationDto, UpdateLocationResponseDto, UpdateLocationErrorDto } from './dto/updateLocation.dto';
-import { MatchesMapResponseDto, GetMatchesMapResponseDto, GetMatchesMapErrorDto } from './dto/getMatchesMap.dto';
+import { GetMatchesMapResponseDto, GetMatchesMapErrorDto } from './dto/getMatchesMap.dto';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -320,8 +320,8 @@ export class AppController
 	// stores nothing, so a passed user is not yet excluded from discovery.
 	@Post(':userId/pass')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Pass on a user (NOT IMPLEMENTED YET)', description: 'Left swipe. Currently a no-op that always answers 200: the pass is not stored yet, so the user is not excluded from discovery.' })
-	@ApiResponse({ status: 200, description: 'Accepted (no effect yet)' })
+	@ApiOperation({ summary: 'Pass on a user ', description: 'Left swipe. Currently a no-op that always answers 200: the pass is not stored yet, so the user is not excluded from discovery.' })
+	@ApiResponse({ status: 200, description: 'Accepted' })
 	@ApiResponse({ status: 400, description: 'Invalid user id' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
 	@UseGuards(AuthenticatedUserGuard)

@@ -899,4 +899,20 @@ export class DbService implements OnModuleInit
 
 		return (result.rows.map(row => StdPayload.fromBlockData(row)));
 	}
+
+	// Records that userId passed on passedId. Idempotent: a second pass for the same pair is a
+	// no-op (ON CONFLICT DO NOTHING). Returns true when a new pass was stored, false when this
+	// user had already passed this user. A missing passedId trips the users(id) foreign key
+	// (error code 23503), which the service layer translates into a 404.
+	async passUser(userId: string, passedId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`INSERT INTO passes (user_id, passed_id)
+			 VALUES ($1, $2)
+			 ON CONFLICT (user_id, passed_id) DO NOTHING`,
+			[userId, passedId]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
 }
