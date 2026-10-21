@@ -81,7 +81,7 @@ export interface IProfile
 	// 'YYYY-MM-DD' string, not a Date, so it can never shift by a day through time zones.
 	// Null for GitHub OAuth sign-ups until they set it.
 	dateOfBirth: string | null;
-	// Computed by the database (profiles_set_age trigger) when dateOfBirth is written.
+	// Computed by the database on every read (age(CURRENT_DATE, dateOfBirth)), always accurate.
 	age: number | null;
 	createdAt: Date;
 	updatedAt: Date;

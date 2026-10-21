@@ -6,21 +6,7 @@ import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
 import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, MAX_USER_PICTURES } from '@repo/shared-types';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
-
-const	INVALID_DATE_OF_BIRTH = 'Invalid date of birth: it must be a real date and you must be at least 18 years old';
-
-// The age rule lives only in the database (profiles_age_check, 002_create_profiles.sql), so a bad
-// date of birth surfaces as a Postgres error. Two shapes mean "the user sent a bad date":
-//   22008 - not a real calendar date (e.g. 2023-02-30), refused when cast to DATE
-//   23514 on profiles_age_check - under 18, or a future date (negative age)
-// The constraint name is checked because the gender/preference CHECKs also raise 23514.
-function	isInvalidDateOfBirth(error: any): boolean
-{
-	if (!error)
-		return (false);
-
-	return (error.code === '22008' || (error.code === '23514' && error.constraint === 'profiles_age_check'));
-}
+import { getDateOfBirthError, isInvalidDateOfBirth, INVALID_DATE_OF_BIRTH } from './utils/dateOfBirth';
 
 // Services contain the core business logic like the db calls
 
@@ -41,6 +27,14 @@ export class AppService
 	// the matching profile row (1:1 with the user).
 	async createProfile(userId: string, firstName?: string, lastName?: string, dateOfBirth?: string)
 	{
+		// Validate date of birth before attempting to create the profile
+		if (dateOfBirth)
+		{
+			const dobError = getDateOfBirthError(dateOfBirth);
+			if (dobError)
+				throw new BadRequestException(dobError);
+		}
+
 		try
 		{
 			await this.dbService.createProfile(userId, firstName, lastName, dateOfBirth);
@@ -171,6 +165,14 @@ export class AppService
 	{
 		try
 		{
+			// Validate date of birth before attempting to set it
+			if (dateOfBirth !== undefined)
+			{
+				const dobError = getDateOfBirthError(dateOfBirth);
+				if (dobError)
+					throw new BadRequestException(dobError);
+			}
+
 			// Set-once, and applied FIRST: if it is refused, none of the other fields change.
 			if (dateOfBirth !== undefined && !(await this.dbService.setDateOfBirth(userId, dateOfBirth)))
 				throw new ConflictException('Date of birth is already set');

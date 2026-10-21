@@ -29,33 +29,11 @@ CREATE TABLE IF NOT EXISTS profiles (
 	longitude DOUBLE PRECISION,
 
 	date_of_birth DATE, -- Nullable because GitHub OAuth sign-ups start without a date of birth and set it later
-	age SMALLINT, -- Nullable because GitHub OAuth sign-ups start without a date of birth and set it later
-	-- The ONLY place the age rule lives. The profiles_set_age trigger below fills age BEFORE this
-	-- check runs, so a date making someone under 18 (or a future date: negative age) is refused
-	-- by the database itself. Services translate the violation (23514) into a 400.
-	-- Named so services can tell it apart from the gender/preference CHECKs, which share 23514.
-	CONSTRAINT profiles_age_check CHECK (age IS NULL OR age BETWEEN 18 AND 120),
 
 	-- ON DELETE CASCADE ENSURES THAT IF A USER IS DELETED FROM THE "users" TABLE, THEIR ASSOCIATED PROFILE IS ALSO DELETED.
 	--	it's possible because profile and auth aren in the same db, just in different schemas, so we can reference the users table here.
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
--- age is computed by the DATABASE whenever date_of_birth is written, so every path (registration,
--- PATCH /profile, seeds, a manual UPDATE) gets it right without the code having to remember.
--- Note: it is NOT refreshed on birthdays, only when date_of_birth itself changes.
-CREATE OR REPLACE FUNCTION set_profile_age() RETURNS TRIGGER AS $$
-BEGIN
-	NEW.age := EXTRACT(YEAR FROM age(CURRENT_DATE, NEW.date_of_birth));
-	RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- DROP first so `make db-migrate` can re-run this file.
-DROP TRIGGER IF EXISTS profiles_set_age ON profiles;
-CREATE TRIGGER profiles_set_age
-	BEFORE INSERT OR UPDATE OF date_of_birth ON profiles
-	FOR EACH ROW EXECUTE FUNCTION set_profile_age();
 
 ---------------------LOCATION MASKING---------------------
 

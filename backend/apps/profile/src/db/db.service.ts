@@ -33,8 +33,6 @@ export class DbService implements OnModuleInit
 	// Insert a new profile row for the given user. first_name / last_name are optional
 	// at creation (the user fills the rest of the profile in later).
 	// RETURNING * exposes all columns in case the caller needs them.
-	// age is not inserted: the profiles_set_age trigger derives it from date_of_birth, and
-	// profiles_age_check refuses the row when that age is under 18.
 	async createProfile(userId: string, firstName?: string, lastName?: string, dateOfBirth?: string)
 	{
 		const result = await this.pool.query(
@@ -51,8 +49,9 @@ export class DbService implements OnModuleInit
 			// date_of_birth is selected as TEXT on purpose: node-postgres parses a DATE into a JS Date at
 			// LOCAL midnight, and with TZ=Europe/Rome that serialises as the previous day
 			// ('1998-04-12' -> '1998-04-11T22:00:00.000Z').
+			// age is computed at query time from date_of_birth, always accurate.
 			`SELECT p.user_id, u.username, p.first_name, p.last_name, p.gender, p.sexual_preference, p.biography, p.last_seen, p.latitude, p.longitude, p.fame_rating,
-					to_char(p.date_of_birth, 'YYYY-MM-DD') AS date_of_birth, p.age, p.created_at, p.updated_at
+					to_char(p.date_of_birth, 'YYYY-MM-DD') AS date_of_birth, EXTRACT(YEAR FROM age(CURRENT_DATE, p.date_of_birth))::smallint AS age, p.created_at, p.updated_at
 			 FROM profiles p
 			 INNER JOIN users u ON u.id = p.user_id
 			 WHERE p.user_id = $1`,
@@ -426,8 +425,7 @@ export class DbService implements OnModuleInit
 
 	// Sets the date of birth ONCE. The `date_of_birth IS NULL` guard makes it set-once inside the
 	// statement itself, so two concurrent requests cannot both succeed. Returns false when it was
-	// already set. age is filled by the profiles_set_age trigger, and an invalid date or an age
-	// under 18 makes Postgres throw (22008 / 23514 on profiles_age_check), handled by the caller.
+	// already set. An invalid date makes Postgres throw (22008), handled by the caller.
 	async setDateOfBirth(userId: string, dateOfBirth: string): Promise<boolean>
 	{
 		const result = await this.pool.query(
