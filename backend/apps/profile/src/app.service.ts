@@ -331,6 +331,9 @@ export class AppService
 	// twice still resolves successfully. Returns 404 if passedId doesn't exist (FK error 23503).
 	async passUser(passedId: string, passerId: string)
 	{
+		if (passedId === passerId)
+			throw new BadRequestException('You cannot pass yourself');
+
 		try
 		{
 			const	created = await this.dbService.passUser(passerId, passedId);
