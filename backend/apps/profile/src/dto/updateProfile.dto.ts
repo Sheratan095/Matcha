@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { OwnProfileDto } from './profile.dto';
 
@@ -46,6 +46,14 @@ export class UpdateProfileDto
 	@IsString({ each: true })
 	@MaxLength(50, { each: true })
 	interests?: string[];
+
+	// SET-ONCE: accepted only while the profile has no date of birth yet (GitHub OAuth sign-ups,
+	// which register without one); afterwards 409. Only the format is checked here — the 18+
+	// rule is enforced by the database (profiles_age_check).
+	@ApiProperty({ example: '1998-04-12', description: 'Date of birth, YYYY-MM-DD. Can be set only once; 409 if already set.', required: false })
+	@IsOptional()
+	@Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'dateOfBirth must be a date in YYYY-MM-DD format' })
+	dateOfBirth?: string;
 }
 
 // OwnProfileDto: this endpoint only ever returns the caller's own profile, so it carries

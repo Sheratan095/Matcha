@@ -5,7 +5,8 @@ import { firstValueFrom } from "rxjs";
 // Calls the PROFILE service (internally) to create the profile row that pairs 1:1
 // with a freshly registered user. HttpService is already configured with the
 // internal-key header in app.module, so the profile service's InternalKeyGuard accepts it.
-export async function createUserProfile(userId: string, firstName: string, lastName: string, httpService: HttpService)
+// dateOfBirth is undefined for GitHub OAuth sign-ups, which set it later via PATCH /profile.
+export async function createUserProfile(userId: string, firstName: string, lastName: string, dateOfBirth: string | undefined, httpService: HttpService)
 {
 	try
 	{
@@ -15,7 +16,8 @@ export async function createUserProfile(userId: string, firstName: string, lastN
 		{
 			userId,
 			firstName,
-			lastName
+			lastName,
+			dateOfBirth
 		}));
 	}
 	catch (err)

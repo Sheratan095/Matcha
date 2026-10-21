@@ -7,6 +7,21 @@ import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictur
 import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, MAX_USER_PICTURES } from '@repo/shared-types';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
 
+const	INVALID_DATE_OF_BIRTH = 'Invalid date of birth: it must be a real date and you must be at least 18 years old';
+
+// The age rule lives only in the database (profiles_age_check, 002_create_profiles.sql), so a bad
+// date of birth surfaces as a Postgres error. Two shapes mean "the user sent a bad date":
+//   22008 - not a real calendar date (e.g. 2023-02-30), refused when cast to DATE
+//   23514 on profiles_age_check - under 18, or a future date (negative age)
+// The constraint name is checked because the gender/preference CHECKs also raise 23514.
+function	isInvalidDateOfBirth(error: any): boolean
+{
+	if (!error)
+		return (false);
+
+	return (error.code === '22008' || (error.code === '23514' && error.constraint === 'profiles_age_check'));
+}
+
 // Services contain the core business logic like the db calls
 
 // The @Injectable() decorator marks the AppService class as a provider that can be injected into other classes (like controllers) in the NestJS framework
@@ -24,11 +39,11 @@ export class AppService
 
 	// Called internally by the AUTH service after a user is registered, to create
 	// the matching profile row (1:1 with the user).
-	async createProfile(userId: string, firstName?: string, lastName?: string)
+	async createProfile(userId: string, firstName?: string, lastName?: string, dateOfBirth?: string)
 	{
 		try
 		{
-			await this.dbService.createProfile(userId, firstName, lastName);
+			await this.dbService.createProfile(userId, firstName, lastName, dateOfBirth);
 
 			this.logger.log(`Profile created for user ID ${userId}`);
 
@@ -36,6 +51,10 @@ export class AppService
 		}
 		catch (error: any)
 		{
+			// A 400, not a 500: the auth service relays it to the user registering.
+			if (isInvalidDateOfBirth(error))
+				throw new BadRequestException(INVALID_DATE_OF_BIRTH);
+
 			this.logger.error(`Error creating profile for user ID ${userId}`, error);
 
 			// PostgreSQL unique violation error code is '23505' (profile already exists for this user)
@@ -123,9 +142,10 @@ export class AppService
 				// address, and distance alone is enough for the UI. distanceKm is derived from a
 				// ~1 km-snapped position (see snap_coord in 002_create_profiles.sql), so an
 				// attacker who re-reads it while moving around cannot trilaterate past that cell.
-				const	{ latitude, longitude, ...withoutLocation } = profile;
+				// Same idea for the exact date of birth: others get the age, not the date.
+				const	{ latitude, longitude, dateOfBirth, ...visible } = profile;
 
-				return ({ ...withoutLocation, isOnline, relation, distanceKm });
+				return ({ ...visible, isOnline, relation, distanceKm });
 			}
 
 			// Own profile: returned whole. Full-precision coordinates so the frontend can place the
@@ -146,10 +166,15 @@ export class AppService
 	async updateProfile( userId: string,
 		fields: { firstName?: string; lastName?: string; gender?: string; sexualPreference?: string; biography?: string },
 		interests?: string[],
+		dateOfBirth?: string,
 	): Promise<Profile>
 	{
 		try
 		{
+			// Set-once, and applied FIRST: if it is refused, none of the other fields change.
+			if (dateOfBirth !== undefined && !(await this.dbService.setDateOfBirth(userId, dateOfBirth)))
+				throw new ConflictException('Date of birth is already set');
+
 			const profile = await this.dbService.updateProfile(userId, fields, interests);
 
 			// This endpoint sits behind the JWT guard, so a valid token should always
@@ -169,6 +194,9 @@ export class AppService
 		{
 			if (error instanceof HttpException)
 				throw (error);
+
+			if (isInvalidDateOfBirth(error))
+				throw new BadRequestException(INVALID_DATE_OF_BIRTH);
 
 			this.logger.error(`Error updating profile for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to update profile');
@@ -294,6 +322,14 @@ export class AppService
 			this.logger.error(`Error reporting user ${reportedId} as fake by ${reporterId}`, error);
 			throw new InternalServerErrorException('Failed to report user');
 		}
+	}
+
+	// Left swipe. Intentionally empty for now.
+	// TODO: store the pass (a `passes` table mirroring `likes`) and exclude passed users from
+	// discovery. Until then the discover deck can show the same people again after a full run
+	// of left swipes, since the frontend paginates by refetching.
+	async passUser(passedId: string, passerId: string)
+	{
 	}
 
 	// Records that likerId liked likedId. Idempotent: liking the same user twice still resolves

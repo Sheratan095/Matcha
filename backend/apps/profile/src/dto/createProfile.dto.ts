@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 // Payload the AUTH service sends (internally) right after it creates a user,
@@ -23,6 +23,14 @@ export class CreateProfileDto
 	@MaxLength(50)
 	@Transform(({ value }) => value?.trim())
 	lastName?: string;
+
+	// Only the FORMAT is checked here. Whether it is a real date and makes the user 18+ is
+	// enforced by the database (CHECK on the age the profiles_set_age trigger computes).
+	// Optional because GitHub OAuth sign-ups have no date of birth at creation.
+	@ApiProperty({ example: '1998-04-12', description: 'Date of birth, YYYY-MM-DD (optional at creation: OAuth sign-ups set it later)', required: false })
+	@IsOptional()
+	@Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'dateOfBirth must be a date in YYYY-MM-DD format' })
+	dateOfBirth?: string;
 }
 
 export class CreateProfileResponseDto

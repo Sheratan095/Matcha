@@ -9,3 +9,4 @@
 	Username: 3-20 chars, allowed chars: [a-z, A-Z, 0-9, '_', '.'],
 	Psw: 8-128 chars, exlcluded popular passwords, In db: hashed
 	Email: max 100 chars, In db: trimmed, lowercased and UNIQUE
+- [ ] Date of birth at registration

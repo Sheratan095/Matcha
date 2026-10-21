@@ -77,7 +77,12 @@ export interface IProfile
 	longitude: number | null;
 	// Public 0-100 popularity score. Stored denormalized on profiles and recomputed by the
 	// profile service; the formula lives in SQL (compute_fame_rating, 009_fame_rating.sql).
-	fameRating: number;
+	fameRating: number;	
+	// 'YYYY-MM-DD' string, not a Date, so it can never shift by a day through time zones.
+	// Null for GitHub OAuth sign-ups until they set it.
+	dateOfBirth: string | null;
+	// Computed by the database (profiles_set_age trigger) when dateOfBirth is written.
+	age: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -97,6 +102,8 @@ export class Profile implements IProfile
 	latitude: number | null;
 	longitude: number | null;
 	fameRating: number;
+	dateOfBirth: string | null;
+	age: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 
@@ -116,6 +123,8 @@ export class Profile implements IProfile
 		this.longitude        = data.longitude ?? null;
 		// ?? 50 and not || 50: a genuine fame of 0 must survive, and 0 is falsy.
 		this.fameRating       = data.fameRating ?? 50;
+		this.dateOfBirth      = data.dateOfBirth ?? null;
+		this.age              = data.age ?? null;
 		this.createdAt        = data.createdAt instanceof Date ? data.createdAt : new Date(data.createdAt);
 		this.updatedAt        = data.updatedAt instanceof Date ? data.updatedAt : new Date(data.updatedAt);
 	}
@@ -136,6 +145,8 @@ export class Profile implements IProfile
 			latitude:         row.latitude ?? null,
 			longitude:        row.longitude ?? null,
 			fameRating:       row.fame_rating ?? 50,
+			dateOfBirth:      row.date_of_birth ?? null,
+			age:              row.age ?? null,
 			createdAt:        row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
 			updatedAt:        row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at),
 		}));

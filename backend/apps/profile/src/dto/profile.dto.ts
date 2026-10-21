@@ -67,6 +67,10 @@ export class FullProfileDto
 	@ApiProperty({ example: 55, minimum: 0, maximum: 100, description: 'Public fame rating: the share of this profile\'s viewers who liked it, adjusted for reports, blocks and profile completeness' })
 	fameRating: number;
 
+	// Everyone sees the age; only the owner sees the exact date (OwnProfileDto below).
+	@ApiProperty({ example: 28, nullable: true, description: 'Age in years, computed by the database from the date of birth; null if not set yet' })
+	age: number | null;
+
 	@ApiProperty({ example: '2026-09-30T08:45:31.644Z' })
 	createdAt: Date;
 
@@ -84,4 +88,7 @@ export class OwnProfileDto extends FullProfileDto
 
 	@ApiProperty({ example: 12.542861, nullable: true, description: 'Your longitude in decimal degrees, at full precision; null if no location set' })
 	longitude: number | null;
+
+	@ApiProperty({ example: '1998-04-12', nullable: true, description: 'Your date of birth, YYYY-MM-DD; null until set (GitHub sign-ups set it once via PATCH /profile)' })
+	dateOfBirth: string | null;
 }

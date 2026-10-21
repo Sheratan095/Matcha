@@ -1,4 +1,4 @@
-import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, OnModuleInit, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, ConflictException, InternalServerErrorException, OnModuleInit, BadRequestException, HttpException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { SupportedLanguage } from '@repo/shared-types';
 import { DbService } from './db/db.service';
@@ -84,7 +84,7 @@ export class AppService implements OnModuleInit
 
 	}
 
-	async register(email: string, username: string, password: string, language: SupportedLanguage, firstName: string, lastName: string, res: any)
+	async register(email: string, username: string, password: string, language: SupportedLanguage, firstName: string, lastName: string, dateOfBirth: string, res: any)
 	{
 		await validatePassword(password);
 		const passwordHash = await hashPassword(password);
@@ -105,14 +105,20 @@ export class AppService implements OnModuleInit
 			try
 			{
 				// Create the matching profile row (1:1 with the user) in the profile service.
-				// first/last name live in the profiles table, so they are passed along here.
-				await createUserProfile(newUser.id, firstName, lastName, this.httpService);
+				// first/last name and date of birth live in the profiles table, so they are passed along here.
+				await createUserProfile(newUser.id, firstName, lastName, dateOfBirth, this.httpService);
 				this.logger.log(`Profile created for user ID ${newUser.id}`);
 
 			}
-			catch (error)
+			catch (error: any)
 			{
 				await this.dbService.deleteUser(newUser.id);
+
+				// The profile service answers 400 when the database refuses the date of birth (not a
+				// real date, or under 18). That is the user's mistake, so relay it as a 400 with the
+				// same message instead of collapsing it into a 500.
+				if (error?.response?.status === 400)
+					throw new BadRequestException(error.response.data?.message ?? 'Invalid date of birth');
 
 				this.logger.error('Error creating user profile -> consequential removing of user entity from db ', error);
 
@@ -127,6 +133,11 @@ export class AppService implements OnModuleInit
 		}
 		catch (error: any)
 		{
+			// Already decided above (e.g. the 400 for a bad date of birth): pass it through
+			// instead of turning it into the generic 500 below.
+			if (error instanceof HttpException)
+				throw (error);
+
 			this.logger.error('Error during user registration', error);
 
 			// PostgreSQL unique violation error code is '23505'
@@ -342,7 +353,8 @@ export class AppService implements OnModuleInit
 
 			try
 			{
-				await createUserProfile(user.id, undefined, undefined, this.httpService);
+				// No date of birth: GitHub does not provide one. The user sets it once via PATCH /profile.
+				await createUserProfile(user.id, undefined, undefined, undefined, this.httpService);
 			}
 			catch (error)
 			{

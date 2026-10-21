@@ -45,12 +45,12 @@ export class AppController
 	@ApiBody({ type: CreateProfileDto })
 	@ApiResponse({ status: 200, type: CreateProfileResponseDto, description: 'Profile successfully created' })
 	@ApiResponse({ status: 409, type: CreateProfileErrorDto, description: 'Profile already exists for this user' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields, or a date of birth that is not a real date or makes the user under 18' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
 	async createProfile(@Body() req: CreateProfileDto)
 	{
-		return (await this.appService.createProfile(req.userId, req.firstName, req.lastName));
+		return (await this.appService.createProfile(req.userId, req.firstName, req.lastName, req.dateOfBirth));
 	}
 
 	@Get()
@@ -151,17 +151,20 @@ export class AppController
 	@ApiOperation({ summary: 'Update user profile', description: 'Update the authenticated user\'s own profile. All fields are optional — only provided fields are applied.' })
 	@ApiBody({ type: UpdateProfileDto })
 	@ApiResponse({ status: 200, type: UpdateProfileResponseDto, description: 'Profile updated successfully' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields, or a date of birth that is not a real date or makes the user under 18' })
 	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
 	@ApiResponse({ status: 403, type: UpdateProfileErrorDto, description: 'Requesting user is not the profile owner' })
 	@ApiResponse({ status: 404, type: UpdateProfileErrorDto, description: 'Profile not found' })
+	@ApiResponse({ status: 409, type: UpdateProfileErrorDto, description: 'Date of birth is already set' })
 	@ApiResponse({ status: 500, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async updateProfile(@Body() body: UpdateProfileDto, @CurrentUser() userId: string)
 	{
-		const { interests, ...fields } = body;
+		// dateOfBirth is pulled out explicitly: it is set-once and goes through its own guarded
+		// update, never through the generic field update with the rest.
+		const { interests, dateOfBirth, ...fields } = body;
 
-		return (await this.appService.updateProfile(userId, fields, interests));
+		return (await this.appService.updateProfile(userId, fields, interests, dateOfBirth));
 	}
 
 	@Put('location')
@@ -311,6 +314,20 @@ export class AppController
 	{
 		// it returns just CODES and takes just param from the request so no need of dto
 		await this.appService.likeUser(likedId, userId);
+	}
+
+	// Left swipe. NOT IMPLEMENTED YET: declared now so the frontend can wire its swipe, but it
+	// stores nothing, so a passed user is not yet excluded from discovery.
+	@Post(':userId/pass')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Pass on a user (NOT IMPLEMENTED YET)', description: 'Left swipe. Currently a no-op that always answers 200: the pass is not stored yet, so the user is not excluded from discovery.' })
+	@ApiResponse({ status: 200, description: 'Accepted (no effect yet)' })
+	@ApiResponse({ status: 400, description: 'Invalid user id' })
+	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@UseGuards(AuthenticatedUserGuard)
+	async passUser(@Param('userId', ParseUUIDPipe) passedId: string, @CurrentUser() userId: string)
+	{
+		await this.appService.passUser(passedId, userId);
 	}
 
 	@Delete(':userId/like')

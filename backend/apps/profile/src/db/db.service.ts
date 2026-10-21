@@ -33,11 +33,13 @@ export class DbService implements OnModuleInit
 	// Insert a new profile row for the given user. first_name / last_name are optional
 	// at creation (the user fills the rest of the profile in later).
 	// RETURNING * exposes all columns in case the caller needs them.
-	async createProfile(userId: string, firstName?: string, lastName?: string)
+	// age is not inserted: the profiles_set_age trigger derives it from date_of_birth, and
+	// profiles_age_check refuses the row when that age is under 18.
+	async createProfile(userId: string, firstName?: string, lastName?: string, dateOfBirth?: string)
 	{
 		const result = await this.pool.query(
-			'INSERT INTO profiles (user_id, first_name, last_name) VALUES ($1, $2, $3) RETURNING *',
-			[userId, firstName ?? null, lastName ?? null]
+			'INSERT INTO profiles (user_id, first_name, last_name, date_of_birth) VALUES ($1, $2, $3, $4) RETURNING *',
+			[userId, firstName ?? null, lastName ?? null, dateOfBirth ?? null]
 		);
 
 		return (result.rows[0]);
@@ -46,7 +48,11 @@ export class DbService implements OnModuleInit
 	async getProfile(userId: string): Promise<Profile | null>
 	{
 		const result = await this.pool.query(
-			`SELECT p.user_id, u.username, p.first_name, p.last_name, p.gender, p.sexual_preference, p.biography, p.last_seen, p.latitude, p.longitude, p.fame_rating, p.created_at, p.updated_at
+			// date_of_birth is selected as TEXT on purpose: node-postgres parses a DATE into a JS Date at
+			// LOCAL midnight, and with TZ=Europe/Rome that serialises as the previous day
+			// ('1998-04-12' -> '1998-04-11T22:00:00.000Z').
+			`SELECT p.user_id, u.username, p.first_name, p.last_name, p.gender, p.sexual_preference, p.biography, p.last_seen, p.latitude, p.longitude, p.fame_rating,
+					to_char(p.date_of_birth, 'YYYY-MM-DD') AS date_of_birth, p.age, p.created_at, p.updated_at
 			 FROM profiles p
 			 INNER JOIN users u ON u.id = p.user_id
 			 WHERE p.user_id = $1`,
@@ -413,6 +419,22 @@ export class DbService implements OnModuleInit
 			 SET latitude = $2, longitude = $3, updated_at = NOW()
 			 WHERE user_id = $1`,
 			[userId, latitude, longitude]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+
+	// Sets the date of birth ONCE. The `date_of_birth IS NULL` guard makes it set-once inside the
+	// statement itself, so two concurrent requests cannot both succeed. Returns false when it was
+	// already set. age is filled by the profiles_set_age trigger, and an invalid date or an age
+	// under 18 makes Postgres throw (22008 / 23514 on profiles_age_check), handled by the caller.
+	async setDateOfBirth(userId: string, dateOfBirth: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`UPDATE profiles
+			 SET date_of_birth = $2, updated_at = NOW()
+			 WHERE user_id = $1 AND date_of_birth IS NULL`,
+			[userId, dateOfBirth]
 		);
 
 		return ((result.rowCount ?? 0) > 0);

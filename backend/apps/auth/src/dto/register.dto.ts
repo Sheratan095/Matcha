@@ -51,6 +51,13 @@ export class RegisterDto extends PasswordDto
 	@Matches(/^[a-zA-Z]+$/) // Ensure last name is just letters
 	lastName?: string;
 
+	// Only the FORMAT is checked here. Whether it is a real date and makes the user 18+ is
+	// enforced by the database at profile creation (profiles_age_check).
+	@ApiProperty({ example: '1998-04-12', description: 'Date of birth, YYYY-MM-DD. The user must be at least 18 and at max 120.' })
+	@IsNotEmpty()
+	@Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'dateOfBirth must be a date in YYYY-MM-DD format' })
+	dateOfBirth: string;
+
 	@ApiProperty({
 		example: SupportedLanguages.ENGLISH,
 		description: 'Preferred language (optional, default: en)',

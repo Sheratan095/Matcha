@@ -1,23 +1,24 @@
-INSERT INTO users (username, email, password_hash, email_verified, language)
+INSERT INTO users (username, email, password_hash, email_verified, id, language)
 VALUES
-	('admin', 'admin@matcha.local', 'fake_hash_1', TRUE, 'en'),
-	('testuser', 'testuser@matcha.local', '$2b$10$iLPDZU0P/A75NdItQtMnzOk30w4.py4iRIZr1R3iceJPfV48TcxUG', TRUE, 'en'),
-	('alice', 'alice@matcha.local', '$2b$10$Gn584YCMsvRevFtDhRriguKdnIIFbJOBNMQyXMRwajz7yppzDhf8u', TRUE, 'en')
+	('admin', 'admin@matcha.local', 'fake_hash_1', TRUE, '2431cdae-98b5-4b63-9419-1d949ca05338', 'en'),
+	('testuser', 'testuser@matcha.local', '$2b$10$iLPDZU0P/A75NdItQtMnzOk30w4.py4iRIZr1R3iceJPfV48TcxUG', TRUE, '1834c93f-c18f-4c06-a107-c6f96108e383', 'en'),
+	('alice', 'alice@matcha.local', '$2b$10$Gn584YCMsvRevFtDhRriguKdnIIFbJOBNMQyXMRwajz7yppzDhf8u', TRUE, '2331ccae-98b5-4b63-9419-1d920ca05338', 'en')
 ON CONFLICT DO NOTHING;
 -- Password for testuser and alice is '1234' (bcrypt, 10 salt rounds). These are real working hashes, so you can log in with '1234'.
 
 -- first/last name now live in the profiles table, so seed them there.
 -- Subqueries resolve the generated UUID user ids by username (they aren't predictable).
-INSERT INTO profiles (user_id, first_name, last_name, biography, gender, sexual_preference)
+-- age is not seeded: the profiles_set_age trigger computes it from date_of_birth.
+INSERT INTO profiles (user_id, first_name, last_name, biography, gender, sexual_preference, date_of_birth)
 VALUES
-	((SELECT id FROM users WHERE username = 'admin'), 'Admin', 'User', 'I am the admin of this site.', 'other', 'other'),
-	((SELECT id FROM users WHERE username = 'testuser'), 'Test', 'User', 'I am a test user for this site.', 'other', 'other')
+	((SELECT id FROM users WHERE username = 'admin'), 'Admin', 'User', 'I am the admin of this site.', 'other', 'other', '1990-01-01'),
+	((SELECT id FROM users WHERE username = 'testuser'), 'Test', 'User', 'I am a test user for this site.', 'other', 'other', '1998-04-12')
 ON CONFLICT DO NOTHING;
 
 -- Done to try defualt bisexual preference for alice
-INSERT INTO profiles (user_id, first_name, last_name, biography, gender)
+INSERT INTO profiles (user_id, first_name, last_name, biography, gender, date_of_birth)
 VALUES
-	((SELECT id FROM users WHERE username = 'alice'), 'Alice', 'Wonderland', 'Curiouser and curiouser.', 'female')
+	((SELECT id FROM users WHERE username = 'alice'), 'Alice', 'Wonderland', 'Curiouser and curiouser.', 'female', '2001-07-23')
 ON CONFLICT DO NOTHING;
 
 -- insert some interest tags for testing

@@ -46,7 +46,7 @@ export class AppController
 	// while still returning a standard response body from the controller method.
 	async register(@Body() req: RegisterDto, @Res({ passthrough: true }) res: Response) // -> Input validation is done here
 	{
-		return (await this.appService.register(req.email, req.username, req.password, req.language, req.firstName, req.lastName, res));
+		return (await this.appService.register(req.email, req.username, req.password, req.language, req.firstName, req.lastName, req.dateOfBirth, res));
 	}
 
 	@Post('change-email')
