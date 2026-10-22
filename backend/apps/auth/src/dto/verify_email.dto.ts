@@ -22,15 +22,3 @@ export class VerifyEmailResponseDto
 	@ApiProperty( { example: '123e4567-e89b-12d3-a456-426614174000', description: 'User ID' })
 	userId?: string;
 }
-
-export class VerifyEmailErrorDto
-{
-	@ApiProperty({ example: 400 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'INVALID_TOKEN' })
-	code: string;
-
-	@ApiProperty({ example: 'Invalid or expired verification token' })
-	message: string;
-}

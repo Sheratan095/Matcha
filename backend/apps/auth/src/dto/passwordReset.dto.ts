@@ -22,19 +22,6 @@ export class ForgotPasswordResponseDto
 	message: string;
 }
 
-export class ForgotPasswordErrorDto
-{
-	@ApiProperty({ example: 400 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'USER_NOT_FOUND' })
-	code: string;
-
-	@ApiProperty({ example: 'No user found with the provided email address' })
-	message: string;
-}
-
-
 // -----------------------------RESET PASSWORD-----------------------------
 
 export class ResetPasswordDto extends PasswordDto
@@ -49,17 +36,5 @@ export class ResetPasswordDto extends PasswordDto
 export class ResetPasswordResponseDto
 {
 	@ApiProperty({ example: 'Password reset successfully', description: 'A success message' })
-	message: string;
-}
-
-export class ResetPasswordErrorDto
-{
-	@ApiProperty({ example: 400 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'INVALID_TOKEN' })
-	code: string;
-
-	@ApiProperty({ example: 'Invalid or expired reset token' })
 	message: string;
 }

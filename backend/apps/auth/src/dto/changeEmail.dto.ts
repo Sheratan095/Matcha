@@ -32,15 +32,3 @@ export class ChangeEmailResponseDto
 	@ApiProperty({ example: '2026-05-21T12:34:56.789Z', description: 'Timestamp of registration' })
 	date?: Date;
 }
-
-export class ChangeEmailErrorDto
-{
-	@ApiProperty({ example: 409 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'EMAIL_ALREADY_EXISTS' })
-	code: string;
-
-	@ApiProperty({ example: 'Email already exists' })
-	message: string;
-}

@@ -5,13 +5,14 @@ import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/uti
 import { ApiOperation, ApiTags, ApiCookieAuth, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { FRONTEND_BASE_URL } from '@repo/config';
-import { RegisterDto, RegisterResponseDto, RegisterErrorDto } from './dto/register.dto';
-import { LoginDto, LoginResponseDto, LoginErrorDto, LogoutResponseDto } from './dto/login.dto';
-import { RefreshResponseDto, RefreshErrorDto, ValidateTokenResponseDto } from './dto/refresh.dto';
-import { VerifyEmailDto, VerifyEmailResponseDto, VerifyEmailErrorDto } from './dto/verify_email.dto';
-import { ForgotPasswordDto, ForgotPasswordResponseDto, ForgotPasswordErrorDto, ResetPasswordDto, ResetPasswordResponseDto, ResetPasswordErrorDto } from './dto/passwordReset.dto';
-import { ChangeEmailDto, ChangeEmailResponseDto, ChangeEmailErrorDto } from './dto/changeEmail.dto';
+import { RegisterDto, RegisterResponseDto} from './dto/register.dto';
+import { LoginDto, LoginResponseDto, LogoutResponseDto } from './dto/login.dto';
+import { RefreshResponseDto, ValidateTokenResponseDto } from './dto/refresh.dto';
+import { VerifyEmailDto, VerifyEmailResponseDto } from './dto/verify_email.dto';
+import { ForgotPasswordDto, ForgotPasswordResponseDto, ResetPasswordDto, ResetPasswordResponseDto } from './dto/passwordReset.dto';
+import { ChangeEmailDto, ChangeEmailResponseDto } from './dto/changeEmail.dto';
 import { JwtHelper } from './utils/jwt';
+import { ErrorDto } from '@repo/shared-types';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -39,9 +40,9 @@ export class AppController
 	@ApiBody({ type: RegisterDto })
 	// List of possible responses for documentation
 	@ApiResponse({ status: 200, type: RegisterResponseDto, description: 'User successfully registered' })
-	@ApiResponse({ status: 409, type: RegisterErrorDto, description: 'User/Email already exists' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 409, type: ErrorDto, description: 'User/Email already exists' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	// @Res passthrough allows us to use the response object for setting cookies in the service layer
 	// while still returning a standard response body from the controller method.
 	async register(@Body() req: RegisterDto, @Res({ passthrough: true }) res: Response) // -> Input validation is done here
@@ -55,8 +56,8 @@ export class AppController
 	@ApiOperation({ summary: 'Change email', description: 'Changes the user\'s email address.' })
 	@ApiCookieAuth('access_token')
 	@ApiResponse({ status: 200, type: ChangeEmailResponseDto, description: 'Email change successful (placeholder)' })
-	@ApiResponse({ status: 400, type: ChangeEmailErrorDto, description: 'Invalid email address' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid email address' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
 	async changeEmail(@Body() req: ChangeEmailDto, @CurrentUser() userId: string)
 	{
 		return (await this.appService.changeEmail(userId, req.newEmail));
@@ -67,8 +68,8 @@ export class AppController
 	@ApiOperation({ summary: 'Verify user email', description: 'Verifies the user\'s email address using the provided token.' })
 	@ApiBody({ type: VerifyEmailDto })
 	@ApiResponse({ status: 200, type: VerifyEmailResponseDto, description: 'Email verified successfully' })
-	@ApiResponse({ status: 400, type: VerifyEmailErrorDto, description: 'Invalid or expired verification token' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid or expired verification token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	async verifyEmail(@Body() req: VerifyEmailDto, @Res({ passthrough: true }) res: Response)
 	{
 		return (await this.appService.verifyEmail(req.token, res));
@@ -79,9 +80,9 @@ export class AppController
 	@ApiOperation({ summary: 'Login and generate JWT', description: 'Sets HTTP-only cookies with JWT access and refresh tokens.' })
 	@ApiBody({ type: LoginDto })
 	@ApiResponse({ status: 200, type: LoginResponseDto, description: 'Successfully logged in, tokens set in cookies' })
-	@ApiResponse({ status: 401, type: LoginErrorDto, description: 'Invalid credentials' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Invalid credentials' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	async login(@Body() req: LoginDto, @Res({ passthrough: true }) res: Response)
 	{
 		return (await this.appService.login(req.username, req.password, res));
@@ -92,7 +93,7 @@ export class AppController
 	@ApiCookieAuth('refresh_token')
 	@ApiOperation({ summary: 'Refresh JWT token', description: 'Uses refresh token cookie to generate and set new access and refresh cookies.' })
 	@ApiResponse({ status: 200, type: RefreshResponseDto, description: 'Tokens refreshed and cookies set' })
-	@ApiResponse({ status: 403, type: RefreshErrorDto, description: 'Invalid or missing refresh token' })
+	@ApiResponse({ status: 403, type: ErrorDto, description: 'Invalid or missing refresh token' })
 	// Passthrough allows us to set cookies in the service layer while still returning a standard response body from the controller method.
 	async refreshTokens(@Request() req: any, @Res({ passthrough: true }) res: Response)
 	{
@@ -110,7 +111,7 @@ export class AppController
 	@ApiOperation({ summary: 'Logout', description: 'Clears the authentication cookies.' })
 	@ApiCookieAuth('access_token')
 	@ApiResponse({ status: 200, type: LogoutResponseDto })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
 	async logout(@CurrentUser() userId: string, @Res({ passthrough: true }) res: Response)
 	{
 		return (await this.appService.logout(userId, res));
@@ -128,7 +129,7 @@ export class AppController
 	@Post('forgot-password')
 	@ApiOperation({ summary: 'Forgot password', description: 'Initiates the forgot password process (not implemented yet).' })
 	@ApiResponse({ status: 200, type: ForgotPasswordResponseDto, description: 'Forgot password process initiated (placeholder)' })
-	@ApiResponse({ status: 400, type: ForgotPasswordErrorDto, description: 'Invalid email address' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid email address' })
 	async forgotPassword(@Body() req: ForgotPasswordDto)
 	{
 		return (await this.appService.forgotPassword(req.email));
@@ -137,7 +138,7 @@ export class AppController
 	@Post('reset-password')
 	@ApiOperation({ summary: 'Reset password', description: 'Resets the user\'s password using the provided token and new password.' })
 	@ApiResponse({ status: 200, type: ResetPasswordResponseDto, description: 'Password reset successfully' })
-	@ApiResponse({ status: 400, type: ResetPasswordErrorDto, description: 'Invalid or expired reset token' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid or expired reset token' })
 	async resetPassword(@Body() req: ResetPasswordDto)
 	{
 		return (await this.appService.resetPassword(req.token, req.password));

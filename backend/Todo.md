@@ -145,7 +145,7 @@ maybe just add check for two users and event in db
 
 [] add passes into famerating query?
 
-[] unify dto errors in globals
+[x] unify dto errors in globals
 
 [] check if expiration are actually working
 	[] email verification

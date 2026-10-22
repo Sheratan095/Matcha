@@ -20,24 +20,6 @@ export class RefreshResponseDto
 	userId?: string;
 }
 
-export class RefreshErrorDto
-{
-	@ApiProperty({ example: 403 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'INVALID_REFRESH_TOKEN' })
-	code: string;
-
-	@ApiProperty({ example: 'Forbidden' })
-	message: string;
-
-	@ApiProperty({ example: '2026-05-18T12:34:56.789Z' })
-	timestamp: string;
-
-	@ApiProperty({ example: '/auth/refresh' })
-	path: string;
-}
-
 export class ValidateTokenResponseDto
 {
 	@ApiProperty({ example: true, description: 'Whether the token is valid' })

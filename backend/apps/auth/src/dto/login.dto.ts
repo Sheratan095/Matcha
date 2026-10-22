@@ -31,24 +31,6 @@ export class LoginResponseDto
 	isProfileComplete?: boolean;
 }
 
-export class LoginErrorDto
-{
-	@ApiProperty({ example: 401 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'INVALID_CREDENTIALS' })
-	code: string;
-
-	@ApiProperty({ example: 'Invalid username or password' })
-	message: string;
-
-	@ApiProperty({ example: '2026-05-18T12:34:56.789Z' })
-	timestamp: string;
-
-	@ApiProperty({ example: '/auth/login' })
-	path: string;
-}
-
 export class LogoutResponseDto
 {
 	@ApiProperty({ example: 'Logged out successfully' })
