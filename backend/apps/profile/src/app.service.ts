@@ -376,7 +376,7 @@ export class AppService
 		{
 			const	cards = await this.dbService.getDiscoverCandidates(userId, query);
 
-			this.logger.log(`Discover: ${cards.length} card(s) for user ID ${userId} (sort=${query.sort}, offset=${query.offset})`);
+			this.logger.log(`Discover: ${cards.length} card(s) for user ID ${userId} (offset=${query.offset})`);
 
 			return (cards);
 		}

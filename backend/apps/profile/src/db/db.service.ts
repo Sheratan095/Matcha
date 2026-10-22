@@ -7,12 +7,16 @@ import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo, DiscoverC
 // DTO, so they are required here and the query builder never has to second-guess them.
 export interface DiscoverQuery
 {
-	sort: DiscoverSort;
+	// Absent means the weighted "best" ordering. Optional rather than required so the deck works
+	// before the DTO exposes a ?sort= parameter; the subject still needs age / location / fame /
+	// common-tag sorting to be reachable, and DISCOVER_SORTS already supports all four.
+	sort?: DiscoverSort;
 	order?: DiscoverOrder;
 	limit: number;
 	offset: number;
 	minAge?: number;
 	maxAge?: number;
+	minDistanceKm?: number;
 	maxDistanceKm?: number;
 	minFame?: number;
 	maxFame?: number;
@@ -964,6 +968,7 @@ export class DbService implements OnModuleInit
 		const	ranges: [number | undefined, string][] = [
 			[opts.minAge,         'd.age >= '],
 			[opts.maxAge,         'd.age <= '],
+			[opts.minDistanceKm,  'd.distance_km >= '],
 			[opts.maxDistanceKm,  'd.distance_km <= '],
 			[opts.minFame,        'd.fame_rating >= '],
 			[opts.maxFame,        'd.fame_rating <= '],
@@ -997,7 +1002,7 @@ export class DbService implements OnModuleInit
 
 		// The sort key is looked up in a WHITELIST and never interpolated from user input, so the
 		// only thing that reaches the SQL string is one of these five fixed column names.
-		const	sort      = DbService.DISCOVER_SORTS[opts.sort];
+		const	sort      = DbService.DISCOVER_SORTS[opts.sort ?? 'best'];
 		const	direction = opts.order === undefined
 							? sort.defaultOrder
 							: (opts.order === 'asc' ? 'ASC' : 'DESC');

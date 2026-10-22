@@ -1,16 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsString, IsUUID } from 'class-validator';
-
-export class InterestTagDto
-{
-	@ApiProperty({ example: 'a1b2c3d4-...', description: 'Tag UUID' })
-	@IsUUID()
-	id: string;
-
-	@ApiProperty({ example: 'vegan', description: 'Tag name without leading #' })
-	@IsString()
-	name: string;
-}
+import { InterestTagDto } from './interest.dto';
 
 export class UserPictureDto
 {

@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { OwnProfileDto } from './profile.dto';
+import { InterestNamesProperty } from './interest.dto';
 
 export class UpdateProfileDto
 {
@@ -38,13 +39,10 @@ export class UpdateProfileDto
 	@MaxLength(500)
 	biography?: string;
 
-	@ApiProperty({ example: ['vegan', 'geek'], description: 'Full replacement list of interest tag names', required: false })
-	@IsOptional()
-	// Transform the interests array to remove leading '#' characters and trim whitespace
-	@Transform(({ value }) => Array.isArray(value)
-		? value.map((tag) => typeof tag === 'string' ? tag.trim().replace(/^#+/, '').trim() : tag) : value)
-	@IsString({ each: true })
-	@MaxLength(50, { each: true })
+	// NAMES, not { id, name }: a tag the user has just typed has no id yet — the database mints it
+	// on upsert. Validation, normalisation and the Swagger docs all come from the shared decorator,
+	// so this list and the one GET /profile/discover filters on obey identical rules.
+	@InterestNamesProperty()
 	interests?: string[];
 
 	// SET-ONCE: accepted only while the profile has no date of birth yet (GitHub OAuth sign-ups,

@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
-import { DiscoverOrder, DiscoverOrders, DiscoverSort, DiscoverSorts } from '@repo/shared-types';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { InterestNamesProperty } from './interest.dto';
 
 export const DISCOVER_PAGE_SIZE = 20;
 
@@ -13,23 +13,6 @@ export const DISCOVER_PAGE_SIZE = 20;
 // else would coerce them and @IsInt would reject every request.
 export class DiscoverQueryDto
 {
-	@ApiPropertyOptional({
-		enum: DiscoverSorts,
-		default: DiscoverSorts.BEST,
-		description: 'Sort key. "best" is the weighted score (proximity 0.5, common tags 0.3, fame 0.2); the other four are the single criteria the subject requires.',
-	})
-	@IsOptional()
-	@IsEnum(DiscoverSorts)
-	sort: DiscoverSort = DiscoverSorts.BEST;
-
-	@ApiPropertyOptional({
-		enum: DiscoverOrders,
-		description: 'Overrides the direction that is natural for the chosen sort (nearest, youngest, most famous, most tags in common, best match first).',
-	})
-	@IsOptional()
-	@IsEnum(DiscoverOrders)
-	order?: DiscoverOrder;
-
 	@ApiPropertyOptional({ default: DISCOVER_PAGE_SIZE, minimum: 1, maximum: DISCOVER_PAGE_SIZE, description: 'Cards per page.' })
 	@IsOptional()
 	@Type(() => Number)
@@ -44,6 +27,9 @@ export class DiscoverQueryDto
 	@IsInt()
 	@Min(0)
 	offset: number = 0;
+
+
+	//--------------------------FILTERS--------------------------
 
 	@ApiPropertyOptional({ example: 25, minimum: 18, maximum: 120, description: 'Minimum age, inclusive.' })
 	@IsOptional()
@@ -61,13 +47,6 @@ export class DiscoverQueryDto
 	@Max(120)
 	maxAge?: number;
 
-	@ApiPropertyOptional({ example: 50, minimum: 1, description: 'Only candidates within this many kilometres. Returns nothing while you have no location set, since no distance can be computed.' })
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(1)
-	maxDistanceKm?: number;
-
 	@ApiPropertyOptional({ example: 40, minimum: 0, maximum: 100, description: 'Minimum fame rating, inclusive.' })
 	@IsOptional()
 	@Type(() => Number)
@@ -84,28 +63,27 @@ export class DiscoverQueryDto
 	@Max(100)
 	maxFame?: number;
 
-	@ApiPropertyOptional({
-		example: 'hiking,travel',
-		description: 'Comma-separated interest tags (without the leading #). A candidate must carry EVERY tag listed — this narrows the deck, unlike minCommonTags which compares against your own tags.',
-	})
-	@IsOptional()
-	// Normalised exactly like updateProfile stores them, so a filter can match what is in the
-	// interest_tags table. Empty segments from a trailing comma are dropped.
-	@Transform(({ value }) =>
-		typeof value === 'string'
-			? value.split(',').map((tag: string) => tag.toLowerCase().trim()).filter((tag: string) => tag.length > 0)
-			: value
-	)
-	@IsArray()
-	@ArrayMaxSize(20)
-	tags?: string[];
-
-	@ApiPropertyOptional({ example: 2, minimum: 0, description: 'Only candidates sharing at least this many interest tags with you.' })
+	@ApiPropertyOptional({ example: 1, minimum: 0, maximum: 100, description: 'Minimum distance in whole kilometres, inclusive. Null when YOU have no location set.' })
 	@IsOptional()
 	@Type(() => Number)
 	@IsInt()
 	@Min(0)
-	minCommonTags?: number;
+	@Max(100)
+	minDistanceKm?: number;
+
+	@ApiPropertyOptional({ example: 50, minimum: 0, maximum: 100, description: 'Maximum distance in whole kilometres, inclusive. Null when YOU have no location set.' })
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@Min(0)
+	@Max(100)
+	maxDistanceKm?: number;
+
+	// Same shared decorator as PATCH /profile, which is the point: a tag typed into the filter is
+	// normalised exactly as it was when stored, so '#Hiking' here still matches 'hiking' there.
+	// A candidate must carry EVERY tag listed (see this endpoint's @ApiOperation).
+	@InterestNamesProperty()
+	tags?: string[];
 }
 
 // One swipe card. The fame rating and the common-tag count are used to filter and sort server

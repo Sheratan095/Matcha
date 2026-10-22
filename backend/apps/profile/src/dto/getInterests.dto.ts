@@ -1,11 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { InterestTagDto } from './profile.dto';
+import { InterestTagListDto } from './interest.dto';
 
-export class GetInterestsResponseDto
-{
-	@ApiProperty({ type: [InterestTagDto], description: 'All interest tags currently stored in the database' })
-	interests: InterestTagDto[];
-}
+// The shape is just "a list of tags", so it comes from the shared interest DTO rather than being
+// declared a second time here.
+export class GetInterestsResponseDto extends InterestTagListDto {}
 
 export class GetInterestsErrorDto
 {

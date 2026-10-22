@@ -10,3 +10,5 @@
 	Psw: 8-128 chars, exlcluded popular passwords, In db: hashed
 	Email: max 100 chars, In db: trimmed, lowercased and UNIQUE
 - [ ] Date of birth at registration
+- [ ] remove online in swiping card
+- [ ] just matching interests

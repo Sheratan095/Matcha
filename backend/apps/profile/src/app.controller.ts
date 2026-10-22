@@ -166,7 +166,7 @@ export class AppController
 	}
 
 	@Patch()
-	@ApiOperation({ summary: 'Update user profile', description: 'Update the authenticated user\'s own profile. All fields are optional — only provided fields are applied.' })
+	@ApiOperation({ summary: 'Update user profile', description: 'Update the authenticated user\'s own profile. All fields are optional — only provided fields are applied. `interests` is a FULL REPLACEMENT of the tag list, so sending [] removes them all.' })
 	@ApiBody({ type: UpdateProfileDto })
 	@ApiResponse({ status: 200, type: UpdateProfileResponseDto, description: 'Profile updated successfully' })
 	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields, or a date of birth that is not a real date or makes the user under 18' })
