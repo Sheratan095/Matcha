@@ -17,3 +17,5 @@
 - [ ] remove online status in cards
 - [ ] remove common interets tags list
 - [ ] common interests count is used only for sort
+  
+- [ ] remove the manual verification code entering now verification and psw reset works only with link

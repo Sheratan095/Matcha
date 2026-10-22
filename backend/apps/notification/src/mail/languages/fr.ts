@@ -3,6 +3,7 @@ export const frenchVerificationPack = {
 	title: 'Vérification des e-mails',
 	greeting: 'Bonjour',
 	message: 'Merci de votre inscription ! Veuillez vérifier votre adresse e-mail en cliquant sur le bouton ci-dessous.',
+	buttonText: 'Vérifier mon e-mail',
 	otpLabel: 'Code de vérification',
 	expiryText: 'Ce lien expirera dans {{EXPIRY_MINUTES}} minutes.',
 	securityTitle: 'Conseils de sécurité :',
@@ -15,6 +16,7 @@ export const frenchVerificationPack = {
 	footerMessage: 'Cordialement,',
 	footerText: 'L\'équipe Matcha',
 	plainText: 'Votre code de vérification est : {{OTP_CODE}}. Ce code expirera dans {{EXPIRY_MINUTES}} minutes.',
+	allRightsReserved: 'Tous droits réservés',
 };
 
 export const frenchForgotPasswordPack = {

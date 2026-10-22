@@ -132,11 +132,11 @@ maybe just add check for two users and event in db
 
 [x] protects docs?
 
-[] redesign emails	
+[x] redesign emails	
 
-[] verification emails? 
+[x] verification emails? 
 	keep in this way
-	allow just verification with link?
+	ALLOW JUST VERIFICATION WITH LINK
 	allow just verification by code after verification in the same page?
 
 [] wtf style guide?? cool but really needed?
@@ -146,3 +146,9 @@ maybe just add check for two users and event in db
 [] add passes into famerating query?
 
 [] unify dto errors in globals
+
+[] check if expiration are actually working
+	[] email verification
+	[] access_token
+	[] refresh_oken
+	[] reset psw

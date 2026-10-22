@@ -3,6 +3,7 @@ export const spanishVerificationPack = {
 	title: 'Verificación de correo electrónico',
 	greeting: 'Hola',
 	message: '¡Gracias por registrarte! Verifica tu dirección de correo electrónico haciendo clic en el botón de abajo.',
+	buttonText: 'Verificar correo',
 	otpLabel: 'Código de verificación',
 	expiryText: 'Este enlace expirará en {{EXPIRY_MINUTES}} minutos.',
 	securityTitle: 'Consejos de seguridad:',
@@ -15,6 +16,7 @@ export const spanishVerificationPack = {
 	footerMessage: 'Saludos cordiales,',
 	footerText: 'El equipo de Matcha',
 	plainText: 'Tu código de verificación es: {{OTP_CODE}}. Este código expirará en {{EXPIRY_MINUTES}} minutos.',
+	allRightsReserved: 'Todos los derechos reservados',
 };
 
 export const spanishForgotPasswordPack = {

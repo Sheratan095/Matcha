@@ -3,6 +3,7 @@ export const englishVerificationPack = {
 	title: 'Email Verification',
 	greeting: 'Hello',
 	message: 'Thank you for signing up! Please verify your email address by clicking the button below.',
+	buttonText: 'Verify email',
 	otpLabel: 'Verification Code',
 	expiryText: 'This link will expire in {{EXPIRY_MINUTES}} minutes.',
 	securityTitle: 'Security Tips:',
@@ -15,6 +16,7 @@ export const englishVerificationPack = {
 	footerMessage: 'Best regards,',
 	footerText: 'The Matcha Team',
 	plainText: 'Your verification code is: {{OTP_CODE}}. This code will expire in {{EXPIRY_MINUTES}} minutes.',
+	allRightsReserved: 'All rights reserved',
 };
 
 export const englishForgotPasswordPack = {

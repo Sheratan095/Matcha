@@ -109,6 +109,7 @@ export class MailerService
 				GREETING:         langPack.greeting,
 				MESSAGE:          langPack.message,
 				VERIFICATION_LINK: verificationLink || '#',
+				BUTTON_TEXT:      langPack.buttonText,
 				OTP_LABEL:        langPack.otpLabel,
 				OTP_CODE:         otpCode,
 				EXPIRY_TEXT:      langPack.expiryText,
@@ -116,6 +117,7 @@ export class MailerService
 				SECURITY_POINTS:  securityPointsHtml,
 				FOOTER_MESSAGE:   langPack.footerMessage,
 				FOOTER_TEXT:      langPack.footerText,
+				ALL_RIGHTS_RESERVED: langPack.allRightsReserved,
 			}, ['SECURITY_POINTS']);
 
 			// Resolve {{EXPIRY_MINUTES}} last: it lives inside langPack strings (expiryText,
