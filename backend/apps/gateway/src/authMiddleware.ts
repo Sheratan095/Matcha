@@ -25,7 +25,7 @@ export function requireAuthenticatedUser(logger: Logger)
 			logger.warn(`Rejected unauthenticated request to ${req.url}`);
 			res.statusCode = 401;
 			res.setHeader('Content-Type', 'application/json');
-			res.end(JSON.stringify({ statusCode: 401, message: 'Unauthorized' }));
+			res.end(JSON.stringify({ statusCode: 401, message: 'Unauthorized', error: 'Unauthorized' }));
 
 			return;
 		}

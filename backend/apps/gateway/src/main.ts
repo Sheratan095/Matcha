@@ -105,7 +105,7 @@ async function bootstrap()
 			logger.warn(`Blocked docs request (DOCS_USER/DOCS_PASSWORD not configured): ${req.method} ${path}`);
 			res.statusCode = 404;
 			res.setHeader('content-type', 'application/json');
-			res.end(JSON.stringify({ statusCode: 404, message: 'Not Found' }));
+			res.end(JSON.stringify({ statusCode: 404, message: 'Not Found', error: 'Not Found' }));
 
 			return;
 		}
@@ -117,7 +117,8 @@ async function bootstrap()
 		res.statusCode = 401;
 		// Makes a browser show the credentials prompt instead of a blank 401.
 		res.setHeader('WWW-Authenticate', 'Basic realm="Matcha API docs", charset="UTF-8"');
-		res.end('Unauthorized');
+		res.setHeader('content-type', 'application/json');
+		res.end(JSON.stringify({ statusCode: 401, message: 'Unauthorized', error: 'Unauthorized' }));
 	});
 
 	// SECURITY BOUNDARY: internal (service-to-service) endpoints must never be reachable from the
@@ -137,7 +138,7 @@ async function bootstrap()
 			logger.warn(`Blocked external request to an internal endpoint: ${req.method} ${path}`);
 			res.statusCode = 404;
 			res.setHeader('content-type', 'application/json');
-			res.end(JSON.stringify({ statusCode: 404, message: 'Not Found' }));
+			res.end(JSON.stringify({ statusCode: 404, message: 'Not Found', error: 'Not Found' }));
 
 			return;
 		}
@@ -298,7 +299,8 @@ async function bootstrap()
 		{
 			logger.warn('Rejected notification socket handshake: invalid or missing access token');
 			res.statusCode = 401;
-			res.end('Unauthorized');
+			res.setHeader('content-type', 'application/json');
+			res.end(JSON.stringify({ statusCode: 401, message: 'Unauthorized', error: 'Unauthorized' }));
 			return;
 		}
 
