@@ -35,15 +35,3 @@ export class EmailVerificationResponseDto
 	@ApiProperty({ example: 'Verification queued', description: 'Optional message' })
 	message?: string;
 }
-
-export class ErrorDto
-{
-	@ApiProperty({ example: 400 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'INVALID_PAYLOAD' })
-	code: string;
-
-	@ApiProperty({ example: 'Invalid email or token' })
-	message: string;
-}

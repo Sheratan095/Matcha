@@ -16,15 +16,3 @@ export class IsOnlineResponseDto
 	@ApiProperty({ example: 'User is online', description: 'Optional message' })
 	message?: string;
 }
-
-export class ErrorDto
-{
-	@ApiProperty({ example: 404 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'USER_NOT_FOUND' })
-	code: string;
-
-	@ApiProperty({ example: 'User not found' })
-	message: string;
-}

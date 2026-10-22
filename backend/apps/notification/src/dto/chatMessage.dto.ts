@@ -25,10 +25,3 @@ export class ChatMessageResponseDto
 	@ApiProperty({ example: true, description: 'True if delivered to a live socket, false if the recipient was offline' })
 	delivered: boolean;
 }
-
-// TODO unify ErrorDto making it global??
-export class ErrorDto
-{
-	@ApiProperty({ example: 'error', description: 'Error message' })
-	message: string;
-}
