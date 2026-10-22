@@ -10,5 +10,10 @@
 	Psw: 8-128 chars, exlcluded popular passwords, In db: hashed
 	Email: max 100 chars, In db: trimmed, lowercased and UNIQUE
 - [ ] Date of birth at registration
-- [ ] remove online in swiping card
-- [ ] just matching interests
+  
+- [ ] BROWSING
+- [ ] FILTERS are done in BACKEND, SORT is done in FRONEND
+- [ ] user would be able to sort by age, location(distance with you), fame rating, common tags(count)
+- [ ] remove online status in cards
+- [ ] remove common interets tags list
+- [ ] common interests count is used only for sort

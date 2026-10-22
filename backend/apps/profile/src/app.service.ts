@@ -374,14 +374,31 @@ export class AppService
 
 		try
 		{
+			// if (await this.dbService.hasAnyPicture(userId) === false)
+			// {
+			// 	this.logger.warn(`Discover attempt by user ${userId} failed: user has no pictures`);
+			// 	throw new ForbiddenException('You must have at least one picture to browse other users');
+			// }
+
+			if (await this.dbService.hasLocation(userId) === false)
+			{
+				this.logger.warn(`Discover attempt by user ${userId} failed: user has no location`);
+				throw new ForbiddenException('You must have a location to browse other users');
+			}
+
 			const	cards = await this.dbService.getDiscoverCandidates(userId, query);
 
-			this.logger.log(`Discover: ${cards.length} card(s) for user ID ${userId} (offset=${query.offset})`);
+			this.logger.log(`Discover: ${cards.length} card(s) for user ID ${userId}`);
 
 			return (cards);
 		}
 		catch (error: any)
 		{
+			// The location guard above throws from INSIDE the try, so without this its 403 would be
+			// swallowed and reported as a 500 with the wrong message.
+			if (error instanceof HttpException)
+				throw (error);
+
 			this.logger.error(`Error fetching suggestions for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to fetch suggestions');
 		}

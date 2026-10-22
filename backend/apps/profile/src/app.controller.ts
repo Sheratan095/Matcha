@@ -153,7 +153,7 @@ export class AppController
 	@Get('discover')
 	@ApiOperation({
 		summary: 'Browse suggested profiles',
-		description: 'The swipe deck (subject IV.3): profiles compatible with you in BOTH directions, weighted by proximity, common tags and fame. Only complete profiles are suggested, and users you already liked or blocked are excluded. Profiles you passed on sink to the bottom instead of disappearing, so the deck never dead-ends. Fewer than `limit` cards means you have reached the end. Does NOT count as a profile view.',
+		description: 'Suggested profiles: compatible with you in BOTH directions, weighted by proximity, common tags and fame, with nearby users prioritised. Only complete profiles are suggested; users you already liked or blocked are excluded, and ONES YOU PASSED ON SINK TO THE BOTTOM RATHER THAN DISAPPEARING. Returns the WHOLE filtered list (capped at 200) so the client can sort it by age, distance, fame or common tags without refetching — every one of those is on the card. `tags` matches candidates carrying ANY of the given tags. Does NOT count as a profile view.',
 	})
 	@ApiResponse({ status: 200, type: [DiscoverCardDto], description: 'Suggestions retrieved successfully' })
 	@ApiResponse({ status: 400, description: 'Invalid filter, sort or inverted range (minAge > maxAge)' })

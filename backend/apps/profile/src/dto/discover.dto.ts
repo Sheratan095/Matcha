@@ -3,33 +3,19 @@ import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
 import { InterestNamesProperty } from './interest.dto';
 
-export const DISCOVER_PAGE_SIZE = 20;
-
-// Query parameters for GET /profile/discover. Everything is optional: with no parameters at all
-// the deck is the weighted "best" ordering, first page.
+// Query parameters for GET /profile/discover: FILTERS ONLY, all optional. With no parameters the
+// whole eligible list comes back in the weighted order.
+//
+// There is no sort parameter on purpose. The endpoint returns the complete filtered list and the
+// frontend sorts it by age, distance, fame or common tags — every one of those is on the card —
+// which is both instant for the user and the only correct way to do it client-side, since sorting
+// a single page would reorder that page rather than the list.
 //
 // @Type(() => Number) is required on every numeric field: query strings arrive as strings and the
 // global ValidationPipe runs with transform: true but WITHOUT enableImplicitConversion, so nothing
 // else would coerce them and @IsInt would reject every request.
 export class DiscoverQueryDto
 {
-	@ApiPropertyOptional({ default: DISCOVER_PAGE_SIZE, minimum: 1, maximum: DISCOVER_PAGE_SIZE, description: 'Cards per page.' })
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(1)
-	@Max(DISCOVER_PAGE_SIZE)
-	limit: number = DISCOVER_PAGE_SIZE;
-
-	@ApiPropertyOptional({ default: 0, minimum: 0, description: 'Cards to skip. The frontend advances this by `limit` to pull the next batch.' })
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(0)
-	offset: number = 0;
-
-
-	//--------------------------FILTERS--------------------------
 
 	@ApiPropertyOptional({ example: 25, minimum: 18, maximum: 120, description: 'Minimum age, inclusive.' })
 	@IsOptional()
@@ -81,13 +67,14 @@ export class DiscoverQueryDto
 
 	// Same shared decorator as PATCH /profile, which is the point: a tag typed into the filter is
 	// normalised exactly as it was when stored, so '#Hiking' here still matches 'hiking' there.
-	// A candidate must carry EVERY tag listed (see this endpoint's @ApiOperation).
+	// Matching ANY of these is enough (see this endpoint's @ApiOperation). The user picks from
+	// their own tags, so candidates sharing more of them simply rank higher on commonTagCount.
 	@InterestNamesProperty()
 	tags?: string[];
 }
 
-// One swipe card. The fame rating and the common-tag count are used to filter and sort server
-// side but are NOT returned: a card is a photo with a name, an age and a distance over it.
+// One swipe card. Carries the four criteria the subject requires the list to be sortable by —
+// age, distance, fame and common tags — because the frontend does that sorting.
 export class DiscoverCardDto
 {
 	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'Candidate user UUID' })
@@ -104,6 +91,12 @@ export class DiscoverCardDto
 
 	@ApiProperty({ example: 4, nullable: true, description: 'Whole kilometres away, floored at 1; null when YOU have no location set. Derived from a ~1 km-snapped position.' })
 	distanceKm: number | null;
+
+	@ApiProperty({ example: 55, minimum: 0, maximum: 100, description: "The candidate's public fame rating" })
+	fameRating: number;
+
+	@ApiProperty({ example: 2, description: 'How many interest tags this candidate shares with you' })
+	commonTagCount: number;
 
 	@ApiProperty({ example: true, description: 'True when this candidate has already liked you, so liking back matches immediately' })
 	likesYou: boolean;

@@ -1,19 +1,13 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, PoolClient, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo, DiscoverCard, DiscoverSort, DiscoverOrder } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo, DiscoverCard } from '@repo/shared-types';
 
-// One browsing request's shape. Every filter is optional; sort/limit/offset are defaulted by the
-// DTO, so they are required here and the query builder never has to second-guess them.
+// One browsing request: FILTERS ONLY. There is no sort parameter — the endpoint returns the whole
+// filtered list in the weighted order and the frontend arranges it (see getDiscoverCandidates).
+// Every filter is optional; absent means "no bound".
 export interface DiscoverQuery
 {
-	// Absent means the weighted "best" ordering. Optional rather than required so the deck works
-	// before the DTO exposes a ?sort= parameter; the subject still needs age / location / fame /
-	// common-tag sorting to be reachable, and DISCOVER_SORTS already supports all four.
-	sort?: DiscoverSort;
-	order?: DiscoverOrder;
-	limit: number;
-	offset: number;
 	minAge?: number;
 	maxAge?: number;
 	minDistanceKm?: number;
@@ -21,7 +15,6 @@ export interface DiscoverQuery
 	minFame?: number;
 	maxFame?: number;
 	tags?: string[];
-	minCommonTags?: number;
 }
 
 @Injectable()
@@ -32,17 +25,9 @@ export class DbService implements OnModuleInit
 {
 	private pool: Pool;
 
-	// Sort key -> column WHITELIST for the browsing deck. The only strings ever interpolated into
-	// the discovery SQL come from here, so a crafted ?sort= value cannot reach the query.
-	// Each key also carries the direction that is sensible by default, which ?order= overrides.
-	private static readonly DISCOVER_SORTS: Record<DiscoverSort, { column: string; defaultOrder: 'ASC' | 'DESC' }> =
-	{
-		best:     { column: 'd.match_score',      defaultOrder: 'DESC' },
-		distance: { column: 'd.distance_km',      defaultOrder: 'ASC'  },
-		age:      { column: 'd.age',              defaultOrder: 'ASC'  },
-		fame:     { column: 'd.fame_rating',      defaultOrder: 'DESC' },
-		tags:     { column: 'd.common_tag_count', defaultOrder: 'DESC' },
-	};
+	// Safety valve, NOT pagination: the browsing endpoint deliberately returns the whole filtered
+	// list, and this only stops a pathological pool from producing a huge response.
+	private static readonly DISCOVER_MAX_CARDS = 200;
 
 	// The onModuleInit method is called by the NestJS framework when the module is initialized.
 	// It creates a new connection pool to the PostgreSQL database using the configuration values from the environment variables.
@@ -347,6 +332,23 @@ export class DbService implements OnModuleInit
 		// 	return (false);
 
 		return (true);
+	}
+
+	async hasLocation(userId: string): Promise<boolean>
+	{
+		const result = await this.pool.query(
+			`SELECT latitude, longitude
+			 FROM profiles
+			 WHERE user_id = $1`,
+			[userId]
+		);
+
+		if (result.rows.length === 0)
+			return (false);
+
+		const { latitude, longitude } = result.rows[0];
+
+		return (latitude !== null && longitude !== null);
 	}
 
 	async updateProfile( userId: string,
@@ -953,11 +955,25 @@ export class DbService implements OnModuleInit
 
 	// Who MAY appear in a deck, how far away they are, how many tags they share and how well they
 	// match all live in SQL (discover_candidates, see 011_browsing.sql) — those are invariants.
-	// This method only shapes ONE REQUEST around that call: which filters, which sort, which page.
+	// This method only applies ONE REQUEST's filters around that call.
+	//
+	// Returns the WHOLE filtered list, unpaginated, in the weighted order. The subject requires
+	// the list to be sortable by age, location, fame and common tags, and the FRONTEND does that
+	// sorting — which is only correct if it holds the entire list: sorting a 20-row page by age
+	// yields "the 20 best matches arranged by age", not "the youngest matches". Hence every field
+	// those four sorts need is on the card.
+	//
+	// DELIBERATE SCALE TRADEOFF: this is right for Matcha's pool and wrong for production, where
+	// the response would grow with the user base. At that point sorting moves back into SQL with
+	// keyset pagination, and the per-request scoring below becomes a two-stage retrieve-then-rank.
+	//
+	// The ordering itself stays server-side regardless: the weighted score and the priority given
+	// to nearby users are what the subject calls "intelligently determined", not a user choice,
+	// and the client never sees already_passed.
 	//
 	// The function is an inlinable LANGUAGE SQL STABLE single-SELECT, so Postgres folds it into
-	// the statement below like a view: the WHERE and ORDER BY here are pushed DOWN into it instead
-	// of running over a fully materialized candidate set.
+	// the statement below like a view: the WHERE here is pushed DOWN into it instead of running
+	// over a fully materialized candidate set.
 	async getDiscoverCandidates(viewerId: string, opts: DiscoverQuery): Promise<DiscoverCard[]>
 	{
 		const	conditions: string[] = [];
@@ -972,7 +988,6 @@ export class DbService implements OnModuleInit
 			[opts.maxDistanceKm,  'd.distance_km <= '],
 			[opts.minFame,        'd.fame_rating >= '],
 			[opts.maxFame,        'd.fame_rating <= '],
-			[opts.minCommonTags,  'd.common_tag_count >= '],
 		];
 
 		for (const [value, predicate] of ranges)
@@ -985,34 +1000,23 @@ export class DbService implements OnModuleInit
 			}
 		}
 
-		// Explicit tag filter: the candidate must carry EVERY requested tag (a narrowing filter),
-		// which is a different question from minCommonTags ("shares at least N tags with ME").
+		// ANY of the chosen tags, not all of them: the user picks from their OWN tags, and
+		// requiring every one empties the list as soon as they tick a third. Candidates matching
+		// more of them are not lost, they simply rank higher on common_tag_count, which the
+		// frontend can sort by.
 		if (opts.tags !== undefined && opts.tags.length > 0)
 		{
 			conditions.push(
-				`(SELECT COUNT(DISTINCT it.name)
-				    FROM user_interests ui
-				    INNER JOIN interest_tags it ON it.id = ui.tag_id
-				   WHERE ui.user_id = d.user_id AND it.name = ANY($${paramIndex}::text[])
-				 ) = cardinality($${paramIndex}::text[])`
+				`EXISTS (SELECT 1
+				           FROM user_interests ui
+				           INNER JOIN interest_tags it ON it.id = ui.tag_id
+				          WHERE ui.user_id = d.user_id AND it.name = ANY($${paramIndex}::text[]))`
 			);
 			params.push(opts.tags);
 			paramIndex++;
 		}
 
-		// The sort key is looked up in a WHITELIST and never interpolated from user input, so the
-		// only thing that reaches the SQL string is one of these five fixed column names.
-		const	sort      = DbService.DISCOVER_SORTS[opts.sort ?? 'best'];
-		const	direction = opts.order === undefined
-							? sort.defaultOrder
-							: (opts.order === 'asc' ? 'ASC' : 'DESC');
-
 		const	whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-		const	limitIndex  = paramIndex++;
-		const	offsetIndex = paramIndex++;
-
-		params.push(opts.limit, opts.offset);
 
 		const result = await this.pool.query(
 			// distance_km is rounded and floored HERE, on the way out, while the ORDER BY below
@@ -1026,15 +1030,15 @@ export class DbService implements OnModuleInit
 						 THEN NULL
 						 ELSE GREATEST(1, ROUND(d.distance_km)::int)
 					END AS distance_km,
+					d.fame_rating, d.common_tag_count,
 					d.likes_you, d.profile_picture_url
 			 FROM discover_candidates($1) d
 			 ${whereClause}
-			 -- Passed profiles sink to the BOTTOM rather than disappearing, so the deck never
-			 -- dead-ends; false sorts before true. NULLS LAST keeps a missing distance out of the
-			 -- way in both directions, and user_id is a stable tiebreaker so paging by OFFSET
-			 -- cannot skip or repeat a row when the sort key ties.
-			 ORDER BY d.already_passed ASC, ${sort.column} ${direction} NULLS LAST, d.user_id
-			 LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+			 -- Passed profiles sink to the BOTTOM rather than disappearing, so the list never
+			 -- dead-ends; false sorts before true. user_id is a stable tiebreaker, which keeps the
+			 -- order deterministic between requests even when scores tie.
+			 ORDER BY d.already_passed ASC, d.match_score DESC NULLS LAST, d.user_id
+			 LIMIT ${DbService.DISCOVER_MAX_CARDS}`,
 			params
 		);
 
