@@ -31,12 +31,3 @@ export class GetMatchesMapResponseDto
 	@ApiProperty({ type: [GetMatchesMapDto], description: 'Users the authenticated user is connected to (mutual like)' })
 	matches: MatchesMapResponseDto[];
 }
-
-export class GetMatchesMapErrorDto
-{
-	@ApiProperty({ example: 500, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Failed to fetch matches', description: 'Error message' })
-	message: string;
-}

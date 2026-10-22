@@ -22,12 +22,3 @@ export class GetProfileViewersResponseDto
 	@ApiProperty({ type: [ProfileViewerDto], description: 'Users who viewed this profile' })
 	viewers: ProfileViewerDto[];
 }
-
-export class GetProfileViewersErrorDto
-{
-	@ApiProperty({ example: 403, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Forbidden', description: 'Error message' })
-	message: string;
-}

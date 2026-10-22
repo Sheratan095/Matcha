@@ -37,15 +37,6 @@ export class GetProfileResponseDto extends FullProfileDto
 	distanceKm: number | null;
 }
 
-export class GetProfileErrorDto
-{
-	@ApiProperty({ example: 409, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Profile not found', description: 'Error message' })
-	message: string;
-}
-
 // --------------------------------------------------------------------------------------
 
 
@@ -58,9 +49,5 @@ export class GetMyProfileDto
 // Your own profile is the one place full-precision coordinates are returned: it is your data,
 // and the frontend needs them to drop your pin on the map.
 export class GetMyProfileResponseDto extends OwnProfileDto
-{
-}
-
-export class GetMyProfileErrorDto extends GetProfileErrorDto
 {
 }

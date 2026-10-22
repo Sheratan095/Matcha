@@ -57,12 +57,3 @@ export class UpdateProfileDto
 // OwnProfileDto: this endpoint only ever returns the caller's own profile, so it carries
 // full-precision coordinates (unlike another user's profile, which reports a distance).
 export class UpdateProfileResponseDto extends OwnProfileDto {}
-
-export class UpdateProfileErrorDto
-{
-	@ApiProperty({ example: 403, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Forbidden', description: 'Error message' })
-	message: string;
-}

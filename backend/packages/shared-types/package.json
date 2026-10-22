@@ -8,5 +8,8 @@
   "scripts": {
     "build": "tsc --build",
     "dev": "tsc --watch"
+  },
+  "peerDependencies": {
+    "@nestjs/swagger": "^7.4.2 || ^11.4.2"
   }
 }

@@ -141,7 +141,7 @@ maybe just add check for two users and event in db
 
 [] wtf style guide?? cool but really needed?
 
-[] logo maybe could be changed
+[] logo maybe could be changed - add new logo also in email templates
 
 [] add passes into famerating query?
 

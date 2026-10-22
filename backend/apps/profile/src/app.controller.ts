@@ -2,22 +2,23 @@ import { Controller, Get, Post, Patch, Put, Delete, Body, Param, Query, ParseUUI
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AppService } from './app.service';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
-import { PictureIdParamDto, UploadPictureDto, PicturesResponseDto, PictureErrorDto } from './dto/pictures.dto';
-import { CreateProfileDto, CreateProfileResponseDto, CreateProfileErrorDto } from './dto/createProfile.dto';
-import { IsProfileCompleteDto, IsProfileCompleteResponseDto, IsProfileCompleteErrorDto } from './dto/isProfileComplete.dto';
-import { GetProfileDto, GetProfileResponseDto, GetProfileErrorDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
-import {  GetProfileViewersResponseDto, GetProfileViewersErrorDto } from './dto/getProfileViewers.dto';
+import { PictureIdParamDto, UploadPictureDto, PicturesResponseDto } from './dto/pictures.dto';
+import { CreateProfileDto, CreateProfileResponseDto } from './dto/createProfile.dto';
+import { IsProfileCompleteDto, IsProfileCompleteResponseDto } from './dto/isProfileComplete.dto';
+import { GetProfileDto, GetProfileResponseDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
+import {  GetProfileViewersResponseDto } from './dto/getProfileViewers.dto';
 import { GetMyLikesResponseDto } from './dto/GetMyLikes.dto';
-import { GetMatchesResponseDto, GetMatchesErrorDto } from './dto/getMatches.dto';
-import { GetBlockedResponseDto, GetBlockedErrorDto } from './dto/getBlocked.dto';
-import { UpdateProfileDto, UpdateProfileResponseDto, UpdateProfileErrorDto } from './dto/updateProfile.dto';
-import { GetInterestsResponseDto, GetInterestsErrorDto } from './dto/getInterests.dto';
+import { GetMatchesResponseDto } from './dto/getMatches.dto';
+import { GetBlockedResponseDto } from './dto/getBlocked.dto';
+import { UpdateProfileDto, UpdateProfileResponseDto } from './dto/updateProfile.dto';
+import { GetInterestsResponseDto } from './dto/getInterests.dto';
 import { InternalKeyGuard, AuthenticatedUserGuard, CurrentUser } from '@repo/utils';
-import { IsOnlineDto, IsOnlineResponseDto, IsOnlineErrorDto } from './dto/is_online';
-import { ReportUserDto, ReportUserErrorDto } from './dto/reportUser.dto';
-import { UpdateLocationDto, UpdateLocationResponseDto, UpdateLocationErrorDto } from './dto/updateLocation.dto';
-import { GetMatchesMapResponseDto, GetMatchesMapErrorDto } from './dto/getMatchesMap.dto';
-import { DiscoverQueryDto, DiscoverCardDto, DiscoverErrorDto } from './dto/discover.dto';
+import { IsOnlineDto, IsOnlineResponseDto } from './dto/is_online';
+import { ReportUserDto } from './dto/reportUser.dto';
+import { UpdateLocationDto, UpdateLocationResponseDto } from './dto/updateLocation.dto';
+import { GetMatchesMapResponseDto } from './dto/getMatchesMap.dto';
+import { DiscoverQueryDto, DiscoverCardDto } from './dto/discover.dto';
+import { ErrorDto } from '@repo/shared-types';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -45,10 +46,10 @@ export class AppController
 	@ApiOperation({ summary: 'Create user profile', description: 'INTERNAL endpoint, called only by the AUTH service right after a user is registered, to create the matching profile row.' })
 	@ApiBody({ type: CreateProfileDto })
 	@ApiResponse({ status: 200, type: CreateProfileResponseDto, description: 'Profile successfully created' })
-	@ApiResponse({ status: 409, type: CreateProfileErrorDto, description: 'Profile already exists for this user' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields, or a date of birth that is not a real date or makes the user under 18' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 409, type: ErrorDto, description: 'Profile already exists for this user' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields, or a date of birth that is not a real date or makes the user under 18' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid internal key' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	async createProfile(@Body() req: CreateProfileDto)
 	{
 		return (await this.appService.createProfile(req.userId, req.firstName, req.lastName, req.dateOfBirth));
@@ -57,9 +58,9 @@ export class AppController
 	@Get()
 	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full profile of the authenticated user.' })
 	@ApiResponse({ status: 200, type: GetMyProfileResponseDto, description: 'Profile retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 404, type: GetProfileErrorDto, description: 'Profile not found' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'Profile not found' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getMyProfile(@CurrentUser() userId: string)
 	{
@@ -71,9 +72,9 @@ export class AppController
 	@Get('viewers')
 	@ApiOperation({ summary: 'Get profile viewers', description: 'Returns the list of user IDs that have viewed your profile' })
 	@ApiResponse({ status: 200, type: GetProfileViewersResponseDto, description: 'Viewers retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 403, type: GetProfileViewersErrorDto, description: 'Requesting user is not the profile owner' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 403, type: ErrorDto, description: 'Requesting user is not the profile owner' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getProfileViewers(@CurrentUser() userId: string)
 	{
@@ -85,8 +86,8 @@ export class AppController
 	@Get('likes')
 	@ApiOperation({ summary: 'Get my likes', description: 'Returns the list of user IDs that have liked the authenticated user, excludind the ones which has a match with' })
 	@ApiResponse({ status: 200, type: GetMyLikesResponseDto, description: 'Likes retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getMyLikes(@CurrentUser() userId: string)
 	{
@@ -98,8 +99,8 @@ export class AppController
 	@Get('matches')
 	@ApiOperation({ summary: 'Get my matches', description: 'Returns the users the authenticated user is connected to (mutual like).' })
 	@ApiResponse({ status: 200, type: GetMatchesResponseDto, description: 'Matches retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 500, type: GetMatchesErrorDto, description: 'Internal server error' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getMyMatches(@CurrentUser() userId: string)
 	{
@@ -111,8 +112,8 @@ export class AppController
 	@Get('matches/map')
 	@ApiOperation({ summary: 'Get my matches for map', description: 'Returns the users the authenticated user is connected to (mutual like) with their location coordinates.' })
 	@ApiResponse({ status: 200, type: GetMatchesMapResponseDto, description: 'Matches retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 500, type: GetMatchesMapErrorDto, description: 'Internal server error' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getMyMatchesMap(@CurrentUser() userId: string)
 	{
@@ -124,8 +125,8 @@ export class AppController
 	@Get('blocks')
 	@ApiOperation({ summary: 'Get my blocked users', description: 'Returns the users the authenticated user has blocked.' })
 	@ApiResponse({ status: 200, type: GetBlockedResponseDto, description: 'Blocked users retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 500, type: GetBlockedErrorDto, description: 'Internal server error' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getBlockedUsers(@CurrentUser() userId: string)
 	{
@@ -138,8 +139,8 @@ export class AppController
 	@Get('interests')
 	@ApiOperation({ summary: 'Get all interests', description: 'Returns every interest tag stored in the database, for the interest picker / autocomplete.' })
 	@ApiResponse({ status: 200, type: GetInterestsResponseDto, description: 'Interests retrieved successfully' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 500, type: GetInterestsErrorDto, description: 'Internal server error' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async getAllInterests()
 	{
@@ -156,9 +157,9 @@ export class AppController
 		description: 'Suggested profiles: compatible with you in BOTH directions, weighted by proximity, common tags and fame, with nearby users prioritised. Only complete profiles are suggested; users you already liked or blocked are excluded, and ONES YOU PASSED ON SINK TO THE BOTTOM RATHER THAN DISAPPEARING. Returns the WHOLE filtered list (capped at 200) so the client can sort it by age, distance, fame or common tags without refetching — every one of those is on the card. `tags` matches candidates carrying ANY of the given tags. Does NOT count as a profile view.',
 	})
 	@ApiResponse({ status: 200, type: [DiscoverCardDto], description: 'Suggestions retrieved successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid filter, sort or inverted range (minAge > maxAge)' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 500, type: DiscoverErrorDto, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid filter, sort or inverted range (minAge > maxAge)' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async discover(@Query() query: DiscoverQueryDto, @CurrentUser() userId: string)
 	{
@@ -169,12 +170,12 @@ export class AppController
 	@ApiOperation({ summary: 'Update user profile', description: 'Update the authenticated user\'s own profile. All fields are optional — only provided fields are applied. `interests` is a FULL REPLACEMENT of the tag list, so sending [] removes them all.' })
 	@ApiBody({ type: UpdateProfileDto })
 	@ApiResponse({ status: 200, type: UpdateProfileResponseDto, description: 'Profile updated successfully' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields, or a date of birth that is not a real date or makes the user under 18' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 403, type: UpdateProfileErrorDto, description: 'Requesting user is not the profile owner' })
-	@ApiResponse({ status: 404, type: UpdateProfileErrorDto, description: 'Profile not found' })
-	@ApiResponse({ status: 409, type: UpdateProfileErrorDto, description: 'Date of birth is already set' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields, or a date of birth that is not a real date or makes the user under 18' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 403, type: ErrorDto, description: 'Requesting user is not the profile owner' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'Profile not found' })
+	@ApiResponse({ status: 409, type: ErrorDto, description: 'Date of birth is already set' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async updateProfile(@Body() body: UpdateProfileDto, @CurrentUser() userId: string)
 	{
@@ -190,10 +191,10 @@ export class AppController
 	@ApiOperation({ summary: 'Update my location', description: "Stores the authenticated user's location coordinates (from a map pin or GPS). Used by the matching algorithm; the frontend reverse-geocodes for a label when needed." })
 	@ApiBody({ type: UpdateLocationDto })
 	@ApiResponse({ status: 200, type: UpdateLocationResponseDto, description: 'Location updated successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid coordinates' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 404, type: UpdateLocationErrorDto, description: 'Profile not found' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid coordinates' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'Profile not found' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async updateLocation(@Body() body: UpdateLocationDto, @CurrentUser() userId: string)
 	{
@@ -206,10 +207,10 @@ export class AppController
 	@ApiConsumes('multipart/form-data')
 	@ApiBody({ type: UploadPictureDto })
 	@ApiResponse({ status: 200, type: PicturesResponseDto, description: 'Picture uploaded, returns all user pictures' })
-	@ApiResponse({ status: 400, type: PictureErrorDto, description: 'Missing file, unsupported type, invalid image or picture limit reached' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 413, description: 'File larger than 5 MB' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Missing file, unsupported type, invalid image or picture limit reached' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 413, type: ErrorDto, description: 'File larger than 5 MB' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	@UseInterceptors(FileInterceptor('file',
 	{
@@ -237,10 +238,10 @@ export class AppController
 	@Delete('pictures/:pictureId')
 	@ApiOperation({ summary: 'Delete a picture', description: 'Delete one of the authenticated user\'s pictures.' })
 	@ApiResponse({ status: 200, type: PicturesResponseDto, description: 'Picture deleted, returns remaining pictures' })
-	@ApiResponse({ status: 400, description: 'Invalid picture id' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 404, type: PictureErrorDto, description: 'Picture not found or not owned by the user' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid picture id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'Picture not found or not owned by the user' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async deletePicture(@Param() req: PictureIdParamDto, @CurrentUser() userId: string)
 	{
@@ -252,10 +253,10 @@ export class AppController
 	@Patch('pictures/:pictureId/profile')
 	@ApiOperation({ summary: 'Set profile picture', description: 'Mark one of the authenticated user\'s pictures as the profile picture.' })
 	@ApiResponse({ status: 200, type: PicturesResponseDto, description: 'Profile picture updated, returns all user pictures' })
-	@ApiResponse({ status: 400, description: 'Invalid picture id' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 404, type: PictureErrorDto, description: 'Picture not found or not owned by the user' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid picture id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'Picture not found or not owned by the user' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async setProfilePicture(@Param() req: PictureIdParamDto, @CurrentUser() userId: string)
 	{
@@ -267,10 +268,10 @@ export class AppController
 	@Get(':userId')
 	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full user profile.' })
 	@ApiResponse({ status: 200, type: GetProfileResponseDto, description: 'Profile retrieved successfully' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
-	@ApiResponse({ status: 404, type: GetProfileErrorDto, description: 'Profile not found' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid internal key' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'Profile not found' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard) // This endpoint is protected and requires a valid JWT token
 	async getProfile(@Param() req: GetProfileDto, @CurrentUser() userId: string )
 	{
@@ -282,9 +283,9 @@ export class AppController
 	@Get('internal/:userId/is-complete')
 	@ApiOperation({ summary: 'Check if user profile is complete', description: 'INTERNAL 🔒 endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
 	@ApiResponse({ status: 200, type: IsProfileCompleteResponseDto, description: 'Profile completeness status' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
-	@ApiResponse({ status: 500, type: IsProfileCompleteErrorDto, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid internal key' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	async isProfileComplete(@Param() req: IsProfileCompleteDto)
 	{
 		const isComplete = await this.appService.isProfileComplete(req.userId);
@@ -295,9 +296,9 @@ export class AppController
 	@Get('internal/:userId/is-online')
 	@ApiOperation({ summary: 'Check if user is online', description: 'INTERNAL 🔒 endpoint, called by the AUTH service after a user logs in, to check if the profile is complete.' })
 	@ApiResponse({ status: 200, type: IsOnlineResponseDto, description: 'User online status' })
-	@ApiResponse({ status: 400, description: 'Validation failed: missing or invalid fields' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid internal key' })
-	@ApiResponse({ status: 500, type: IsOnlineErrorDto, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid internal key' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async isUserOnline(@Param() req: IsOnlineDto)
 	{
@@ -309,10 +310,10 @@ export class AppController
 	@Post(':userId/report')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Report a user as fake', description: 'Flags the target user as a fake account. Idempotent: reporting the same user more than once has no additional effect.' })
-	@ApiResponse({ status: 400, type: ReportUserErrorDto, description: 'Cannot report yourself / invalid user id' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 404, type: ReportUserErrorDto, description: 'User not found' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Cannot report yourself / invalid user id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'User not found' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async reportUser( @Param('userId', ParseUUIDPipe) reportedId: string, @Body() body: ReportUserDto, @CurrentUser() userId: string)
 	{
@@ -323,10 +324,10 @@ export class AppController
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Like a user', description: 'Records that the authenticated user likes the target user. Idempotent: liking the same user more than once has no additional effect.' })
 	@ApiResponse({ status: 200, description: 'User liked successfully' })
-	@ApiResponse({ status: 400, description: 'Cannot like yourself / invalid user id' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 404, description: 'User not found' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Cannot like yourself / invalid user id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'User not found' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async likeUser(@Param('userId', ParseUUIDPipe) likedId: string, @CurrentUser() userId: string)
 	{
@@ -340,8 +341,8 @@ export class AppController
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Pass on a user ', description: 'Left swipe. Currently a no-op that always answers 200: the pass is not stored yet, so the user is not excluded from discovery.' })
 	@ApiResponse({ status: 200, description: 'Accepted' })
-	@ApiResponse({ status: 400, description: 'Invalid user id' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid user id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
 	@UseGuards(AuthenticatedUserGuard)
 	async passUser(@Param('userId', ParseUUIDPipe) passedId: string, @CurrentUser() userId: string)
 	{
@@ -352,9 +353,9 @@ export class AppController
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Unlike a user', description: 'Removes a previously given like. Idempotent: unliking a user that was not liked has no effect.' })
 	@ApiResponse({ status: 200, description: 'User unliked successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid user id' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid user id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async unlikeUser(@Param('userId', ParseUUIDPipe) likedId: string, @CurrentUser() userId: string)
 	{
@@ -365,10 +366,10 @@ export class AppController
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Block a user', description: 'Blocks the target user. Mutual effect, dissolves any existing match, and suppresses notifications both ways. Idempotent.' })
 	@ApiResponse({ status: 200, description: 'User blocked successfully' })
-	@ApiResponse({ status: 400, description: 'Cannot block yourself / invalid user id' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 404, description: 'User not found' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Cannot block yourself / invalid user id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'User not found' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async blockUser(@Param('userId', ParseUUIDPipe) blockedId: string, @CurrentUser() userId: string)
 	{
@@ -379,9 +380,9 @@ export class AppController
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Unblock a user', description: 'Removes a block. Idempotent: unblocking a user that was not blocked has no effect. The previous match is not restored.' })
 	@ApiResponse({ status: 200, description: 'User unblocked successfully' })
-	@ApiResponse({ status: 400, description: 'Invalid user id' })
-	@ApiResponse({ status: 401, description: 'Missing or invalid access token' })
-	@ApiResponse({ status: 500, description: 'Internal server error' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid user id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async unblockUser(@Param('userId', ParseUUIDPipe) blockedId: string, @CurrentUser() userId: string)
 	{

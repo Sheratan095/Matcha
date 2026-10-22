@@ -22,12 +22,3 @@ export class GetMyLikesResponseDto
 	@ApiProperty({ type: [LikerDto], description: 'Users who liked this profile' })
 	likes: LikerDto[];
 }
-
-export class GetMyLikesErrorDto
-{
-	@ApiProperty({ example: 500, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Failed to fetch likers', description: 'Error message' })
-	message: string;
-}

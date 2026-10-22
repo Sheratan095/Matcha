@@ -13,12 +13,3 @@ export class IsProfileCompleteResponseDto
 	@ApiProperty({ example: true, description: 'True if the profile is complete, false otherwise' })
 	isComplete: boolean;
 }
-
-export class IsProfileCompleteErrorDto
-{
-	@ApiProperty({ example: 500 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Internal server error' })
-	message: string;
-}

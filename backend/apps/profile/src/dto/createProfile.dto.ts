@@ -41,12 +41,3 @@ export class CreateProfileResponseDto
 	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'ID of the user the profile was created for' })
 	userId: string;
 }
-
-export class CreateProfileErrorDto
-{
-	@ApiProperty({ example: 409 })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Profile already exists' })
-	message: string;
-}

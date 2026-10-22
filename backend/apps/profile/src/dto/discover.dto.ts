@@ -104,12 +104,3 @@ export class DiscoverCardDto
 	@ApiProperty({ example: 'http://profile-pictures.web.garage.localhost:3902/seed/alice-1.webp', description: "The candidate's profile picture; never null, since a profile without one is not suggested" })
 	profilePictureUrl: string;
 }
-
-export class DiscoverErrorDto
-{
-	@ApiProperty({ example: 500, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Failed to fetch suggestions', description: 'Error message' })
-	message: string;
-}

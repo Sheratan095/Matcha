@@ -22,12 +22,3 @@ export class GetBlockedResponseDto
 	@ApiProperty({ type: [BlockedUserDto], description: 'Users the authenticated user has blocked' })
 	blocks: BlockedUserDto[];
 }
-
-export class GetBlockedErrorDto
-{
-	@ApiProperty({ example: 500, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Failed to fetch blocked users', description: 'Error message' })
-	message: string;
-}

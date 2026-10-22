@@ -20,11 +20,3 @@ export class ReportUserDto
 
 // }
 
-export class ReportUserErrorDto
-{
-	@ApiProperty({ example: 400, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'You cannot report yourself', description: 'Error message' })
-	message: string;
-}

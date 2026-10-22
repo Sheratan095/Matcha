@@ -21,12 +21,3 @@ export class UpdateLocationResponseDto
 	@ApiProperty({ example: true, description: 'Whether the location was updated' })
 	updated: boolean;
 }
-
-export class UpdateLocationErrorDto
-{
-	@ApiProperty({ example: 404, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Profile not found', description: 'Error message' })
-	message: string;
-}

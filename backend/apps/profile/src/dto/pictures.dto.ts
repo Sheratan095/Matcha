@@ -21,12 +21,3 @@ export class PicturesResponseDto
 	@ApiProperty({ type: [UserPictureDto], description: 'All pictures of the user after the operation' })
 	pictures: UserPictureDto[];
 }
-
-export class PictureErrorDto
-{
-	@ApiProperty({ example: 404, description: 'HTTP status code' })
-	statusCode: number;
-
-	@ApiProperty({ example: 'Picture not found', description: 'Error message' })
-	message: string;
-}
