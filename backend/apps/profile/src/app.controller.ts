@@ -18,6 +18,7 @@ import { ReportUserDto } from './dto/reportUser.dto';
 import { UpdateLocationDto, UpdateLocationResponseDto } from './dto/updateLocation.dto';
 import { GetMatchesMapResponseDto } from './dto/getMatchesMap.dto';
 import { DiscoverQueryDto, DiscoverCardDto } from './dto/discover.dto';
+import { SearchQueryDto } from './dto/search.dto';
 import { ErrorDto } from '@repo/shared-types';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
@@ -164,6 +165,23 @@ export class AppController
 	async discover(@Query() query: DiscoverQueryDto, @CurrentUser() userId: string)
 	{
 		return (await this.appService.discoverProfiles(userId, query));
+	}
+
+	// Also declared ABOVE @Get(':userId'), for the same reason as 'discover'.
+	@Get('search')
+	@ApiOperation({
+		summary: 'Advanced search',
+		description: 'Search profiles by one or more criteria: age range, fame range, distance from you, interest tags, name (`q`), gender and sexual preference. At least one criterion is required. Unlike discover, `tags` matches candidates carrying ALL the given tags, and no orientation compatibility is applied — filter with `genders` / `preferences` instead. Only complete profiles; users you liked or blocked are excluded, ones you passed on come last. Returns the WHOLE result list (capped at 200), nearest first, so the client can sort it by age, distance, fame or common tags. Does NOT count as a profile view.',
+	})
+	@ApiResponse({ status: 200, type: [DiscoverCardDto], description: 'Search results retrieved successfully' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'No criterion, invalid value or inverted range (minAge > maxAge)' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 403, type: ErrorDto, description: 'You have no location set' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async search(@Query() query: SearchQueryDto, @CurrentUser() userId: string)
+	{
+		return (await this.appService.searchProfiles(userId, query));
 	}
 
 	@Patch()

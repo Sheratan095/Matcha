@@ -154,3 +154,5 @@ maybe just add check for two users and event in db
 	[x] access_token
 	[x] refresh_oken
 	[x] reset psw
+
+[] remove last_seen from own profile?

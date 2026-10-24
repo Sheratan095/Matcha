@@ -6,6 +6,7 @@ import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
 import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, MAX_USER_PICTURES } from '@repo/shared-types';
 import { DiscoverQueryDto } from './dto/discover.dto';
+import { SearchQueryDto } from './dto/search.dto';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
 import { getDateOfBirthError, isInvalidDateOfBirth, INVALID_DATE_OF_BIRTH } from './utils/dateOfBirth';
 
@@ -401,6 +402,55 @@ export class AppService
 
 			this.logger.error(`Error fetching suggestions for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to fetch suggestions');
+		}
+	}
+
+	// Advanced search (subject IV.4): eligibility lives in SQL (search_candidates, 011_browsing.sql),
+	// the criteria are applied by DbService.getSearchCandidates. Like discover, it does NOT record
+	// profile views.
+	async searchProfiles(userId: string, query: SearchQueryDto): Promise<DiscoverCard[]>
+	{
+		// The subject's search is "selecting one or more criteria": an empty one is a client bug,
+		// and answering it would just be the whole deck without the orientation rule.
+		const	hasCriterion = Object.values(query).some((value) =>
+			Array.isArray(value) ? value.length > 0 : value !== undefined);
+
+		if (!hasCriterion)
+			throw new BadRequestException('At least one search criterion is required');
+
+		// Same reasoning as in discoverProfiles: an inverted range would silently return nothing.
+		if (query.minAge !== undefined && query.maxAge !== undefined && query.minAge > query.maxAge)
+			throw new BadRequestException('minAge cannot be greater than maxAge');
+
+		if (query.minFame !== undefined && query.maxFame !== undefined && query.minFame > query.maxFame)
+			throw new BadRequestException('minFame cannot be greater than maxFame');
+
+		if (query.minDistanceKm !== undefined && query.maxDistanceKm !== undefined && query.minDistanceKm > query.maxDistanceKm)
+			throw new BadRequestException('minDistanceKm cannot be greater than maxDistanceKm');
+
+		try
+		{
+			// Distances are measured from YOUR location, as in discover.
+			if (await this.dbService.hasLocation(userId) === false)
+			{
+				this.logger.warn(`Search attempt by user ${userId} failed: user has no location`);
+				throw new ForbiddenException('You must have a location to search other users');
+			}
+
+			const	cards = await this.dbService.getSearchCandidates(userId, query);
+
+			this.logger.log(`Search: ${cards.length} result(s) for user ID ${userId}`);
+
+			return (cards);
+		}
+		catch (error: any)
+		{
+			// Rethrow the 403 above instead of reporting it as a 500.
+			if (error instanceof HttpException)
+				throw (error);
+
+			this.logger.error(`Error searching profiles for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to search profiles');
 		}
 	}
 

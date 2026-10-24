@@ -17,6 +17,15 @@ export interface DiscoverQuery
 	tags?: string[];
 }
 
+// One advanced-search request (subject IV.4): the browsing filters plus the search-only ones.
+// Every field is optional here; "at least one criterion" is enforced by AppService.
+export interface SearchQuery extends DiscoverQuery
+{
+	q?: string;
+	genders?: string[];
+	preferences?: string[];
+}
+
 @Injectable()
 
 // The DbService class is responsible for managing the connection to the PostgreSQL database and executing queries.
@@ -1038,6 +1047,105 @@ export class DbService implements OnModuleInit
 			 -- dead-ends; false sorts before true. user_id is a stable tiebreaker, which keeps the
 			 -- order deterministic between requests even when scores tie.
 			 ORDER BY d.already_passed ASC, d.match_score DESC NULLS LAST, d.user_id
+			 LIMIT ${DbService.DISCOVER_MAX_CARDS}`,
+			params
+		);
+
+		return (result.rows.map(row => DiscoverCard.fromDbRow(row)));
+	}
+
+	// ---------------------ADVANCED SEARCH (subject IV.4)---------------------
+
+	// Eligibility lives in SQL (search_candidates, see 011_browsing.sql); this applies one search's
+	// criteria around it. Same card, same whole-list contract and same cap as discover, so the
+	// frontend sorts both the same way. What differs from getDiscoverCandidates:
+	//   - tags must ALL match (a search narrows, the deck broadens),
+	//   - orientation is not applied for the user, they filter by gender/preference instead,
+	//   - a name query, and no weighted score: results come back nearest first.
+	async getSearchCandidates(viewerId: string, opts: SearchQuery): Promise<DiscoverCard[]>
+	{
+		const	conditions: string[] = [];
+		const	params: any[]        = [viewerId]; // $1 is always the viewer
+		let		paramIndex           = 2;
+
+		const	ranges: [number | undefined, string][] = [
+			[opts.minAge,         's.age >= '],
+			[opts.maxAge,         's.age <= '],
+			[opts.minDistanceKm,  's.distance_km >= '],
+			[opts.maxDistanceKm,  's.distance_km <= '],
+			[opts.minFame,        's.fame_rating >= '],
+			[opts.maxFame,        's.fame_rating <= '],
+		];
+
+		for (const [value, predicate] of ranges)
+		{
+			if (value !== undefined)
+			{
+				conditions.push(`${predicate}$${paramIndex}`);
+				params.push(value);
+				paramIndex++;
+			}
+		}
+
+		// ALL of the chosen tags, written as "no wanted tag is missing" rather than a count
+		// comparison, so a duplicated name cannot make the condition unsatisfiable.
+		if (opts.tags !== undefined && opts.tags.length > 0)
+		{
+			conditions.push(
+				`NOT EXISTS (SELECT 1
+				               FROM unnest($${paramIndex}::text[]) want(name)
+				              WHERE NOT EXISTS (SELECT 1
+				                                  FROM user_interests ui
+				                                  INNER JOIN interest_tags it ON it.id = ui.tag_id
+				                                 WHERE ui.user_id = s.user_id AND it.name = want.name))`
+			);
+			params.push(opts.tags);
+			paramIndex++;
+		}
+
+		const	lists: [string[] | undefined, string][] = [
+			[opts.genders,     's.gender'],
+			[opts.preferences, 's.sexual_preference'],
+		];
+
+		for (const [values, column] of lists)
+		{
+			if (values !== undefined && values.length > 0)
+			{
+				conditions.push(`${column} = ANY($${paramIndex}::text[])`);
+				params.push(values);
+				paramIndex++;
+			}
+		}
+
+		// Case-insensitive substring of the username, either name, or "first last". LIKE's own
+		// wildcards (and its escape character) are escaped so a typed % or _ matches literally.
+		if (opts.q !== undefined && opts.q !== '')
+		{
+			conditions.push(
+				`(s.username ILIKE $${paramIndex}
+				  OR s.first_name ILIKE $${paramIndex}
+				  OR s.last_name ILIKE $${paramIndex}
+				  OR (s.first_name || ' ' || s.last_name) ILIKE $${paramIndex})`
+			);
+			params.push(`%${opts.q.replace(/[\\%_]/g, '\\$&')}%`);
+			paramIndex++;
+		}
+
+		const	whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+		const result = await this.pool.query(
+			// Same rounding-on-the-way-out as getDiscoverCandidates (see the note there).
+			`SELECT s.user_id, s.username, s.first_name, s.age,
+					CASE WHEN s.distance_km IS NULL
+						 THEN NULL
+						 ELSE GREATEST(1, ROUND(s.distance_km)::int)
+					END AS distance_km,
+					s.fame_rating, s.common_tag_count,
+					s.likes_you, s.profile_picture_url
+			 FROM search_candidates($1) s
+			 ${whereClause}
+			 ORDER BY s.already_passed ASC, s.distance_km ASC NULLS LAST, s.user_id
 			 LIMIT ${DbService.DISCOVER_MAX_CARDS}`,
 			params
 		);

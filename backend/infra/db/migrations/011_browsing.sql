@@ -119,3 +119,84 @@ AS $$
 					   WHERE (blocker_id = viewer     AND blocked_id = c.user_id)
 						  OR (blocker_id = c.user_id AND blocked_id = viewer));
 $$ LANGUAGE SQL STABLE;
+
+
+-- ADVANCED SEARCH (subject IV.4): who may appear in a user's search results. A SEPARATE function
+-- from discover_candidates on purpose, so neither query grows flags for the other's needs.
+--
+-- Same eligibility as the deck (complete profiles only, liked users excluded, blocks hidden both
+-- ways, passed users only flagged) MINUS the orientation rule: in search the user picks the
+-- genders and preferences they want explicitly, so those are plain filters applied by the caller
+-- (DbService.getSearchCandidates) together with the age/fame/distance/tag/name criteria. Hence
+-- the extra last_name / gender / sexual_preference columns, which only exist to be filtered on.
+--
+-- No match_score: results are not a recommendation, the caller orders them by distance and the
+-- frontend re-sorts by age, distance, fame or common tags. Kept a single plain SELECT with the
+-- LATERAL for the same INLINING reasons explained at the top of this file.
+CREATE OR REPLACE FUNCTION search_candidates(viewer UUID)
+RETURNS TABLE (
+	user_id             UUID,
+	username            TEXT,
+	first_name          TEXT,
+	last_name           TEXT,
+	gender              TEXT,
+	sexual_preference   TEXT,
+	age                 SMALLINT,
+	distance_km         DOUBLE PRECISION,
+	common_tag_count    INT,
+	likes_you           BOOLEAN,
+	already_passed      BOOLEAN,
+	profile_picture_url TEXT,
+	fame_rating         SMALLINT
+)
+AS $$
+	SELECT
+		c.user_id,
+		u.username::text,
+		c.first_name::text,
+		c.last_name::text,
+		c.gender::text,
+		-- An unset preference means 'both' (the column default), as in discover_candidates.
+		COALESCE(c.sexual_preference, 'both')::text,
+		EXTRACT(YEAR FROM age(CURRENT_DATE, c.date_of_birth))::smallint,
+		-- RAW distance to a SNAPPED target, exactly as in discover_candidates.
+		m.dist,
+		m.common_tag_count,
+		EXISTS (SELECT 1 FROM likes WHERE liker_id = c.user_id AND liked_id = viewer),
+		EXISTS (SELECT 1 FROM passes WHERE user_id = viewer AND passed_id = c.user_id),
+		pic.url::text,
+		c.fame_rating
+
+	FROM profiles c
+	INNER JOIN profiles v ON v.user_id = viewer
+	INNER JOIN users u ON u.id = c.user_id
+	-- Doubles as the "must have a profile picture" rule: no picture, no row.
+	INNER JOIN user_pictures pic ON pic.user_id = c.user_id AND pic.is_profile
+	CROSS JOIN LATERAL (
+		SELECT
+			distance_km(v.latitude, v.longitude,
+						snap_coord(c.latitude), snap_coord(c.longitude)) AS dist,
+			(SELECT COUNT(*)
+			   FROM user_interests mine
+			   INNER JOIN user_interests theirs ON theirs.tag_id = mine.tag_id
+			  WHERE mine.user_id = viewer AND theirs.user_id = c.user_id)::int AS common_tag_count
+	) m
+
+	WHERE c.user_id <> viewer
+
+	  -- ONLY COMPLETE PROFILES, same list as discover_candidates.
+	  AND c.gender IS NOT NULL
+	  AND c.date_of_birth IS NOT NULL
+	  AND c.latitude IS NOT NULL
+	  AND c.longitude IS NOT NULL
+	  AND COALESCE(c.biography, '') <> ''
+	  AND EXISTS (SELECT 1 FROM user_interests WHERE user_id = c.user_id)
+
+	  -- Already swiped RIGHT: they belong to /likes now.
+	  AND NOT EXISTS (SELECT 1 FROM likes WHERE liker_id = viewer AND liked_id = c.user_id)
+
+	  -- A block hides the pair from each other in either direction.
+	  AND NOT EXISTS (SELECT 1 FROM blocks
+					   WHERE (blocker_id = viewer     AND blocked_id = c.user_id)
+						  OR (blocker_id = c.user_id AND blocked_id = viewer));
+$$ LANGUAGE SQL STABLE;
