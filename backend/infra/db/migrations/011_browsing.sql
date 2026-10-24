@@ -124,15 +124,24 @@ $$ LANGUAGE SQL STABLE;
 -- ADVANCED SEARCH (subject IV.4): who may appear in a user's search results. A SEPARATE function
 -- from discover_candidates on purpose, so neither query grows flags for the other's needs.
 --
--- Same eligibility as the deck (complete profiles only, liked users excluded, blocks hidden both
--- ways, passed users only flagged) MINUS the orientation rule: in search the user picks the
+-- Same eligibility as the deck (complete profiles only, blocks hidden both ways, passed users
+-- only flagged) MINUS two rules. Users you already LIKED stay in: this is a standard search, and
+-- looking someone up must find them whatever you did before. And no orientation rule: in search
+-- the user picks the
 -- genders and preferences they want explicitly, so those are plain filters applied by the caller
 -- (DbService.getSearchCandidates) together with the age/fame/distance/tag/name criteria. Hence
 -- the extra last_name / gender / sexual_preference columns, which only exist to be filtered on.
 --
+-- No like relation either (likes_you / liked): the full profile carries it, so the search stays
+-- two EXISTS lighter per row.
+--
 -- No match_score: results are not a recommendation, the caller orders them by distance and the
 -- frontend re-sorts by age, distance, fame or common tags. Kept a single plain SELECT with the
 -- LATERAL for the same INLINING reasons explained at the top of this file.
+-- Dropped first because CREATE OR REPLACE cannot change a function's result columns, and the
+-- migrate target re-runs this file on databases that already hold an older version.
+DROP FUNCTION IF EXISTS search_candidates(UUID);
+
 CREATE OR REPLACE FUNCTION search_candidates(viewer UUID)
 RETURNS TABLE (
 	user_id             UUID,
@@ -144,7 +153,6 @@ RETURNS TABLE (
 	age                 SMALLINT,
 	distance_km         DOUBLE PRECISION,
 	common_tag_count    INT,
-	likes_you           BOOLEAN,
 	already_passed      BOOLEAN,
 	profile_picture_url TEXT,
 	fame_rating         SMALLINT
@@ -162,7 +170,6 @@ AS $$
 		-- RAW distance to a SNAPPED target, exactly as in discover_candidates.
 		m.dist,
 		m.common_tag_count,
-		EXISTS (SELECT 1 FROM likes WHERE liker_id = c.user_id AND liked_id = viewer),
 		EXISTS (SELECT 1 FROM passes WHERE user_id = viewer AND passed_id = c.user_id),
 		pic.url::text,
 		c.fame_rating
@@ -191,9 +198,6 @@ AS $$
 	  AND c.longitude IS NOT NULL
 	  AND COALESCE(c.biography, '') <> ''
 	  AND EXISTS (SELECT 1 FROM user_interests WHERE user_id = c.user_id)
-
-	  -- Already swiped RIGHT: they belong to /likes now.
-	  AND NOT EXISTS (SELECT 1 FROM likes WHERE liker_id = viewer AND liked_id = c.user_id)
 
 	  -- A block hides the pair from each other in either direction.
 	  AND NOT EXISTS (SELECT 1 FROM blocks
