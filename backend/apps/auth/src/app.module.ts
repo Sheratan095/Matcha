@@ -20,7 +20,7 @@ import { GithubStrategy } from './strategies/github.strategy';
 		PassportModule.register({ defaultStrategy: 'github' }),
 		JwtModule.register({
 			secret: env.JWT_ACCESS_SECRET,
-			signOptions: { expiresIn: env.JWT_ACCESS_EXPIRATION_MS },
+			signOptions: { expiresIn: Math.floor(env.JWT_ACCESS_EXPIRATION_MS / 1000) }, // seconds
 		}),
 	],
 	controllers: [AppController],

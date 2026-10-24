@@ -100,7 +100,11 @@ export class AppController
 		const refreshToken = req.cookies?.refresh_token;
 
 		// If the refresh token is missing, throw a 403 Forbidden error
-		const userId = await this.jwtHelper.validateRefreshToken(refreshToken).catch(() => { throw new ForbiddenException('Invalid refresh token'); });
+		const userId = await this.jwtHelper.validateRefreshToken(refreshToken).catch(() =>
+		{
+			this.logger.warn('Invalid or missing refresh token during token refresh attempt');
+			throw new ForbiddenException('Invalid refresh token'); 
+		});
 
 		return (await this.appService.refreshTokens(userId, refreshToken, res));
 	}

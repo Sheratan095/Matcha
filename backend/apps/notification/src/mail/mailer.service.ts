@@ -80,7 +80,7 @@ export class MailerService
 		const langPack = getVerificationPack(language);
 
 		// Minutes shown in the email; must mirror the token TTL set in the auth service.
-		const expiryMinutes = String(env.EMAIL_VERIFICATION_EXPIRATION_MS);
+		const expiryMinutes = String(Math.round(env.EMAIL_VERIFICATION_EXPIRATION_MS / 60000));
 
 		// Generate HTML content using template and language pack
 		let htmlContent: string;
@@ -176,7 +176,7 @@ export class MailerService
 		const langPack = getForgotPasswordPack(language);
 
 		// Minutes shown in the email; must mirror the token TTL set in the auth service.
-		const expiryMinutes = String(env.FORGOT_PASSWORD_EXPIRATION_MS);
+		const expiryMinutes = String(Math.round(env.FORGOT_PASSWORD_EXPIRATION_MS / 60000));
 
 		// Generate HTML content using template and language pack
 		let htmlContent: string;

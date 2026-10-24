@@ -11,15 +11,16 @@ export class JwtHelper
 	async generateTokens(userId: string) : Promise<{ access_token: string, refresh_token: string, refresh_token_expires_at: Date }>
 	{
 		const payload = { sub: userId };
-		
+
+		// jsonwebtoken reads a numeric expiresIn as SECONDS, while the env values are in ms
 		const [accessToken, refreshToken] = await Promise.all([
 			this.jwtService.signAsync(payload, {
 					secret: env.JWT_ACCESS_SECRET,
-					expiresIn: env.JWT_ACCESS_EXPIRATION_MS,
+					expiresIn: Math.floor(env.JWT_ACCESS_EXPIRATION_MS / 1000),
 			}),
 			this.jwtService.signAsync(payload, {
 					secret: env.JWT_REFRESH_SECRET,
-					expiresIn: env.JWT_REFRESH_EXPIRATION_MS,
+					expiresIn: Math.floor(env.JWT_REFRESH_EXPIRATION_MS / 1000),
 			}),
 		]);
 

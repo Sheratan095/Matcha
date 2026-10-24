@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import { env } from "@repo/config";
 import { SupportedLanguage } from '@repo/shared-types';
 import { User } from '@repo/shared-types';
-import { hashToken, compareTokens } from '../utils/tokenHash';
+import { compareTokens, hashRefreshToken } from '../utils/tokenHash';
 
 @Injectable()
 
@@ -103,7 +103,7 @@ export class DbService implements OnModuleInit
 		// ON CONFLICT clause is used to update the token if a record for the user already exists, ensuring that only one refresh token is stored per user.
 		await this.pool.query(`
 			INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)
-			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, created_at = CURRENT_TIMESTAMP
+			ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, expires_at = EXCLUDED.expires_at, created_at = CURRENT_TIMESTAMP
 		`, [userId, refreshTokenHash, expiresAt]);
 	}
 
@@ -115,19 +115,13 @@ export class DbService implements OnModuleInit
 
 	async getRefreshTokenRecord(refreshTokenPlain: string, userId : string): Promise<any>
 	{
-		// Retrieve the refresh token record from the database that matches the given hashed token. This is a helper method for validating refresh tokens.
-		// In this case we also filter by user_id to reduce the number of tokens we have to compare with bcrypt
-		const result = await this.pool.query('SELECT * FROM refresh_tokens WHERE expires_at > CURRENT_TIMESTAMP AND user_id = $1', [userId]);
-		// result should be just one row due to the ON CONFLICT clause in saveRefreshToken, but we still have to compare with bcrypt to find if the token matches because of salting
+		// Refresh tokens are stored as SHA-256 (deterministic, no salt), so the matching
+		// non-expired row can be looked up directly by its hash.
+		const result = await this.pool.query(
+			'SELECT * FROM refresh_tokens WHERE expires_at > CURRENT_TIMESTAMP AND user_id = $1 AND token_hash = $2',
+			[userId, hashRefreshToken(refreshTokenPlain)]);
 
-		// Forced to pass trough all non-expired tokens and compare with bcrypt
-		// because we hash the token before storing it and just re-hashing the input token and comparing hashes
-		// doesn't work with bcrypt due to salting
-		for (const row of result.rows)
-			if (await compareTokens(refreshTokenPlain, row.token_hash))
-				return (row);
-
-		return (null);
+		return (result.rows[0] ?? null);
 	}
 
 
