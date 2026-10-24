@@ -288,7 +288,10 @@ export class AppService implements OnModuleInit
 		const resetTokenRecord = await this.dbService.getForgotPasswordTokenRecord(tokenPlain);
 
 		if (!resetTokenRecord || new Date(resetTokenRecord.expires_at) < new Date())
+		{
+			this.logger.warn(`Reset password attempt with invalid or expired token`);
 			throw new ForbiddenException('Invalid or expired reset token');
+		}
 
 		// DON'T NEED TO VERIFY EMAIL AGAIN BECAUSE
 		// THE FORGOT PASSWORD PROCESS CAN ONLY BE INITIATED IF THE EMAIL IS VERIFIED

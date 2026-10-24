@@ -149,8 +149,8 @@ maybe just add check for two users and event in db
 
 [x] Unify expiration time format min/hours -> ms
 
-[] check if expiration are actually working
-	[] email verification
-	[] access_token
-	[] refresh_oken
-	[] reset psw
+[x] check if expiration are actually working
+	[x] email verification
+	[x] access_token
+	[x] refresh_oken
+	[x] reset psw
