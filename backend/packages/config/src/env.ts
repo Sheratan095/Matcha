@@ -51,20 +51,18 @@ const envSchema = z.object({
 
 	// JWT
 	JWT_ACCESS_SECRET: z.string().default("fallback_jwt_secret"),
-	JWT_ACCESS_EXPIRATION: z.string().default("15m"), // 15 minutes
 	JWT_ACCESS_EXPIRATION_MS: z.coerce.number().default(900000), // 15 minutes in milliseconds
 	JWT_REFRESH_SECRET: z.string().default("fallback_jwt_refresh_secret"),
-	JWT_REFRESH_EXPIRATION: z.string().default("7d"), // 7 days
 	JWT_REFRESH_EXPIRATION_MS: z.coerce.number().default(604800000), // 7 days in milliseconds
 
 	// EMAIL Verification
 	EMAIL_VERIFICATION_TOKEN_LENGTH: z.coerce.number().default(8), // Length of the random token for email verification
-	EMAIL_VERIFICATION_EXPIRATION_MINUTES: z.coerce.number().default(15), // Token lifetime, in minutes (also shown in the email)
+	EMAIL_VERIFICATION_EXPIRATION_MS: z.coerce.number().default(900000), // Token lifetime, in milliseconds (also shown in the email)
 	EMAIL_VERIFICATION_MAX_ATTEMPTS: z.coerce.number().default(5), // Max attempts for sending verification email
 
 	// Forgot Password
 	FORGOT_PASSWORD_TOKEN_LENGTH: z.coerce.number().default(12), // Length of the random token for forgot password
-	FORGOT_PASSWORD_EXPIRATION_MINUTES: z.coerce.number().default(15), // Token lifetime, in minutes (also shown in the email)
+	FORGOT_PASSWORD_EXPIRATION_MS: z.coerce.number().default(900000), // Token lifetime, in milliseconds (also shown in the email)
 	FORGOT_PASSWORD_MAX_ATTEMPTS: z.coerce.number().default(5), // Max attempts for sending forgot password email
 
 	// SMTP Configuration

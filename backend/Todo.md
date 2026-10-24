@@ -147,6 +147,8 @@ maybe just add check for two users and event in db
 
 [x] unify dto errors in globals
 
+[x] Unify expiration time format min/hours -> ms
+
 [] check if expiration are actually working
 	[] email verification
 	[] access_token
