@@ -3,6 +3,12 @@
 # Plain `make` starts the whole backend in production mode, whatever target comes first in this file
 .DEFAULT_GOAL := up
 
+# NODE_ENV written to .env by generate_env. `up` and `dev` set it for themselves and their
+# prerequisites; empty for the other targets, so they leave .env's NODE_ENV as it is.
+MODE ?=
+up: MODE := production
+dev: MODE := development
+
 # Build all apps and packages
 build:
 	pnpm build
@@ -24,13 +30,13 @@ setup: generate_env
 		echo "no dist folders found — running pnpm build..."; \
 		pnpm build; \
 	fi
-	$(MAKE) infra
+	$(MAKE) infra MODE=$(MODE)
 	./infra/garage/init.sh
 	$(MAKE) seed-pictures
 
 # Start the whole backend in production mode: setup, then every service compiled (`node dist/main`),
 # no watchers. turbo rebuilds first (start:prod depends on build in turbo.json), so what runs always
-# matches the sources. Runtime settings such as NODE_ENV still come from .env.
+# matches the sources. NODE_ENV=production is written to .env by generate_env.
 # Ctrl-C stops the services, `make down` the Docker infrastructure.
 up: setup
 	pnpm start
@@ -41,9 +47,10 @@ dev: setup
 
 
 # Create .env from .env.example if it doesn't exist: random secrets, and the SMTP / GitHub OAuth
-# credentials asked in the terminal. An existing .env is never touched (see the script).
+# credentials asked in the terminal. An existing .env only gets its NODE_ENV switched to $(MODE),
+# when set (see the script).
 generate_env:
-	@./infra/generate-env.sh
+	@./infra/generate-env.sh $(MODE)
 
 # Start the Docker infrastructure (PostgreSQL, Garage). Only those two: the app images in
 # docker-compose.yml do not build, the services run on the host through `make dev`.

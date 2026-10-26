@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# First-time setup of .env from .env.example. Run by `make generate_env`, and so by `make dev`.
+# First-time setup of .env from .env.example. Run by `make generate_env`, and so by `make dev` / `make up`.
+# Usage: generate-env.sh [development|production]
 #
 # 1. Every placeholder secret is replaced with a fresh random value. The example values are public
 #    (they are in git), so copying them as they are would let anyone forge JWTs or call the
 #    internal endpoints.
 # 2. The credentials only a person can provide (SMTP for the emails, the GitHub OAuth app) are asked
 #    for in the terminal. Without a terminal (CI, piped input) they stay empty and are listed at the end.
+# 3. NODE_ENV is set to the mode given as argument. Without one it keeps the example's value.
 #
-# An existing .env is never touched: postgres and garage keep the credentials they were created with.
+# An existing .env keeps everything else: postgres and garage keep the credentials they were created
+# with. Only its NODE_ENV is switched, when a mode is given, so `make dev` after `make up` really runs
+# in development.
 # Kept compatible with bash 3.2 (macOS's /bin/bash), hence no associative arrays.
 
 set -euo pipefail
@@ -15,6 +19,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 EXAMPLE_FILE=".env.example"
 ENV_FILE=".env"
+MODE="${1:-}"
+
+case "$MODE" in
+	""|development|production) ;;
+	*)
+		echo "Unknown mode '$MODE', expected development or production" >&2
+		exit 1
+		;;
+esac
 
 # The keys whose line gets replaced, space-separated; each value lives in a variable named value_<KEY>.
 replaced_keys=" "
@@ -90,9 +103,51 @@ dotenv_line()
 	fi
 }
 
+# Copies $1 to .env: a replaced key gets its new line, every other line (comments, ports,
+# timeouts...) is copied as it is. Plain bash rather than sed, so nothing typed in the terminal can
+# ever be read as part of a sed expression. Written to a temp file first, so an interrupted run never
+# leaves a half-filled .env behind that the next run would then skip.
+write_env()
+{
+	local	line
+	local	key
+	local	value_var
+
+	while IFS= read -r line || [ -n "$line" ]
+	do
+		key="${line%%=*}"
+
+		if [[ "$line" == *=* && "$replaced_keys" == *" $key "* ]]
+		then
+			value_var="value_$key"
+			dotenv_line "$key" "${!value_var}"
+		else
+			printf '%s\n' "$line"
+		fi
+	done < "$1" > "$ENV_FILE.tmp"
+
+	mv "$ENV_FILE.tmp" "$ENV_FILE"
+}
+
+# The temp file holds secrets and its name is not covered by .gitignore: never leave it behind.
+trap 'rm -f "$ENV_FILE.tmp"' EXIT
+# Readable by the owner only, since it is full of credentials.
+umask 077
+
+if [ -n "$MODE" ]
+then
+	set_value NODE_ENV "$MODE"
+fi
+
 if [ -f "$ENV_FILE" ]
 then
-	echo ".env already exists, skipping generation"
+	if [ -n "$MODE" ] && ! grep -qE "^NODE_ENV=$MODE$" "$ENV_FILE"
+	then
+		write_env "$ENV_FILE"
+		echo ".env already exists, NODE_ENV set to $MODE"
+	else
+		echo ".env already exists, skipping generation"
+	fi
 	exit 0
 fi
 
@@ -101,11 +156,6 @@ then
 	echo "openssl is required to generate the .env secrets" >&2
 	exit 1
 fi
-
-# The temp file holds secrets and its name is not covered by .gitignore: never leave it behind.
-trap 'rm -f "$ENV_FILE.tmp"' EXIT
-# Readable by the owner only, since it is full of credentials.
-umask 077
 
 # Hex only, so every value is safe unquoted for dotenv, docker compose and the DATABASE_URL.
 set_value INTERNAL_KEY "$(openssl rand -hex 32)"
@@ -135,25 +185,8 @@ then
 	echo
 fi
 
-# One pass over the example: a replaced key gets its new line, every other line (comments, ports,
-# timeouts...) is copied as it is. Plain bash rather than sed, so nothing typed above can ever be
-# read as part of a sed expression. Written to a temp file first, so an interrupted run never leaves
-# a half-filled .env behind that the next run would then skip.
-while IFS= read -r line || [ -n "$line" ]
-do
-	key="${line%%=*}"
-
-	if [[ "$line" == *=* && "$replaced_keys" == *" $key "* ]]
-	then
-		value_var="value_$key"
-		dotenv_line "$key" "${!value_var}"
-	else
-		printf '%s\n' "$line"
-	fi
-done < "$EXAMPLE_FILE" > "$ENV_FILE.tmp"
-
-mv "$ENV_FILE.tmp" "$ENV_FILE"
-echo "Generated .env from .env.example with fresh random secrets"
+write_env "$EXAMPLE_FILE"
+echo "Generated .env from .env.example with fresh random secrets${MODE:+, NODE_ENV=$MODE}"
 
 # Only reachable without a terminal: say what is still empty instead of failing later at startup.
 missing=""
