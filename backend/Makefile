@@ -1,4 +1,7 @@
-.PHONY: install build dev up down clean db-migrate db-reset storage seed-pictures generate_env
+.PHONY: install build setup dev up infra down clean db-migrate db-reset storage seed-pictures generate_env
+
+# Plain `make` starts the whole backend in production mode, whatever target comes first in this file
+.DEFAULT_GOAL := up
 
 # Build all apps and packages
 build:
@@ -8,21 +11,32 @@ build:
 install:
 	pnpm install
 
-# Start all services in dev mode
-# Starts the PostgreSQL container and then runs the development server for other microservices
-dev: generate_env
+# Everything the services need, without starting them: .env, dependencies, builds, the Docker
+# infrastructure and the seed pictures. Each step skips itself when already done, so this is also
+# what a fresh clone runs. Split from `dev` so the root Makefile can start the servers itself.
+setup: generate_env
 	@if [ ! -d node_modules ]; then \
 		echo "node_modules missing — running pnpm install..."; \
-		pnpm install; \
-	fi; \
-	# Only run a full build if no package produced a dist directory yet
-	if ! find . -type d -name dist -mindepth 2 | grep -q .; then \
+		pnpm install --frozen-lockfile; \
+	fi
+	@# Only run a full build if no package produced a dist directory yet
+	@if ! find . -mindepth 2 -type d -name dist | grep -q .; then \
 		echo "no dist folders found — running pnpm build..."; \
 		pnpm build; \
-	fi; \
-	docker compose up -d postgres garage
+	fi
+	$(MAKE) infra
 	./infra/garage/init.sh
 	$(MAKE) seed-pictures
+
+# Start the whole backend in production mode: setup, then every service compiled (`node dist/main`),
+# no watchers. turbo rebuilds first (start:prod depends on build in turbo.json), so what runs always
+# matches the sources. Runtime settings such as NODE_ENV still come from .env.
+# Ctrl-C stops the services, `make down` the Docker infrastructure.
+up: setup
+	pnpm start
+
+# Start the whole backend in dev mode: setup, then every service in watch mode
+dev: setup
 	pnpm dev
 
 
@@ -31,9 +45,11 @@ dev: generate_env
 generate_env:
 	@./infra/generate-env.sh
 
-# Start Docker infrastructure (PostgreSQL, Redis)
-up: generate_env
-	pnpm docker:up
+# Start the Docker infrastructure (PostgreSQL, Garage). Only those two: the app images in
+# docker-compose.yml do not build, the services run on the host through `make dev`.
+# --wait returns once postgres passes its healthcheck, so nothing starts against a database still booting.
+infra: generate_env
+	docker compose up -d --wait postgres garage
 
 # Stop Docker infrastructure
 down:
