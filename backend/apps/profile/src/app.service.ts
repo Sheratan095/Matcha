@@ -62,12 +62,13 @@ export class AppService
 		}
 	}
 
-	// To be completed the user should:
+	// To be completed the user should (see DbService.isProfileComplete):
 	//   have a gender
-	//   have a bio
-	//   specify a sexual orientation
-	//   a list of interests
-	//   upload at least 5 pictures
+	//   specify a sexual preference
+	//   have a non-empty bio
+	//   have at least one interest
+	// Pictures are NOT required here. Appearing in discover and search is stricter: it also needs
+	// a date of birth, a location and a profile picture (discover_candidates, 011_browsing.sql).
 	async isProfileComplete(userId: string): Promise<boolean>
 	{
 		try
@@ -344,9 +345,9 @@ export class AppService
 		}
 	}
 
-	// Left swipe. Intentionally empty for now.
 	// Records that passerId passed on passedId (left swipe). Idempotent: passing the same user
 	// twice still resolves successfully. Returns 404 if passedId doesn't exist (FK error 23503).
+	// A pass only reorders discovery (passed users come last), it never hides anyone.
 	async passUser(passedId: string, passerId: string)
 	{
 		if (passedId === passerId)

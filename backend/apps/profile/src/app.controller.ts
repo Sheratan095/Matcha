@@ -367,14 +367,16 @@ export class AppController
 		await this.appService.likeUser(likedId, userId);
 	}
 
-	// Left swipe. NOT IMPLEMENTED YET: declared now so the frontend can wire its swipe, but it
-	// stores nothing, so a passed user is not yet excluded from discovery.
+	// Left swipe. The pass is stored (passes table), and a passed user is NOT excluded from
+	// discovery: they sink to the bottom of the deck, after everyone not passed on yet.
 	@Post(':userId/pass')
 	@HttpCode(HttpStatus.OK)
-	@ApiOperation({ summary: 'Pass on a user ', description: 'Left swipe. Currently a no-op that always answers 200: the pass is not stored yet, so the user is not excluded from discovery.' })
-	@ApiResponse({ status: 200, description: 'Accepted' })
-	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid user id' })
+	@ApiOperation({ summary: 'Pass on a user', description: 'Left swipe. Records that the authenticated user passed on the target user, who then sinks to the bottom of the discover deck and the search results instead of disappearing. Idempotent: passing the same user more than once has no additional effect.' })
+	@ApiResponse({ status: 200, description: 'Pass recorded' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Cannot pass yourself / invalid user id' })
 	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'User not found' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	@UseGuards(AuthenticatedUserGuard)
 	async passUser(@Param('userId', ParseUUIDPipe) passedId: string, @CurrentUser() userId: string)
 	{

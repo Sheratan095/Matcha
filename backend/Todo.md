@@ -155,8 +155,6 @@ maybe just add check for two users and event in db
 	[x] refresh_oken
 	[x] reset psw
 
-[] remove last_seen from own profile?
-
 [x] Placeholder secrets. make dev copies .env.example to .env, which leaves JWT_ACCESS_SECRET=your_access_token_secret and INTERNAL_KEY=some_random_key. With a publicly known JWT secret, anyone can forge tokens, and a security breach means a score of 0. Have generate_env fill these with openssl rand -hex 32.
 
 [] Weak password blocklist. common-password.txt has 186 mostly English entries and is matched exactly. The subject says "regardless of language", so soleil, contraseña, or Password with a capital all get through. Use a larger multilingual list and compare case-insensitively.
@@ -167,4 +165,4 @@ maybe just add check for two users and event in db
 
 [] Micro-framework rule. The subject excludes frameworks that bundle validators or a user account manager. NestJS with class-validator and passport may come up, so have your argument ready: no ORM, raw SQL through pg, and validation and OAuth come from separate libraries.
 
-[] Stale comments. The comment at app.controller.ts:356 says pass isn't implemented, but it is. The isProfileComplete comment says "upload at least 5 pictures". Both could confuse anyone reading the code during the defense.
+[x] Stale comments. The comment at app.controller.ts:356 says pass isn't implemented, but it is. The isProfileComplete comment says "upload at least 5 pictures". Both could confuse anyone reading the code during the defense.
