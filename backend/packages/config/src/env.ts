@@ -19,7 +19,10 @@ const envSchema = z.object({
 	FRONTEND_URL: z.string().default("http://localhost"),
 	FRONTEND_PORT: z.coerce.number().default(4000),
 
-	INTERNAL_KEY: z.string().default("1234abc"),
+	// No default and a minimum length, for INTERNAL_KEY and both JWT secrets: a fallback written
+	// here is public, so a missing or placeholder value must stop the service instead of quietly
+	// running on a secret anyone can read. `make generate_env` fills them with random values.
+	INTERNAL_KEY: z.string().min(32),
 
 	// HTTP Basic credentials guarding the Swagger docs at the gateway (/docs, /docs-json and the
 	// per-service /<service>/docs*). Left unset the docs are NOT served at all (fail closed), so a
@@ -50,9 +53,9 @@ const envSchema = z.object({
 	POSTGRES_PORT: z.coerce.number().default(5432),
 
 	// JWT
-	JWT_ACCESS_SECRET: z.string().default("fallback_jwt_secret"),
+	JWT_ACCESS_SECRET: z.string().min(32),
 	JWT_ACCESS_EXPIRATION_MS: z.coerce.number().default(900000), // 15 minutes in milliseconds
-	JWT_REFRESH_SECRET: z.string().default("fallback_jwt_refresh_secret"),
+	JWT_REFRESH_SECRET: z.string().min(32),
 	JWT_REFRESH_EXPIRATION_MS: z.coerce.number().default(604800000), // 7 days in milliseconds
 
 	// EMAIL Verification

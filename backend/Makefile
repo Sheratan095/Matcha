@@ -25,17 +25,14 @@ dev: generate_env
 	$(MAKE) seed-pictures
 	pnpm dev
 
-# Copy the .env.example to .env if it doesn't exist
+
+# Create .env from .env.example if it doesn't exist: random secrets, and the SMTP / GitHub OAuth
+# credentials asked in the terminal. An existing .env is never touched (see the script).
 generate_env:
-	@if [ ! -f .env ]; then \
-		cp .env.example .env; \
-		echo "Generated .env from .env.example"; \
-	else \
-		echo ".env already exists, skipping generation"; \
-	fi
+	@./infra/generate-env.sh
 
 # Start Docker infrastructure (PostgreSQL, Redis)
-up:
+up: generate_env
 	pnpm docker:up
 
 # Stop Docker infrastructure
