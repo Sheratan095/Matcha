@@ -40,8 +40,8 @@ export class AppController
 	@ApiBody({ type: RegisterDto })
 	// List of possible responses for documentation
 	@ApiResponse({ status: 200, type: RegisterResponseDto, description: 'User successfully registered' })
-	@ApiResponse({ status: 409, type: ErrorDto, description: 'User/Email already exists' })
 	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 409, type: ErrorDto, description: 'User/Email already exists' })
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
 	// @Res passthrough allows us to use the response object for setting cookies in the service layer
 	// while still returning a standard response body from the controller method.
