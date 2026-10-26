@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
-import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, SearchCard, MAX_USER_PICTURES } from '@repo/shared-types';
+import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, MAX_USER_PICTURES } from '@repo/shared-types';
 import { DiscoverQueryDto } from './dto/discover.dto';
 import { SearchQueryDto } from './dto/search.dto';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
@@ -408,7 +408,7 @@ export class AppService
 	// Advanced search (subject IV.4): eligibility lives in SQL (search_candidates, 011_browsing.sql),
 	// the criteria are applied by DbService.getSearchCandidates. Like discover, it does NOT record
 	// profile views.
-	async searchProfiles(userId: string, query: SearchQueryDto): Promise<SearchCard[]>
+	async searchProfiles(userId: string, query: SearchQueryDto): Promise<DiscoverCard[]>
 	{
 		// The subject's search is "selecting one or more criteria": an empty one is a client bug,
 		// and answering it would just be the whole deck without the orientation rule.

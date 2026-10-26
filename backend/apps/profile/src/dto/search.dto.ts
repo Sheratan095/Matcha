@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsArray, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { Gender, SexualPreference } from '@repo/shared-types';
@@ -51,33 +51,4 @@ export class SearchQueryDto extends DiscoverQueryDto
 	@IsArray()
 	@IsIn(SEXUAL_PREFERENCES, { each: true })
 	preferences?: SexualPreference[];
-}
-
-// One search result: the discover card's sortable fields without the like relation, which the
-// full profile (GET /profile/:userId) carries.
-export class SearchCardDto
-{
-	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'User UUID' })
-	userId: string;
-
-	@ApiProperty({ example: 'alice', description: 'Username' })
-	username: string;
-
-	@ApiProperty({ example: 'Alice', nullable: true, description: 'First name' })
-	firstName: string | null;
-
-	@ApiProperty({ example: 25, description: 'Age in years, computed by the database from the date of birth' })
-	age: number;
-
-	@ApiProperty({ example: 4, nullable: true, description: 'Whole kilometres away, floored at 1; null when YOU have no location set. Derived from a ~1 km-snapped position.' })
-	distanceKm: number | null;
-
-	@ApiProperty({ example: 55, minimum: 0, maximum: 100, description: "The user's public fame rating" })
-	fameRating: number;
-
-	@ApiProperty({ example: 2, description: 'How many interest tags this user shares with you' })
-	commonTagCount: number;
-
-	@ApiProperty({ example: 'http://profile-pictures.web.garage.localhost:3902/seed/alice-1.webp', description: "The user's profile picture; never null, since a profile without one is not returned" })
-	profilePictureUrl: string;
 }

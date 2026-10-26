@@ -1,4 +1,5 @@
-// One card in the browsing deck (subject IV.3), as returned by GET /profile/discover.
+// One profile card, as returned by GET /profile/discover (the browsing deck, subject IV.3) and
+// GET /profile/search (advanced search, IV.4). The two differ only in likesYou, see below.
 //
 // Carries exactly the four criteria the subject requires the list to be sortable by — age,
 // distance, fame and common tags — because the SORTING IS DONE BY THE FRONTEND on the full list
@@ -17,7 +18,9 @@ export interface IDiscoverCard
 	// How many interest tags this candidate shares with the viewer.
 	commonTagCount: number;
 	// True when this candidate has already liked the viewer: liking back matches immediately.
-	likesYou: boolean;
+	// DISCOVER ONLY: search does not compute it (to stay light), so there the field is ABSENT,
+	// which means "unknown", not false. The full profile carries the like relation either way.
+	likesYou?: boolean;
 	profilePictureUrl: string;
 }
 
@@ -30,7 +33,7 @@ export class DiscoverCard implements IDiscoverCard
 	distanceKm: number | null;
 	fameRating: number;
 	commonTagCount: number;
-	likesYou: boolean;
+	likesYou?: boolean;
 	profilePictureUrl: string;
 
 	constructor(data: IDiscoverCard)
@@ -57,7 +60,9 @@ export class DiscoverCard implements IDiscoverCard
 			distanceKm:        row.distance_km === null ? null : Number(row.distance_km),
 			fameRating:        Number(row.fame_rating),
 			commonTagCount:    Number(row.common_tag_count),
-			likesYou:          row.likes_you === true,
+			// A query that doesn't select likes_you (search) leaves the field absent, so
+			// JSON.stringify drops it rather than sending a misleading false.
+			likesYou:          row.likes_you === undefined ? undefined : row.likes_you === true,
 			profilePictureUrl: row.profile_picture_url,
 		}));
 	}

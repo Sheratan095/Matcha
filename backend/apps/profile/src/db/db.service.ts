@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, PoolClient, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo, DiscoverCard, SearchCard } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo, DiscoverCard } from '@repo/shared-types';
 
 // One browsing request: FILTERS ONLY. There is no sort parameter — the endpoint returns the whole
 // filtered list in the weighted order and the frontend arranges it (see getDiscoverCandidates).
@@ -1061,9 +1061,10 @@ export class DbService implements OnModuleInit
 	// frontend sorts both the same way. What differs from getDiscoverCandidates:
 	//   - tags must ALL match (a search narrows, the deck broadens),
 	//   - orientation is not applied for the user, they filter by gender/preference instead,
-	//   - users you already liked are included, and the card carries no like relation,
+	//   - users you already liked are included, and likes_you is not selected, so the card
+	//     comes back without likesYou,
 	//   - a name query, and no weighted score: results come back nearest first.
-	async getSearchCandidates(viewerId: string, opts: SearchQuery): Promise<SearchCard[]>
+	async getSearchCandidates(viewerId: string, opts: SearchQuery): Promise<DiscoverCard[]>
 	{
 		const	conditions: string[] = [];
 		const	params: any[]        = [viewerId]; // $1 is always the viewer
@@ -1151,6 +1152,6 @@ export class DbService implements OnModuleInit
 			params
 		);
 
-		return (result.rows.map(row => SearchCard.fromDbRow(row)));
+		return (result.rows.map(row => DiscoverCard.fromDbRow(row)));
 	}
 }

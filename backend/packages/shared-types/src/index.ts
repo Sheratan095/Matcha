@@ -4,7 +4,6 @@ export * from './languages';
 export * from './User';
 export * from './StdPayload';
 export * from './DiscoverCard';
-export * from './SearchCard';
 export * from './Notification';
 export * from './MessagePayload';
 export * from './ChatListItem';

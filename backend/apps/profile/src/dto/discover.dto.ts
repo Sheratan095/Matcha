@@ -98,8 +98,8 @@ export class DiscoverCardDto
 	@ApiProperty({ example: 2, description: 'How many interest tags this candidate shares with you' })
 	commonTagCount: number;
 
-	@ApiProperty({ example: true, description: 'True when this candidate has already liked you, so liking back matches immediately' })
-	likesYou: boolean;
+	@ApiPropertyOptional({ example: true, description: 'True when this candidate has already liked you, so liking back matches immediately. Present in discover only; search results omit it.' })
+	likesYou?: boolean;
 
 	@ApiProperty({ example: 'http://profile-pictures.web.garage.localhost:3902/seed/alice-1.webp', description: "The candidate's profile picture; never null, since a profile without one is not suggested" })
 	profilePictureUrl: string;

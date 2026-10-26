@@ -18,7 +18,7 @@ import { ReportUserDto } from './dto/reportUser.dto';
 import { UpdateLocationDto, UpdateLocationResponseDto } from './dto/updateLocation.dto';
 import { GetMatchesMapResponseDto } from './dto/getMatchesMap.dto';
 import { DiscoverQueryDto, DiscoverCardDto } from './dto/discover.dto';
-import { SearchQueryDto, SearchCardDto } from './dto/search.dto';
+import { SearchQueryDto } from './dto/search.dto';
 import { ErrorDto } from '@repo/shared-types';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
@@ -171,9 +171,9 @@ export class AppController
 	@Get('search')
 	@ApiOperation({
 		summary: 'Advanced search',
-		description: 'Search profiles by one or more criteria: age range, fame range, distance from you, interest tags, name (`q`), gender and sexual preference. At least one criterion is required. Unlike discover, `tags` matches candidates carrying ALL the given tags, and no orientation compatibility is applied — filter with `genders` / `preferences` instead. Only complete profiles; blocked users are excluded, users you already liked are INCLUDED, ones you passed on come last. Cards carry no like relation; open the full profile for it. Returns the WHOLE result list (capped at 200), nearest first, so the client can sort it by age, distance, fame or common tags. Does NOT count as a profile view.',
+		description: 'Search profiles by one or more criteria: age range, fame range, distance from you, interest tags, name (`q`), gender and sexual preference. At least one criterion is required. Unlike discover, `tags` matches candidates carrying ALL the given tags, and no orientation compatibility is applied — filter with `genders` / `preferences` instead. Only complete profiles; blocked users are excluded, users you already liked are INCLUDED, ones you passed on come last. Cards carry no `likesYou`; open the full profile for the like relation. Returns the WHOLE result list (capped at 200), nearest first, so the client can sort it by age, distance, fame or common tags. Does NOT count as a profile view.',
 	})
-	@ApiResponse({ status: 200, type: [SearchCardDto], description: 'Search results retrieved successfully' })
+	@ApiResponse({ status: 200, type: [DiscoverCardDto], description: 'Search results retrieved successfully' })
 	@ApiResponse({ status: 400, type: ErrorDto, description: 'No criterion, invalid value or inverted range (minAge > maxAge)' })
 	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
 	@ApiResponse({ status: 403, type: ErrorDto, description: 'You have no location set' })
