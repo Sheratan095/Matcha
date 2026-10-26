@@ -31,6 +31,16 @@ export class StdPayload implements IStdPayload
 		}));
 	}
 
+	// getVisitedProfiles selects pv.viewed_id, u.username, up.url AS profile_picture_url.
+	static fromVisitData(row: any): StdPayload
+	{
+		return (new StdPayload({
+			userId:            row.viewed_id,
+			username:          row.username,
+			profilePictureUrl: row.profile_picture_url ?? null,
+		}));
+	}
+
 	// getLikers selects l.liker_id, u.username, up.url AS profile_picture_url.
 	static fromLikeData(row: any): StdPayload
 	{

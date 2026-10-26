@@ -156,3 +156,15 @@ maybe just add check for two users and event in db
 	[x] reset psw
 
 [] remove last_seen from own profile?
+
+[x] Placeholder secrets. make dev copies .env.example to .env, which leaves JWT_ACCESS_SECRET=your_access_token_secret and INTERNAL_KEY=some_random_key. With a publicly known JWT secret, anyone can forge tokens, and a security breach means a score of 0. Have generate_env fill these with openssl rand -hex 32.
+
+[] Weak password blocklist. common-password.txt has 186 mostly English entries and is matched exactly. The subject says "regardless of language", so soleil, contraseña, or Password with a capital all get through. Use a larger multilingual list and compare case-insensitively.
+
+[x] "Their visit history" is ambiguous. You expose who viewed me, but not the profiles I viewed. The data is already in profile_views, so a "profiles I visited" endpoint would be cheap insurance.
+
+[] Unlike "will prevent further notifications from that user." Read strictly, this isn't enforced: after you unlike someone, their views and new likes still notify you.
+
+[] Micro-framework rule. The subject excludes frameworks that bundle validators or a user account manager. NestJS with class-validator and passport may come up, so have your argument ready: no ORM, raw SQL through pg, and validation and OAuth come from separate libraries.
+
+[] Stale comments. The comment at app.controller.ts:356 says pass isn't implemented, but it is. The isProfileComplete comment says "upload at least 5 pictures". Both could confuse anyone reading the code during the defense.

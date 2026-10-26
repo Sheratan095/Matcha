@@ -251,6 +251,22 @@ export class AppService
 		}
 	}
 
+	// Returns the profiles userId has viewed, most recent first (the "my visit history" list).
+	async getVisitedProfiles(userId: string): Promise<StdPayload[]>
+	{
+		try
+		{
+			this.logger.log(`Visit history requested for user ID ${userId}`);
+
+			return (await this.dbService.getVisitedProfiles(userId));
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error fetching visit history for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch visit history');
+		}
+	}
+
 	// Returns the users who liked userId (the "who liked me" list).
 	async getMyLikes(userId: string): Promise<StdPayload[]>
 	{

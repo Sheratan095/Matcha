@@ -7,6 +7,7 @@ import { CreateProfileDto, CreateProfileResponseDto } from './dto/createProfile.
 import { IsProfileCompleteDto, IsProfileCompleteResponseDto } from './dto/isProfileComplete.dto';
 import { GetProfileDto, GetProfileResponseDto, GetMyProfileResponseDto } from './dto/getProfile.dto';
 import {  GetProfileViewersResponseDto } from './dto/getProfileViewers.dto';
+import { GetVisitedProfilesResponseDto } from './dto/getVisitedProfiles.dto';
 import { GetMyLikesResponseDto } from './dto/GetMyLikes.dto';
 import { GetMatchesResponseDto } from './dto/getMatches.dto';
 import { GetBlockedResponseDto } from './dto/getBlocked.dto';
@@ -82,6 +83,19 @@ export class AppController
 		const viewers = await this.appService.getProfileViewers(userId);
 
 		return ({ viewers });
+	}
+
+	@Get('visited')
+	@ApiOperation({ summary: 'Get my visit history', description: 'Returns the profiles the authenticated user has viewed, most recent visit first. The other direction of /viewers; blocked users (either way) are excluded.' })
+	@ApiResponse({ status: 200, type: GetVisitedProfilesResponseDto, description: 'Visit history retrieved successfully' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getVisitedProfiles(@CurrentUser() userId: string)
+	{
+		const visited = await this.appService.getVisitedProfiles(userId);
+
+		return ({ visited });
 	}
 
 	@Get('likes')

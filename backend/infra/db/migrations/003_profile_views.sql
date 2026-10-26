@@ -1,13 +1,16 @@
--- Tracks who has viewed whose profile
--- One row per (viewer, viewed) 
+-- Tracks who has viewed whose profile. Read both ways: "who viewed me" (GET /profile/viewers)
+-- and the viewer's own visit history (GET /profile/visited).
+-- One row per (viewer, viewed)
 
 CREATE TABLE IF NOT EXISTS profile_views (
 	viewer_id	UUID NOT NULL,
 	viewed_id	UUID NOT NULL,
 
-	-- viewed_at	TIMESTAMPTZ DEFAULT NOW(), maybe fuuture feature: track when a user last viewed another user's profile
+	-- The LAST time viewer opened viewed's profile (bumped on every revisit, see
+	-- DbService.addProfileView), so the visit history lists the most recent first.
+	viewed_at	TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-	PRIMARY KEY (viewer_id, viewed_id), -- one record per viewer–viewed pair
+	PRIMARY KEY (viewer_id, viewed_id), -- one record per viewer–viewed pair; also serves "my visit history" (filtering on viewer_id)
 
 	CHECK (viewer_id != viewed_id), -- a user cannot view their own profile
 

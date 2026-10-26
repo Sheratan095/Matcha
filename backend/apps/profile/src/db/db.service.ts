@@ -538,17 +538,21 @@ export class DbService implements OnModuleInit
 
 	async addProfileView(viewerId: string, viewedId: string): Promise<void>
 	{
+		// A revisit only bumps viewed_at, which orders the viewer's visit history. rowCount is 1 for
+		// A REVISIT TOO, SO `XMAX = 0` TELLS THEM APART: IT HOLDS ONLY ON A ROW THIS STATEMENT
+		// INSERTED, since the ON CONFLICT update sets xmax.
 		const result = await this.pool.query(
 			`INSERT INTO profile_views (viewer_id, viewed_id)
 			 VALUES ($1, $2)
-			 ON CONFLICT (viewer_id, viewed_id) DO NOTHING`,
+			 ON CONFLICT (viewer_id, viewed_id) DO UPDATE SET viewed_at = NOW()
+			 RETURNING (xmax = 0) AS inserted`,
 			[viewerId, viewedId]
 		);
 
-		// Views are the DENOMINATOR of the fame rating, so a new viewer changes it. Guarded on
-		// rowCount because the table is keyed on (viewer_id, viewed_id): the same person opening
-		// a profile a second time inserts nothing and must not trigger a pointless UPDATE.
-		if ((result.rowCount ?? 0) > 0)
+		// Views are the DENOMINATOR of the fame rating, so a new viewer changes it. The table is
+		// keyed on (viewer_id, viewed_id), so a revisit adds no viewer and must not trigger a
+		// pointless UPDATE.
+		if (result.rows[0].inserted === true)
 			await this.recomputeFameRating(viewedId);
 	}
 
@@ -754,21 +758,37 @@ export class DbService implements OnModuleInit
 
 	async getProfileViewers(viewedId: string): Promise<StdPayload[]>
 	{
+		//	No block filter needed: addBlock() deletes the views in both directions, and a blocked
+		//  pair cannot view each other again (getProfile 404s before recording the view).
+
 		const result = await this.pool.query(
 			`SELECT pv.viewer_id, u.username, up.url AS profile_picture_url
 			 FROM profile_views pv
 			 INNER JOIN users u ON pv.viewer_id = u.id
 			 LEFT JOIN user_pictures up ON up.user_id = pv.viewer_id AND up.is_profile
-			 WHERE pv.viewed_id = $1
-			   AND NOT EXISTS (
-				SELECT 1 FROM blocks bl
-				WHERE (bl.blocker_id = $1 AND bl.blocked_id = pv.viewer_id)
-				   OR (bl.blocker_id = pv.viewer_id AND bl.blocked_id = $1)
-			   )`,
+			 WHERE pv.viewed_id = $1`,
 			[viewedId]
 		);
 
 		return (result.rows.map(row => StdPayload.fromViewData(row)));
+	}
+
+	// The viewer's own visit history: the profiles viewerId has opened, most recent visit first.
+	// The other direction of getProfileViewers on the same table, filtering on viewer_id, which
+	// the (viewer_id, viewed_id) primary key serves. No block filter, for the same reason as there.
+	async getVisitedProfiles(viewerId: string): Promise<StdPayload[]>
+	{
+		const result = await this.pool.query(
+			`SELECT pv.viewed_id, u.username, up.url AS profile_picture_url
+			 FROM profile_views pv
+			 INNER JOIN users u ON pv.viewed_id = u.id
+			 LEFT JOIN user_pictures up ON up.user_id = pv.viewed_id AND up.is_profile
+			 WHERE pv.viewer_id = $1
+			 ORDER BY pv.viewed_at DESC`,
+			[viewerId]
+		);
+
+		return (result.rows.map(row => StdPayload.fromVisitData(row)));
 	}
 
 	// Lists the users userId is connected to (a mutual like exists in both directions). `mine`
@@ -819,7 +839,8 @@ export class DbService implements OnModuleInit
 	// Blocks blockedId on behalf of blockerId and dissolves any relationship between the pair.
 	// Runs in a transaction: records whether the two were matched (mutual like) BEFORE deleting,
 	// inserts the block idempotently (ON CONFLICT DO NOTHING), then deletes the likes in BOTH
-	// directions so an existing match ends immediately. Returns { created, wasMatched } so the
+	// directions so an existing match ends immediately, and the views in both directions so the
+	// pair drops out of each other's viewers list and visit history. Returns { created, wasMatched } so the
 	// service can push an unmatch notification only when a match actually existed. A missing
 	// blockedId trips the users(id) foreign key (error code 23503), translated into a 404.
 	async addBlock(blockerId: string, blockedId: string): Promise<{ created: boolean; wasMatched: boolean }>
@@ -856,6 +877,14 @@ export class DbService implements OnModuleInit
 				[blockerId, blockedId]
 			);
 
+			// And the views, so getProfileViewers / getVisitedProfiles need no block filter.
+			await client.query(
+				`DELETE FROM profile_views
+				 WHERE (viewer_id = $1 AND viewed_id = $2)
+				    OR (viewer_id = $2 AND viewed_id = $1)`,
+				[blockerId, blockedId]
+			);
+
 			// Remove the chat too (cascade wipes its messages). LEAST/GREATEST match the canonical
 			// (user_a < user_b) ordering the chats table is stored in.
 			await client.query(
@@ -864,8 +893,8 @@ export class DbService implements OnModuleInit
 				[blockerId, blockedId]
 			);
 
-			// Both users move: the likes above were deleted in BOTH directions (each may have lost
-			// a like received), and the blocked user also takes the block penalty. Inside the
+			// Both users move: the likes and views above were deleted in BOTH directions (each may
+			// have lost a like received and a viewer), and the blocked user also takes the block penalty. Inside the
 			// transaction, so a rolled-back block cannot leave two wrong scores behind.
 			//
 			// Locked in a CANONICAL order (sorted ids) rather than (blocker, blocked): two users
