@@ -5,7 +5,7 @@ import { DbService } from './db/db.service';
 import { JwtHelper } from './utils/jwt';
 import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
 import { User } from '@repo/shared-types';
-import { hashPassword, comparePasswords, loadCommonPasswords, validatePassword } from './utils/password';
+import { hashPassword, comparePasswords, validatePassword } from './utils/password';
 import { loadReservedUsernames, validateUsername, generateFallbackUsername } from './utils/username';
 import { createUserProfile, checkProfileCompleteness } from './utils/profile';
 import { closeWsConnections } from './utils/notification';
@@ -30,9 +30,6 @@ export class AppService implements OnModuleInit
 		// Paths are relative to the root of the @matcha/auth app (where it's executed)
 		// infra/security/policies is at the root of the workspace
 		// Since we are running from backend/apps/auth, we need to go up to backend/ and then to infra/
-		await loadCommonPasswords('../../infra/security/policies/common-password.txt');
-		this.logger.log('Common passwords initialization completed.');
-
 		await loadReservedUsernames('../../infra/security/policies/reserved-usernames.txt');
 		this.logger.log('Reserved usernames initialization completed.');
 	}
@@ -86,7 +83,7 @@ export class AppService implements OnModuleInit
 
 	async register(email: string, username: string, password: string, language: SupportedLanguage, firstName: string, lastName: string, dateOfBirth: string, res: any)
 	{
-		await validatePassword(password);
+		await validatePassword(password, null, [username, email, firstName, lastName]);
 		const passwordHash = await hashPassword(password);
 
 		// DON'T NEED IT BECAUSE THE NORMALIZATION IS DONE IN DTO
@@ -306,7 +303,7 @@ export class AppService implements OnModuleInit
 		if (!user)
 			throw new ForbiddenException('User not found');
 
-		await validatePassword(password, user.passwordHash);
+		await validatePassword(password, user.passwordHash, [user.username, user.email]);
 
 		// Save and hash the new password, then invalidate the reset token
 		const passwordHash = await hashPassword(password);
