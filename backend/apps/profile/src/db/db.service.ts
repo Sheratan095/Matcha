@@ -1198,19 +1198,18 @@ export class DbService implements OnModuleInit
 		return (result.rows.map(row => CalendarEvent.fromDbRow(row)));
 	}
 
-	// Inserts only if the two users are matched (a chat row exists for the pair, see 007_messages.sql),
-	// so the check and the insert are one atomic statement. Returns null when they aren't matched,
-	// which the service layer translates into a 403. Self-invites and start >= end trip the named
-	// CHECKs in 012_calendar.sql (error code 23514), translated into a 400.
+	// The event is attached to the pair's chat (a chat IS a match, see 007_messages.sql), so the
+	// match check and the insert are one atomic statement, and unmatch / block cascade-delete the
+	// event. No chat means no match: nothing is inserted and null is returned, which the service
+	// layer translates into a 403. Self-invites and start >= end trip the named CHECKs in
+	// 012_calendar.sql (error code 23514), translated into a 400.
 	async createCalendarEvent(event: CalendarEvent): Promise<CalendarEvent | null>
 	{
 		const result = await this.pool.query(
-			`INSERT INTO calendar_events (inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status)
-			 SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
-			 WHERE EXISTS (
-				SELECT 1 FROM chats
-				WHERE user_a = LEAST($1::uuid, $2::uuid) AND user_b = GREATEST($1::uuid, $2::uuid)
-			 )
+			`INSERT INTO calendar_events (chat_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status)
+			 SELECT c.id, $1, $2, $3, $4, $5, $6, $7, $8, $9
+			 FROM chats c
+			 WHERE c.user_a = LEAST($1::uuid, $2::uuid) AND c.user_b = GREATEST($1::uuid, $2::uuid)
 			 RETURNING id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status`,
 			[event.inviterId, event.inviteeId, event.title, event.description,
 			 event.startTime, event.endTime,
