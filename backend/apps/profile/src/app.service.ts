@@ -809,7 +809,7 @@ export class AppService
 			// a 500 (the client would retry and create a duplicate event).
 			try
 			{
-				await sendEventNotification(newEvent.inviteeId, newEvent.inviterId, newEvent.eventId, newEvent.title, newEvent.startTime, this.httpService, NotificationType.EVENT_INVITE);
+				await sendEventNotification(newEvent.inviteeId, newEvent.inviterId, newEvent.inviterId, newEvent.eventId, newEvent.title, newEvent.startTime, this.httpService, NotificationType.EVENT_INVITE);
 			}
 			catch (notifyError: any)
 			{
@@ -877,7 +877,7 @@ export class AppService
 			// not turn into a 500.
 			try
 			{
-				await sendEventNotification(updatedEvent.inviteeId, updatedEvent.inviterId, updatedEvent.eventId, updatedEvent.title, updatedEvent.startTime, this.httpService, notificationTypes[newStatus]);
+				await sendEventNotification(updatedEvent.inviteeId, updatedEvent.inviterId, userId, updatedEvent.eventId, updatedEvent.title, updatedEvent.startTime, this.httpService, notificationTypes[newStatus]);
 			}
 			catch (notifyError: any)
 			{

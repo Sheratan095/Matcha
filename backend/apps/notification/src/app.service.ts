@@ -206,7 +206,33 @@ export class AppService
 
 		return ({ delivered });
 	}
-	
+
+	// Either side can cancel, so actorId says who did it and the other one is notified.
+	async notifyEventCancel(inviteeId: string, inviterId: string, actorId: string | undefined, eventId: string, title: string, startTime: string)
+	{
+		if (actorId !== inviterId && actorId !== inviteeId)
+			throw new BadRequestException('actorId must be the inviter or the invitee');
+
+		const	recipientId = (actorId === inviterId) ? inviteeId : inviterId;
+
+		const payload: EventPayload =
+		{
+			userId:            actorId,
+			username:          await this.dbService.getUsernameById(actorId),
+			profilePictureUrl: await this.dbService.getProfilePictureUrl(actorId),
+
+			eventId:           eventId,
+			title:             title,
+			startTime:         startTime,
+		};
+
+		const delivered = await this.wsGateway.sendToUser(recipientId, NotificationType.EVENT_CANCEL, payload, true);
+
+		this.logger.log('notifyEventCancel: sent EVENT_CANCEL notification to user ' + recipientId + ' from ' + actorId);
+
+		return ({ delivered });
+	}
+
 	async sendPrivateMessage(senderId: string, recipientId: string, content: string) : Promise<boolean>
 	{
 		if (senderId === recipientId)

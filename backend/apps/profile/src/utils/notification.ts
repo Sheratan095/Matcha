@@ -72,14 +72,17 @@ export async function sendProfileUnlikeNotification(likedId: string, likerId: st
 	}
 }
 
-export async function sendEventNotification(inviteeId: string, inviterId: string, eventId: string, title: string, startTime: string, httpService: HttpService, NotificationType: NotificationType)
+// actorId is who performed the action; the notification service uses it for event-cancel,
+// where either side can act and the other one is notified.
+export async function sendEventNotification(inviteeId: string, inviterId: string, actorId: string, eventId: string, title: string, startTime: string, httpService: HttpService, type: NotificationType)
 {
 	try
 	{
-		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/notify/${NotificationType}`,
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/notify/${type}`,
 		{
 			inviteeId,
 			inviterId,
+			actorId,
 			eventId,
 			title,
 			startTime,
