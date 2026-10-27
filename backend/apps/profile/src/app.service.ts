@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { DbService } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
-import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, MAX_USER_PICTURES } from '@repo/shared-types';
+import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, MAX_USER_PICTURES, CalendarEvent } from '@repo/shared-types';
 import { DiscoverQueryDto } from './dto/discover.dto';
 import { SearchQueryDto } from './dto/search.dto';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
@@ -765,6 +765,25 @@ export class AppService
 
 			this.logger.error(`Error setting profile picture ${pictureId} for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to set profile picture');
+		}
+	}
+
+	// ------------------------- CALENDAR EVENTS -------------------------
+
+	async getCalendar(userId: string): Promise<{ events: CalendarEvent[] }>
+	{
+		try
+		{
+			const events = await this.dbService.getCalendarEvents(userId);
+
+			this.logger.log(`Calendar events retrieved for user ID ${userId}, count: ${events.length}`);
+
+			return { events };
+		}
+		catch (error: any)
+		{
+			this.logger.error(`Error retrieving calendar events for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to retrieve calendar events');
 		}
 	}
 }

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS events (
+CREATE TABLE IF NOT EXISTS calendar_events (
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
 	inviter_id UUID NOT NULL, -- The user who created the event
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS events (
 	longitude DOUBLE PRECISION,
 
 	status VARCHAR(20) NOT NULL DEFAULT 'pending', -- e.g., 'pending', 'accepted', 'declined'
-	CHECK (status IN ('pending', 'accepted', 'declined')),
+	CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled')),
 
 	FOREIGN KEY (inviter_id) REFERENCES users(id) ON DELETE CASCADE,
 	FOREIGN KEY (invitee_id) REFERENCES users(id) ON DELETE CASCADE

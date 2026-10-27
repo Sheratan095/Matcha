@@ -9,3 +9,4 @@ export * from './MessagePayload';
 export * from './ChatListItem';
 export * from './ChatReadPayload';
 export * from './ErrorDto';
+export * from './CalendarEvent';

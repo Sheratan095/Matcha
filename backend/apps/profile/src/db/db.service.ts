@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool, PoolClient, QueryResult } from 'pg';
 import { env } from "@repo/config";
-import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo, DiscoverCard } from '@repo/shared-types';
+import { Profile, InterestTag, UserPicture, StdPayload, StdPayloadGeo, DiscoverCard, CalendarEvent } from '@repo/shared-types';
 
 // One browsing request: FILTERS ONLY. There is no sort parameter — the endpoint returns the whole
 // filtered list in the weighted order and the frontend arranges it (see getDiscoverCandidates).
@@ -1182,5 +1182,19 @@ export class DbService implements OnModuleInit
 		);
 
 		return (result.rows.map(row => DiscoverCard.fromDbRow(row)));
+	}
+
+	// ---------------------CALENDAR EVENTS---------------------
+	async getCalendarEvents(userId: string): Promise<CalendarEvent[]>
+	{
+		const result = await this.pool.query(
+			`SELECT id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status
+			 FROM calendar_events
+			 WHERE inviter_id = $1 OR invitee_id = $1
+			 ORDER BY start_time ASC`,
+			[userId]
+		);
+
+		return (result.rows.map(row => CalendarEvent.fromDbRow(row)));
 	}
 }

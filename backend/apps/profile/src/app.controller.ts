@@ -21,6 +21,7 @@ import { GetMatchesMapResponseDto } from './dto/getMatchesMap.dto';
 import { DiscoverQueryDto, DiscoverCardDto } from './dto/discover.dto';
 import { SearchQueryDto } from './dto/search.dto';
 import { ErrorDto } from '@repo/shared-types';
+import { GetCalendarResponseDto } from './dto/calendar.dto';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -295,6 +296,21 @@ export class AppController
 		const pictures = await this.appService.setProfilePicture(userId, req.pictureId);
 
 		return ({ pictures });
+	}
+
+	// Also declared ABOVE @Get(':userId'), for the same reason as 'discover'.
+	@Get('calendar')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Get events', description: 'Returns the events for the authenticated user\'s calendar' })
+	@ApiResponse({ status: 200, type: GetCalendarResponseDto, description: 'Events retrieved successfully' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async getCalendar(@CurrentUser() userId: string)
+	{
+		const events = await this.appService.getCalendar(userId);
+
+		return ({ events });
 	}
 
 	@Get(':userId')
