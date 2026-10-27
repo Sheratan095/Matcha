@@ -1187,10 +1187,13 @@ export class DbService implements OnModuleInit
 	// ---------------------CALENDAR EVENTS---------------------
 	async getCalendarEvents(userId: string): Promise<CalendarEvent[]>
 	{
+		// Exclude cancelled and declined events from the invitee's view, but the inviter sees all their invites.
 		const result = await this.pool.query(
 			`SELECT id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status
 			 FROM calendar_events
-			 WHERE inviter_id = $1 OR invitee_id = $1
+			 WHERE inviter_id = $1
+				OR (invitee_id = $1 AND status <> 'declined')
+				AND status <> 'cancelled'
 			 ORDER BY start_time ASC`,
 			[userId]
 		);
@@ -1228,6 +1231,19 @@ export class DbService implements OnModuleInit
 		const result = await this.pool.query(
 			`UPDATE calendar_events
 			 SET status = 'accepted'
+			 WHERE id = $1 AND (invitee_id = $2) AND status = 'pending'`,
+			[eventId, userId]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+
+	async declineCalendarEvent(eventId: string, userId: string): Promise<boolean>
+	{
+		// Only invitee can decline, and only a pending event can be declined.
+		const result = await this.pool.query(
+			`UPDATE calendar_events
+			 SET status = 'declined'
 			 WHERE id = $1 AND (invitee_id = $2) AND status = 'pending'`,
 			[eventId, userId]
 		);

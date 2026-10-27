@@ -46,7 +46,7 @@ export class CalendarEventDto
 
 export class GetCalendarResponseDto
 {
-	@ApiProperty({ type: [CalendarEventDto], description: 'List of calendar events' })
+	@ApiProperty({ type: [CalendarEventDto], description: 'List of calendar events, excluded cancelled ALWAYS and declined events only where the user is the invitee' })
 	events: CalendarEventDto[];
 }
 

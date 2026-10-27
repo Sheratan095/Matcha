@@ -164,3 +164,7 @@ maybe just add check for two users and event in db
 [] Micro-framework rule. The subject excludes frameworks that bundle validators or a user account manager. NestJS with class-validator and passport may come up, so have your argument ready: no ORM, raw SQL through pg, and validation and OAuth come from separate libraries.
 
 [x] Stale comments. The comment at app.controller.ts:356 says pass isn't implemented, but it is. The isProfileComplete comment says "upload at least 5 pictures". Both could confuse anyone reading the code during the defense.
+
+[] wire up notification for all calendar related events
+
+[] find a wuy to organize profile methods /remove profile from calendar and other categories endpoints
