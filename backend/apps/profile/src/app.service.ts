@@ -770,7 +770,7 @@ export class AppService
 
 	// ------------------------- CALENDAR EVENTS -------------------------
 
-	async getCalendar(userId: string): Promise<{ events: CalendarEvent[] }>
+	async getCalendar(userId: string): Promise<CalendarEvent[]>
 	{
 		try
 		{
@@ -778,12 +778,51 @@ export class AppService
 
 			this.logger.log(`Calendar events retrieved for user ID ${userId}, count: ${events.length}`);
 
-			return { events };
+			return (events);
 		}
 		catch (error: any)
 		{
 			this.logger.error(`Error retrieving calendar events for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to retrieve calendar events');
+		}
+	}
+
+	// The match check lives in the INSERT itself (see DbService.createCalendarEvent): null means
+	// the two users aren't matched. The self check runs first because a self "match" can't exist,
+	// so it would otherwise surface as a 403 instead of a 400.
+	async createCalendarEvent(event: CalendarEvent): Promise<CalendarEvent>
+	{
+		if (event.inviterId === event.inviteeId)
+			throw new BadRequestException('You cannot add an event for yourself');
+
+		try
+		{
+			const	newEvent = await this.dbService.createCalendarEvent(event);
+
+			if (!newEvent)
+				throw new ForbiddenException('You can only add events for your matches');
+
+			this.logger.log(`Calendar event ${newEvent.eventId} created by ${newEvent.inviterId} for ${newEvent.inviteeId}`);
+
+			return (newEvent);
+		}
+		catch (error: any)
+		{
+			if (error instanceof HttpException)
+				throw (error);
+
+			// CHECK violation: start_time >= end_time (or the self-invite backstop)
+			if (error && error.code === '23514' && error.constraint === 'calendar_events_time_order_check')
+				throw new BadRequestException('Event start time must be before its end time');
+			if (error && error.code === '23514' && error.constraint === 'calendar_events_not_self_check')
+				throw new BadRequestException('You cannot add an event for yourself');
+
+			// Malformed uuid (22P02) or timestamp (22007 / 22008) that slipped past the DTO
+			if (error && ['22P02', '22007', '22008'].includes(error.code))
+				throw new BadRequestException('Invalid event fields');
+
+			this.logger.error(`Error creating calendar event for user ID ${event.inviterId}`, error);
+			throw new InternalServerErrorException('Failed to create calendar event');
 		}
 	}
 }

@@ -20,8 +20,8 @@ import { UpdateLocationDto, UpdateLocationResponseDto } from './dto/updateLocati
 import { GetMatchesMapResponseDto } from './dto/getMatchesMap.dto';
 import { DiscoverQueryDto, DiscoverCardDto } from './dto/discover.dto';
 import { SearchQueryDto } from './dto/search.dto';
-import { ErrorDto } from '@repo/shared-types';
-import { GetCalendarResponseDto } from './dto/calendar.dto';
+import { CalendarEvent, ErrorDto } from '@repo/shared-types';
+import { GetCalendarResponseDto, PostCalendarEventDto, CalendarEventDto } from './dto/calendar.dto';
 
 const PICTURE_MAX_BYTES = 5 * 1024 * 1024;
 const PICTURE_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -312,6 +312,23 @@ export class AppController
 
 		return ({ events });
 	}
+
+	@Post('calendar/event')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Create a calendar event', description: 'Creates a new calendar event for the authenticated user.' })
+	@ApiBody({ type: PostCalendarEventDto })
+	@ApiResponse({ status: 200, type: CalendarEventDto, description: 'Event created successfully' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async createCalendarEvent(@Body() body: PostCalendarEventDto, @CurrentUser() userId: string)
+	{
+		const event = await this.appService.createCalendarEvent(CalendarEvent.fromDto(body, userId));
+
+		return (event);
+	}
+
 
 	@Get(':userId')
 	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full user profile.' })

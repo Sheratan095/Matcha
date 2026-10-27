@@ -49,3 +49,38 @@ export class GetCalendarResponseDto
 	@ApiProperty({ type: [CalendarEventDto], description: 'List of calendar events' })
 	events: CalendarEventDto[];
 }
+
+export class PostCalendarEventDto
+{
+	@ApiProperty({ example: 'user123', description: 'Id of the invited user' })
+	@IsString()
+	inviteeId: string;
+
+	@ApiProperty({ example: 'Meeting with team', description: 'Event title' })
+	@IsString()
+	@MaxLength(100)
+	title: string;
+
+	@ApiPropertyOptional({ example: 'Discuss project updates', description: 'Event description' })
+	@IsOptional()
+	@IsString()
+	@MaxLength(500)
+	description?: string;
+
+	// TO DO check if the startTime and endTime are valid ISO 8601 strings
+	@ApiProperty({ example: '2024-06-01T10:00:00Z', description: 'Event start time in ISO 8601 format' })
+	@IsString()
+	startTime: string;
+
+	@ApiProperty({ example: '2024-06-01T11:00:00Z', description: 'Event end time in ISO 8601 format' })
+	@IsString()
+	endTime: string;
+
+	@ApiPropertyOptional({ example: 41.905333, nullable: true, description: 'Latitude in decimal degrees, at full precision; null if no location set' })
+	@IsOptional()
+	latitude?: number | null;
+
+	@ApiPropertyOptional({ example: 12.542861, nullable: true, description: 'Longitude in decimal degrees, at full precision; null if no location set' })
+	@IsOptional()
+	longitude?: number | null;
+}

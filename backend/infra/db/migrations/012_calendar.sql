@@ -12,7 +12,10 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 	start_time TIMESTAMPTZ NOT NULL,
 	end_time TIMESTAMPTZ NOT NULL,
 	-- Ensure that the start time is before the end time
-	CHECK (start_time < end_time),
+	CONSTRAINT calendar_events_time_order_check CHECK (start_time < end_time),
+
+	-- No event with yourself (the service maps this named CHECK to a 400)
+	CONSTRAINT calendar_events_not_self_check CHECK (inviter_id <> invitee_id),
 
 	-- Location of the event (latitude and longitude)
 	latitude DOUBLE PRECISION,
