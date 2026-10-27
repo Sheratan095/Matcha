@@ -1,7 +1,7 @@
 import { Injectable, Logger, ConflictException, InternalServerErrorException, BadRequestException, NotFoundException, HttpException, ForbiddenException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { randomUUID } from 'crypto';
-import { DbService } from './db/db.service';
+import { DbService, CalendarEventStatus } from './db/db.service';
 import { StorageService } from './storage/storage.service';
 import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictures/image.processor';
 import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, MAX_USER_PICTURES, CalendarEvent } from '@repo/shared-types';
@@ -838,26 +838,50 @@ export class AppService
 		}
 	}
 
-	async acceptCalendarEvent(eventId: string, userId: string): Promise<Boolean>
+	async acceptCalendarEvent(eventId: string, userId: string): Promise<boolean>
 	{
+		return (await this.updateCalendarEventStatus(eventId, userId, 'accepted'));
+	}
+
+	async declineCalendarEvent(eventId: string, userId: string): Promise<boolean>
+	{
+		return (await this.updateCalendarEventStatus(eventId, userId, 'declined'));
+	}
+
+	async cancelCalendarEvent(eventId: string, userId: string): Promise<boolean>
+	{
+		return (await this.updateCalendarEventStatus(eventId, userId, 'cancelled'));
+	}
+
+	// Shared by accept / decline / cancel: the transition rules live in the UPDATE itself
+	// (see DbService.updateCalendarEventStatus), so null means "not found or not allowed".
+	private async updateCalendarEventStatus(eventId: string, userId: string, newStatus: CalendarEventStatus): Promise<boolean>
+	{
+		const	notificationTypes: Record<CalendarEventStatus, NotificationType> =
+		{
+			accepted:  NotificationType.EVENT_ACCEPT,
+			declined:  NotificationType.EVENT_DECLINE,
+			cancelled: NotificationType.EVENT_CANCEL,
+		};
+
 		try
 		{
-			const	updatedEvent : CalendarEvent = await this.dbService.acceptCalendarEvent(eventId, userId);
+			const	updatedEvent = await this.dbService.updateCalendarEventStatus(eventId, userId, newStatus);
 
 			if (!updatedEvent)
-				throw new NotFoundException('Event not found or you are not the invitee');
+				throw new NotFoundException(`Event not found or it can't be ${newStatus} by you`);
 
-			this.logger.log(`Calendar event ${eventId} accepted by ${userId}`);
+			this.logger.log(`Calendar event ${eventId} ${newStatus} by ${userId}`);
 
-			// Non-blocking: the event is already saved, so a failed notification must not turn into
-			// a 500 (the client would retry and create a duplicate event).
+			// Non-blocking: the status change is already saved, so a failed notification must
+			// not turn into a 500.
 			try
 			{
-				await sendEventNotification(updatedEvent.inviteeId, updatedEvent.inviterId, updatedEvent.eventId, updatedEvent.title, updatedEvent.startTime, this.httpService, NotificationType.EVENT_ACCEPT);
+				await sendEventNotification(updatedEvent.inviteeId, updatedEvent.inviterId, updatedEvent.eventId, updatedEvent.title, updatedEvent.startTime, this.httpService, notificationTypes[newStatus]);
 			}
 			catch (notifyError: any)
 			{
-				this.logger.warn(`Failed to send event accept notification for event ${updatedEvent.eventId}`, notifyError);
+				this.logger.warn(`Failed to send ${notificationTypes[newStatus]} notification for event ${eventId}`, notifyError);
 			}
 
 			return (true);
@@ -867,54 +891,8 @@ export class AppService
 			if (error instanceof HttpException)
 				throw (error);
 
-			this.logger.error(`Error accepting calendar event ${eventId} for user ID ${userId}`, error);
-			throw new InternalServerErrorException('Failed to accept calendar event');
-		}
-	}
-
-	async declineCalendarEvent(eventId: string, userId: string): Promise<Boolean>
-	{
-		try
-		{
-			const	updatedEvent = await this.dbService.declineCalendarEvent(eventId, userId);
-
-			if (!updatedEvent)
-				throw new NotFoundException('Event not found or you are not the invitee');
-
-			this.logger.log(`Calendar event ${eventId} declined by ${userId}`);
-
-			return (updatedEvent);
-		}
-		catch (error: any)
-		{
-			if (error instanceof HttpException)
-				throw (error);
-
-			this.logger.error(`Error declining calendar event ${eventId} for user ID ${userId}`, error);
-			throw new InternalServerErrorException('Failed to decline calendar event');
-		}
-	}
-
-	async cancelCalendarEvent(eventId: string, userId: string): Promise<Boolean>
-	{
-		try
-		{
-			const	updatedEvent = await this.dbService.cancelCalendarEvent(eventId, userId);
-
-			if (!updatedEvent)
-				throw new NotFoundException('Event not found or it can\'t be cancelled by you');
-
-			this.logger.log(`Calendar event ${eventId} canceled by ${userId}`);
-
-			return (updatedEvent);
-		}
-		catch (error: any)
-		{
-			if (error instanceof HttpException)
-				throw (error);
-
-			this.logger.error(`Error canceling calendar event ${eventId} for user ID ${userId}`, error);
-			throw new InternalServerErrorException('Failed to cancel calendar event');
+			this.logger.error(`Error setting calendar event ${eventId} to ${newStatus} for user ID ${userId}`, error);
+			throw new InternalServerErrorException(`Failed to update calendar event`);
 		}
 	}
 }

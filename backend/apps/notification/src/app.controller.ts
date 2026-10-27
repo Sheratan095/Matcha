@@ -144,6 +144,18 @@ export class AppController
 		return ( await this.appService.notifyEventAccept(req.inviteeId, req.inviterId, req.eventId, req.title, req.startTime));
 	}
 
+	@Post('internal/notify/event-decline')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Notify an event decline - INTERNAL 🔒', description: "Pushes a 'event-decline' notification to the inviter over WebSocket (queued if they are offline)." })
+	@ApiBody({ type: EventNotifyDto })
+	@ApiResponse({ status: 200, type: EventNotifyResponseDto, description: 'Notification delivered or queued' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	async notifyEventDecline(@Body() req: EventNotifyDto)
+	{
+		return ( await this.appService.notifyEventDecline(req.inviteeId, req.inviterId, req.eventId, req.title, req.startTime));
+	}
+
 	@Post('chat/message')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Send a private message', description: "Send a private message to the specified user." })

@@ -187,6 +187,26 @@ export class AppService
 		return ({ delivered });
 	}
 
+	async notifyEventDecline(inviteeId: string, inviterId: string, eventId: string, title: string, startTime: string)
+	{
+		const payload: EventPayload =
+		{
+			userId:            inviteeId,
+			username:          await this.dbService.getUsernameById(inviteeId),
+			profilePictureUrl: await this.dbService.getProfilePictureUrl(inviteeId),
+
+			eventId:           eventId,
+			title:             title,
+			startTime:         startTime,
+		};
+
+		const delivered = await this.wsGateway.sendToUser(inviterId, NotificationType.EVENT_DECLINE, payload, true);
+
+		this.logger.log('notifyEventDecline: sent EVENT_DECLINE notification to user ' + inviterId + ' from invitee ' + inviteeId);
+
+		return ({ delivered });
+	}
+	
 	async sendPrivateMessage(senderId: string, recipientId: string, content: string) : Promise<boolean>
 	{
 		if (senderId === recipientId)

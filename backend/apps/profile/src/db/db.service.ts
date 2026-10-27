@@ -1225,15 +1225,25 @@ export class DbService implements OnModuleInit
 		return (CalendarEvent.fromDbRow(result.rows[0]));
 	}
 
-	async acceptCalendarEvent(eventId: string, userId: string): Promise<CalendarEvent | null>
+	// Moves an event to a new status, if userId is allowed to make that transition:
+	//   accepted / declined: only the invitee, and only from 'pending'.
+	//   cancelled:           never twice. The inviter always can, the invitee only once
+	//                        they've accepted (a pending invite is declined, not cancelled).
+	// Returns the updated event, or null when the event doesn't exist or the transition
+	// isn't allowed, which the service layer translates into a 404.
+	async updateCalendarEventStatus(eventId: string, userId: string, newStatus: CalendarEventStatus): Promise<CalendarEvent | null>
 	{
-		// Only invitee can accept, and only a pending event can be accepted.
 		const result = await this.pool.query(
 			`UPDATE calendar_events
-			 SET status = 'accepted'
-			 WHERE id = $1 AND (invitee_id = $2) AND status = 'pending'
+			 SET status = $3::varchar
+			 WHERE id = $1
+			   AND (
+					($3::varchar IN ('accepted', 'declined') AND invitee_id = $2 AND status = 'pending')
+				 OR ($3::varchar = 'cancelled' AND status <> 'cancelled'
+					 AND (inviter_id = $2 OR (invitee_id = $2 AND status = 'accepted')))
+			   )
 			 RETURNING id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status`,
-			[eventId, userId]
+			[eventId, userId, newStatus]
 		);
 
 		if (result.rows.length === 0)
@@ -1241,32 +1251,6 @@ export class DbService implements OnModuleInit
 
 		return (CalendarEvent.fromDbRow(result.rows[0]));
 	}
-
-	async declineCalendarEvent(eventId: string, userId: string): Promise<boolean>
-	{
-		// Only invitee can decline, and only a pending event can be declined.
-		const result = await this.pool.query(
-			`UPDATE calendar_events
-			 SET status = 'declined'
-			 WHERE id = $1 AND (invitee_id = $2) AND status = 'pending'`,
-			[eventId, userId]
-		);
-
-		return ((result.rowCount ?? 0) > 0);
-	}
-	
-	async cancelCalendarEvent(eventId: string, userId: string): Promise<boolean>
-	{
-		// An already cancelled event can't be cancelled again. The inviter can always cancel,
-		// the invitee only once they've accepted (a pending invite is declined, not cancelled).
-		const result = await this.pool.query(
-			`UPDATE calendar_events
-			 SET status = 'cancelled'
-			 WHERE id = $1 AND STATUS <> 'cancelled'
-			 AND (inviter_id = $2 OR (invitee_id = $2 AND status = 'accepted')) `,
-			[eventId, userId]
-		);
-
-		return ((result.rowCount ?? 0) > 0);
-	}
 }
+
+export type CalendarEventStatus = 'accepted' | 'declined' | 'cancelled';
