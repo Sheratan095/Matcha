@@ -27,6 +27,10 @@ CREATE TABLE IF NOT EXISTS profiles (
 	-- the API may carry this precision — see snap_coord() below.
 	latitude DOUBLE PRECISION,
 	longitude DOUBLE PRECISION,
+	CONSTRAINT profiles_latitude_range_check  CHECK (latitude  BETWEEN -90  AND 90),
+	CONSTRAINT profiles_longitude_range_check CHECK (longitude BETWEEN -180 AND 180),
+	-- A location is a point: both coordinates or neither (NULL/NULL until the user sets one)
+	CONSTRAINT profiles_location_pair_check CHECK ((latitude IS NULL) = (longitude IS NULL)),
 
 	date_of_birth DATE, -- Nullable because GitHub OAuth sign-ups start without a date of birth and set it later
 

@@ -232,6 +232,12 @@ export class AppService
 			if (error instanceof HttpException)
 				throw (error);
 
+			// CHECK violation on the location constraints in 002_profiles.sql (the DTO catches
+			// these first; this covers any value that slips past it)
+			if (error && error.code === '23514'
+				&& ['profiles_latitude_range_check', 'profiles_longitude_range_check'].includes(error.constraint))
+				throw new BadRequestException('Invalid location: latitude must be in [-90, 90] and longitude in [-180, 180]');
+
 			this.logger.error(`Error updating location for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to update location');
 		}
