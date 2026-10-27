@@ -1,5 +1,6 @@
 import { HttpService } from "@nestjs/axios";
 import { env } from "@repo/config";
+import { NotificationType } from "@repo/shared-types";
 
 // Tells the notification service to push a 'profile-view' notification to the profile owner.
 // Mirrors apps/auth/src/utils/notification.ts: HttpService is already configured with the
@@ -71,11 +72,11 @@ export async function sendProfileUnlikeNotification(likedId: string, likerId: st
 	}
 }
 
-export async function sendEventInviteNotification(inviteeId: string, inviterId: string, eventId: string, title: string, startTime: string, httpService: HttpService)
+export async function sendEventNotification(inviteeId: string, inviterId: string, eventId: string, title: string, startTime: string, httpService: HttpService, NotificationType: NotificationType)
 {
 	try
 	{
-		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/notify/event-invite`,
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/notify/${NotificationType}`,
 		{
 			inviteeId,
 			inviterId,

@@ -1225,17 +1225,21 @@ export class DbService implements OnModuleInit
 		return (CalendarEvent.fromDbRow(result.rows[0]));
 	}
 
-	async acceptCalendarEvent(eventId: string, userId: string): Promise<boolean>
+	async acceptCalendarEvent(eventId: string, userId: string): Promise<CalendarEvent | null>
 	{
 		// Only invitee can accept, and only a pending event can be accepted.
 		const result = await this.pool.query(
 			`UPDATE calendar_events
 			 SET status = 'accepted'
-			 WHERE id = $1 AND (invitee_id = $2) AND status = 'pending'`,
+			 WHERE id = $1 AND (invitee_id = $2) AND status = 'pending'
+			 RETURNING id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status`,
 			[eventId, userId]
 		);
 
-		return ((result.rowCount ?? 0) > 0);
+		if (result.rows.length === 0)
+			return (null);
+
+		return (CalendarEvent.fromDbRow(result.rows[0]));
 	}
 
 	async declineCalendarEvent(eventId: string, userId: string): Promise<boolean>

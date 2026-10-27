@@ -10,7 +10,7 @@ import { ProfileLikeNotifyDto, ProfileLikeNotifyResponseDto } from './dto/notify
 import { ChatMessageDto, ChatMessageResponseDto } from './dto/chatMessage.dto';
 import { ChatHistoryResponseDto, ChatListResponseDto } from './dto/chat.dto';
 import { ErrorDto } from '@repo/shared-types';
-import { EventInviteNotifyDto, EventInviteNotifyResponseDto } from './dto/calendar.dto';
+import { EventNotifyDto, EventNotifyResponseDto } from './dto/calendar.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -123,13 +123,25 @@ export class AppController
 	@Post('internal/notify/event-invite')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Notify an event invite - INTERNAL 🔒', description: "Pushes a 'event-invite' notification to the invited user over WebSocket (queued if they are offline)." })
-	@ApiBody({ type: EventInviteNotifyDto })
-	@ApiResponse({ status: 200, type: EventInviteNotifyResponseDto, description: 'Notification delivered or queued' })
+	@ApiBody({ type: EventNotifyDto })
+	@ApiResponse({ status: 200, type: EventNotifyResponseDto, description: 'Notification delivered or queued' })
 	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
 	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
-	async notifyEventInvite(@Body() req: EventInviteNotifyDto)
+	async notifyEventInvite(@Body() req: EventNotifyDto)
 	{
 		return ( await this.appService.notifyEventInvite(req.inviteeId, req.inviterId, req.eventId, req.title, req.startTime));
+	}
+
+	@Post('internal/notify/event-accept')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Notify an event accept - INTERNAL 🔒', description: "Pushes a 'event-accept' notification to the inviter over WebSocket (queued if they are offline)." })
+	@ApiBody({ type: EventNotifyDto })
+	@ApiResponse({ status: 200, type: EventNotifyResponseDto, description: 'Notification delivered or queued' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	async notifyEventAccept(@Body() req: EventNotifyDto)
+	{
+		return ( await this.appService.notifyEventAccept(req.inviteeId, req.inviterId, req.eventId, req.title, req.startTime));
 	}
 
 	@Post('chat/message')

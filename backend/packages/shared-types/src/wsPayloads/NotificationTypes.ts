@@ -13,6 +13,9 @@ export enum NotificationType
 	CHAT_SEEN    = 'chat-seen', // Sent when a user opens a chat, so the other participant can mark their messages as read
 	// Calendar events
 	EVENT_INVITE = 'event-invite', // Sent when a user is invited to a calendar event
+	EVENT_ACCEPT = 'event-accept', // Sent when a user accepts a calendar event
+	EVENT_DECLINE = 'event-decline', // Sent when a user declines a calendar event
+	EVENT_CANCEL = 'event-cancel', // Sent when a user cancels a calendar event
 }
 
 // Payloads for the remaining types are declared as their producing features land.

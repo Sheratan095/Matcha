@@ -7,8 +7,9 @@ import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictur
 import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, MAX_USER_PICTURES, CalendarEvent } from '@repo/shared-types';
 import { DiscoverQueryDto } from './dto/discover.dto';
 import { SearchQueryDto } from './dto/search.dto';
-import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification, sendEventInviteNotification } from './utils/notification';
+import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification, sendEventNotification } from './utils/notification';
 import { getDateOfBirthError, isInvalidDateOfBirth, INVALID_DATE_OF_BIRTH } from './utils/dateOfBirth';
+import { NotificationType } from '@repo/shared-types';
 
 // Services contain the core business logic like the db calls
 
@@ -808,7 +809,7 @@ export class AppService
 			// a 500 (the client would retry and create a duplicate event).
 			try
 			{
-				await sendEventInviteNotification(newEvent.inviteeId, newEvent.inviterId, newEvent.eventId, newEvent.title, newEvent.startTime, this.httpService);
+				await sendEventNotification(newEvent.inviteeId, newEvent.inviterId, newEvent.eventId, newEvent.title, newEvent.startTime, this.httpService, NotificationType.EVENT_INVITE);
 			}
 			catch (notifyError: any)
 			{
@@ -841,14 +842,25 @@ export class AppService
 	{
 		try
 		{
-			const	updatedEvent = await this.dbService.acceptCalendarEvent(eventId, userId);
+			const	updatedEvent : CalendarEvent = await this.dbService.acceptCalendarEvent(eventId, userId);
 
 			if (!updatedEvent)
 				throw new NotFoundException('Event not found or you are not the invitee');
 
 			this.logger.log(`Calendar event ${eventId} accepted by ${userId}`);
 
-			return (updatedEvent);
+			// Non-blocking: the event is already saved, so a failed notification must not turn into
+			// a 500 (the client would retry and create a duplicate event).
+			try
+			{
+				await sendEventNotification(updatedEvent.inviteeId, updatedEvent.inviterId, updatedEvent.eventId, updatedEvent.title, updatedEvent.startTime, this.httpService, NotificationType.EVENT_ACCEPT);
+			}
+			catch (notifyError: any)
+			{
+				this.logger.warn(`Failed to send event accept notification for event ${updatedEvent.eventId}`, notifyError);
+			}
+
+			return (true);
 		}
 		catch (error: any)
 		{

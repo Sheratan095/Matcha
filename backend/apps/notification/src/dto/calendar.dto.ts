@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsUUID, IsNotEmpty } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export class EventInviteNotifyDto
+export class EventNotifyDto
 {
 	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'Event UUID' })
 	@IsUUID()
@@ -33,7 +33,7 @@ export class EventInviteNotifyDto
 	startTime: string;
 }
 
-export class EventInviteNotifyResponseDto
+export class EventNotifyResponseDto
 {
 	@ApiProperty({ example: true, description: 'True if delivered to a live socket, false if queued for the offline user' })
 	delivered: boolean;
