@@ -828,6 +828,9 @@ export class AppService
 				throw new BadRequestException('Event start time must be before its end time');
 			if (error && error.code === '23514' && error.constraint === 'calendar_events_not_self_check')
 				throw new BadRequestException('You cannot add an event for yourself');
+			// Raised by the calendar_events_not_started trigger
+			if (error && error.code === '23514' && error.constraint === 'calendar_events_future_start_check')
+				throw new BadRequestException('An event cannot start in the past');
 
 			// Malformed uuid (22P02) or timestamp (22007 / 22008) that slipped past the DTO
 			if (error && ['22P02', '22007', '22008'].includes(error.code))
@@ -890,6 +893,10 @@ export class AppService
 		{
 			if (error instanceof HttpException)
 				throw (error);
+
+			// Raised by the calendar_events_not_started trigger
+			if (error && error.code === '23514' && error.constraint === 'calendar_events_not_started_check')
+				throw new BadRequestException('An event that has already started cannot be modified');
 
 			this.logger.error(`Error setting calendar event ${eventId} to ${newStatus} for user ID ${userId}`, error);
 			throw new InternalServerErrorException(`Failed to update calendar event`);
