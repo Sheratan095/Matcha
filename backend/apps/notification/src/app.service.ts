@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload, MessagePayload, MessageStatus, ChatReadPayload } from '@repo/shared-types';
+import { SupportedLanguage, SupportedLanguages, NotificationType, StdPayload, MessagePayload, MessageStatus, ChatReadPayload, EventPayload } from '@repo/shared-types';
 import { MailerService } from './mail/mailer.service';
 import { WsGateway } from './websocket/gateway.ws';
 import { DbService } from './db/db.service';
@@ -145,6 +145,26 @@ export class AppService
 
 		this.logger.log('notifyProfileUnlike: sent UNMATCHED notification to users ' + unlikerId + ' and ' + unlikedId);
 
+	}
+
+	async notifyEventInvite(inviteeId: string, inviterId: string, eventId: string, title: string, startTime: string)
+	{
+		const payload: EventPayload =
+		{
+			userId:            inviterId,
+			username:          await this.dbService.getUsernameById(inviterId),
+			profilePictureUrl: await this.dbService.getProfilePictureUrl(inviterId),
+
+			eventId:           eventId,
+			title:             title,
+			startTime:         startTime,
+		};
+
+		const delivered = await this.wsGateway.sendToUser(inviteeId, NotificationType.EVENT_INVITE, payload, true);
+
+		this.logger.log('notifyEventInvite: sent EVENT_INVITE notification to user ' + inviteeId + ' from inviter ' + inviterId);
+
+		return ({ delivered });
 	}
 
 	async sendPrivateMessage(senderId: string, recipientId: string, content: string) : Promise<boolean>

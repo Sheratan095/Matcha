@@ -11,6 +11,8 @@ export enum NotificationType
 	UNMATCHED    = 'unmatch',
 	MESSAGE      = 'message',
 	CHAT_SEEN    = 'chat-seen', // Sent when a user opens a chat, so the other participant can mark their messages as read
+	// Calendar events
+	EVENT_INVITE = 'event-invite', // Sent when a user is invited to a calendar event
 }
 
 // Payloads for the remaining types are declared as their producing features land.

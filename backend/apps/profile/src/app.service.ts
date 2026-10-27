@@ -7,7 +7,7 @@ import { sanitizeImage, PICTURE_OUTPUT_EXT, PICTURE_OUTPUT_MIME } from './pictur
 import { Profile, UserPicture, InterestTag, StdPayload, StdPayloadGeo, DiscoverCard, MAX_USER_PICTURES, CalendarEvent } from '@repo/shared-types';
 import { DiscoverQueryDto } from './dto/discover.dto';
 import { SearchQueryDto } from './dto/search.dto';
-import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification } from './utils/notification';
+import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification, sendEventInviteNotification } from './utils/notification';
 import { getDateOfBirthError, isInvalidDateOfBirth, INVALID_DATE_OF_BIRTH } from './utils/dateOfBirth';
 
 // Services contain the core business logic like the db calls
@@ -803,6 +803,17 @@ export class AppService
 				throw new ForbiddenException('You can only add events for your matches');
 
 			this.logger.log(`Calendar event ${newEvent.eventId} created by ${newEvent.inviterId} for ${newEvent.inviteeId}`);
+
+			// Non-blocking: the event is already saved, so a failed notification must not turn into
+			// a 500 (the client would retry and create a duplicate event).
+			try
+			{
+				await sendEventInviteNotification(newEvent.inviteeId, newEvent.inviterId, newEvent.eventId, newEvent.title, newEvent.startTime, this.httpService);
+			}
+			catch (notifyError: any)
+			{
+				this.logger.warn(`Failed to send event invite notification for event ${newEvent.eventId}`, notifyError);
+			}
 
 			return (newEvent);
 		}

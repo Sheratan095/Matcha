@@ -10,6 +10,7 @@ import { ProfileLikeNotifyDto, ProfileLikeNotifyResponseDto } from './dto/notify
 import { ChatMessageDto, ChatMessageResponseDto } from './dto/chatMessage.dto';
 import { ChatHistoryResponseDto, ChatListResponseDto } from './dto/chat.dto';
 import { ErrorDto } from '@repo/shared-types';
+import { EventInviteNotifyDto, EventInviteNotifyResponseDto } from './dto/calendar.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
@@ -117,6 +118,18 @@ export class AppController
 	async notifyProfileUnlike(@Body() req: ProfileLikeNotifyDto)
 	{
 		return ( await this.appService.notifyProfileUnlike(req.likedId, req.likerId));
+	}
+
+	@Post('internal/notify/event-invite')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Notify an event invite - INTERNAL 🔒', description: "Pushes a 'event-invite' notification to the invited user over WebSocket (queued if they are offline)." })
+	@ApiBody({ type: EventInviteNotifyDto })
+	@ApiResponse({ status: 200, type: EventInviteNotifyResponseDto, description: 'Notification delivered or queued' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	async notifyEventInvite(@Body() req: EventInviteNotifyDto)
+	{
+		return ( await this.appService.notifyEventInvite(req.inviteeId, req.inviterId, req.eventId, req.title, req.startTime));
 	}
 
 	@Post('chat/message')

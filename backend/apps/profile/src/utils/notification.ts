@@ -70,3 +70,23 @@ export async function sendProfileUnlikeNotification(likedId: string, likerId: st
 		throw err;
 	}
 }
+
+export async function sendEventInviteNotification(inviteeId: string, inviterId: string, eventId: string, title: string, startTime: string, httpService: HttpService)
+{
+	try
+	{
+		await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/notify/event-invite`,
+		{
+			inviteeId,
+			inviterId,
+			eventId,
+			title,
+			startTime,
+		}).toPromise();
+	}
+	catch (err)
+	{
+		// Rethrow: the caller (profile app.service) keeps this non-blocking and just warns.
+		throw err;
+	}
+}
