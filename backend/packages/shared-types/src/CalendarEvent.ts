@@ -71,8 +71,8 @@ export class CalendarEvent implements ICalendarEvent
 			startTime:   dto.startTime,
 			endTime:     dto.endTime,
 			status:      'pending', // Default status when creating a new event
-			latitude:    dto.latitude || null,
-			longitude:   dto.longitude || null,
+			latitude:    dto.latitude ?? null,  // ?? not ||: 0 is a valid coordinate (equator / Greenwich)
+			longitude:   dto.longitude ?? null,
 		}));
 	}
 }

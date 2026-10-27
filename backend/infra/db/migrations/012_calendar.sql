@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 	created_at TIMESTAMPTZ DEFAULT NOW(),
 
 	title VARCHAR(100) NOT NULL,
+	CONSTRAINT calendar_events_title_not_blank_check CHECK (btrim(title) <> ''),
 	description TEXT,
 
 	start_time TIMESTAMPTZ NOT NULL,
@@ -26,6 +27,10 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 	-- Location of the event (latitude and longitude)
 	latitude DOUBLE PRECISION,
 	longitude DOUBLE PRECISION,
+	CONSTRAINT calendar_events_latitude_range_check  CHECK (latitude  BETWEEN -90  AND 90),
+	CONSTRAINT calendar_events_longitude_range_check CHECK (longitude BETWEEN -180 AND 180),
+	-- A location is a point: both coordinates or neither
+	CONSTRAINT calendar_events_location_pair_check CHECK ((latitude IS NULL) = (longitude IS NULL)),
 
 	status VARCHAR(20) NOT NULL DEFAULT 'pending', -- e.g., 'pending', 'accepted', 'declined'
 	CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled')),

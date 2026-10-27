@@ -823,14 +823,20 @@ export class AppService
 			if (error instanceof HttpException)
 				throw (error);
 
-			// CHECK violation: start_time >= end_time (or the self-invite backstop)
-			if (error && error.code === '23514' && error.constraint === 'calendar_events_time_order_check')
-				throw new BadRequestException('Event start time must be before its end time');
-			if (error && error.code === '23514' && error.constraint === 'calendar_events_not_self_check')
-				throw new BadRequestException('You cannot add an event for yourself');
-			// Raised by the calendar_events_not_started trigger
-			if (error && error.code === '23514' && error.constraint === 'calendar_events_future_start_check')
-				throw new BadRequestException('An event cannot start in the past');
+			// CHECK violation on one of the named constraints in 012_calendar.sql
+			// (calendar_events_future_start_check is raised by the calendar_events_not_started trigger)
+			const	checkMessages: Record<string, string> =
+			{
+				calendar_events_time_order_check:      'Event start time must be before its end time',
+				calendar_events_not_self_check:        'You cannot add an event for yourself',
+				calendar_events_future_start_check:    'An event cannot start in the past',
+				calendar_events_title_not_blank_check: 'Event title cannot be blank',
+				calendar_events_latitude_range_check:  'Latitude must be between -90 and 90',
+				calendar_events_longitude_range_check: 'Longitude must be between -180 and 180',
+				calendar_events_location_pair_check:   'Latitude and longitude must be set together',
+			};
+			if (error && error.code === '23514' && checkMessages[error.constraint])
+				throw new BadRequestException(checkMessages[error.constraint]);
 
 			// Malformed uuid (22P02) or timestamp (22007 / 22008) that slipped past the DTO
 			if (error && ['22P02', '22007', '22008'].includes(error.code))
