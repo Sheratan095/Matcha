@@ -825,4 +825,27 @@ export class AppService
 			throw new InternalServerErrorException('Failed to create calendar event');
 		}
 	}
+
+	async acceptCalendarEvent(eventId: string, userId: string): Promise<Boolean>
+	{
+		try
+		{
+			const	updatedEvent = await this.dbService.acceptCalendarEvent(eventId, userId);
+
+			if (!updatedEvent)
+				throw new NotFoundException('Event not found or you are not the invitee');
+
+			this.logger.log(`Calendar event ${eventId} accepted by ${userId}`);
+
+			return (updatedEvent);
+		}
+		catch (error: any)
+		{
+			if (error instanceof HttpException)
+				throw (error);
+
+			this.logger.error(`Error accepting calendar event ${eventId} for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to accept calendar event');
+		}
+	}
 }
