@@ -1187,13 +1187,13 @@ export class DbService implements OnModuleInit
 	// ---------------------CALENDAR EVENTS---------------------
 	async getCalendarEvents(userId: string): Promise<CalendarEvent[]>
 	{
-		// Exclude cancelled and declined events from the invitee's view, but the inviter sees all their invites.
+		// Cancelled events are hidden from both sides. Declined ones only from the invitee:
+		// the inviter still sees them, so they know the invite was turned down.
 		const result = await this.pool.query(
 			`SELECT id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status
 			 FROM calendar_events
-			 WHERE inviter_id = $1
-				OR (invitee_id = $1 AND status <> 'declined')
-				AND status <> 'cancelled'
+			 WHERE status <> 'cancelled'
+			   AND (inviter_id = $1 OR (invitee_id = $1 AND status <> 'declined'))
 			 ORDER BY start_time ASC`,
 			[userId]
 		);
@@ -1245,6 +1245,21 @@ export class DbService implements OnModuleInit
 			`UPDATE calendar_events
 			 SET status = 'declined'
 			 WHERE id = $1 AND (invitee_id = $2) AND status = 'pending'`,
+			[eventId, userId]
+		);
+
+		return ((result.rowCount ?? 0) > 0);
+	}
+	
+	async cancelCalendarEvent(eventId: string, userId: string): Promise<boolean>
+	{
+		// An already cancelled event can't be cancelled again. The inviter can always cancel,
+		// the invitee only once they've accepted (a pending invite is declined, not cancelled).
+		const result = await this.pool.query(
+			`UPDATE calendar_events
+			 SET status = 'cancelled'
+			 WHERE id = $1 AND STATUS <> 'cancelled'
+			 AND (inviter_id = $2 OR (invitee_id = $2 AND status = 'accepted')) `,
 			[eventId, userId]
 		);
 

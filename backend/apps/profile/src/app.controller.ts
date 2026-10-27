@@ -361,6 +361,21 @@ export class AppController
 		return ({ success });
 	}
 
+	@Post('calendar/event/:eventId/cancel')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Cancel a calendar event', description: 'Cancels a calendar event for the authenticated user.' })
+	@ApiResponse({ status: 200, description: 'Event canceled successfully' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid event id' })
+	@ApiResponse({ status: 401, type: ErrorDto, description: 'Missing or invalid access token' })
+	@ApiResponse({ status: 404, type: ErrorDto, description: 'Event not found or not associated with the user' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	@UseGuards(AuthenticatedUserGuard)
+	async cancelCalendarEvent(@Param('eventId', ParseUUIDPipe) eventId: string, @CurrentUser() userId: string)
+	{
+		const success = await this.appService.cancelCalendarEvent(eventId, userId);
+
+		return ({ success });
+	}
 
 	@Get(':userId')
 	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the full user profile.' })

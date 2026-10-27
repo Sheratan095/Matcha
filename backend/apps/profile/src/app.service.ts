@@ -871,4 +871,27 @@ export class AppService
 			throw new InternalServerErrorException('Failed to decline calendar event');
 		}
 	}
+
+	async cancelCalendarEvent(eventId: string, userId: string): Promise<Boolean>
+	{
+		try
+		{
+			const	updatedEvent = await this.dbService.cancelCalendarEvent(eventId, userId);
+
+			if (!updatedEvent)
+				throw new NotFoundException('Event not found or it can\'t be cancelled by you');
+
+			this.logger.log(`Calendar event ${eventId} canceled by ${userId}`);
+
+			return (updatedEvent);
+		}
+		catch (error: any)
+		{
+			if (error instanceof HttpException)
+				throw (error);
+
+			this.logger.error(`Error canceling calendar event ${eventId} for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to cancel calendar event');
+		}
+	}
 }
