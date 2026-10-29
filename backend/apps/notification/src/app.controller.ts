@@ -2,15 +2,15 @@ import { Controller, Get, Post, Body, Param, Query, ParseUUIDPipe, UseGuards, Ht
 import { AppService } from './app.service';
 import { AuthenticatedUserGuard, CurrentUser, InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { EmailVerificationDto, EmailVerificationResponseDto } from './dto/email_verification.dto';
-import { ForgotPasswordDto, ForgotPasswordResponseDto } from './dto/forgotPassword.dto';
+import { EmailVerificationDto, EmailVerificationResponseDto } from './dto/email/email_verification.dto';
+import { ForgotPasswordDto, ForgotPasswordResponseDto } from './dto/email/forgotPassword.dto';
 import { CloseWsConnectionsDto } from './dto/ws_endpoints.dto';
-import { ProfileViewNotifyDto, ProfileViewNotifyResponseDto } from './dto/notifyView.dto';
-import { ProfileLikeNotifyDto, ProfileLikeNotifyResponseDto } from './dto/notifyLike.dto';
-import { ChatMessageDto, ChatMessageResponseDto } from './dto/chatMessage.dto';
-import { ChatHistoryResponseDto, ChatListResponseDto } from './dto/chat.dto';
+import { ProfileViewNotifyDto, ProfileViewNotifyResponseDto } from './dto/wsNotify/notifyView.dto';
+import { ProfileLikeNotifyDto, ProfileLikeNotifyResponseDto } from './dto/wsNotify/notifyLike.dto';
+import { ChatMessageDto, ChatMessageResponseDto } from './dto/chat/chatMessage.dto';
+import { ChatHistoryResponseDto, ChatListResponseDto } from './dto/chat/chat.dto';
 import { ErrorDto } from '@repo/shared-types';
-import { EventNotifyDto, EventNotifyResponseDto } from './dto/calendar.dto';
+import { EventNotifyDto, EventNotifyResponseDto } from './dto/wsNotify/notifyEvents.dto';
 
 // Specify that this class is a NestJS controller
 @Controller()
