@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
-import { InterestNamesProperty } from './interest.dto';
+import { InterestNamesProperty } from './profile/interest.dto';
 
 // Query parameters for GET /profile/discover: FILTERS ONLY, all optional. With no parameters the
 // whole eligible list comes back in the weighted order.
