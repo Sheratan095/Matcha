@@ -1,15 +1,17 @@
 import { Logger } from '@nestjs/common';
-import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage } from '@nestjs/websockets';
-import { env } from '@repo/config';
+import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { NotificationType } from '@repo/shared-types';
 import { Socket } from 'socket.io';
 import { handleAnyEvent } from './switch.ws';
 import { WsManager } from './manager.ws';
 import { DbService } from '../db/db.service';
 
+// No socket.io CORS on purpose: browsers only reach this server through the gateway, which
+// already answers CORS for FRONTEND_URL. Enabling it here made socket.io send
+// Access-Control-Allow-Origin: * on polling responses, overwriting the gateway's header,
+// and browsers reject * on credentialed requests.
 @WebSocketGateway({
 	namespace: '/notification',
-	cors: env.SECURE,
 })
 export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 {

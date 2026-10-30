@@ -12,7 +12,6 @@ dotenv.config({ path: findConfig(".env") || undefined });
 // define schema
 const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-	SECURE: z.coerce.boolean().default(true), // Whether to enforce HTTPS and other security measures in production and when isn't specified
 
 	TZ: z.string().default("UTC"),
 

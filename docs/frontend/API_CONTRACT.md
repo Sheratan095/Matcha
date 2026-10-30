@@ -554,7 +554,7 @@ const socket = io('http://localhost:3000/notification', {
 const socket = io('/notification', { transports: ['websocket'] });
 ```
 
-Force `transports: ['websocket']` when connecting cross-origin. The notification service enables socket.io CORS with `cors: env.SECURE`, and `SECURE` is parsed with `z.coerce.boolean()`, so the string `"false"` becomes `true`; socket.io then answers polling requests with `Access-Control-Allow-Origin: *`, which overwrites the gateway's header and is rejected by browsers for credentialed requests. The websocket transport is not subject to CORS. [INFERRED]
+`transports: ['websocket']` is what the frontend uses. The websocket transport is not subject to CORS. The notification service no longer enables socket.io's own CORS (it used to, and socket.io then answered polling requests with `Access-Control-Allow-Origin: *`, overwriting the gateway's header, which browsers reject on credentialed requests). Polling responses should now carry only the gateway's CORS headers for `FRONTEND_URL`, so the long-polling fallback should work cross-origin too. [INFERRED, not yet tested in a browser]
 
 ### 5.3 Envelope and events
 
@@ -773,7 +773,7 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 6. **`forgot-password` and `reset-password` return 201**, unlike every other POST (which override to 200). Treat any 2xx as success.
 7. **`/notification/health` returns 401 through the gateway** (no internal key injected on that proxy).
 8. **"Internal" endpoints are publicly reachable** — `POST /profile` (unauthenticated write), `GET /profile/:userId/is-complete` (unauthenticated read), `GET /auth/validate`.
-9. **`SECURE=false` is parsed as `true`** (`z.coerce.boolean()` on a non-empty string). Only consumer today is the socket.io `cors` option (5.2).
+9. ~~**`SECURE=false` is parsed as `true`**~~ — fixed by removing `SECURE`: its only consumer, the socket.io `cors` option, was removed (5.2). HTTPS-only cookies follow `NODE_ENV=production`.
 10. **Name rule mismatch** — registration requires `firstName`/`lastName` to match `/^[a-zA-Z]+$/`; `PATCH /profile` accepts any string ≤ 50. "Jean-Luc" or "José" cannot register but can be set afterwards.
 11. **Viewing has side effects** — any `GET /profile/:userId` for another user records a view; resolving the viewers list into profiles marks the caller as a viewer of each.
 12. **Deleting the main picture leaves no main picture**, and later uploads are not promoted (4.1). Acknowledged in `Todo.md`.
