@@ -22,8 +22,11 @@ producer app (profile, ...)                notification service                 
 ### Authentication
 
 The client never sends its own user id. The **gateway** authenticates the JWT and injects a trusted
-`x-user-id` header onto the handshake. The notification gateway reads it in `handleConnection`; a
-connection with no `x-user-id` is rejected and disconnected immediately.
+`x-user-id` header onto the handshake, together with `x-internal-key` (on both the polling handshake
+and the websocket upgrade). The notification gateway checks both in `handleConnection`: a connection
+without a valid internal key, or with no `x-user-id`, is rejected and disconnected immediately. The key
+check matters because the notification port can be reached without going through the gateway, and
+without it anyone connecting there directly could claim any `x-user-id`.
 
 ### Connection lifecycle
 

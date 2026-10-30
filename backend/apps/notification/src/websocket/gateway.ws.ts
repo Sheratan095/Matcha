@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
 import { NotificationType } from '@repo/shared-types';
+import { validateInternalKey } from '@repo/utils';
 import { Socket } from 'socket.io';
 import { handleAnyEvent } from './switch.ws';
 import { WsManager } from './manager.ws';
@@ -29,6 +30,15 @@ export class WsGateway implements OnGatewayConnection, OnGatewayDisconnect
 		// The gateway authenticates the JWT (via /auth/validate) and injects the trusted
 		// userId as the x-user-id header on the handshake. We never trust a client-supplied value.
 		const userId = client.handshake.headers['x-user-id'] as string;
+
+		// This port is reachable without going through the gateway, so x-user-id is only trusted
+		// when the handshake also carries the internal key (the socket equivalent of InternalKeyGuard).
+		if (!validateInternalKey(client.handshake.headers['x-internal-key'] as string))
+		{
+			this.logger.warn(`Rejected websocket connection ${client.id}: invalid or missing internal key`);
+			client.disconnect(true);
+			return;
+		}
 
 		if (!userId)
 		{

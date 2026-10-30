@@ -17,6 +17,19 @@ export function createNotificationSocketProxy(logger: Logger): any
 		// exclusively by the manual 'upgrade' handler in main.ts.
 		on:
 		{
+			// The notification service only accepts sockets carrying the internal key, so a client
+			// that reaches its port directly can't claim any x-user-id. proxyReq covers the
+			// long-polling transport, proxyReqWs the websocket upgrade.
+			proxyReq: (proxyReq) =>
+			{
+				if (env.INTERNAL_KEY)
+					proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
+			},
+			proxyReqWs: (proxyReq) =>
+			{
+				if (env.INTERNAL_KEY)
+					proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
+			},
 			error: (err: Error, _req: IncomingMessage, _res: ServerResponse | Socket) =>
 			{
 				logger.error('Notification websocket proxy error:', err);
