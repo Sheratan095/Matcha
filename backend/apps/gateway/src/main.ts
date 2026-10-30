@@ -8,6 +8,7 @@ import { setupSwagger } from './swagger';
 import { Microservice } from './Models/Microservice';
 import { Logger } from '@nestjs/common';
 import { createNotificationSocketProxy, isNotificationSocketRequest } from './websocketGateway';
+import { applyGlobalRateLimit, applyRouteRateLimits, checkUpgradeRateLimit } from './rateLimit';
 import { authenticateRequest, USER_ID_HEADER } from '@repo/utils';
 
 const logger = new Logger('GatewayBootstrap');
@@ -61,6 +62,12 @@ async function bootstrap()
 		allowedHeaders: ['Content-Type', 'x-internal-key']
 	});
 
+	// RATE LIMITING, layer 1 (global, per IP). After CORS so a 429 still carries the CORS headers
+	// (otherwise the browser hides it as a network error), and BEFORE the identity middleware so
+	// a flood of fake access_token cookies is cut before it costs auth round-trips.
+	// See rateLimit.ts and docs/backend/rate-limiting.md.
+	applyGlobalRateLimit(app);
+
 	// Best-effort identity for EVERY PROXIED REQUEST: when the caller carries a valid
 	// access token, its userId is attached as USER_ID_HEADER so downstream services can
 	// read it without parsing tokens themselves.
@@ -86,6 +93,11 @@ async function bootstrap()
 
 		next();
 	});
+
+	// RATE LIMITING, layers 2 and 3 (sensitive routes per IP, write actions per user). After the
+	// identity middleware, because per-user limits key on the USER_ID_HEADER it sets, and before
+	// every proxy.
+	applyRouteRateLimits(app);
 
 	// SECURITY BOUNDARY: the Swagger docs are a full inventory of the API surface (every route,
 	// DTO and error shape), so they are not public. This runs before the proxies AND before
@@ -313,6 +325,17 @@ async function bootstrap()
 		// If the request is not for the notification WebSocket, ignore it
 		if (!isNotificationSocketRequest(req.url))
 			return;
+
+		// Upgrades skip the Express rate limiters too, so they are counted here, BEFORE the
+		// auth round-trip below (see checkUpgradeRateLimit in rateLimit.ts).
+		const retryAfter = await checkUpgradeRateLimit(req);
+		if (retryAfter > 0)
+		{
+			logger.warn('Rejected notification websocket upgrade: rate limit exceeded');
+			socket.write(`HTTP/1.1 429 Too Many Requests\r\nRetry-After: ${retryAfter}\r\n\r\n`);
+			(socket as any).destroy();
+			return;
+		}
 
 		// 'upgrade' events bypass the Express middleware stack entirely, so the global
 		// identity middleware never ran for this request: we must validate it here MANUALLY.

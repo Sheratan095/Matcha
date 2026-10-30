@@ -57,7 +57,7 @@
 
 [x] Trim all dtos
 
-[] RATE LIMITING (also in garage)
+[x] RATE LIMITING (garage :3902 left out on purpose, see docs/backend/rate-limiting.md)
 
 [x] pending noiificaiton
 

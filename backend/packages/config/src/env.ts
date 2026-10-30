@@ -33,6 +33,11 @@ const envSchema = z.object({
 	GATEWAY_HOST: z.string().default("http://localhost"),
 	GATEWAY_PORT: z.coerce.number().default(3000),
 
+	// Rate limiting at the gateway (see docs/backend/rate-limiting.md). On unless explicitly "false":
+	// in dev every tester shares 127.0.0.1, so it can be switched off locally.
+	// Not z.coerce.boolean(): that runs Boolean("false"), which is true.
+	RATE_LIMIT_ENABLED: z.enum(["true", "false"]).default("true").transform((value) => value === "true"),
+
 	AUTH_HOST: z.string().default("http://localhost"),
 	AUTH_PORT: z.coerce.number().default(3001),
 

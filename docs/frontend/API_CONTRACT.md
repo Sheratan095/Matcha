@@ -757,7 +757,7 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 | Delete account | absent | |
 | Resend verification email | partial | implicit: a correct-password login on an unverified account re-sends |
 | Tag catalogue / autocomplete | absent | tags are only visible inside profiles |
-| Rate limiting | absent | open item in `Todo.md` |
+| Rate limiting | present | enforced at the gateway: any route can answer **429** `{ "statusCode": 429, "message": "Too many requests, retry in N seconds", "error": "Too Many Requests" }` with a `Retry-After` header (seconds); `toApiError` maps it like any other error. Limits per route: [`docs/backend/rate-limiting.md`](../backend/rate-limiting.md) |
 
 **Where the boundary sits.** Real: the session, the logged-in user's own profile and pictures, opening one profile whose UUID is already known, the viewer-ID list, and an idle authenticated socket. Mock: anything that involves discovering or interacting with other users (feed, swipe, match, chat, block, notifications, presence), plus the per-card data Tinder-style UIs need that the profile lacks (age, distance, fame, username, online). A mock profile can extend `IProfile` with those extra fields.
 
