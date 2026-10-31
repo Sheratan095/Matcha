@@ -449,7 +449,6 @@ From a browser's point of view the effective lifetimes are the cookie lifetimes 
   - One live refresh token per user: logging in from a second browser invalidates the first browser's refresh token.
   - Two concurrent refresh calls race; the loser gets 403. **Serialise refresh on the client** (single in-flight promise).
 - Suggested client logic: on a 401 from a protected endpoint → one `POST /auth/refresh` → retry once → on 403 treat as logged out. Because the access cookie silently disappears after 15 minutes, expect this on the first call after idle.
-- Bug 9.4 can make refresh fail permanently for a user 7 days after their first login.
 
 ### 3.6 Unverified-email login
 
@@ -458,6 +457,13 @@ From a browser's point of view the effective lifetimes are the cookie lifetimes 
 ### 3.7 OAuth hand-off
 
 Tokens are handed back **as cookies on the 302 response** from `/auth/github/callback`; the redirect target is exactly `http://localhost:4000`. Nothing is put in the URL. The SPA must call `GET /auth/validate` on load to learn the `userId`. `isProfileComplete` is not provided on this path.
+
+Which account a GitHub sign-in lands in:
+- Only the GitHub account's **primary AND verified** email is used; without one, the sign-in fails.
+- A Matcha account already linked to that GitHub identity → that account.
+- Else a **verified** Matcha account with the same email → GitHub is linked to it (both ways of logging in work afterwards).
+- Else an **unverified** Matcha account with the same email is **deleted** and a fresh account is created (never linked: that would let whoever registered the address keep a password on the GitHub user's account). It never got past registration, so nothing is lost.
+- Else a new account (email already verified, no password, no name or date of birth yet).
 
 ---
 

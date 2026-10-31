@@ -16,7 +16,11 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github')
 			clientID: env.GITHUB_CLIENT_ID,
 			clientSecret: env.GITHUB_CLIENT_SECRET,
 			callbackURL: env.GITHUB_CALLBACK_URL,
-			scope: ['user:email'], });
+			scope: ['user:email'],
+			// Every address with GitHub's primary/verified flags. By default the library keeps just the
+			// primary one WITHOUT checking it is verified, and that address is what an existing
+			// Matcha account gets linked by (validateOAuthUser), so it must be proven.
+			allRawEmails: true, } as any);
 	}
 
 	// The validate method is called by Passport after a successful handshake with GitHub.
@@ -25,19 +29,22 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github')
 	//	we use just the profile info
 	async validate(_accessToken: string, _refreshToken: string, profile: Profile, done: (error: any, user: any, info?: any) => void): Promise<any>
 	{
-		const { id, username, emails } = profile;
+		const { id, username } = profile;
+		// With allRawEmails each entry also carries GitHub's own primary / verified flags
+		const emails = (profile.emails ?? []) as { value: string; primary?: boolean; verified?: boolean }[];
+		const email = emails.find((entry) => entry.primary && entry.verified);
 
-		if (!emails || emails.length === 0)
+		if (!email)
 		{
-			this.logger.error(`GitHub OAuth validation failed: No email found for GitHub ID ${id}`);
-			return (done(new Error('No email found in GitHub profile'), null));
+			this.logger.error(`GitHub OAuth validation failed: no verified primary email for GitHub ID ${id}`);
+			return (done(new Error('Your GitHub account has no verified primary email'), null));
 		}
 
 		// We delegate the user finding/creation logic to the AppService.
 		const user = await this.appService.validateOAuthUser({
 			provider: 'github',
 			providerId: id,
-			email: emails[0].value,
+			email: email.value.toLowerCase(),
 			username,
 		});
 

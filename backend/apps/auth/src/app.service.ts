@@ -334,7 +334,20 @@ export class AppService implements OnModuleInit
 
 		// 2. If not found by OAuth, check if a user with this email already exists (manual registration).
 		user = await this.dbService.getUserByEmail(email);
-	
+
+		// An UNVERIFIED ACCOUNT WITH THIS EMAIL IS NEVER LINKED: nothing proves its creator owns the
+		// address, while GitHub just proved this user does. Linking would be account PRE-HIJACKING:
+		// someone registers with the victim's email and a password of their own, never verifies, waits
+		// for the victim to sign in with GitHub, and keeps a working password on the victim's account.
+		// It is deleted instead and a fresh account is created below. Nothing is lost: an unverified
+		// account can't log in, so it never got past registration.
+		if (user && !user.emailVerified)
+		{
+			this.logger.warn(`Deleting unverified account ID ${user.id} (${email}): the address was just proven by ${provider} sign-in`);
+			await this.dbService.deleteUser(user.id);
+			user = undefined;
+		}
+
 		if (!user)
 		{
 			// REGISER NEW USER WITH THIS OAUTH IDENTITY
