@@ -4,6 +4,10 @@ CREATE TABLE IF NOT EXISTS users (
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
 	username VARCHAR(30) UNIQUE NOT NULL,
+	-- Same rule as RegisterDto (3-20 of a-z, 0-9, _ and .), for EVERY way a username is created:
+	-- GitHub sign-ups derive theirs from the GitHub handle (usernameFromProvider), and a bug there
+	-- must fail here instead of storing a name the user could never type at login.
+	CONSTRAINT users_username_format_check CHECK (username ~ '^[a-z0-9_.]{3,20}$'),
 
 	password_hash VARCHAR(128), -- NULL FOR OAUTH USERS
 

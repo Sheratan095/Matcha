@@ -12,6 +12,7 @@ import { VerifyEmailDto, VerifyEmailResponseDto } from './dto/verify_email.dto';
 import { ForgotPasswordDto, ForgotPasswordResponseDto, ResetPasswordDto, ResetPasswordResponseDto } from './dto/passwordReset.dto';
 import { ChangeEmailDto, ChangeEmailResponseDto } from './dto/changeEmail.dto';
 import { JwtHelper } from './utils/jwt';
+import { GithubCallbackGuard } from './strategies/github.strategy';
 import { ErrorDto } from '@repo/shared-types';
 
 // Specify that this class is a NestJS controller
@@ -164,16 +165,29 @@ export class AppController
 
 	@Get('github/callback')
 	// After successful authentication, GitHub redirects the user back here with an authorization code.
-	// The AuthGuard('github') exchanges this code for the user profile and populates 'req.user'.
-	@UseGuards(AuthGuard('github'))
-	@ApiOperation({ summary: 'GitHub OAuth callback', description: 'Handles the callback from GitHub after authentication.' })
+	// GithubCallbackGuard checks the state, exchanges the code for the GitHub profile and populates
+	// 'req.user'; on failure it sets 'req.oauthError' instead of throwing (see github.strategy.ts).
+	@UseGuards(GithubCallbackGuard)
+	@ApiOperation({ summary: 'GitHub OAuth callback', description: 'Handles the callback from GitHub after authentication. Always redirects to the frontend: to / on success (auth cookies set), to /login?oauthError=<cancelled|invalid_state|no_verified_email|failed> on failure.' })
 	async githubAuthCallback(@Request() req, @Res() res: Response)
 	{
 		this.logger.log('Received GitHub OAuth callback');
 
-		const user = req.user;
-		// Issue our own application JWT tokens and set them as HTTP-only cookies in the response.
-		await this.appService.issueTokensAfterOAuth(user, res);
+		if (!req.user)
+			return (res.redirect(`${FRONTEND_BASE_URL}/login?oauthError=${req.oauthError ?? 'failed'}`));
+
+		try
+		{
+			// Issue our own application JWT tokens and set them as HTTP-only cookies in the response.
+			await this.appService.issueTokensAfterOAuth(req.user, res);
+		}
+		catch (error: any)
+		{
+			this.logger.error('Failed to issue tokens after GitHub sign-in', error);
+
+			return (res.redirect(`${FRONTEND_BASE_URL}/login?oauthError=failed`));
+		}
+
 		// Redirect the user back to the frontend application.
 		res.redirect(FRONTEND_BASE_URL);
 	}

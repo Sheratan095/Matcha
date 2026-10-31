@@ -35,7 +35,7 @@ sequenceDiagram
 
     AS->>AS: Compare state with the oauth_state cookie, clear the cookie
     alt Missing or different
-        AS-->>User: 403 Forbidden (code is never used)
+        AS-->>User: 302 Redirect to :4000/login?oauthError=invalid_state (code is never used)
     end
 
     AS->>GH: Exchange code for Access Token & Profile
@@ -80,15 +80,26 @@ Options that matter for security:
 ### 2. User Handling (`validateOAuthUser`)
 - The GitHub identity is looked up first (`oauth_accounts`), then the email.
 - A **verified** account with the same email is linked in `oauth_accounts`. An **unverified** one is deleted and a fresh account created (see "Security considerations").
-- **Username Conflict Handling**: If a new OAuth user's provider username (e.g., GitHub handle) is already taken in our system, a fallback username is generated (e.g., `githubuser_1234`) to ensure uniqueness in the `users` table.
+- **Username** (`usernameFromProvider` / `usernameWithSuffix` in `utils/username.ts`): GitHub handles are up to 39 characters of letters, digits and `-`; ours are 3-20 of `a-z`, `0-9`, `_` and `.` (`RegisterDto`, and the `users_username_format_check` CHECK as a safety net). The handle is lowercased, `-` becomes `_`, anything else is dropped, it is cut to 20 and padded with `_user` below 3 (`Jean-Luc-Picard` → `jean_luc_picard`). When that name is reserved or taken, `_` + 4 random digits is appended (`octocat_4821`), up to 10 tries. Two sign-ups racing for the same name are handled too: the insert's unique violation just moves to the next candidate.
 - New OAuth users get `email_verified = TRUE`, since GitHub verified the address.
 
-### 3. CSRF protection (`state`)
+### 3. Errors go back to the frontend
+The callback is a browser navigation, so the default `AuthGuard('github')` behaviour (throw → JSON error page at the gateway's URL) strands the user. `GithubCallbackGuard` (in `strategies/github.strategy.ts`, next to the strategy) never throws: it sets `req.user` on success, or `req.oauthError` on failure, and the controller redirects either way:
+
+| Redirect | When |
+|---|---|
+| `:4000/` (auth cookies set) | success |
+| `:4000/login?oauthError=cancelled` | the user pressed Cancel on GitHub (`?error=access_denied`) |
+| `:4000/login?oauthError=invalid_state` | the `state` check failed (see below) |
+| `:4000/login?oauthError=no_verified_email` | no primary, verified GitHub email |
+| `:4000/login?oauthError=failed` | anything else (GitHub, database or profile service down, token issuing failed) |
+
+### 4. CSRF protection (`state`)
 `backend/apps/auth/src/strategies/oauthStateStore.ts`.
 
 **The attack it stops (login CSRF).** Without `state`, the callback accepts any authorization code. An attacker starts a GitHub sign-in with *their own* GitHub account, stops before the callback, and gets the victim's browser to open `/auth/github/callback?code=<attacker's code>` (a link, an `<img>`, an auto-redirecting page). The victim is silently logged into the attacker's Matcha account, and everything they do next (messages, likes, location, pictures) lands in an account the attacker can read.
 
-**How it works.** `/auth/github` generates 32 random bytes and puts them in two places: an `oauth_state` cookie, and the `state` parameter of the redirect to GitHub. GitHub echoes `state` back to the callback unchanged. The callback continues only when the two match (constant-time comparison), then clears the cookie. An attacker can put their code in a link but cannot set a cookie in the victim's browser, so a forged callback is refused with 403 before the code is ever exchanged.
+**How it works.** `/auth/github` generates 32 random bytes and puts them in two places: an `oauth_state` cookie, and the `state` parameter of the redirect to GitHub. GitHub echoes `state` back to the callback unchanged. The callback continues only when the two match (constant-time comparison), then clears the cookie. An attacker can put their code in a link but cannot set a cookie in the victim's browser, so a forged callback is refused (redirect with `oauthError=invalid_state`) before the code is ever exchanged.
 
 | Cookie attribute | Value | Why |
 |---|---|---|

@@ -6,7 +6,7 @@ import { JwtHelper } from './utils/jwt';
 import { issueJwtTokens, issueVerificationToken, issueForgotPasswordToken } from './utils/tokenIssuing';
 import { User } from '@repo/shared-types';
 import { hashPassword, comparePasswords, validatePassword } from './utils/password';
-import { loadReservedUsernames, validateUsername, generateFallbackUsername } from './utils/username';
+import { loadReservedUsernames, validateUsername, isReservedUsername, usernameFromProvider, usernameWithSuffix } from './utils/username';
 import { createUserProfile, checkProfileCompleteness } from './utils/profile';
 import { closeWsConnections } from './utils/notification';
 
@@ -323,6 +323,38 @@ export class AppService implements OnModuleInit
 	}
 
 	// This method handles the logic of whether to create a new user or link an existing one.
+	// The GitHub handle, made valid for our username rule, else the same base with a random suffix
+	// when it is reserved or taken. The insert itself is the final check: a sign-up that grabs the
+	// same name between the lookup and the insert surfaces as a unique violation, and the next
+	// candidate is tried instead of answering 500.
+	private async createOAuthUserWithFreeUsername(email: string, handle: string, provider: string, providerId: string): Promise<User>
+	{
+		const	base = usernameFromProvider(handle);
+		const	maxAttempts = 10;
+
+		for (let attempt = 0; attempt < maxAttempts; attempt++)
+		{
+			const	candidate = attempt === 0 ? base : usernameWithSuffix(base);
+
+			if (isReservedUsername(candidate) || await this.dbService.getUserByUsername(candidate))
+				continue;
+
+			try
+			{
+				return (await this.dbService.createOAuthUser({ email, username: candidate, provider, providerId }));
+			}
+			catch (error: any)
+			{
+				if (error?.code === '23505' && error.constraint === 'users_username_key')
+					continue;
+
+				throw (error);
+			}
+		}
+
+		throw (new InternalServerErrorException('Could not find a free username'));
+	}
+
 	async validateOAuthUser(profile: { provider: string; providerId: string; email: string; username: string;})
 	{
 		const { provider, providerId, email, username } = profile;
@@ -352,19 +384,7 @@ export class AppService implements OnModuleInit
 		{
 			// REGISER NEW USER WITH THIS OAUTH IDENTITY
 
-			// Handle potential username collisions (GitHub username might already be used by someone else in our DB)
-			let finalUsername = username.toLowerCase().trim();
-			const existingByUsername = await this.dbService.getUserByUsername(finalUsername);
-			if (existingByUsername)
-				finalUsername = generateFallbackUsername(finalUsername);
-
-			// If not found, we create a new user account and link the OAuth provider identity.
-			user = await this.dbService.createOAuthUser({
-				email,
-				username: finalUsername,
-				provider,
-				providerId,
-			});
+			user = await this.createOAuthUserWithFreeUsername(email, username, provider, providerId);
 
 			try
 			{

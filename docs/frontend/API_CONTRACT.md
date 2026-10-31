@@ -456,7 +456,18 @@ From a browser's point of view the effective lifetimes are the cookie lifetimes 
 
 ### 3.7 OAuth hand-off
 
-Tokens are handed back **as cookies on the 302 response** from `/auth/github/callback`; the redirect target is exactly `http://localhost:4000`. Nothing is put in the URL. The SPA must call `GET /auth/validate` on load to learn the `userId`. `isProfileComplete` is not provided on this path.
+Tokens are handed back **as cookies on the 302 response** from `/auth/github/callback`; on success the redirect target is exactly `http://localhost:4000`.
+
+**On failure the callback also redirects (never a JSON error page)**, to `http://localhost:4000/login?oauthError=<code>`, no cookies set. The login page should read the parameter and show a message:
+
+| `oauthError` | Meaning | Suggested message |
+|---|---|---|
+| `cancelled` | The user pressed Cancel on GitHub's consent screen | none, or "GitHub sign-in cancelled" |
+| `invalid_state` | The `state` check failed: sign-in started in another browser/tab, took over 10 min, or a forged link | "Sign-in expired, please try again" |
+| `no_verified_email` | The GitHub account has no primary, verified email | "Verify your email on GitHub first" |
+| `failed` | Anything else (GitHub or a service unavailable) | "GitHub sign-in failed, please try again" |
+
+Username of a new GitHub account: the GitHub handle made valid for the app's rule (lowercased, `-` → `_`, other characters dropped, cut to 20, padded with `_user` below 3), with `_` + 4 random digits when that name is reserved or taken. Users can't type a GitHub-derived name the register form wouldn't accept. Nothing is put in the URL. The SPA must call `GET /auth/validate` on load to learn the `userId`. `isProfileComplete` is not provided on this path.
 
 CSRF protection: `/auth/github` sets a short-lived `oauth_state` cookie (httpOnly, `SameSite=Lax`, path `/auth/github`, 10 min) holding the same random value it sends to GitHub as `state`. The callback refuses (403) unless the `state` GitHub echoes back matches that cookie, so a callback link crafted by someone else can't log the browser into their account. Nothing for the frontend to do, as long as the sign-in starts with a full-page navigation to `/auth/github` and comes back to the same gateway host.
 
@@ -736,7 +747,7 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 |---|---|---|
 | Register / login / logout / refresh | present | cookie session |
 | Email verification, forgot/reset password, change email | present | |
-| GitHub OAuth | present | username edge cases (9.3) |
+| GitHub OAuth | present | |
 | Other OAuth providers (Google…) | absent | |
 | Own profile read / update | present | `GET`/`PATCH /profile` |
 | Profile completeness flag | present | in login response and `GET /profile/:id/is-complete` |
@@ -773,11 +784,10 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 
 ## 9. Bugs and hazards found in the code
 
-Rechecked against the code on 2026-10-31; items fixed since the first pass were removed (JWT expiry units, profile "not found" as 500, GitHub users without a profile row, refresh-token expiry, logout revocation, public internal endpoints, `SECURE` parsing, main-picture promotion, email expiry text, forgot/reset password returning 201, `/notification/health` returning 401, proxies hanging when a service is down, cookies set on a failed login).
+Rechecked against the code on 2026-10-31; items fixed since the first pass were removed (JWT expiry units, profile "not found" as 500, GitHub users without a profile row, refresh-token expiry, logout revocation, public internal endpoints, `SECURE` parsing, main-picture promotion, email expiry text, forgot/reset password returning 201, `/notification/health` returning 401, proxies hanging when a service is down, cookies set on a failed login, GitHub usernames over 30 chars or with `-`, no OAuth `state`).
 
 1. **Name rule mismatch** — registration requires `firstName`/`lastName` to match `/^[a-zA-Z]+$/`; `PATCH /profile` accepts any string ≤ 50. "Jean-Luc" or "José" cannot register but can be set afterwards.
 2. **Viewing has side effects** — any `GET /profile/:userId` for another user records a view and notifies the owner.
-3. **OAuth edge cases** — GitHub logins longer than 30 chars overflow `users.username VARCHAR(30)` → 500; GitHub usernames may contain `-`, which the app's own username rule forbids.
 
 ---
 
