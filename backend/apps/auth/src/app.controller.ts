@@ -131,8 +131,9 @@ export class AppController
 	}
 
 	@Post('forgot-password')
-	@ApiOperation({ summary: 'Forgot password', description: 'Initiates the forgot password process (not implemented yet).' })
-	@ApiResponse({ status: 200, type: ForgotPasswordResponseDto, description: 'Forgot password process initiated (placeholder)' })
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Forgot password', description: 'Emails a password reset code to the address, if an account uses it.' })
+	@ApiResponse({ status: 200, type: ForgotPasswordResponseDto, description: 'Forgot password process initiated' })
 	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid email address' })
 	async forgotPassword(@Body() req: ForgotPasswordDto)
 	{
@@ -140,6 +141,7 @@ export class AppController
 	}
 
 	@Post('reset-password')
+	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Reset password', description: 'Resets the user\'s password using the provided token and new password.' })
 	@ApiResponse({ status: 200, type: ResetPasswordResponseDto, description: 'Password reset successfully' })
 	@ApiResponse({ status: 400, type: ErrorDto, description: 'Invalid or expired reset token' })

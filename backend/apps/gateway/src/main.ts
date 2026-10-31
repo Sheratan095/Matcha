@@ -250,11 +250,21 @@ async function bootstrap()
 		} as any),
 	);
 
+	// The health endpoint is proxied so the gateway can aggregate all services' health into one /health endpoint.
 	app.use( '/notification/health',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
 			changeOrigin: true,
 			pathRewrite: { '^/': '/health' },
+			// Every notification controller route, health included, is behind InternalKeyGuard.
+			on:
+			{
+				proxyReq: (proxyReq: ClientRequest) =>
+				{
+					if (env.INTERNAL_KEY)
+						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
+				},
+			},
 		} as any),
 	);
 

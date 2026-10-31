@@ -503,8 +503,8 @@ const forgotPassword: Handler = (request) => {
     issueReset(account)
     saveAuthDb()
   }
-  // Same answer whether or not the address exists; 201 because the backend does not override it.
-  return ok({ message: 'If an account with this email exists, you will receive a password reset link shortly' }, 201)
+  // Same answer whether or not the address exists.
+  return ok({ message: 'If an account with this email exists, you will receive a password reset link shortly' })
 }
 
 const resetPassword: Handler = (request) => {
@@ -522,7 +522,7 @@ const resetPassword: Handler = (request) => {
   account.passwordHash = hashPassword(input.password)
   db.resetTokens = db.resetTokens.filter((candidate) => candidate.userId !== account.id)
   saveAuthDb()
-  return ok({ message: 'Password reset successfully' }, 201)
+  return ok({ message: 'Password reset successfully' })
 }
 
 const changeEmail: Handler = (request) => {

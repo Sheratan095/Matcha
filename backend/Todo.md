@@ -166,5 +166,3 @@ maybe just add check for two users and event in db
 [x] Stale comments. The comment at app.controller.ts:356 says pass isn't implemented, but it is. The isProfileComplete comment says "upload at least 5 pictures". Both could confuse anyone reading the code during the defense.
 
 [x] wire up notification for all calendar related events
-
-[] find a wuy to organize profile methods /remove profile from calendar and other categories endpoints

@@ -49,7 +49,7 @@ Never call ports 3001–3003 from the browser: every microservice controller is 
 | `/auth/<x>` | auth `:3001/<x>` | prefix stripped; `x-internal-key` injected |
 | `/profile/<x>` (and `/profile` itself) | profile `:3003/<x>` | prefix stripped; `x-internal-key` injected |
 | `/notification/docs-json` | notification `:3002/docs-json` | |
-| `/notification/health` | notification `:3002/health` | **no internal key injected → returns 401** (bug, see 9) |
+| `/notification/health` | notification `:3002/health` | internal key injected |
 | `/notification/online` | notification `:3002/online` | `x-internal-key` injected |
 | `/socket.io/...` | notification `:3002/socket.io/...` | socket.io, authenticated (section 5) |
 | `/health` | gateway itself | returns text `OK` |
@@ -235,7 +235,7 @@ Errors: **403** `{ "message": "Invalid refresh token", "error": "Forbidden", "st
 
 #### POST `/auth/logout` — Auth: none required
 
-No body. Success **200**: `{ "message": "Logged out successfully" }`; clears both cookies. Works even when not logged in. See bugs in section 9 (server-side refresh token is not revoked, sockets are not closed).
+No body. Success **200**: `{ "message": "Logged out successfully" }`; clears both cookies. Works even when not logged in. Also deletes the refresh token server-side and closes the user's notification sockets (best effort).
 
 #### GET `/auth/validate` — Auth: none required (reads `access_token` cookie)
 
@@ -252,7 +252,7 @@ Use it on app boot and after the OAuth redirect.
 
 Body: `{ "email": string }` (trimmed + lowercased, `IsEmail`, `Length(0, 100)`).
 
-Success **201** (not 200 — no `@HttpCode` override): `{ "message": "If an account with this email exists, you will receive a password reset link shortly" }` — identical whether or not the email exists.
+Success **200**: `{ "message": "If an account with this email exists, you will receive a password reset link shortly" }` — identical whether or not the email exists.
 
 Errors: 400 validation.
 
@@ -262,7 +262,7 @@ Email link: `http://localhost:4000/reset-password?token=<token>`; token is 24 he
 
 Body (`ResetPasswordDto`): `{ "token": string, "password": string }` — `token` trimmed, non-empty; `password` same rules as registration.
 
-Success **201**: `{ "message": "Password reset successfully" }`. Does not log the user in and does not clear cookies; the server-side refresh token is deleted.
+Success **200**: `{ "message": "Password reset successfully" }`. Does not log the user in and does not clear cookies; the server-side refresh token is deleted.
 
 Errors:
 
@@ -384,7 +384,7 @@ A normal frontend never needs this. It is the only way to give a GitHub-created 
 | Method + path | Auth | Response |
 |---|---|---|
 | GET `/notification/online` | none | **200**, body is the bare number of distinct users with an open socket, e.g. `3` (sent as text, not JSON object) |
-| GET `/notification/health` | — | 401 through the gateway (internal key not injected) |
+| GET `/notification/health` | none | **200**, body `OK` (text) |
 | GET `/notification/docs-json` | none | OpenAPI JSON |
 
 `POST /email-verification`, `POST /forgot-password`, `POST /close-ws-connections` exist on the service but are **not proxied** by the gateway.
@@ -728,7 +728,7 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 |---|---|---|
 | Register / login / logout / refresh | present | cookie session |
 | Email verification, forgot/reset password, change email | present | |
-| GitHub OAuth | present | new OAuth users lack a profile row (9.3) |
+| GitHub OAuth | present | username edge cases, no `state` (9.5) |
 | Other OAuth providers (Google…) | absent | |
 | Own profile read / update | present | `GET`/`PATCH /profile` |
 | Profile completeness flag | present | in login response and `GET /profile/:id/is-complete` |
@@ -765,22 +765,13 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 
 ## 9. Bugs and hazards found in the code
 
-1. **JWT expiry unit mismatch** — `utils/jwt.ts` and `app.module.ts` pass `expiresIn: env.JWT_ACCESS_EXPIRATION_MS` (number `900000`) / `JWT_REFRESH_EXPIRATION_MS` (`604800000`). jsonwebtoken interprets a number as seconds. Cookies still expire at 15 min / 7 days, so browsers are unaffected, but a captured token stays valid for days. [INFERRED]
-2. **"Not found" becomes 500** — `getProfile` and `updateProfile` in `apps/profile/src/app.service.ts` throw `ConflictException('Profile not found')` inside a `try` whose `catch` rethrows everything as `InternalServerErrorException`. `GET /profile/:userId` for an unknown user returns 500 `"Failed to fetch profile"`, never 404 (nor the 409 the code intended). Acknowledged in `Todo.md`. The frontend cannot distinguish "no such user" from a server failure.
-3. **GitHub-created users have no profile row** — `createOAuthUser` inserts only `users` + `oauth_accounts`; `createUserProfile` is called only from `register`. For such a user `GET /profile` and `PATCH /profile` return 500 and `is-complete` returns `false`. Workaround: `POST /profile { userId }` (2.2).
-4. **Refresh token expiry is never extended** — `saveRefreshToken` does `ON CONFLICT (user_id) DO UPDATE SET token_hash = ..., created_at = ...` without updating `expires_at`, and lookup filters on `expires_at > CURRENT_TIMESTAMP`. Seven days after a user's first login, every refresh returns 403 even right after a new login, until the row is deleted (only password reset does that). Symptom: the user is logged out every 15 minutes.
-5. **Logout does not revoke server-side** — `logout(res)` reads `res.userId`, which is never set: `closeWsConnections(undefined)` closes nothing and `revokeTokens(res, dbService)` is called without a user id, so the refresh-token row stays. Cookies are cleared, which is all the browser notices. The `closeWsConnections` call is also not awaited; if the notification service is down this is an unhandled rejection that may crash the auth process. [INFERRED for the crash]
-6. **`forgot-password` and `reset-password` return 201**, unlike every other POST (which override to 200). Treat any 2xx as success.
-7. **`/notification/health` returns 401 through the gateway** (no internal key injected on that proxy).
-8. **"Internal" endpoints are publicly reachable** — `POST /profile` (unauthenticated write), `GET /profile/:userId/is-complete` (unauthenticated read), `GET /auth/validate`.
-9. ~~**`SECURE=false` is parsed as `true`**~~ — fixed by removing `SECURE`: its only consumer, the socket.io `cors` option, was removed (5.2). HTTPS-only cookies follow `NODE_ENV=production`.
-10. **Name rule mismatch** — registration requires `firstName`/`lastName` to match `/^[a-zA-Z]+$/`; `PATCH /profile` accepts any string ≤ 50. "Jean-Luc" or "José" cannot register but can be set afterwards.
-11. **Viewing has side effects** — any `GET /profile/:userId` for another user records a view; resolving the viewers list into profiles marks the caller as a viewer of each.
-12. **Deleting the main picture leaves no main picture**, and later uploads are not promoted (4.1). Acknowledged in `Todo.md`.
-13. **Proxy hang when a microservice is down** (2.0). [INFERRED]
-14. **Cookies may be set on a failed login** — in `login`, cookies are written before `checkProfileCompleteness`; if the profile service call fails the response is 500 `"Login failed"` but the `Set-Cookie` headers were already attached. [INFERRED]
-15. **OAuth edge cases** — GitHub logins longer than 30 chars overflow `users.username VARCHAR(30)` → 500; GitHub usernames may contain `-`, which the app's own username rule forbids. No `state` parameter is used.
-16. **Email text says "15 minutes"** while tokens actually live 1 hour (`EXPIRY_MINUTES` hardcoded to `'15'` in `mailer.service.ts`).
+Rechecked against the code on 2026-10-31; items fixed since the first pass were removed (JWT expiry units, profile "not found" as 500, GitHub users without a profile row, refresh-token expiry, logout revocation, public internal endpoints, `SECURE` parsing, main-picture promotion, email expiry text, forgot/reset password returning 201, `/notification/health` returning 401).
+
+1. **Name rule mismatch** — registration requires `firstName`/`lastName` to match `/^[a-zA-Z]+$/`; `PATCH /profile` accepts any string ≤ 50. "Jean-Luc" or "José" cannot register but can be set afterwards.
+2. **Viewing has side effects** — any `GET /profile/:userId` for another user records a view and notifies the owner.
+3. **Proxy hang when a microservice is down** (2.0): no `proxyTimeout` on the gateway proxies. [INFERRED]
+4. **Cookies may be set on a failed login** — in `login`, cookies are written before `checkProfileCompleteness`; if the profile service call fails the response is 500 `"Login failed"` but the `Set-Cookie` headers were already attached. [INFERRED]
+5. **OAuth edge cases** — GitHub logins longer than 30 chars overflow `users.username VARCHAR(30)` → 500; GitHub usernames may contain `-`, which the app's own username rule forbids. No `state` parameter is used.
 
 ---
 
@@ -795,14 +786,12 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 | `docs/auth_flow.txt` | forgot-password only issues a token if the email is verified | a token is issued for unverified accounts too (only a warning is logged) |
 | `docs/auth_flow.txt` | endpoint `/auth/forgot-passwords` | `/auth/forgot-password` |
 | `docs/jwtValidation.txt` | "NO endpoint uses [the guards] yet" | used by `/auth/change-email` and all authenticated profile endpoints |
-| `docs/jwtValidation.txt` | "Logout does not close sockets yet" | code now attempts it, but it is broken (9.5) — net effect unchanged |
+| `docs/jwtValidation.txt` | "Logout does not close sockets yet" | code now closes them on logout (best effort, does not fail the logout) |
 | `docs/oauth_flow.md` | base class in `strategies/oauth.strategy.ts` | file does not exist; only `github.strategy.ts` |
 | `docs/oauth_flow.md` | OAuth login verifies a previously unverified manual account | `linkOAuthAccount` only links; `email_verified` is not touched (tokens are still issued) |
 | `docs/oauth_flow.md` | Google as a second provider | DB `CHECK (provider IN ('github'))`; no Google strategy |
 | Swagger (all services) | error bodies with `code`, `timestamp`, `path` | Nest default `{message, error, statusCode}` |
 | Swagger auth | login failure 401; verify/reset token failure 400 | all are 403 |
-| Swagger auth | forgot/reset password 200 | 201 |
-| Swagger profile | `GET /profile/:userId` 404 "Profile not found" | 500 |
 | Swagger profile | `GET /profile/viewers` and `PATCH /profile` 403 "not the profile owner" | cannot occur; both act on the caller only |
 | `apps/profile/src/app.service.ts` comment | completeness needs "at least 5 pictures" | pictures not required |
 | `docs/object-storage.md`, `docs/profile.txt`, `docs/language.txt` | — | consistent with the code |
