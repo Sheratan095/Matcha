@@ -1,8 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { IncomingMessage, ServerResponse } from 'http';
-import { Socket } from 'net';
 import { env } from '@repo/config';
+import { proxyErrorHandler } from './proxyErrors';
 
 const notificationSocketPath = '/socket.io';
 
@@ -30,10 +29,9 @@ export function createNotificationSocketProxy(logger: Logger): any
 				if (env.INTERNAL_KEY)
 					proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
 			},
-			error: (err: Error, _req: IncomingMessage, _res: ServerResponse | Socket) =>
-			{
-				logger.error('Notification websocket proxy error:', err);
-			},
+			// Answers a polling request with a 502 / 504 and destroys a failed upgrade's socket.
+			// No proxyTimeout here: long-polling requests are held open on purpose.
+			error: proxyErrorHandler(logger, 'notification'),
 		},
 	}) as any);
 }

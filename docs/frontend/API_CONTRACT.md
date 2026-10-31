@@ -151,7 +151,7 @@ Machine-readable discriminators that exist (all in the `error` field): `EMAIL_NO
 { "message": "Missing or invalid access token", "error": "Unauthorized", "statusCode": 401 }
 ```
 
-**Microservice down:** `/auth/*` and `/profile/*` proxies register a custom `on.error` that only logs, which in http-proxy-middleware v3 disables the default error-response plugin, so the browser request likely **hangs with no response**. Use a client-side timeout. [INFERRED]
+**Microservice down:** every proxy answers with the usual error shape instead of hanging: **502** `{ "statusCode": 502, "message": "The <service> service is unavailable, try again later", "error": "Bad Gateway" }` when the service can't be reached, **504** (`"Gateway Timeout"`) when it accepts the request but doesn't answer within 30 s (`proxyTimeout`). The socket.io proxy has no timeout (long-polling holds requests open by design).
 
 ---
 
@@ -728,7 +728,7 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 |---|---|---|
 | Register / login / logout / refresh | present | cookie session |
 | Email verification, forgot/reset password, change email | present | |
-| GitHub OAuth | present | username edge cases, no `state` (9.5) |
+| GitHub OAuth | present | username edge cases, no `state` (9.3) |
 | Other OAuth providers (Google…) | absent | |
 | Own profile read / update | present | `GET`/`PATCH /profile` |
 | Profile completeness flag | present | in login response and `GET /profile/:id/is-complete` |
@@ -765,13 +765,11 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 
 ## 9. Bugs and hazards found in the code
 
-Rechecked against the code on 2026-10-31; items fixed since the first pass were removed (JWT expiry units, profile "not found" as 500, GitHub users without a profile row, refresh-token expiry, logout revocation, public internal endpoints, `SECURE` parsing, main-picture promotion, email expiry text, forgot/reset password returning 201, `/notification/health` returning 401).
+Rechecked against the code on 2026-10-31; items fixed since the first pass were removed (JWT expiry units, profile "not found" as 500, GitHub users without a profile row, refresh-token expiry, logout revocation, public internal endpoints, `SECURE` parsing, main-picture promotion, email expiry text, forgot/reset password returning 201, `/notification/health` returning 401, proxies hanging when a service is down, cookies set on a failed login).
 
 1. **Name rule mismatch** — registration requires `firstName`/`lastName` to match `/^[a-zA-Z]+$/`; `PATCH /profile` accepts any string ≤ 50. "Jean-Luc" or "José" cannot register but can be set afterwards.
 2. **Viewing has side effects** — any `GET /profile/:userId` for another user records a view and notifies the owner.
-3. **Proxy hang when a microservice is down** (2.0): no `proxyTimeout` on the gateway proxies. [INFERRED]
-4. **Cookies may be set on a failed login** — in `login`, cookies are written before `checkProfileCompleteness`; if the profile service call fails the response is 500 `"Login failed"` but the `Set-Cookie` headers were already attached. [INFERRED]
-5. **OAuth edge cases** — GitHub logins longer than 30 chars overflow `users.username VARCHAR(30)` → 500; GitHub usernames may contain `-`, which the app's own username rule forbids. No `state` parameter is used.
+3. **OAuth edge cases** — GitHub logins longer than 30 chars overflow `users.username VARCHAR(30)` → 500; GitHub usernames may contain `-`, which the app's own username rule forbids. No `state` parameter is used.
 
 ---
 

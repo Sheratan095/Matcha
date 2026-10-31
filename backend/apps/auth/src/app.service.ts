@@ -60,9 +60,11 @@ export class AppService implements OnModuleInit
 				throw new ForbiddenException('Email not verified', 'EMAIL_NOT_VERIFIED');
 			}
 
-			await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
-
+			// Before issuing the tokens: if the profile service is down, the login fails as a 500
+			// WITHOUT having set the auth cookies (a "failed" login must not leave the user logged in).
 			const isProfileComplete : boolean = await checkProfileCompleteness(user.id, this.httpService);
+
+			await issueJwtTokens(user, res, this.dbService, this.jwtHelper, this.httpService, this.logger);
 
 			this.logger.log(`Login successful for user ${username} (ID: ${user.id}, COMPLETE: ${isProfileComplete})`);
 

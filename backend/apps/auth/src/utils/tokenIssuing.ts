@@ -15,12 +15,14 @@ export async function issueJwtTokens(user: User, res: any, dbService: DbService,
 {
 	// If valid, issue new tokens
 	const tokens = await jwtHelper.generateTokens(user.id);
-	// Set the new tokens as cookies in the response
-	jwtHelper.setTokensAsCookies(res, tokens);
 	// Hash the refresh token before storing it in the database for security
 	const hashedRefreshToken = hashRefreshToken(tokens.refresh_token);
-	// Store the new refresh token in the database, replacing the old one
+	// Store the new refresh token in the database, replacing the old one. BEFORE setting the
+	// cookies: if this fails the request errors out without handing the client tokens that the
+	// database doesn't know about (its refresh token would be rejected on the next refresh).
 	await dbService.saveRefreshToken(user.id, hashedRefreshToken, tokens.refresh_token_expires_at);
+	// Set the new tokens as cookies in the response
+	jwtHelper.setTokensAsCookies(res, tokens);
 }
 
 // targetEmail lets callers send the verification link to an address other than user.email

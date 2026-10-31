@@ -8,6 +8,7 @@ import { setupSwagger } from './swagger';
 import { Microservice } from './Models/Microservice';
 import { Logger } from '@nestjs/common';
 import { createNotificationSocketProxy, isNotificationSocketRequest } from './websocketGateway';
+import { proxyErrorHandler, PROXY_TIMEOUT_MS } from './proxyErrors';
 import { applyGlobalRateLimit, applyRouteRateLimits, checkUpgradeRateLimit } from './rateLimit';
 import { authenticateRequest, USER_ID_HEADER } from '@repo/utils';
 
@@ -162,6 +163,7 @@ async function bootstrap()
 	app.use( '/auth',
 		createProxyMiddleware({
 			target: `${env.AUTH_HOST}:${env.AUTH_PORT}`,
+			proxyTimeout: PROXY_TIMEOUT_MS,
 
 			// Change the origin of the host header to the target URL
 			changeOrigin: true,
@@ -185,11 +187,8 @@ async function bootstrap()
 						proxyReq.setHeader('x-internal-key', internalKey);
 				},
 
-				// Specify what to do in case of an error when proxying the request to the target service
-				error: (err : Error, _req: Request, _res: Response) =>
-				{
-					logger.error('Proxy Error:', err);
-				}
+				// Answers the client with a 502 / 504 instead of leaving it hanging (see proxyErrors.ts)
+				error: proxyErrorHandler(logger, 'auth'),
 			},
 
 		} as any),
@@ -200,6 +199,7 @@ async function bootstrap()
 	app.use( '/profile',
 		createProxyMiddleware({
 			target: `${env.PROFILE_HOST}:${env.PROFILE_PORT}`,
+			proxyTimeout: PROXY_TIMEOUT_MS,
 
 			// Change the origin of the host header to the target URL
 			changeOrigin: true,
@@ -220,11 +220,8 @@ async function bootstrap()
 						proxyReq.setHeader('x-internal-key', internalKey);
 				},
 
-				// Specify what to do in case of an error when proxying the request to the target service
-				error: (err : Error, _req: Request, _res: Response) =>
-				{
-					logger.error('Proxy Error:', err);
-				}
+				// Answers the client with a 502 / 504 instead of leaving it hanging (see proxyErrors.ts)
+				error: proxyErrorHandler(logger, 'profile'),
 			},
 
 		} as any),
@@ -235,6 +232,7 @@ async function bootstrap()
 	app.use( '/notification/docs-json',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			proxyTimeout: PROXY_TIMEOUT_MS,
 			changeOrigin: true,
 			pathRewrite: { '^/': '/docs-json' },
 			// The service's docs are internal-only (protectDocsWithInternalKey), so the spec is
@@ -246,6 +244,7 @@ async function bootstrap()
 					if (env.INTERNAL_KEY)
 						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
 				},
+				error: proxyErrorHandler(logger, 'notification'),
 			},
 		} as any),
 	);
@@ -254,6 +253,7 @@ async function bootstrap()
 	app.use( '/notification/health',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			proxyTimeout: PROXY_TIMEOUT_MS,
 			changeOrigin: true,
 			pathRewrite: { '^/': '/health' },
 			// Every notification controller route, health included, is behind InternalKeyGuard.
@@ -264,6 +264,7 @@ async function bootstrap()
 					if (env.INTERNAL_KEY)
 						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
 				},
+				error: proxyErrorHandler(logger, 'notification'),
 			},
 		} as any),
 	);
@@ -271,6 +272,7 @@ async function bootstrap()
 	app.use( '/notification/online',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			proxyTimeout: PROXY_TIMEOUT_MS,
 			changeOrigin: true,
 			pathRewrite: { '^/': '/online' },
 			on:
@@ -280,6 +282,7 @@ async function bootstrap()
 					if (env.INTERNAL_KEY)
 						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
 				},
+				error: proxyErrorHandler(logger, 'notification'),
 			},
 		} as any),
 	);
@@ -293,6 +296,7 @@ async function bootstrap()
 	app.use( '/chat',
 		createProxyMiddleware({
 			target: `${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`,
+			proxyTimeout: PROXY_TIMEOUT_MS,
 			changeOrigin: true,
 			pathRewrite: { '^/': '/chat/' },
 			on:
@@ -302,6 +306,7 @@ async function bootstrap()
 					if (env.INTERNAL_KEY)
 						proxyReq.setHeader('x-internal-key', env.INTERNAL_KEY);
 				},
+				error: proxyErrorHandler(logger, 'notification'),
 			},
 		} as any),
 	);
