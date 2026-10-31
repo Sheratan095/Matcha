@@ -707,11 +707,11 @@ make dev
 
 `make dev` does: `generate_env` (copies `.env.example` if `.env` is missing) → `pnpm install` if needed → `pnpm build` if no `dist` → `docker compose up -d postgres garage` → `./infra/garage/init.sh` → `make seed-pictures` → `pnpm dev` (turbo: `nest start --watch` for gateway 3000, auth 3001, notification 3002, profile 3003).
 
-Other Makefile targets: `install`, `build`, `up` (`docker compose up -d`), `down`, `db-reset` (`docker compose down -v`, recreate postgres + garage, re-init, re-seed pictures), `storage`, `seed-pictures`, `clean`, `generate_env`.
+Other Makefile targets: `install`, `build`, `up` (same setup as `dev`, then every service compiled with `pnpm start`, no watchers), `down`, `db-reset` (`docker compose down -v`, recreate postgres + garage, re-init, re-seed pictures), `storage`, `seed-pictures`, `clean`, `generate_env`.
 
 Notes:
 - Migrations and seeds run only when the Postgres volume is created. Use `make db-reset` to re-run them (also wipes uploaded pictures).
-- `make up` / `docker compose up -d` is **not** a working full stack: `docker-compose.yml` defines `postgres`, `garage`, `gateway`, `notification`, `profile` but **no `auth` service**. Use `make dev`.
+- `docker-compose.yml` defines only the infrastructure (`postgres`, `garage`); the apps always run on the host. Postgres and the Garage S3 API are published on `127.0.0.1` only, and auth / notification / profile listen on `127.0.0.1` only: just the gateway (3000), the frontend (4000) and Garage's image endpoint (3902) are reachable from other machines.
 - With `GITHUB_CLIENT_ID` empty, `passport-oauth2` throws "OAuth2Strategy requires a clientID option" at construction, which would stop the auth service from booting. Put any non-empty placeholder if you do not need OAuth. [INFERRED]
 - Without working SMTP, registration succeeds but no email arrives and the token is stored only as a bcrypt hash. For local testing use the seeded users, or mark a user verified by hand:
   `docker compose exec postgres psql -U pg-admin -d matcha -c "UPDATE users SET email_verified = TRUE WHERE username = '<name>';"`

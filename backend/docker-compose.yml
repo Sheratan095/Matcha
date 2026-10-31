@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   # Infrastructure
@@ -12,7 +10,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       TZ: ${TZ} # Set the timezone for the PostgreSQL container
     ports:
-      - "5432:5432"
+      # Loopback only: just the services on this host need it. A bare "5432:5432" listens on every
+      # interface, and Docker's own iptables rules bypass host firewalls like ufw.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Mount the custom init shell script that processes subdirectories
@@ -35,58 +35,12 @@ services:
       GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
       TZ: ${TZ}
     ports:
-      - "3900:3900" # S3 API (uploads / deletes, needs credentials)
+      - "127.0.0.1:3900:3900" # S3 API (uploads / deletes, needs credentials): loopback only, used by profile
       - "3902:3902" # Public web endpoint (the browser loads images from here)
     volumes:
       - ./infra/garage/garage.toml:/etc/garage.toml:ro
       - garage_meta:/var/lib/garage/meta
       - garage_data:/var/lib/garage/data
-
-
-  # Applications
-  gateway:
-    build:
-      context: .
-      dockerfile: apps/gateway/Dockerfile
-    ports:
-      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
-    environment:
-      PORT: ${GATEWAY_PORT}
-      HOST: ${GATEWAY_HOST}
-      TZ: ${TZ}
-    depends_on:
-      - postgres
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f ${GATEWAY_HOST}:${GATEWAY_PORT}/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  notification:
-    build:
-      context: .
-      dockerfile: apps/notification/Dockerfile
-    ports:
-      - "${NOTIFICATION_PORT:-3002}:3002"
-    environment:
-      NOTIFICATION_PORT: 3002
-      TZ: ${TZ}
-    depends_on:
-      - postgres
-
-  profile:
-    build:
-      context: .
-      dockerfile: apps/profile/Dockerfile
-    ports:
-      - "${PROFILE_PORT:-3003}:3003"
-    environment:
-      PROFILE_PORT: 3003
-      TZ: ${TZ}
-      S3_ENDPOINT: http://garage:3900 # Reach Garage through the compose network, not localhost
-    depends_on:
-      - postgres
-      - garage
 
 volumes:
   # Persistent volume for PostgreSQL data

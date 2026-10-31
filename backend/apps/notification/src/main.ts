@@ -5,8 +5,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { env } from "@repo/config";
 import { protectDocsWithInternalKey } from '@repo/utils';
 
-const logger = new Logger('NotificationBootstrap');
-
 function swaggerSetup(app: any)
 {
 	// First, so the docs can never be mounted without their guard: everything below is
@@ -35,8 +33,7 @@ async function bootstrap()
 
 	swaggerSetup(app);
 
-	const port = env.NOTIFICATION_PORT;
-	await app.listen(port);
-	logger.log(`Notification service is running on: ${port}`);
+	// Loopback only: just the gateway (same host) calls this service, SO OTHER MACHINES CAN'T REACH IT.
+	await app.listen(env.NOTIFICATION_PORT, '127.0.0.1');
 }
 bootstrap();

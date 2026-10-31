@@ -356,7 +356,10 @@ async function bootstrap()
 
 	setupSwagger(app, services);
 
+	// NOT loopback-only as other services because gateway is the oublc entry for the whoke backend
+	// await app.listen(env.GATEWAY_PORT, '127.0.0.1');
 	await app.listen(env.GATEWAY_PORT);
+
 	logger.log(`Listening on port ${env.GATEWAY_PORT}`);
 	logger.log(`Proxying /auth to ${env.AUTH_HOST}:${env.AUTH_PORT}`);
 	logger.log(`Proxying /notification to ${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}`);

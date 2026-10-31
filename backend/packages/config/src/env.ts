@@ -37,20 +37,20 @@ const envSchema = z.object({
 	// Not z.coerce.boolean(): that runs Boolean("false"), which is true.
 	RATE_LIMIT_ENABLED: z.enum(["true", "false"]).default("true").transform((value) => value === "true"),
 
-	AUTH_HOST: z.string().default("http://localhost"),
+	AUTH_HOST: z.string().default("http://127.0.0.1"),
 	AUTH_PORT: z.coerce.number().default(3001),
 
-	NOTIFICATION_HOST: z.string().default("http://localhost"),
+	NOTIFICATION_HOST: z.string().default("http://127.0.0.1"),
 	NOTIFICATION_PORT: z.coerce.number().default(3002),
 	// Max live notifications buffered per offline user; the oldest are dropped past this cap.
 	NOTIFICATION_MAX_PENDING_PER_USER: z.coerce.number().default(50),
 
-	PROFILE_HOST: z.string().default("http://localhost"),
+	PROFILE_HOST: z.string().default("http://127.0.0.1"),
 	PROFILE_PORT: z.coerce.number().default(3003),
 
 	// Database
 	DATABASE_URL: z.string(), // connection string
-	POSTGRES_HOST: z.string().default("localhost"),
+	POSTGRES_HOST: z.string().default("127.0.0.1"),
 	POSTGRES_USER: z.string(),
 	POSTGRES_PASSWORD: z.string(),
 	POSTGRES_DB: z.string(),
@@ -79,7 +79,7 @@ const envSchema = z.object({
 	SMTP_PASS: z.string(),
 
 	// S3-compatible object storage (Garage), used by the profile service for pictures
-	S3_ENDPOINT: z.string().default("http://localhost:3900"), // S3 API the backend talks to ("http://garage:3900" inside docker)
+	S3_ENDPOINT: z.string().default("http://127.0.0.1:3900"), // S3 API the backend talks to ("http://garage:3900" inside docker)
 	S3_REGION: z.string().default("garage"), // Must match s3_region in infra/garage/garage.toml
 	// Empty defaults keep services that don't use storage bootable; the profile service logs an error instead
 	S3_ACCESS_KEY: z.string().default(""),

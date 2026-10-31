@@ -30,9 +30,17 @@ function swaggerSetup(app : any)
 async function bootstrap()
 {
 	const app = await NestFactory.create(AppModule);
+
+	// Strip unknown fields and run class-validator/class-transformer on request DTOs
+	// (matches the auth and profile services).
 	app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+	// Cookie parser is needed for the auth service to read the refresh JWT token from cookies.
 	app.use(cookieParser());
+
 	swaggerSetup(app);
-	await app.listen(env.AUTH_PORT);
+
+	// Loopback only: just the gateway (same host) calls this service, SO OTHER MACHINES CAN'T REACH IT.
+	await app.listen(env.AUTH_PORT, '127.0.0.1');
 }
 bootstrap();

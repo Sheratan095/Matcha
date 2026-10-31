@@ -29,8 +29,14 @@ function swaggerSetup(app : any)
 async function bootstrap()
 {
 	const app = await NestFactory.create(AppModule);
+
+	// Strip unknown fields and run class-validator/class-transformer on request DTOs
+	// (matches the auth and profile services).
 	app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
 	swaggerSetup(app);
-	await app.listen(env.PROFILE_PORT);
+
+	// Loopback only: just the gateway (same host) calls this service, SO OTHER MACHINES CAN'T REACH IT.
+	await app.listen(env.PROFILE_PORT, '127.0.0.1');
 }
 bootstrap();

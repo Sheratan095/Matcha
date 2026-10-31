@@ -52,8 +52,8 @@ dev: setup
 generate_env:
 	@./infra/generate-env.sh $(MODE)
 
-# Start the Docker infrastructure (PostgreSQL, Garage). Only those two: the app images in
-# docker-compose.yml do not build, the services run on the host through `make dev`.
+# Start the Docker infrastructure (PostgreSQL, Garage), the only services docker-compose.yml defines:
+# the apps run on the host through `make dev` / `make up`.
 # --wait returns once postgres passes its healthcheck, so nothing starts against a database still booting.
 infra: generate_env
 	docker compose up -d --wait postgres garage
