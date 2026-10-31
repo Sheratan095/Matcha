@@ -6,14 +6,14 @@ import { InterestNamesProperty } from './interest.dto';
 
 export class UpdateProfileDto
 {
-	@ApiProperty({ example: 'Alice', description: 'First name', required: false })
+	@ApiProperty({ example: 'Alice', description: 'First name: letters from any alphabet, with single spaces, hyphens or apostrophes between parts', required: false })
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)
 	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	firstName?: string;
 
-	@ApiProperty({ example: 'Wonderland', description: 'Last name', required: false })
+	@ApiProperty({ example: 'Wonderland', description: 'Last name: letters from any alphabet, with single spaces, hyphens or apostrophes between parts', required: false })
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)

@@ -9,6 +9,7 @@ import { DiscoverQueryDto } from './dto/discover.dto';
 import { SearchQueryDto } from './dto/search.dto';
 import { sendProfileViewNotification, checkIsUserOnline, sendProfileLikeNotification, sendProfileUnlikeNotification, sendEventNotification } from './utils/notification';
 import { getDateOfBirthError, isInvalidDateOfBirth, INVALID_DATE_OF_BIRTH } from './utils/dateOfBirth';
+import { getInvalidNameMessage } from './utils/nameErrors';
 import { NotificationType } from '@repo/shared-types';
 
 // Services contain the core business logic like the db calls
@@ -52,6 +53,12 @@ export class AppService
 			if (isInvalidDateOfBirth(error))
 				throw new BadRequestException(INVALID_DATE_OF_BIRTH);
 
+			// Names constraint violations are caught by the database (see 002_profiles.sql).
+			// The DTOs catch most of them first, but this covers any value that slips past them.
+			const	nameError = getInvalidNameMessage(error);
+			if (nameError)
+				throw new BadRequestException(nameError);
+
 			this.logger.error(`Error creating profile for user ID ${userId}`, error);
 
 			// PostgreSQL unique violation error code is '23505' (profile already exists for this user)
@@ -63,13 +70,10 @@ export class AppService
 		}
 	}
 
-	// To be completed the user should (see DbService.isProfileComplete):
-	//   have a gender
-	//   specify a sexual preference
-	//   have a non-empty bio
-	//   have at least one interest
-	// Pictures are NOT required here. Appearing in discover and search is stricter: it also needs
-	// a date of birth, a location and a profile picture (discover_candidates, 011_browsing.sql).
+	// Complete = first and last name, gender, sexual preference, date of birth, location, a
+	// non-empty bio, at least one interest and a profile picture. The rule is profile_is_complete()
+	// in 002_profiles.sql, the same one discover and search use, so a complete profile is exactly
+	// one that can appear in other users' deck and search results.
 	async isProfileComplete(userId: string): Promise<boolean>
 	{
 		try
@@ -203,6 +207,12 @@ export class AppService
 
 			if (isInvalidDateOfBirth(error))
 				throw new BadRequestException(INVALID_DATE_OF_BIRTH);
+
+			// Names constraint violations are caught by the database (see 002_profiles.sql).
+			// The DTOs catch most of them first, but this covers any value that slips past them.
+			const	nameError = getInvalidNameMessage(error);
+			if (nameError)
+				throw new BadRequestException(nameError);
 
 			this.logger.error(`Error updating profile for user ID ${userId}`, error);
 			throw new InternalServerErrorException('Failed to update profile');

@@ -225,7 +225,7 @@ Errors (check order in code: user exists → password matches → email verified
 | 403 | `{ "message": "Email not verified", "error": "EMAIL_NOT_VERIFIED", "statusCode": 403 }` | credentials correct but email unverified; a new verification email is sent |
 | 500 | `{ "message": "Login failed", "error": "Internal Server Error", "statusCode": 500 }` | anything else, including the profile service being down |
 
-`isProfileComplete` is true when the profile has `gender`, `sexual_preference`, a non-empty `biography` and at least one interest. Pictures and names are **not** required.
+`isProfileComplete` is true when the profile has first and last name, `gender`, `sexual_preference`, date of birth, location, a non-empty `biography`, at least one interest and a profile picture. It is the same rule that decides who appears in other users' discover deck and search results (`profile_is_complete()` in `002_profiles.sql`), so a complete profile is exactly a findable one.
 
 #### POST `/auth/refresh` — Auth: `refresh_token` cookie
 
@@ -363,7 +363,7 @@ To render viewers you must `GET /profile/:id` for each, which records *you* as a
 
 Success **200**: `{ "isComplete": boolean }`. `false` when no profile row exists. Errors: 400 non-UUID; 500 `"Failed to check profile completeness"`.
 
-Completeness rule (`db.service.ts`): `gender` AND `sexual_preference` AND non-empty `biography` AND ≥ 1 interest. Pictures are explicitly not required (the "at least 5 pictures" comment in `app.service.ts` is stale).
+Completeness rule: the SQL function `profile_is_complete()` (`002_profiles.sql`), shared with discover and search: first and last name, `gender`, `sexual_preference`, date of birth, location, a non-empty `biography`, at least one interest and a profile picture.
 
 #### POST `/profile` — create profile — Auth: **none** (intended as internal, but exposed)
 
@@ -791,5 +791,4 @@ Rechecked against the code on 2026-10-31; items fixed since the first pass were 
 | Swagger (all services) | error bodies with `code`, `timestamp`, `path` | Nest default `{message, error, statusCode}` |
 | Swagger auth | login failure 401; verify/reset token failure 400 | all are 403 |
 | Swagger profile | `GET /profile/viewers` and `PATCH /profile` 403 "not the profile owner" | cannot occur; both act on the caller only |
-| `apps/profile/src/app.service.ts` comment | completeness needs "at least 5 pictures" | pictures not required |
 | `docs/object-storage.md`, `docs/profile.txt`, `docs/language.txt` | — | consistent with the code |

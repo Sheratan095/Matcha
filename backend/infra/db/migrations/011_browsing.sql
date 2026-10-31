@@ -94,15 +94,9 @@ AS $$
 
 	WHERE c.user_id <> viewer
 
-	  -- ONLY COMPLETE PROFILES are suggested. gender is needed to check orientation, the date of
-	  -- birth and the location to render the card's age and distance, and a bio/interests/picture
-	  -- make a card worth swiping on at all (mirrors DbService.isProfileComplete).
-	  AND c.gender IS NOT NULL
-	  AND c.date_of_birth IS NOT NULL
-	  AND c.latitude IS NOT NULL
-	  AND c.longitude IS NOT NULL
-	  AND COALESCE(c.biography, '') <> ''
-	  AND EXISTS (SELECT 1 FROM user_interests WHERE user_id = c.user_id)
+	  -- ONLY COMPLETE PROFILES are suggested: the one definition shared with the is-complete
+	  -- endpoint (profile_is_complete in 002_profiles.sql).
+	  AND profile_is_complete(c)
 
 	  -- Orientation must work in BOTH directions, or a straight man would be shown to straight
 	  -- men who happen to match his own preference. COALESCE makes an unset preference behave as
@@ -192,12 +186,7 @@ AS $$
 	WHERE c.user_id <> viewer
 
 	  -- ONLY COMPLETE PROFILES, same list as discover_candidates.
-	  AND c.gender IS NOT NULL
-	  AND c.date_of_birth IS NOT NULL
-	  AND c.latitude IS NOT NULL
-	  AND c.longitude IS NOT NULL
-	  AND COALESCE(c.biography, '') <> ''
-	  AND EXISTS (SELECT 1 FROM user_interests WHERE user_id = c.user_id)
+	  AND profile_is_complete(c)
 
 	  -- A block hides the pair from each other in either direction.
 	  AND NOT EXISTS (SELECT 1 FROM blocks

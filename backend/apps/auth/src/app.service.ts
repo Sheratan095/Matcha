@@ -114,10 +114,10 @@ export class AppService implements OnModuleInit
 				await this.dbService.deleteUser(newUser.id);
 
 				// The profile service answers 400 when the database refuses the date of birth (not a
-				// real date, or under 18). That is the user's mistake, so relay it as a 400 with the
-				// same message instead of collapsing it into a 500.
+				// real date, or under 18) or a name (profiles_*_name_format_check). That is the user's
+				// mistake, so relay it as a 400 with the same message instead of collapsing it into a 500.
 				if (error?.response?.status === 400)
-					throw new BadRequestException(error.response.data?.message ?? 'Invalid date of birth');
+					throw new BadRequestException(error.response.data?.message ?? 'Invalid profile data');
 
 				this.logger.error('Error creating user profile -> consequential removing of user entity from db ', error);
 

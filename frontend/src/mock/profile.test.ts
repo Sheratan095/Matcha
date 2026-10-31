@@ -45,6 +45,11 @@ describe('profile update and completeness', () => {
     })
     expect(full.data.interests.map((tag) => tag.name)).toEqual(['vegan', 'hiking'])
     expect(full.data.interests[0]?.id).toMatch(/^[0-9a-f-]{36}$/)
+    // still no profile picture
+    const noPicture = await call<LoginResult>('POST', '/__mock/auth/login', { username: 'newbie', password: 'a long enough password' })
+    expect(noPicture.data.isProfileComplete).toBe(false)
+
+    await call('POST', '/__mock/profile/pictures', form('file', fakeFile('me.jpg', 'image/jpeg'), 'me.jpg'))
     const login = await call<LoginResult>('POST', '/__mock/auth/login', { username: 'newbie', password: 'a long enough password' })
     expect(login.data.isProfileComplete).toBe(true)
 

@@ -305,42 +305,21 @@ export class DbService implements OnModuleInit
 	// Called by login so frontend knows if the user has completed their profile.
 	// Instead of calling getFullProfile it just checks the required fields and returns a boolean.
 	//	to reduce the amount of data sent over the network because interests and picture are just COUNT instead of SELECT.
+	// The rule itself is PROFILE_IS_COMPLETE() IN 002_PROFILES.SQL, shared with discover and search.
 	async isProfileComplete(userId: string): Promise<boolean>
 	{
-		const profile = await this.pool.query(
-			`SELECT gender, biography, sexual_preference
-			 FROM profiles
-			 WHERE user_id = $1`,
+		const result = await this.pool.query(
+			`SELECT profile_is_complete(p) AS complete
+			 FROM profiles p
+			 WHERE p.user_id = $1`,
 			[userId]
 		);
-		if (profile.rows.length === 0)
+
+		// No profile row at all counts as incomplete
+		if (result.rows.length === 0)
 			return (false);
 
-		const { gender, sexual_preference, biography } = profile.rows[0];
-		if (!gender || !sexual_preference || !biography)
-			return (false);
-
-		// At least one interest is required for profile completion
-		const interests = await this.pool.query(
-			`SELECT COUNT(*) AS count
-			 FROM user_interests
-			 WHERE user_id = $1`,
-			[userId]
-		);
-		if (parseInt(interests.rows[0].count, 10) === 0)
-			return (false);
-
-		// PICTURES AREN'T A REQUIREMENT FOR PROFILE COMPLETION, SO THIS CHECK IS COMMENTED OUT
-		// const pictures = await this.pool.query(
-		// 	`SELECT COUNT(*) AS count
-		// 	 FROM user_pictures
-		// 	 WHERE user_id = $1`,
-		// 	[userId]
-		// );
-		// if (parseInt(pictures.rows[0].count, 10) < 5)
-		// 	return (false);
-
-		return (true);
+		return (result.rows[0].complete);
 	}
 
 	async hasLocation(userId: string): Promise<boolean>

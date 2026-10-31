@@ -322,9 +322,22 @@ export function toProfile(userId: string, profile: AccountProfile): Profile {
   }
 }
 
-/** The backend rule: gender, preference, a non-empty biography and at least one interest. */
+/**
+ * The backend rule (profile_is_complete in 002_profiles.sql): first and last name, gender, preference, a
+ * non-empty biography, at least one interest and a profile picture. The backend also requires a date of birth
+ * and a location, which demo accounts do not model.
+ */
 export function isProfileComplete(profile: AccountProfile | undefined): boolean {
-  return Boolean(profile && profile.gender && profile.sexualPreference && profile.biography?.trim() && profile.interests.length > 0)
+  return Boolean(
+    profile &&
+      profile.firstName &&
+      profile.lastName &&
+      profile.gender &&
+      profile.sexualPreference &&
+      profile.biography?.trim() &&
+      profile.interests.length > 0 &&
+      profile.pictures.some((picture) => picture.isProfile),
+  )
 }
 
 /** Records that `viewerId` opened `viewedId`'s profile (once per pair, like the backend). */

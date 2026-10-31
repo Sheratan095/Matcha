@@ -22,6 +22,12 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 	first_name VARCHAR(50),
 	last_name VARCHAR(50),
+	-- The ONLY place the name rule lives (registration and PATCH /profile both end up here): letters
+	-- from any alphabet, with single spaces, hyphens or apostrophes (' or ’) between parts, e.g.
+	-- "José", "Jean-Luc", "O'Brien", "Mary Ann". [[:alpha:]] follows the database's UTF-8 ctype.
+	-- NULL passes: GitHub OAuth sign-ups start without a name.
+	CONSTRAINT profiles_first_name_format_check CHECK (first_name ~ '^[[:alpha:]]+([ ''’-][[:alpha:]]+)*$'),
+	CONSTRAINT profiles_last_name_format_check  CHECK (last_name  ~ '^[[:alpha:]]+([ ''’-][[:alpha:]]+)*$'),
 
 	-- FULL precision on purpose: the matching algorithm sorts by distance. Nothing that leaves
 	-- the API may carry this precision — see snap_coord() below.
@@ -126,3 +132,29 @@ CREATE UNIQUE INDEX IF NOT EXISTS one_profile_picture_per_user
 	ON user_pictures (user_id)
 	WHERE is_profile;
 
+
+-- THE definition of a complete profile, used everywhere it matters: GET /internal/:id/is-complete
+-- (the isProfileComplete that login returns) and the eligibility of discover_candidates /
+-- search_candidates (011_browsing.sql). One function so those can never drift apart again: a
+-- profile reported complete is exactly a profile that can appear in other users' deck and search.
+--   - first and last name: shown on every card (GitHub sign-ups start without them);
+--   - gender and sexual preference: needed for the orientation rule;
+--   - date of birth and location: the card's age and distance;
+--   - a non-empty biography, at least one interest and a profile picture.
+-- Takes the whole row, so the browsing functions pass the candidate they already have (no second
+-- lookup). Not inlined by the planner (the EXISTS subqueries prevent it), which costs one function
+-- call per candidate on top of the same two index probes the old inline conditions did.
+CREATE OR REPLACE FUNCTION profile_is_complete(p profiles)
+RETURNS BOOLEAN
+AS $$
+	SELECT p.first_name IS NOT NULL
+	   AND p.last_name IS NOT NULL
+	   AND p.gender IS NOT NULL
+	   AND p.sexual_preference IS NOT NULL
+	   AND p.date_of_birth IS NOT NULL
+	   -- profiles_location_pair_check guarantees longitude is set whenever latitude is
+	   AND p.latitude IS NOT NULL
+	   AND COALESCE(p.biography, '') <> ''
+	   AND EXISTS (SELECT 1 FROM user_interests WHERE user_id = p.user_id)
+	   AND EXISTS (SELECT 1 FROM user_pictures WHERE user_id = p.user_id AND is_profile);
+$$ LANGUAGE SQL STABLE;

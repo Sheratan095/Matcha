@@ -35,20 +35,22 @@ export class RegisterDto extends PasswordDto
 	@Length(0, 100)
 	email: string;
 
-	@ApiProperty({ example: 'John', description: 'First name' })
+	@ApiProperty({ example: 'Jean-Luc', description: "First name: letters from any alphabet, with single spaces, hyphens or apostrophes between parts" })
 	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value) // Not lowercasing first name, just trimming whitespace BEFORE validation
 	@IsNotEmpty()
 	@IsString()
 	@Length(1, 50)
-	@Matches(/^[a-zA-Z]+$/) // Ensure first name is just letters
+	// No format rule here: it lives in the database (profiles_first_name_format_check) and the
+	// profile service's 400 is relayed by register(), like the date of birth.
 	firstName?: string;
 
-	@ApiProperty({ example: 'Doe', description: 'Last name' })
+	@ApiProperty({ example: "O'Brien", description: "Last name: letters from any alphabet, with single spaces, hyphens or apostrophes between parts" })
 	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value) // Not lowercasing last name, just trimming whitespace BEFORE validation
 	@IsNotEmpty()
 	@IsString()
 	@Length(1, 50)
-	@Matches(/^[a-zA-Z]+$/) // Ensure last name is just letters
+	// No format rule here: it lives in the database (profiles_last_name_format_check) and the
+	// profile service's 400 is relayed by register(), like the date of birth.
 	lastName?: string;
 
 	// Only the FORMAT is checked here. Whether it is a real date and makes the user 18+ is checked

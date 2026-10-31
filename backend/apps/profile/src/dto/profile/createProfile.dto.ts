@@ -10,14 +10,14 @@ export class CreateProfileDto
 	@IsUUID()
 	userId: string;
 
-	@ApiProperty({ example: 'Alice', description: 'First name (optional at creation)', required: false })
+	@ApiProperty({ example: 'Alice', description: 'First name (optional at creation for users who sign up via GitHub): letters from any alphabet, with single spaces, hyphens or apostrophes between parts', required: false })
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)
 	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	firstName?: string;
 
-	@ApiProperty({ example: 'Wonderland', description: 'Last name (optional at creation)', required: false })
+	@ApiProperty({ example: 'Wonderland', description: 'Last name (optional at creation for users who sign up via GitHub): letters from any alphabet, with single spaces, hyphens or apostrophes between parts', required: false })
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)
