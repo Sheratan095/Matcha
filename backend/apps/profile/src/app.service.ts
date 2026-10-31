@@ -72,8 +72,7 @@ export class AppService
 
 	// Complete = first and last name, gender, sexual preference, date of birth, location, a
 	// non-empty bio, at least one interest and a profile picture. The rule is profile_is_complete()
-	// in 002_profiles.sql, the same one discover and search use, so a complete profile is exactly
-	// one that can appear in other users' deck and search results.
+	// in 002_profiles.sql.
 	async isProfileComplete(userId: string): Promise<boolean>
 	{
 		try
