@@ -458,6 +458,8 @@ From a browser's point of view the effective lifetimes are the cookie lifetimes 
 
 Tokens are handed back **as cookies on the 302 response** from `/auth/github/callback`; the redirect target is exactly `http://localhost:4000`. Nothing is put in the URL. The SPA must call `GET /auth/validate` on load to learn the `userId`. `isProfileComplete` is not provided on this path.
 
+CSRF protection: `/auth/github` sets a short-lived `oauth_state` cookie (httpOnly, `SameSite=Lax`, path `/auth/github`, 10 min) holding the same random value it sends to GitHub as `state`. The callback refuses (403) unless the `state` GitHub echoes back matches that cookie, so a callback link crafted by someone else can't log the browser into their account. Nothing for the frontend to do, as long as the sign-in starts with a full-page navigation to `/auth/github` and comes back to the same gateway host.
+
 Which account a GitHub sign-in lands in:
 - Only the GitHub account's **primary AND verified** email is used; without one, the sign-in fails.
 - A Matcha account already linked to that GitHub identity → that account.
@@ -734,7 +736,7 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 |---|---|---|
 | Register / login / logout / refresh | present | cookie session |
 | Email verification, forgot/reset password, change email | present | |
-| GitHub OAuth | present | username edge cases, no `state` (9.3) |
+| GitHub OAuth | present | username edge cases (9.3) |
 | Other OAuth providers (Google…) | absent | |
 | Own profile read / update | present | `GET`/`PATCH /profile` |
 | Profile completeness flag | present | in login response and `GET /profile/:id/is-complete` |
@@ -775,7 +777,7 @@ Rechecked against the code on 2026-10-31; items fixed since the first pass were 
 
 1. **Name rule mismatch** — registration requires `firstName`/`lastName` to match `/^[a-zA-Z]+$/`; `PATCH /profile` accepts any string ≤ 50. "Jean-Luc" or "José" cannot register but can be set afterwards.
 2. **Viewing has side effects** — any `GET /profile/:userId` for another user records a view and notifies the owner.
-3. **OAuth edge cases** — GitHub logins longer than 30 chars overflow `users.username VARCHAR(30)` → 500; GitHub usernames may contain `-`, which the app's own username rule forbids. No `state` parameter is used.
+3. **OAuth edge cases** — GitHub logins longer than 30 chars overflow `users.username VARCHAR(30)` → 500; GitHub usernames may contain `-`, which the app's own username rule forbids.
 
 ---
 
