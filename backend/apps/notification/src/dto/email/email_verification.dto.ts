@@ -8,13 +8,13 @@ export class EmailVerificationDto
 	@ApiProperty({ example: '4354535-6547474', description: 'Verification token' })
 	@IsString()
 	@IsNotEmpty()
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	token: string;
 
 	@ApiProperty({ example: 'user@example.com', description: 'User email' })
 	@IsEmail()
 	@IsNotEmpty()
-	@Transform(({ value }) => value.trim().toLowerCase())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
 	email: string;
 
 	@ApiProperty({

@@ -36,7 +36,7 @@ export class CalendarEventDto
 	@IsString()
 	endTime: string;
 
-	@ApiProperty({ example: 'confirmed', description: 'Event status', enum: ['confirmed', 'pending', 'declined', 'cancelled'] })
+	@ApiProperty({ example: 'accepted', description: 'Event status', enum: ['accepted', 'pending', 'declined', 'cancelled'] })
 	@IsString()
 	status: string;
 

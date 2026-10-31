@@ -10,14 +10,14 @@ export class UpdateProfileDto
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	firstName?: string;
 
 	@ApiProperty({ example: 'Wonderland', description: 'Last name', required: false })
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	lastName?: string;
 
 	// Not need to trim because it's an enum
@@ -34,7 +34,7 @@ export class UpdateProfileDto
 
 	@ApiProperty({ example: 'Curiouser and curiouser.', required: false })
 	@IsOptional()
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	@IsString()
 	@MaxLength(500)
 	biography?: string;

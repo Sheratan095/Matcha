@@ -22,7 +22,7 @@ export class RegisterDto extends PasswordDto
 {
 	@ApiProperty({ example: 'jdoe', description: 'Unique username' })
 	@IsString()
-	@Transform(({ value }) => value.trim().toLowerCase()) // Trim whitespace and convert to lowercase for consistency BEFORE validation
+	@Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value) // Trim whitespace and convert to lowercase for consistency BEFORE validation
 	@IsNotEmpty()
 	@Length(3, 20)
 	@Matches(/^[a-z0-9_.]+$/)
@@ -30,13 +30,13 @@ export class RegisterDto extends PasswordDto
 
 	@ApiProperty({ example: 'jdoe@example.com', description: 'User email' })
 	@IsEmail()
-	@Transform(({ value }) => value.trim().toLowerCase()) // Trim whitespace and convert to lowercase for consistency BEFORE validation
+	@Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value) // Trim whitespace and convert to lowercase for consistency BEFORE validation
 	@IsNotEmpty()
 	@Length(0, 100)
 	email: string;
 
 	@ApiProperty({ example: 'John', description: 'First name' })
-	@Transform(({ value }) => value.trim()) // Not lowercasing first name, just trimming whitespace BEFORE validation
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value) // Not lowercasing first name, just trimming whitespace BEFORE validation
 	@IsNotEmpty()
 	@IsString()
 	@Length(1, 50)
@@ -44,7 +44,7 @@ export class RegisterDto extends PasswordDto
 	firstName?: string;
 
 	@ApiProperty({ example: 'Doe', description: 'Last name' })
-	@Transform(({ value }) => value.trim()) // Not lowercasing last name, just trimming whitespace BEFORE validation
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value) // Not lowercasing last name, just trimming whitespace BEFORE validation
 	@IsNotEmpty()
 	@IsString()
 	@Length(1, 50)

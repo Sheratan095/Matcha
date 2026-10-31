@@ -10,7 +10,7 @@ export class ChatMessageDto
 	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'User who will receive the message' })
 	@IsUUID()
 	@IsNotEmpty()
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	toUserId: string;
 
 	@ApiProperty({ example: 'Hello, how are you?', description: 'The content of the message' })

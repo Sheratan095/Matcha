@@ -7,6 +7,6 @@ export class CloseWsConnectionsDto
 	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'User ID for which to close WebSocket connections' })
 	@IsUUID()
 	@IsNotEmpty()
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	userId: string;
 }

@@ -10,7 +10,7 @@ export class ForgotPasswordDto
 {
 	@ApiProperty({ example: 'jdoe@example.com', description: 'User email' })
 	@IsEmail()
-	@Transform(({ value }) => value.trim().toLowerCase()) // Trim whitespace and convert to lowercase for consistency BEFORE validation
+	@Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value) // Trim whitespace and convert to lowercase for consistency BEFORE validation
 	@IsNotEmpty()
 	@Length(0, 100)
 	email: string;
@@ -29,7 +29,7 @@ export class ResetPasswordDto extends PasswordDto
 	@ApiProperty({ example: 'resetToken12345', description: 'The token sent to the user\'s email for password reset verification' })
 	@IsString()
 	@IsNotEmpty()
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	token: string;
 }
 

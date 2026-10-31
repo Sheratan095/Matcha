@@ -11,7 +11,7 @@ export interface ICalendarEvent
 	startTime: string;    // ISO 8601 formatted start time of the event
 	endTime: string;      // ISO 8601 formatted end time of the event
 
-	status: string;       // status of the event (e.g., confirmed, pending, declined, cancelled)
+	status: string;       // status of the event (e.g., accepted, pending, declined, cancelled)
 
 	latitude: number | null;   // latitude in decimal degrees, at full precision; null if no location set
 	longitude: number | null;  // longitude in decimal degrees, at full precision; null if no location set

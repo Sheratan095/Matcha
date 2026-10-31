@@ -12,7 +12,7 @@ export class ChangeEmailDto
 
 	@ApiProperty({ example: 'jdoe@example.com', description: 'New email address' })
 	@IsEmail()
-	@Transform(({ value }) => value.trim().toLowerCase()) // Trim whitespace and convert to lowercase for consistency BEFORE validation
+	@Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value) // Trim whitespace and convert to lowercase for consistency BEFORE validation
 	@IsNotEmpty()
 	@Length(0, 100)
 	newEmail: string;

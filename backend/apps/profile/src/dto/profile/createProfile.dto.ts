@@ -14,14 +14,14 @@ export class CreateProfileDto
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	firstName?: string;
 
 	@ApiProperty({ example: 'Wonderland', description: 'Last name (optional at creation)', required: false })
 	@IsOptional()
 	@IsString()
 	@MaxLength(50)
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	lastName?: string;
 
 	// Only the FORMAT is checked here. Whether it is a real date and makes the user 18+ is

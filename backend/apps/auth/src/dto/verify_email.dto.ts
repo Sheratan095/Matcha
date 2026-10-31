@@ -7,7 +7,7 @@ export class VerifyEmailDto
 	@ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', description: 'Email verification token' })
 	@IsString()
 	@IsNotEmpty()
-	@Transform(({ value }) => value?.trim())
+	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
 	token: string;
 }
 
