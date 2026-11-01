@@ -49,8 +49,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- An exact coordinate is a home address, so no coordinate ever leaves the API unmasked.
 -- Kept in SQL (rather than in the services) so the raw values never travel to the application
--- just to be thrown away, and so the future discovery/browse query can sort by distance
--- server-side instead of fetching every candidate's position.
+-- just to be thrown away.
 
 -- Quantizes a coordinate to a ~1 km grid (2 decimal places: ~1.11 km of latitude, and ~0.83 km
 -- of longitude at Rome's latitude). The subject only requires neighbourhood-level accuracy.
@@ -135,12 +134,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS one_profile_picture_per_user
 
 -- THE definition of a complete profile, used everywhere it matters: GET /internal/:id/is-complete
 -- (the isProfileComplete that login returns) and the eligibility of discover_candidates /
--- search_candidates (011_browsing.sql). One function so those can never drift apart again: a
--- profile reported complete is exactly a profile that can appear in other users' deck and search.
+-- search_candidates (011_browsing.sql).
 --   - first and last name: shown on every card (GitHub sign-ups start without them);
 --   - gender and sexual preference: needed for the orientation rule;
 --   - date of birth and location: the card's age and distance;
---   - a non-empty biography, at least one interest and a profile picture.
+--   - a non-empty biography
+--   - at least one interest
+--   - at least one profile picture.
 -- Takes the whole row, so the browsing functions pass the candidate they already have (no second
 -- lookup). Not inlined by the planner (the EXISTS subqueries prevent it), which costs one function
 -- call per candidate on top of the same two index probes the old inline conditions did.

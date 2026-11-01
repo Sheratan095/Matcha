@@ -143,7 +143,7 @@ maybe just add check for two users and event in db
 
 [] logo maybe could be changed - add new logo also in email templates
 
-[] add passes into famerating query?
+[] recent research (under search bar like insta) could be fetched by getVisitedProfiles?
 
 [x] unify dto errors in globals
 
@@ -166,3 +166,5 @@ maybe just add check for two users and event in db
 [x] Stale comments. The comment at app.controller.ts:356 says pass isn't implemented, but it is. The isProfileComplete comment says "upload at least 5 pictures". Both could confuse anyone reading the code during the defense.
 
 [x] wire up notification for all calendar related events
+
+[] add a second oauth2 provider
