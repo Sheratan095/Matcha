@@ -10,6 +10,7 @@
 // simply overwrites the same objects.
 
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import sharp from 'sharp';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
@@ -62,6 +63,61 @@ function contentTypeFor(fileName)
 	return ('application/octet-stream');
 }
 
+// The 500 generated profiles of infra/db/seeds/002_generated_profiles.sql point at
+// seed/avatar-01.webp .. avatar-60.webp. They are drawn here instead of committed: a fixed palette
+// indexed by the avatar number, so every run produces the same 60 images.
+const	AVATAR_COUNT = 60;
+
+// List lengths 7, 6, 8 and 5 (+ 4 hair styles) share as few factors as possible, so neighbouring
+// avatars never repeat the same outfit and the whole combination only repeats after 840.
+const	BACKGROUNDS = ['#f6d5c3', '#cfe3d4', '#d6dcf2', '#f2e2b8', '#e6d1ec', '#c9e6ea', '#f3cfd6'];
+const	SKINS       = ['#f5d0b5', '#eab896', '#d39b72', '#b07850', '#8a5636', '#5f3a22'];
+const	HAIRS       = ['#2b1d14', '#5a3a22', '#8c5a2b', '#c9a15a', '#e3c98d', '#a33b20', '#6d6d6d', '#111111'];
+const	SHIRTS      = ['#3d6b5a', '#c0563b', '#2f4c7a', '#7a4f8c', '#d1a03b'];
+
+// Hair drawn BEHIND the head (long hair) and IN FRONT of it (fringe, bun, beard), per style
+function hairLayers(style, hair)
+{
+	const	shortTop = `<path d="M151 225 Q150 118 256 112 Q362 118 361 225 Q330 158 256 162 Q182 158 151 225 Z" fill="${hair}"/>`;
+
+	switch (style)
+	{
+		case 0: // short
+			return ({ back: '', front: shortTop });
+		case 1: // long
+			return ({ back: `<path d="M136 235 Q134 112 256 104 Q378 112 376 235 L392 430 L120 430 Z" fill="${hair}"/>`, front: shortTop });
+		case 2: // bun
+			return ({ back: `<circle cx="256" cy="100" r="46" fill="${hair}"/>`, front: shortTop });
+		default: // shaved, with a beard
+			return ({ back: '', front: `<path d="M168 275 Q256 425 344 275 Q306 335 256 336 Q206 335 168 275 Z" fill="${hair}"/>` });
+	}
+}
+
+function avatarSvg(index)
+{
+	// Each step shares no factor with its list's length, so every colour of the list comes up
+	const	pick = (list, step) => list[(index * step) % list.length];
+	const	skin = pick(SKINS, 5);
+	const	hair = hairLayers(index % 4, pick(HAIRS, 3));
+	// Every fifth avatar wears glasses
+	const	glasses = index % 5 === 0
+		? '<g fill="none" stroke="#2b2b2b" stroke-width="6"><circle cx="215" cy="245" r="24"/><circle cx="297" cy="245" r="24"/><path d="M239 245 L273 245"/></g>'
+		: '';
+
+	return (`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+		<rect width="512" height="512" fill="${pick(BACKGROUNDS, 3)}"/>
+		${hair.back}
+		<ellipse cx="256" cy="560" rx="205" ry="175" fill="${pick(SHIRTS, 2)}"/>
+		<rect x="226" y="330" width="60" height="70" fill="${skin}"/>
+		<ellipse cx="256" cy="240" rx="105" ry="125" fill="${skin}"/>
+		${hair.front}
+		<circle cx="215" cy="245" r="10" fill="#2b2b2b"/>
+		<circle cx="297" cy="245" r="10" fill="#2b2b2b"/>
+		<path d="M220 300 Q256 328 292 300" stroke="#7a3b2e" stroke-width="7" fill="none" stroke-linecap="round"/>
+		${glasses}
+	</svg>`);
+}
+
 async function main()
 {
 	const	env = await readFile(envFile, 'utf8');
@@ -108,7 +164,20 @@ async function main()
 		console.log(`uploaded ${key} (${body.length} bytes)`);
 	}
 
-	console.log(`Seeded ${files.length} picture(s) into bucket "${bucket}" at ${endpoint}`);
+	for (let i = 1; i <= AVATAR_COUNT; i++)
+	{
+		const	body = await sharp(Buffer.from(avatarSvg(i))).webp({ quality: 85 }).toBuffer();
+		const	key  = `${KEY_PREFIX}/avatar-${String(i).padStart(2, '0')}.webp`;
+
+		await client.send(new PutObjectCommand({
+			Bucket:      bucket,
+			Key:         key,
+			Body:        body,
+			ContentType: 'image/webp',
+		}));
+	}
+
+	console.log(`Seeded ${files.length} picture(s) and ${AVATAR_COUNT} avatars into bucket "${bucket}" at ${endpoint}`);
 }
 
 main().catch((err) =>

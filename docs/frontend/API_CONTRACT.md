@@ -535,7 +535,7 @@ No body. Marks that picture as the profile picture and clears the previous one. 
 
 ### 4.3 Seed pictures
 
-`make seed-pictures` uploads the seven committed files in `backend/infra/garage/seed-images/` under the key prefix `seed/`. The seed SQL references them:
+`make seed-pictures` uploads the seven committed files in `backend/infra/garage/seed-images/` under the key prefix `seed/`, plus 60 generated illustrated avatars (`seed/avatar-01.webp` … `avatar-60.webp`, drawn deterministically by `apps/profile/scripts/seed-pictures.mjs`) used by the 500 generated profiles (7.1). The seed SQL references them:
 
 | User | Picture URLs | `isProfile` |
 |---|---|---|
@@ -705,7 +705,12 @@ Notes for frontend typing:
 - User IDs are random UUIDs generated at seed time; read them from the login response (`userId`).
 - Seeded interest tags: `vegan hiking photography travel reading gaming cooking fitness music art`.
 - `1234` only works for the seeded accounts; it cannot be chosen via register/reset (too short and on the common list).
-- No likes, matches, messages or views are seeded. Three users is the entire dataset.
+- **500 generated profiles** (`backend/infra/db/seeds/002_generated_profiles.sql`), on top of the hand-made ones above:
+  - usernames are an Italian first name + a number (`giulia42`, `niccolo7`), email `<username>@matcha.local`, password `1234`, all verified;
+  - every one is complete (they all appear in discover and search): 18-60 years old, spread across about 28 Italian cities weighted by size (Rome and Milan the most), 1-5 interests out of 37 tags, an avatar as profile picture plus 0-3 more;
+  - about 160 matches (both likes plus their chat), about 3,000 one-way likes and 8,000 views, so fame ratings range roughly 30-90; some of them like `testuser` and `alice`;
+  - **deterministic**: every `make db-reset` recreates exactly the same people, with the same ids (md5 of the row number, shaped into valid v4 UUIDs).
+- No messages are seeded.
 - The only way to get another user's UUID from the API is to log in as that user, or to find it in `GET /profile/viewers`.
 
 ### 7.2 Bring-up
