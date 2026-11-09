@@ -179,6 +179,7 @@ function register(payload: RegisterPayload): Promise<RegisterResult> {
     password: payload.password,
     firstName: payload.firstName.trim(),
     lastName: payload.lastName.trim(),
+    dateOfBirth: payload.dateOfBirth.trim(),
   }
   if (payload.language) body.language = payload.language
   return run('register', body)

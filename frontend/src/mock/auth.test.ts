@@ -9,6 +9,7 @@ const NEWCOMER = {
   password: 'correct horse battery',
   firstName: 'Jo',
   lastName: 'Doe',
+  dateOfBirth: '1995-06-15',
 }
 
 async function inbox(): Promise<MockEmail[]> {
@@ -106,6 +107,8 @@ describe('demo auth errors', () => {
           'lastName must be longer than or equal to 1 characters',
           'lastName must be a string',
           'lastName should not be empty',
+          'dateOfBirth must be a date in YYYY-MM-DD format',
+          'dateOfBirth should not be empty',
           'password must be longer than or equal to 8 characters',
         ],
         error: 'Bad Request',
@@ -132,6 +135,29 @@ describe('demo auth errors', () => {
       status: 409,
       data: { message: 'Email already in use', error: 'Conflict', statusCode: 409 },
     })
+  })
+
+  it('refuses a date of birth that is not real or makes the user under 18, like the profile service', async () => {
+    const base = { ...NEWCOMER, username: 'someone', email: 'someone@example.com' }
+    const invalid = {
+      status: 400,
+      data: {
+        message: 'Invalid date of birth: it must be a real date and you must be at least 18 years old',
+        error: 'Bad Request',
+        statusCode: 400,
+      },
+    }
+    const now = new Date()
+    const underage = `${now.getUTCFullYear() - 17}-01-01`
+    expect(await call('POST', '/__mock/auth/register', { ...base, dateOfBirth: '2001-02-30' })).toEqual(invalid)
+    expect(await call('POST', '/__mock/auth/register', { ...base, dateOfBirth: underage })).toEqual(invalid)
+    expect(await call('POST', '/__mock/auth/register', { ...base, dateOfBirth: '1890-01-01' })).toEqual(invalid)
+    expect(await call('POST', '/__mock/auth/register', { ...base, dateOfBirth: '15/06/1995' })).toEqual({
+      status: 400,
+      data: { message: ['dateOfBirth must be a date in YYYY-MM-DD format'], error: 'Bad Request', statusCode: 400 },
+    })
+    // Nothing was created by the refused attempts
+    expect((await call('POST', '/__mock/auth/register', base)).status).toBe(200)
   })
 
   it('answers 403 Invalid credentials for an unknown user and a wrong password alike', async () => {

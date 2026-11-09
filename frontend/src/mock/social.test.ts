@@ -104,6 +104,7 @@ describe('every orientation', () => {
       password: 'long enough password',
       firstName: 'Demo',
       lastName: 'Viewer',
+      dateOfBirth: '1994-09-21',
     })
     const mail = (await call<{ token: string }[]>('GET', '/__mock/dev/inbox')).data[0]!
     await call('POST', '/__mock/auth/verify-email', { token: mail.token })

@@ -1,7 +1,7 @@
 /**
  * /register. Client rules mirror the backend's RegisterDto (rules.ts); server answers are mapped back
- * onto the fields (RESERVED_USERNAME, COMMON_PASSWORD, 409 username taken / email in use, validation
- * arrays). Success does not sign in: the email must be verified first, so the page turns into
+ * onto the fields (RESERVED_USERNAME, COMMON_PASSWORD, 409 username taken / email in use, the profile
+ * service's date-of-birth verdict, validation arrays). Success does not sign in: the email must be verified first, so the page turns into
  * "check your inbox" with the code form (and the demo inbox in demo mode).
  */
 import { useEffect, useRef, useState } from 'react'
@@ -13,11 +13,14 @@ import { DemoInbox } from './DemoInbox'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { FormBanner, GithubButton, OrRule } from './parts'
 import {
+  checkDateOfBirth,
   checkEmail,
   checkName,
   checkNewPassword,
   checkUsername,
+  dateOfBirthBounds,
   EMAIL_MAX,
+  MIN_AGE,
   NAME_MAX,
   normaliseEmail,
   normaliseUsername,
@@ -28,8 +31,8 @@ import { useAuthForm } from './useAuthForm'
 import { VerifyCodeForm } from './VerifyCodeForm'
 import a from './auth.module.css'
 
-type Field = 'username' | 'email' | 'password' | 'firstName' | 'lastName' | 'language'
-const FIELDS: readonly Field[] = ['username', 'email', 'password', 'firstName', 'lastName', 'language']
+type Field = 'username' | 'email' | 'password' | 'firstName' | 'lastName' | 'dateOfBirth' | 'language'
+const FIELDS: readonly Field[] = ['username', 'email', 'password', 'firstName', 'lastName', 'dateOfBirth', 'language']
 
 const LANGUAGE_LABEL: Record<Language, string> = { en: 'English', fr: 'Français', es: 'Español' }
 /** Short codes on the chips (three equal chips fit a 360px phone); the full name for assistive tech. */
@@ -54,6 +57,8 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
+  const [bounds] = useState(dateOfBirthBounds)
   const [language, setLanguage] = useState<Language>('en')
   const [banner, setBanner] = useState<Banner | null>(null)
   const [busy, setBusy] = useState(false)
@@ -75,6 +80,8 @@ export default function RegisterPage() {
           return checkName(firstName, 'first')
         case 'lastName':
           return checkName(lastName, 'last')
+        case 'dateOfBirth':
+          return checkDateOfBirth(dateOfBirth)
         case 'language':
           return null
       }
@@ -98,6 +105,7 @@ export default function RegisterPage() {
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        dateOfBirth: dateOfBirth.trim(),
         language,
       })
       setSent({ email: normaliseEmail(email), username: normaliseUsername(username) })
@@ -113,6 +121,9 @@ export default function RegisterPage() {
         } else {
           form.fail({ username: 'That username is taken. Try another one.' })
         }
+      } else if (error.status === 400 && /date of birth/i.test(error.message)) {
+        // The profile service's verdict, relayed by auth as a single message (not a validation array)
+        form.fail({ dateOfBirth: `Enter a real date: you must be at least ${MIN_AGE} to join.` })
       } else if (error.status === 400) {
         const mapped = mapValidation<Field>(error, (property) => (isField(property) ? property : null))
         form.fail(mapped.fields)
@@ -178,7 +189,7 @@ export default function RegisterPage() {
       <AuthLayout
         title="Join the press"
         kicker="New member"
-        intro="Two minutes, five fields. We'll email you a code to confirm it's you."
+        intro="Two minutes, six fields. We'll email you a code to confirm it's you."
         poster={{
           lines: ['Fresh', 'off the', 'press'],
           tone: 'strawberry',
@@ -291,6 +302,22 @@ export default function RegisterPage() {
           <Text size="xs" muted>
             Names use the letters A–Z only, without spaces or accents.
           </Text>
+          <TextField
+            label="Date of birth"
+            name="bday"
+            type="date"
+            value={dateOfBirth}
+            onChange={(event) => {
+              setDateOfBirth(event.target.value)
+              form.changed('dateOfBirth')
+            }}
+            onBlur={(event) => form.blur('dateOfBirth', event.target.value)}
+            error={form.errorOf('dateOfBirth')}
+            hint={`${MIN_AGE}+ only. Others see your age, never the date, and it can't be changed later.`}
+            autoComplete="bday"
+            min={bounds.min}
+            max={bounds.max}
+          />
           <Segmented<Language>
             label="Email language"
             name="language"

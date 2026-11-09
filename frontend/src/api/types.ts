@@ -68,6 +68,8 @@ export interface RegisterPayload {
   password: string
   firstName: string
   lastName: string
+  /** 'YYYY-MM-DD'. The profile service requires a real date and an age of 18 to 120. */
+  dateOfBirth: string
   language?: Language
 }
 export interface RegisterResult {

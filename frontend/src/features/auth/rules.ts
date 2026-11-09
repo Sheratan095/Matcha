@@ -92,6 +92,70 @@ export function checkName(raw: string, what: 'first' | 'last'): string | null {
   return null
 }
 
+/** The profile service's bounds (backend/apps/profile/src/utils/dateOfBirth.ts). */
+export const MIN_AGE = 18
+export const MAX_AGE = 120
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+
+/** Today at midnight UTC: the backend counts age in UTC, so the client agrees with it near midnight. */
+function todayUtc(): Date {
+  const now = new Date()
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+}
+
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+/** `date` moved by whole years; Feb 29 lands on Feb 28 in a common year instead of rolling into March. */
+function shiftYears(date: Date, years: number): Date {
+  const year = date.getUTCFullYear() + years
+  const month = date.getUTCMonth()
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+  return new Date(Date.UTC(year, month, Math.min(date.getUTCDate(), lastDay)))
+}
+
+/** 'YYYY-MM-DD' as a UTC date, or null when it is malformed or not on the calendar (2023-02-30). */
+function parseDate(value: string): Date | null {
+  const match = DATE_PATTERN.exec(value)
+  if (!match) return null
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])]
+  const date = new Date(Date.UTC(year, month - 1, day))
+  const real = date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  return real ? date : null
+}
+
+/** Whole years between `birth` and `today`, as the profile service counts them. */
+function ageOn(birth: Date, today: Date): number {
+  const age = today.getUTCFullYear() - birth.getUTCFullYear()
+  const monthDiff = today.getUTCMonth() - birth.getUTCMonth()
+  const dayDiff = today.getUTCDate() - birth.getUTCDate()
+  return monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age
+}
+
+/** `min` / `max` for the date picker: someone who is exactly MAX_AGE today, and exactly MIN_AGE today. */
+export function dateOfBirthBounds(): { min: string; max: string } {
+  const today = todayUtc()
+  const oldest = shiftYears(today, -(MAX_AGE + 1))
+  oldest.setUTCDate(oldest.getUTCDate() + 1)
+  return { min: isoDate(oldest), max: isoDate(shiftYears(today, -MIN_AGE)) }
+}
+
+/** Required, 'YYYY-MM-DD', a real date, not in the future, and an age of MIN_AGE to MAX_AGE. */
+export function checkDateOfBirth(raw: string): string | null {
+  const value = raw.trim()
+  if (!value) return 'Enter your date of birth.'
+  if (!DATE_PATTERN.test(value)) return 'Use the format YYYY-MM-DD.'
+  const birth = parseDate(value)
+  if (!birth) return "That date doesn't exist."
+  const today = todayUtc()
+  if (birth > today) return "That date hasn't happened yet."
+  const age = ageOn(birth, today)
+  if (age < MIN_AGE) return `You must be at least ${MIN_AGE} to join.`
+  if (age > MAX_AGE) return 'Check the year: that is more than 120 years ago.'
+  return null
+}
+
 export function isLanguage(value: string): value is Language {
   return (LANGUAGES as readonly string[]).includes(value)
 }

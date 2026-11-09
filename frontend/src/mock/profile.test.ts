@@ -11,6 +11,7 @@ async function newUser(): Promise<string> {
     password: 'a long enough password',
     firstName: 'Nina',
     lastName: 'Bee',
+    dateOfBirth: '1996-03-08',
   })
   const mail = (await call<MockEmail[]>('GET', '/__mock/dev/inbox')).data[0] as MockEmail
   await call('POST', '/__mock/auth/verify-email', { token: mail.token })

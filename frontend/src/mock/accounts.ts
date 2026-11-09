@@ -393,6 +393,30 @@ function body(request: MockRequest): Record<string, unknown> {
   return record(request.body)
 }
 
+/** `RegisterDto.dateOfBirth`: `@IsNotEmpty()` + `@Matches(..., { message })`, no transform. */
+const DATE_OF_BIRTH: readonly Check[] = [
+  is.matches(/^\d{4}-\d{2}-\d{2}$/, 'dateOfBirth must be a date in YYYY-MM-DD format'),
+  is.notEmpty(),
+]
+const INVALID_DATE_OF_BIRTH = 'Invalid date of birth: it must be a real date and you must be at least 18 years old'
+
+/**
+ * The profile service's check (utils/dateOfBirth.ts, plus Postgres refusing dates like 2023-02-30): a
+ * real date, not in the future, and an age of 18 to 120 counted in UTC.
+ */
+function isValidDateOfBirth(value: string): boolean {
+  const [year, month, day] = value.split('-').map(Number) as [number, number, number]
+  const birth = new Date(Date.UTC(year, month - 1, day))
+  if (birth.getUTCFullYear() !== year || birth.getUTCMonth() !== month - 1 || birth.getUTCDate() !== day) return false
+  const now = new Date()
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  if (birth > today) return false
+  const monthDiff = today.getUTCMonth() - birth.getUTCMonth()
+  const dayDiff = today.getUTCDate() - birth.getUTCDate()
+  const age = today.getUTCFullYear() - year - (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? 1 : 0)
+  return age >= 18 && age <= 120
+}
+
 function checkPasswordPolicy(password: string, previousHash?: string): void {
   if (COMMON_PASSWORDS.has(password)) {
     throw nestError(400, 'This password is too common. Please choose a more secure password.', 'COMMON_PASSWORD')
@@ -410,6 +434,7 @@ const register: Handler = (request) => {
     email: string
     firstName: string
     lastName: string
+    dateOfBirth: string
     language?: Language
     password: string
   }>(body(request), {
@@ -417,6 +442,7 @@ const register: Handler = (request) => {
     email: { transform: trimLower, checks: EMAIL },
     firstName: { transform: trim, checks: NAME },
     lastName: { transform: trim, checks: NAME },
+    dateOfBirth: { checks: DATE_OF_BIRTH },
     language: { optional: true, checks: [is.oneOf(LANGUAGES)] },
     password: { checks: PASSWORD },
   })
@@ -427,6 +453,8 @@ const register: Handler = (request) => {
   const db = authDb()
   if (db.accounts.some((account) => account.username === input.username)) throw nestError(409, 'User already exists')
   if (db.accounts.some((account) => account.email === input.email)) throw nestError(409, 'Email already in use')
+  // Last, like the real flow: the profile service judges the date once the user row would exist
+  if (!isValidDateOfBirth(input.dateOfBirth)) throw nestError(400, INVALID_DATE_OF_BIRTH)
 
   const now = new Date().toISOString()
   const account: Account = {

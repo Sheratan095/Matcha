@@ -43,10 +43,13 @@ export const is = {
     (value, p) =>
       typeof value === 'string' && value.length <= max ? null : `${p} must be shorter than or equal to ${max} characters`,
 
+  /** `@Matches(pattern)`, or `@Matches(pattern, { message })` when the DTO gives its own message. */
   matches:
-    (pattern: RegExp): Check =>
+    (pattern: RegExp, message?: string): Check =>
     (value, p) =>
-      typeof value === 'string' && pattern.test(value) ? null : `${p} must match ${String(pattern)} regular expression`,
+      typeof value === 'string' && pattern.test(value)
+        ? null
+        : (message ?? `${p} must match ${String(pattern)} regular expression`),
 
   email: (): Check => (value, p) => (typeof value === 'string' && EMAIL.test(value) ? null : `${p} must be an email`),
 

@@ -168,6 +168,7 @@ Body (`RegisterDto`):
 | `password` | string | yes | `Length(8, 128)`, `Matches(/^(?!\s*$).+$/)` (not whitespace-only, no newlines); must not be in the common-password list. No character-class requirements. |
 | `firstName` | string | **yes** (TS marks it optional, validators make it required) | trimmed, `Length(1, 50)`, `Matches(/^[a-zA-Z]+$/)` — ASCII letters only: no spaces, hyphens, apostrophes or accents |
 | `lastName` | string | **yes** | same as `firstName` |
+| `dateOfBirth` | string | **yes** | `Matches(/^\d{4}-\d{2}-\d{2}$/)` (`YYYY-MM-DD`). The profile service then requires a real calendar date, not in the future, and an age of 18 to 120 (counted in UTC). Cannot be changed once set. |
 | `language` | `'en' \| 'fr' \| 'es'` | no | `IsEnum(SupportedLanguages)`, default `'en'`. Only used for email language. |
 
 Success **200** (no cookies are set; the user is not logged in):
@@ -183,11 +184,12 @@ Errors:
 | 400 | validation array (see 2.0) |
 | 400 | `{ "message": "This password is too common. Please choose a more secure password.", "error": "COMMON_PASSWORD", "statusCode": 400 }` |
 | 400 | `{ "message": "This username isn't available. Please choose a different username.", "error": "RESERVED_USERNAME", "statusCode": 400 }` |
+| 400 | `{ "message": "Invalid date of birth: it must be a real date and you must be at least 18 years old", "error": "Bad Request", "statusCode": 400 }` (relayed from the profile service; the user row is rolled back) |
 | 409 | `{ "message": "User already exists", "error": "Conflict", "statusCode": 409 }` (username taken) |
 | 409 | `{ "message": "Email already in use", "error": "Conflict", "statusCode": 409 }` |
 | 500 | `{ "message": "User registration failed", "error": "Internal Server Error", "statusCode": 500 }` |
 
-Side effects: creates the `users` row, then the 1:1 `profiles` row (first/last name), then emails a verification token. If the email cannot be sent (retried `EMAIL_VERIFICATION_MAX_ATTEMPTS` times), registration **still returns 200**.
+Side effects: creates the `users` row, then the 1:1 `profiles` row (first/last name, date of birth), then emails a verification token. If the email cannot be sent (retried `EMAIL_VERIFICATION_MAX_ATTEMPTS` times), registration **still returns 200**.
 
 Reserved usernames (`infra/security/policies/reserved-usernames.txt`): `admin administrator root superuser system internal api auth matcha support help contact info mail webmaster postmaster hostmaster null undefined none` plus 16 offensive words (see the file). Exact match after lowercasing.
 Common passwords: `infra/security/policies/common-password.txt`, 186 lines, exact case-sensitive match.

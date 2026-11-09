@@ -36,6 +36,7 @@ function friendly(property: string, message: string): string {
   if (shorter) return `At most ${shorter[1]} characters.`
   if (/must be an email$/.test(message)) return "That doesn't look like an email address."
   if (/must be one of the following values/.test(message)) return 'Pick one of the listed options.'
+  if (/must be a date in YYYY-MM-DD format$/.test(message)) return 'Use the format YYYY-MM-DD.'
   if (/must match .* regular expression$/.test(message)) {
     if (property === 'username') return 'Letters, digits, dots and underscores only.'
     if (property === 'firstName' || property === 'lastName') {
