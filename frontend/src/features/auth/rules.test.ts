@@ -1,5 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { checkDateOfBirth, dateOfBirthBounds } from './rules'
+import { checkDateOfBirth, checkName, dateOfBirthBounds, NAME_RULE } from './rules'
+
+describe('checkName', () => {
+  it('accepts what the database accepts: any alphabet, single spaces, hyphens or apostrophes between parts', () => {
+    for (const name of ['Jo', 'Jean-Luc', "O'Brien", 'D’Angelo', 'José', 'Zoë', 'Anne Marie', 'Łukasz', 'Ελένη', '  Mia  ']) {
+      expect(checkName(name, 'first'), name).toBeNull()
+    }
+  })
+
+  it('refuses digits, symbols, doubled or dangling separators', () => {
+    for (const name of ['R2D2', 'Jo!', 'Anne  Marie', 'Jean--Luc', '-Jean', "Brien'", 'Jo_Doe']) {
+      expect(checkName(name, 'last'), name).toBe(NAME_RULE)
+    }
+  })
+
+  it('asks for a value and caps the length', () => {
+    expect(checkName('   ', 'first')).toBe('Enter your first name.')
+    expect(checkName('a'.repeat(51), 'last')).toBe('At most 50 characters.')
+  })
+})
 
 describe('checkDateOfBirth', () => {
   beforeEach(() => {

@@ -3,7 +3,7 @@
 Everything a screen needs, from `@/ui`. Importing anything from `@/ui` also loads the fonts, the tokens and the
 global styles (`src/ui/styles/index.css`); `main.tsx` may also import that file directly to make the order explicit.
 The kit is presentational only: no state store, no fetching. Showcase: `/styleguide` in the app, or
-`styleguide.html` on its own (`npx vite --mode demo --port 4100`, then `http://localhost:4100/styleguide.html`;
+`styleguide.html` on its own (`npx vite --port 4100`, then `http://localhost:4100/styleguide.html`;
 `?demo=shell|auth|chat|match` opens the full-page layout demos).
 
 ```tsx
@@ -347,7 +347,7 @@ focus restored, `aria-modal`, exit animation. Props: `open`, `onClose`, `title` 
 **`AppShell`**: the signed-in frame. Phones: sticky top bar (wordmark + `actions`), content, sticky bottom tab bar.
 From 960px of its own width: side rail (wordmark, tabs, colour bar), the content as a phone-sized sheet on a cutting
 mat with crop marks, and `poster` lettering in the margin. Props: `tabs: {to, label, icon, badge?, end?}[]`,
-`children`, `actions`, `banner` (strip above everything, e.g. the DEMO marker), `poster` (margin word, e.g.
+`children`, `actions`, `banner` (strip above everything, e.g. a back link), `poster` (margin word, e.g.
 the section name), `homeTo` ("/discover"), `hideTabBar`, `flush` (no side padding, for the deck). Use it in
 `AppLayout` with `<Outlet />` as children.
 `<AppShell tabs={[{ to: '/discover', label: 'Discover', icon: <IconCards /> }, { to: '/matches', label: 'Matches', icon: <IconChat />, badge: unread }]} poster="discover"><Outlet /></AppShell>`

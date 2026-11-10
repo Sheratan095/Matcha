@@ -1,12 +1,11 @@
 /**
- * Boot sequence (docs/ARCHITECTURE.md §4): HTTP plumbing, mock backend, store engine, then the app.
+ * Boot sequence (docs/ARCHITECTURE.md §4): HTTP plumbing, mock social backend, store engine, then the app.
  * Nothing renders the app before the store is live; a store that cannot start replaces the whole page
  * with an explanation.
  */
 import '@/ui/styles/index.css'
 import { StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { IS_MOCK_BACKEND } from '@/config'
 import { installMockBackend, mockEvents$ } from '@/mock'
 import { actions, getViewerId, installStoreHttp, startRealtime, startStore } from '@/wb'
 import App from './app/App'
@@ -20,7 +19,7 @@ function render(content: ReactNode): void {
 
 async function boot(): Promise<void> {
   installStoreHttp()
-  installMockBackend({ auth: IS_MOCK_BACKEND, getViewerId })
+  installMockBackend({ getViewerId })
 
   const store = startStore()
   render(<StoreStarting />)

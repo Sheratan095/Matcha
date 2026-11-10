@@ -97,7 +97,6 @@ export interface Field {
 }
 
 export const trim = (value: string) => value.trim()
-export const trimLower = (value: string) => value.trim().toLowerCase()
 
 /** Validates and whitelists `input`; throws the Nest 400 with every message. */
 export function validate<Shape extends object>(
@@ -119,10 +118,4 @@ export function validate<Shape extends object>(
   }
   if (messages.length > 0) throw nestError(400, messages)
   return out as Shape
-}
-
-/** A path parameter checked like a Nest param DTO (`@IsUUID()`). */
-export function uuidParam(value: string | undefined, name: string): string {
-  if (typeof value === 'string' && UUID_PATTERN.test(value)) return value
-  throw nestError(400, [`${name} must be a UUID`])
 }

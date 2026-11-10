@@ -1,4 +1,4 @@
-/** Matches, chat and activity (mocked service, docs/ARCHITECTURE.md §5.2). */
+/** Matches, chat and activity (mocked service, docs/ARCHITECTURE.md §5.1). */
 import type { BlockPayload, Card, Match, Message, OkResult, SendMessagePayload } from '@/api/types'
 import {
   commands,

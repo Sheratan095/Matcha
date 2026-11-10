@@ -8,7 +8,7 @@
  *   parses `fn.toString()`, and an extra parameter makes it append a snapshot argument;
  * - synchronous and pure; every input may be `null` (reset / failed) or `undefined` (never loaded).
  */
-import type { Card, Match, Profile, SessionCheck } from '@/api/types'
+import type { Card, Match, OwnProfile, SessionCheck } from '@/api/types'
 import type { FunctionDef } from './types'
 
 export type AuthStatus = 'checking' | 'anonymous' | 'authenticated'
@@ -28,11 +28,20 @@ export function authStatus(check: SessionCheck | null | undefined): AuthStatus {
   return sessionUserId(check) ? 'authenticated' : 'anonymous'
 }
 
-/** Same rule as the backend: gender, preference, a non-empty biography and at least one interest. */
-export function profileComplete(profile: Profile | null | undefined): boolean | null {
+/**
+ * What the backend's `profile_is_complete` checks that onboarding asks for: gender, preference, a
+ * non-empty biography, at least one interest and a location (without one, discover answers 403).
+ * The backend also wants a last name, a date of birth and a profile picture, not checked here yet.
+ */
+export function profileComplete(profile: OwnProfile | null | undefined): boolean | null {
   if (!profile) return null
   return Boolean(
-    profile.gender && profile.sexualPreference && profile.biography?.trim() && profile.interests.length > 0,
+    profile.gender &&
+      profile.sexualPreference &&
+      profile.biography?.trim() &&
+      profile.interests.length > 0 &&
+      profile.latitude != null &&
+      profile.longitude != null,
   )
 }
 

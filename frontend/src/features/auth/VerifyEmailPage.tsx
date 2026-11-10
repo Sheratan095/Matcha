@@ -8,10 +8,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AuthLayout, Button, ButtonLink, IconArrowRight, Loader, Notice, Stamp, Text } from '@/ui'
 import { actions, useNodeValue } from '@/wb'
-import { DemoInbox } from './DemoInbox'
 import { asApiError, bannerFor, type Banner } from './errors'
 import { readFlag } from './navState'
 import { FormBanner, OrRule } from './parts'
+import { CODE_LIFETIME } from './rules'
 import { VerifyCodeForm } from './VerifyCodeForm'
 import a from './auth.module.css'
 
@@ -27,7 +27,7 @@ const POSTER = {
       letter
     </>
   ),
-  marquee: ['Signed, sealed, delivered', 'One code per account', 'Valid for one hour'],
+  marquee: ['Signed, sealed, delivered', 'One code per account', `Valid for ${CODE_LIFETIME}`],
 }
 
 export default function VerifyEmailPage() {
@@ -39,7 +39,6 @@ export default function VerifyEmailPage() {
   const signedIn = useNodeValue('authStatus') === 'authenticated'
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [retrying, setRetrying] = useState(false)
-  const [prefill, setPrefill] = useState<{ code: string; n: number }>({ code: '', n: 0 })
   const started = useRef<string | null>(null)
 
   const succeed = useCallback(() => {
@@ -74,9 +73,6 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     window.scrollTo({ top: 0 })
   }, [done, outcome?.kind])
-
-  const fillCode = (code: string) => setPrefill((p) => ({ code, n: p.n + 1 }))
-  const inbox = <DemoInbox kind="verify-email" onUseCode={fillCode} />
 
   if (done) {
     return (
@@ -126,12 +122,9 @@ export default function VerifyEmailPage() {
   }
 
   const footer = (
-    <div className={a.below}>
-      {inbox}
-      <p className={a.links}>
-        {signedIn ? <Link to="/me">Back to your profile</Link> : <Link to="/login">Back to sign in</Link>}
-      </p>
-    </div>
+    <p className={a.links}>
+      {signedIn ? <Link to="/me">Back to your profile</Link> : <Link to="/login">Back to sign in</Link>}
+    </p>
   )
 
   if (token && outcome?.token !== token) {
@@ -186,7 +179,7 @@ export default function VerifyEmailPage() {
         {expired ? (
           <>
             <Notice tone="warning" title="This link is invalid or has expired">
-              A code works once and lasts one hour, and each new code replaces the last.
+              A code works once and lasts {CODE_LIFETIME}, and each new code replaces the last.
             </Notice>
             {signedIn ? (
               <Text size="sm">Start the email change again from your profile to get a new code.</Text>
@@ -204,7 +197,7 @@ export default function VerifyEmailPage() {
             <OrRule>or enter a code</OrRule>
           </>
         ) : null}
-        <VerifyCodeForm key={prefill.n} initialCode={prefill.code} autoSubmit={prefill.n > 0} onVerified={succeed} />
+        <VerifyCodeForm onVerified={succeed} />
       </AuthLayout>
     </>
   )

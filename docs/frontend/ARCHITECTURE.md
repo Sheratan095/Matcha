@@ -20,16 +20,16 @@ RxJS-based engine (`src/wb`). Companion document in this folder:
 - Styling: plain CSS with design tokens (`src/ui/styles/tokens.css`) and CSS Modules per component.
   No Tailwind, no CSS-in-JS, no UI library.
 
-## 2. Modes
+## 2. Backends
 
-| Command | `VITE_BACKEND` | `api` service (auth, profile) | `social` service (discover, swipes, matches, chat) |
-|---|---|---|---|
-| `npm run dev` | `real` | gateway at `VITE_API_URL` (`http://localhost:3000`) | mock |
-| `npm run dev:demo` | `mock` | mock | mock |
+| Service | Served by |
+|---|---|
+| `api` (auth, profile, notification) | the gateway at `VITE_API_URL` (`http://localhost:3000`) |
+| `social` (discover, swipes, matches, chat) | the in-browser mock (§5): the backend has no such service yet. `VITE_SOCIAL_URL` overrides it |
 
-The dev server must run on **port 4000** in real mode (CORS, OAuth redirect and email links are
-hardcoded to `http://localhost:4000`). `src/config.ts` exposes `BACKEND`, `IS_MOCK_BACKEND`, `API_URL`,
-`SOCIAL_URL`, `MOCK_PREFIX`.
+`npm run dev` must run on **port 4000** (CORS, OAuth redirect and email links are hardcoded to
+`http://localhost:4000`). `src/config.ts` exposes `API_URL`, `SOCIAL_URL`, `MOCK_PREFIX`, and the third-party
+location services (§6.1) `GEOIP_URL`, `GEOCODER_URL`, `MAP_TILES_URL` (each overridable with its `VITE_` variable).
 
 ## 3. Folder ownership
 
@@ -40,7 +40,7 @@ src/
   api/types.ts         wire types shared by everything                 (fixed contract)
   api/http.ts          axios defaults, http event stream, 401 refresh  (state)
   wb/                  state layer: engine, nodes, hooks, commands, actions                  (state)
-  mock/                in-browser backend: adapter, db, seed, handlers, portraits            (mock)
+  mock/                in-browser social backend: adapter, seed, handlers, portraits         (mock)
   ui/                  design system: tokens, global css, components, AppShell               (design)
   app/                 router, guards
   features/<name>/     screens
@@ -57,7 +57,7 @@ src/wb/
   functions.ts      CUSTOM_FUNCTION implementations
   services.ts       the `api` and `social` services
   registry.ts       request (method + URL) -> HTTP node
-  store.ts          the running store: engine start-up, typed node access, storeInfo
+  store.ts          the running store: engine start-up, typed node access
   status.ts         request status per HTTP node
   stale.ts          drops in-flight reads whose node was reset
   commands.ts       run() and refresh()
@@ -138,9 +138,8 @@ anything under `src/wb` stops the store and reloads the page (never two stores).
 
 | Name | Target | Notes |
 |---|---|---|
-| `api` | `API_URL` | Real gateway or `/__mock`. Cookie auth: `axios.defaults.withCredentials = true`. No `Authorization` header (not in the gateway's CORS allow-list). |
-| `social` | `SOCIAL_URL` (`/__mock/social`) | Mocked; see §5.2. |
-| `mock` | `MOCK_PREFIX` (`/__mock`) | The mock backend's own demo conveniences (`/dev/inbox`), in every mode. |
+| `api` | `API_URL` | The gateway. Cookie auth: `axios.defaults.withCredentials = true`. No `Authorization` header (not in the gateway's CORS allow-list). |
+| `social` | `SOCIAL_URL` (`/__mock/social`) | Mocked; see §5.1. |
 
 ### 4.4 HTTP plumbing (`src/api/http.ts`, `src/wb/status.ts`, `src/wb/commands.ts`)
 
@@ -199,9 +198,10 @@ dependency; F inputs are always optional (4.2).
 
 | Node | Kind | Depends on | Value |
 |---|---|---|---|
-| `myProfile` | GET api `/profile` | `sessionUserId`, `myProfileRefresh` (opt) | `Profile` |
-| `profileComplete` | F | `myProfile` (opt) | `boolean` (gender, preference, biography, ≥ 1 interest); `null` while no profile |
-| `profileUpdate` | Payload + PATCH api `/profile` | payload | `Profile` |
+| `myProfile` | GET api `/profile` | `sessionUserId`, `myProfileRefresh` (opt) | `OwnProfile` (`Profile` + `latitude` / `longitude`) |
+| `profileComplete` | F | `myProfile` (opt) | `boolean` (gender, preference, biography, ≥ 1 interest, a location); `null` while no profile |
+| `profileUpdate` | Payload + PATCH api `/profile` | payload | `OwnProfile` |
+| `locationUpdate` | Payload + PUT api `/profile/location` | payload | `LocationResult` |
 | `profileCreate` | Payload + POST api `/profile` | payload | `ProfileCreateResult`; workaround for OAuth users without a profile row |
 | `pictureUpload` | Payload (`FormData`, field `file`) + POST api `/profile/pictures` | payload | `PicturesResult` |
 | `pictureDelete` | Payload (picture id) + DELETE api `/profile/pictures/{pictureId}` | payload (PATH_VARIABLE) | `PicturesResult` |
@@ -238,16 +238,9 @@ dependency; F inputs are always optional (4.2).
 | `socialProfileId` → `socialProfile` | P → GET social `/profiles/{userId}` | `sessionUserId`, id (PATH_VARIABLE) | `Card` |
 | `demoReset` | Payload (nonce) + POST social `/reset` | payload | `OkResult` |
 
-**Demo**
-
-| Node | Kind | Depends on | Value |
-|---|---|---|---|
-| `devInboxRefresh` | P | — | nonce |
-| `devInbox` | GET mock `/dev/inbox` | `devInboxRefresh` (required, onUpdate false) | `MockEmail[]`; loads only when asked |
-
 Refreshable in place (`refresh(name)` → nonce): `sessionCheck` (`sessionProbe`), `myProfile`,
 `myViewers` and `likesReceived` (both `activityRefresh`), `onlineCount`, `discoverDeck`, `matches`,
-`chatMessages`, `devInbox`. Writable by screens (`setNode`, `useNode`): the filters, `swipedIds`, `activeMatchId`,
+`chatMessages`. Writable by screens (`setNode`, `useNode`): the filters, `swipedIds`, `activeMatchId`,
 `apiProfileId`, `socialProfileId` — prefer the actions.
 
 ### 4.6 What the UI imports (`@/wb`)
@@ -273,9 +266,9 @@ is `NodeValues[N] | null | undefined`.
   | `logout(): Promise<void>` | re-probed; authenticated nodes and selection state are reset |
   | `register(payload): Promise<RegisterResult>` | the account exists (not signed in) |
   | `verifyEmail(token)`, `forgotPassword(email)`, `resetPassword({ token, password })`, `changeEmail(newEmail)` | the request succeeded |
-  | `startGithubLogin(): void` | navigates to `${API_URL}/auth/github`; throws `UNAVAILABLE` with the mock backend |
-  | `loadDevInbox(): Promise<MockEmail[]>` | demo mode: the mock's "sent" emails are in `devInbox`; rejects `UNAVAILABLE` with the real backend |
-  | `updateProfile(changes): Promise<Profile>` | `myProfile` / `profileComplete` reflect it (interests normalised and de-duplicated) |
+  | `startGithubLogin(): void` | navigates to `${API_URL}/auth/github` |
+  | `updateProfile(changes): Promise<OwnProfile>` | `myProfile` / `profileComplete` reflect it (interests normalised and de-duplicated) |
+  | `setLocation({ latitude, longitude }): Promise<void>` | `myProfile` / `profileComplete` have it (out-of-range coordinates rejected `INVALID` first); the deck reloads |
   | `createMissingProfile(): Promise<Profile \| null>` | the row exists and `myProfile` reloaded (also automatic on the first 500 of `myProfile` per user) |
   | `uploadPicture(file)`, `deletePicture(id)`, `setMainPicture(id)`: `Promise<PicturesResult>` | `myProfile` has the new pictures (upload validated first: type, 5 MB, 5 pictures) |
   | `showApiProfile(userId): Promise<Profile>`, `showSocialProfile(userId): Promise<Card>`, `closeProfile(): void` | the profile is in `apiProfile` / `socialProfile` |
@@ -289,23 +282,20 @@ is `NodeValues[N] | null | undefined`.
   | `resetDemoData(): Promise<void>` | `POST /__mock/social/reset` done and every social node reloaded |
 
 - `realtime$` — `Observable<RealtimeEvent>` for toasts and typing indicators. `startRealtime` also
-  reacts to events (message → open chat then matches; match → matches and likes; like → likes) and, with
-  the real backend, keeps the gateway's socket.io connection (`/notification`, websocket only) open while
-  signed in, which only makes the user count in `onlineCount`.
-- `storeInfo` — `{ backend: 'real' | 'mock' }`.
+  reacts to events (message → open chat then matches; match → matches and likes; like → likes) and
+  keeps the gateway's socket.io connection (`/notification`, websocket only) open while signed in, which
+  only makes the user count in `onlineCount`.
 - Errors: `isApiError`, `toApiError`, `LOCAL_ERROR` (`NETWORK`, `TIMEOUT`, `NOT_SENT`, `INVALID`,
-  `NO_SESSION`, `UNAVAILABLE`, `DROPPED`).
-- Boot (only `src/main.tsx`): `installStoreHttp()`, `installMockBackend({ auth, getViewerId })` from
+  `NO_SESSION`, `DROPPED`).
+- Boot (only `src/main.tsx`): `installStoreHttp()`, `installMockBackend({ getViewerId })` from
   `@/mock`, `startStore()`, await `ready`, `actions.bootSession()`, `startRealtime({ events$: mockEvents$ })`,
   render; `src/app/StoreScreens.tsx` shows the starting / failed / died screens.
 
-## 5. The mock backend (`src/mock`)
+## 5. The mock social backend (`src/mock`)
 
 ```ts
 installMockBackend(options: {
-  /** true in demo mode: also serve /auth/*, /profile/*, /notification/* under /__mock. */
-  auth: boolean
-  /** Who is logged in when auth is real (the mock cannot read HttpOnly cookies). */
+  /** Who is logged in, per the real auth (the mock cannot read HttpOnly cookies). */
   getViewerId: () => string | null
   /** Simulated latency in ms: fixed or [min, max]. Default [120, 450]; 0 answers on the next microtask. */
   latency?: number | readonly [number, number]
@@ -316,21 +306,18 @@ export const mockEvents$: Observable<RealtimeEvent>
 
 ```
 src/mock/
-  index.ts       install / uninstall, mockEvents$, real-mode profile hint
+  index.ts       install / uninstall, mockEvents$, profile hint
   adapter.ts     the axios adapter wrapper
   routes.ts      route table and dispatch
   nest.ts        MockRequest / MockResponse, Nest-shaped errors
   validate.ts    the class-validator subset (same messages, same order)
   storage.ts     versioned localStorage documents with a memory copy
-  accounts.ts    demo auth service, demo accounts and their profiles, dev inbox
-  profiles.ts    demo profile service, pictures, online count
-  images.ts      upload downscaling
   social.ts      social service: per-viewer state, seeding, live agenda, incoming likes
   chat.ts        starter conversations and the reply bank
   people.ts      the 36 seeded people
   portraits.ts   risograph poster portraits (SVG data URLs)
   tags.ts        tag catalogue, tag ids
-  viewer.ts      who is asking (session or getViewerId) and what is known about them
+  viewer.ts      who is asking (getViewerId) and what is known about them
   runtime.ts     options, event subject, viewer-scoped timers
   ids.ts         hashing, deterministic UUIDs, tokens
   testkit.ts     helpers for src/mock/*.test.ts
@@ -348,52 +335,15 @@ query comes from the URL merged with `config.params` (null / undefined dropped).
 Nest 404 (`Cannot GET /x`), a handler crash a Nest 500 (and a console error). Installing again replaces
 the wrapper instead of stacking it, and a newer copy of the module (Vite HMR) uninstalls the older one.
 
-**Persistence.** `localStorage` documents `matcha.mock.v1.auth` (demo accounts, profiles, tokens,
-inbox, account-to-account views), `matcha.mock.v1.session` (the demo "cookie") and
-`matcha.mock.v1.social.<viewerId>`. Missing, unparsable or wrongly shaped documents are reseeded; an
+**Persistence.** One `localStorage` document per viewer, `matcha.mock.v1.social.<viewerId>`. Missing, unparsable or wrongly shaped documents are reseeded; an
 unavailable storage degrades to memory; another tab's writes are picked up (`storage` event).
 
-**Ids** are UUIDs (URL-safe), deterministic for seeded things (people, their pictures, tags, demo
-accounts, starter matches), random for created ones.
+**Ids** are UUIDs (URL-safe), deterministic for seeded things (people, their pictures, tags, starter
+matches), random for created ones.
 
-### 5.1 `/__mock/auth/*`, `/__mock/profile/*`, `/__mock/notification/online` (demo mode)
+### 5.1 `/__mock/social/*`
 
-Same paths, bodies, validation messages, status codes and error bodies as `API_CONTRACT.md` §2, §3 and
-§4, including `EMAIL_NOT_VERIFIED` (a correct-password login on an unverified account mails a fresh token
-and invalidates the previous one), `COMMON_PASSWORD`, `RESERVED_USERNAME`, `PASSWORD_REUSE`, 403 for bad
-credentials and tokens, 201 for forgot / reset password, the change-email flow (the address changes when
-the token mailed to it is verified), `POST /auth/refresh` (200 `{ message, userId }` while the mock
-session exists, 403 otherwise) and the picture limits (5 pictures, 5 MB, JPEG / PNG / WEBP, field
-`file`; `Unexpected field`, `Too many files`, 413 `File too large`, `Missing "file" field`, `File is not a
-valid image`). With `auth: false` these routes do not exist (404).
-
-Demo conveniences and deliberate differences:
-
-- The "cookie" is a `localStorage` entry; sessions do not expire. GitHub OAuth cannot work (it is a
-  top-level navigation).
-- Seeded accounts `testuser` / `1234` (other / other, 5 pictures) and `alice` / `1234` (female / both,
-  2 pictures), with generated portraits; `admin` exists and cannot log in, as in the backend seed.
-- "Emails" are not sent; `GET /__mock/dev/inbox` → `MockEmail[]`, newest first (links
-  `/verify-email?token=` and `/reset-password?token=`). The inbox route exists in every mode (the `mock`
-  service); with the real backend it is `[]`.
-- Reserved usernames: the technical entries of the backend list (the offensive-word entries are not
-  reproduced). Common passwords: the entries of the backend list that are 8+ characters.
-- Intended behaviour where the backend has a bug: an unknown profile is 404 `Profile not found` (backend:
-  500); a non-string where a trim applies, and `interests` that is null or not an array, are 400s
-  (backend: 500); duplicate and empty interest names are dropped; deleting the profile picture promotes
-  the oldest remaining one, and an upload while there is no profile picture becomes it.
-- Uploads are decoded and downscaled in the browser (longest side 720 px, WebP, JPEG fallback, smaller
-  until the data URL is ≤ ~140 KB). Where images cannot be decoded (jsdom) a small file is kept as-is and a
-  big one becomes a printed placeholder. A full storage answers 500 `Failed to store picture`.
-- `GET /profile/{userId}` also resolves mock people (Profile shape). Views are recorded between demo
-  accounts. `GET /profile/viewers` lists the mock people who viewed the viewer (seeded, and more arrive
-  with incoming likes) and the demo accounts that did, most recent first.
-- `GET /notification/online`: the mock people online now, plus one (you), as a bare number.
-
-### 5.2 `/__mock/social/*`
-
-The viewer is the mock session (demo mode) or `getViewerId()` (real mode); no viewer → 401 `Missing or
-invalid access token`. Bodies are validated in the Nest style (400 with a message array).
+The viewer is `getViewerId()` (the real session); no viewer → 401 `Missing or invalid access token`. Bodies are validated in the Nest style (400 with a message array).
 
 | Method + path | Request | Response |
 |---|---|---|
@@ -412,8 +362,7 @@ invalid access token`. Bodies are validated in the Nest style (400 with a messag
 
 **Orientation.** `male` / `female` want that gender; `both` and `other` are open to everyone,
 non-binary people included. A card is shown when each side accepts the other; an unknown side does not
-filter. With the real backend the mock learns the viewer's gender, preference, interests and first name
-by reading (never changing) the real `GET` / `PATCH {API_URL}/profile` responses that pass through the
+filter. The mock learns the viewer's gender, preference, interests and first name by reading (never changing) the real `GET` / `PATCH {API_URL}/profile` responses that pass through the
 adapter; without that, nothing is filtered and `commonTags` is empty.
 
 **People.** 36 people (16 women, 16 men, 4 non-binary; 19–48 years old; every preference), placed by
@@ -425,7 +374,7 @@ is online.
 **A new viewer** gets a starter world that is a function of their id: 4 matches when 18 or more people
 fit them, else 3 (one wrote first and is unread, one is an ongoing conversation with 2 unread, one was
 answered and read, the fourth is fresh with no message); 4–6 likes received (~40% of the default deck,
-at least 4); a couple more people who viewed them. While the viewer has not acted yet (swipe, message,
+at least 4). While the viewer has not acted yet (swipe, message,
 unmatch, block, rewind), the starter world follows their orientation (it is reseeded after onboarding).
 Default-filter deck sizes: about 9 for one-gender preferences towards the other gender, 6–7 for
 same-gender ones (10 of 36 people fit), 12–20 for open preferences.
@@ -436,13 +385,10 @@ other person's messages only; `match` for later like-backs only (an immediate ma
 active (a social request in the last 2 minutes), at most about once a minute. A new match opens the
 conversation half of the time (fixed per pair), 5–9 s later. Everything is persisted before it is
 emitted. What happens later is kept in a persisted agenda run by timers that belong to the current
-viewer: switching viewer, signing out, resetting or uninstalling cancels them, and the agenda resumes when
-that viewer is back.
+viewer: switching viewer (at their first social request), resetting or uninstalling cancels them, a timer
+that fires while its viewer is signed out does nothing, and the agenda resumes when that viewer is back.
 
-**Handy facts (demo).** `alice`: matches Mathieu, Malik, Hugo, Noa; liked by Antoine, Amara, Priya,
-Aïssatou, Thomas, Yuki (liking one of them is a match). `testuser`: matches Malik, Eden, Amara, Rafael;
-liked by Antoine, Samuel, Chloé, Aïssatou, Noa, Lucas. Accounts registered in the demo get their own
-world (their ids are random). `POST /__mock/social/reset` (`actions.resetDemoData()`) restores it.
+Every account gets its own world. `POST /__mock/social/reset` (`actions.resetDemoData()`) restores it.
 
 ## 6. Routes
 
@@ -460,6 +406,27 @@ world (their ids are random). `POST /__mock/social/reset` (`actions.resetDemoDat
 
 GitHub OAuth is a top-level navigation to `${API_URL}/auth/github`; the backend redirects back to `/`
 with cookies set, and the boot-time session probe picks the session up.
+
+### 6.1 Location (`src/features/location`)
+
+The backend requires a location for a complete profile (discover and search answer 403 without one) and
+stores what the client sends (`PUT /profile/location`); others only ever get a distance from a ~1 km-snapped
+copy. The client finds it in this order:
+
+1. **The device** (Geolocation API), on a button press only: the browser's permission prompt is never
+   triggered on page load.
+2. **The connection**, when the device is refused or fails, and on arrival at the onboarding step when no
+   location is set yet: an IP lookup (`GEOIP_URL`, GeoJS by default), city-level and sometimes tens of km
+   off, with no prompt. The screen says it is approximate.
+3. **By hand**: click or drag the pin on a Leaflet map (`MAP_TILES_URL`, OpenStreetMap tiles), or search a
+   place (`GEOCODER_URL`, Nominatim, which also names the spot under the pin).
+
+`LocationPicker` is the shared control (onboarding step "Location", Me → Details → Location). Third-party
+calls use `fetch` without credentials (the app's axios sends cookies, which these open-CORS services
+refuse). A per-user, per-browser mode (`mode.ts`, `localStorage`) records whether the spot is automatic
+(saved from the device or the connection) or pinned by hand; while automatic, `useAutoLocation` (mounted in
+`AppLayout`) refreshes it once per page load from the device when the permission is already granted and it
+moved more than 1 km.
 
 ## 7. Design direction — "Press Edition"
 

@@ -1,17 +1,17 @@
 /**
  * /reset-password?token= (the link in the reset email). New password twice; the backend refuses a
  * common password (COMMON_PASSWORD), the previous one (PASSWORD_REUSE) and a used or expired token
- * (403). Success does not sign in.
+ * (403). Success does not sign in, and signs out a session open in this browser (its refresh token is
+ * revoked by the reset).
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AuthLayout, Button, ButtonLink, IconArrowRight, Notice, PasswordField, Stamp, Text } from '@/ui'
 import { actions, useNodeValue } from '@/wb'
-import { DemoInbox } from './DemoInbox'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { readFlag } from './navState'
 import { FormBanner } from './parts'
-import { checkNewPassword, PASSWORD_MAX } from './rules'
+import { checkNewPassword, CODE_LIFETIME, PASSWORD_MAX } from './rules'
 import { useAuthForm } from './useAuthForm'
 import a from './auth.module.css'
 
@@ -72,6 +72,9 @@ export default function ResetPasswordPage() {
       await actions.resetPassword({ token, password })
       setPassword('')
       setConfirm('')
+      // The backend revokes the refresh token on reset, so a session open in this browser would only last
+      // until its access cookie expires (up to 15 min) and then drop mid-use. End it now instead.
+      if (signedIn) await actions.logout().catch(() => undefined)
       navigate(location.pathname, { replace: true, state: { reset: true } })
     } catch (thrown) {
       const error = asApiError(thrown)
@@ -97,7 +100,6 @@ export default function ResetPasswordPage() {
     }
   }
 
-  const inbox = <DemoInbox kind="reset-password" />
   const backLink = (
     <p className={a.links}>
       {signedIn ? <Link to="/me">Back to your profile</Link> : <Link to="/login">Back to sign in</Link>}
@@ -154,17 +156,12 @@ export default function ResetPasswordPage() {
               : 'This page opens from the link in a password reset email. Ask for one and follow it here.'
           }
           poster={POSTER}
-          footer={
-            <div className={a.below}>
-              {inbox}
-              {backLink}
-            </div>
-          }
+          footer={backLink}
         >
           {expired ? (
             <Notice tone="warning" title="This reset link no longer works">
               {dead?.message && dead.message !== 'Invalid or expired reset token' ? `${dead.message}. ` : ''}A link
-              works once and lasts one hour, and asking again replaces it.
+              works once and lasts {CODE_LIFETIME}, and asking again replaces it.
             </Notice>
           ) : null}
           <ButtonLink to="/forgot-password" size="lg" block>
@@ -183,12 +180,7 @@ export default function ResetPasswordPage() {
         kicker="Key cutting"
         intro="It must differ from your current one."
         poster={POSTER}
-        footer={
-          <div className={a.below}>
-            {inbox}
-            {backLink}
-          </div>
-        }
+        footer={backLink}
       >
         <form
           ref={formRef}

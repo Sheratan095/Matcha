@@ -9,15 +9,13 @@ import { Subject } from 'rxjs'
 import type { RealtimeEvent } from '@/api/types'
 
 export interface RuntimeOptions {
-  /** Demo mode: the mock also serves /auth, /profile, /notification and /dev. */
-  auth: boolean
   getViewerId: () => string | null
   /** Inclusive latency range in ms. */
   latency: readonly [number, number]
 }
 
 export const runtime: { options: RuntimeOptions } = {
-  options: { auth: false, getViewerId: () => null, latency: [120, 450] },
+  options: { getViewerId: () => null, latency: [120, 450] },
 }
 
 export const events = new Subject<RealtimeEvent>()

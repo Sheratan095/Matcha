@@ -31,8 +31,6 @@ export const LOCAL_ERROR = {
   INVALID: 'INVALID',
   /** The backend accepted the credentials but the follow-up session probe found no session (cookie not kept). */
   NO_SESSION: 'NO_SESSION',
-  /** The feature does not exist in this mode (e.g. GitHub sign-in with the mock backend). */
-  UNAVAILABLE: 'UNAVAILABLE',
   /** A GET whose result was no longer wanted when it arrived (see `dropPendingRequests`). */
   DROPPED: 'DROPPED',
 } as const
@@ -113,8 +111,8 @@ export const httpEvents$: Observable<HttpEvent> = events.asObservable()
 export interface HttpOptions {
   /**
    * Origin of the guarded service. A 401 from a URL under it (other than `/auth/refresh` itself) means
-   * the access cookie is gone. Defaults to `API_URL`. `/auth/change-email` is guarded too, so `/auth/*`
-   * is not excluded as a whole.
+   * the access cookie is gone. Defaults to `API_URL`. `/auth/change-email` and `/auth/logout` are guarded
+   * too, so `/auth/*` is not excluded as a whole.
    */
   apiUrl?: string
   /**
@@ -232,7 +230,8 @@ export function installHttp(options: HttpOptions = {}): () => void {
   /**
    * A guarded endpoint: under the api origin, except the refresh call itself (which answers 403, never
    * 401, but must not be able to start a refresh loop). Only guarded endpoints answer 401 at all
-   * (`/auth/change-email` and the profile service), so nothing else needs excluding.
+   * (`/auth/change-email`, `/auth/logout`, `/chat` and the profile service; `/auth/validate` is always
+   * 200), so nothing else needs excluding.
    */
   function isGuarded(url: string): boolean {
     if (url !== apiUrl && !url.startsWith(`${apiUrl}/`)) return false

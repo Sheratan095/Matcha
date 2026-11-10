@@ -1,0 +1,179 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------ the place line */
+.place {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 44px;
+}
+
+.placeIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: var(--line-thin);
+  border-radius: 50%;
+  background: var(--c-strawberry);
+  color: var(--c-ink);
+  box-shadow: 2px 2px 0 var(--c-ink);
+}
+
+.placeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.placeName {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-body);
+  line-height: var(--lh-tight);
+  overflow-wrap: anywhere;
+}
+
+.precision {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-2);
+}
+
+.finding {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+
+/* ------------------------------------------------------------ the map */
+.map {
+  position: relative;
+  z-index: 0; /* Leaflet's panes use z-index up to 1000: keep them under the app's overlays */
+  height: clamp(220px, 46vh, 340px);
+  border: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-lo);
+  box-shadow: var(--sh-2);
+  overflow: hidden;
+  font-family: var(--font-body);
+}
+.map[data-invalid] {
+  border-color: var(--c-danger);
+}
+
+/* printed, not glossy: tiles a little faded towards the paper */
+.map :global(.leaflet-tile-pane) {
+  filter: saturate(0.6) sepia(0.12) contrast(1.04);
+}
+
+.map :global(.leaflet-control-zoom) {
+  border: var(--line-thin);
+  border-radius: var(--r-sm);
+  box-shadow: 2px 2px 0 var(--c-ink);
+  overflow: hidden;
+}
+.map :global(.leaflet-control-zoom a) {
+  color: var(--c-ink);
+  background: var(--c-paper-hi);
+  font-weight: 800;
+}
+.map :global(.leaflet-control-zoom a + a) {
+  border-top: var(--bw-thin) solid var(--c-ink);
+}
+
+.map :global(.leaflet-control-attribution) {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: color-mix(in srgb, var(--c-paper-hi) 85%, transparent);
+}
+
+/* the pin: a strawberry drop with a paper eye, stamped in ink */
+.pin {
+  background: none;
+  border: 0;
+}
+.pin > span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 28px;
+  height: 28px;
+  border: var(--bw) solid var(--c-ink);
+  border-radius: 50% 50% 50% 0;
+  background: var(--c-strawberry);
+  box-shadow: 2px 2px 0 var(--c-ink);
+  rotate: -45deg;
+}
+.pin > span::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 2px solid var(--c-ink);
+  border-radius: 50%;
+  background: var(--c-paper-hi);
+}
+
+/* ------------------------------------------------------------ controls */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.search {
+  flex: 1 1 15rem;
+  min-width: 0;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: var(--line-thin);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  box-shadow: 2px 2px 0 var(--c-ink);
+  overflow: hidden;
+}
+.results li + li {
+  border-top: var(--bw-thin) dashed var(--c-ink);
+}
+
+.result {
+  display: block;
+  width: 100%;
+  min-height: var(--touch);
+  padding: var(--s-2) var(--s-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  text-align: left;
+  color: var(--c-text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.result:focus-visible {
+  outline: var(--bw) solid var(--c-focus);
+  outline-offset: -4px;
+}
+@media (hover: hover) {
+  .result:hover {
+    background: var(--c-yolk-tint);
+  }
+}

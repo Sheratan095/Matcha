@@ -19,10 +19,11 @@ import {
   type BlockPayload,
   type Card,
   type LoginPayload,
+  type LocationPayload,
   type LoginResult,
   type Message,
-  type MockEmail,
   type MessageResult,
+  type OwnProfile,
   type PicturesResult,
   type Profile,
   type ProfileUpdatePayload,
@@ -34,7 +35,7 @@ import {
   type SwipeResult,
   type VerifyEmailResult,
 } from '@/api/types'
-import { API_URL, IS_MOCK_BACKEND } from '@/config'
+import { API_URL } from '@/config'
 import { awaitLoad, nextNonce, refresh, reload, run } from './commands'
 import {
   currentFilters,
@@ -165,9 +166,18 @@ async function login(credentials: LoginPayload): Promise<LoginResult> {
   return result
 }
 
-/** Signs out, then re-probes: resolves once the session is gone (authenticated nodes reset to null). */
+/**
+ * Signs out, then re-probes: resolves once the session is gone (authenticated nodes reset to null).
+ * `POST /auth/logout` is guarded: a 401 (after the HTTP layer's refresh attempt failed too) means the
+ * session was already over, e.g. expired, or its refresh token replaced by a sign-in on another device
+ * (one per user). That is the outcome a sign-out wants, so it is not an error.
+ */
 async function logout(): Promise<void> {
-  await run('logout')
+  try {
+    await run('logout')
+  } catch (thrown) {
+    if (toApiError(thrown).status !== 401) throw thrown
+  }
   await probeSession()
 }
 
@@ -205,33 +215,16 @@ function changeEmail(newEmail: string): Promise<MessageResult> {
 
 /**
  * Leaves the app for GitHub (a top-level navigation, not a request). The backend redirects back to `/`
- * with the session cookies set, and the boot-time probe picks the session up. Throws an UNAVAILABLE
- * `ApiError` with the mock backend: check `storeInfo.backend === 'real'` before offering it.
+ * with the session cookies set, and the boot-time probe picks the session up.
  */
 function startGithubLogin(): void {
-  if (IS_MOCK_BACKEND) {
-    throw apiError(0, 'GitHub sign-in needs the real backend; it is not available in demo mode.', LOCAL_ERROR.UNAVAILABLE)
-  }
   window.location.assign(`${API_URL}/auth/github`)
-}
-
-/**
- * Demo mode: the emails the mock backend "sent" (verification and reset links), newest first. Rejects
- * with UNAVAILABLE with the real backend, where real emails are sent.
- */
-async function loadDevInbox(): Promise<MockEmail[]> {
-  if (!IS_MOCK_BACKEND) {
-    throw apiError(0, 'The demo inbox only exists with the mock backend; check your real mailbox.', LOCAL_ERROR.UNAVAILABLE)
-  }
-  const error = await reload('devInbox')
-  if (error) throw error
-  return getNodeValue('devInbox') ?? []
 }
 
 // ---------------------------------------------------------------- own profile
 
 /** Applies the given fields; resolves once `myProfile` (and `profileComplete`) reflect them. */
-async function updateProfile(changes: ProfileUpdatePayload): Promise<Profile> {
+async function updateProfile(changes: ProfileUpdatePayload): Promise<OwnProfile> {
   const body = profileUpdateBody(changes)
   const profile = await run('profileUpdate', body)
   await refresh('myProfile')
@@ -240,6 +233,20 @@ async function updateProfile(changes: ProfileUpdatePayload): Promise<Profile> {
     void refresh('discoverDeck')
   }
   return profile
+}
+
+/**
+ * Stores the viewer's position (`PUT /profile/location`, full precision; others only get a distance
+ * from a ~1 km-snapped copy). Resolves once `myProfile` (and `profileComplete`) have it.
+ */
+async function setLocation(spot: LocationPayload): Promise<void> {
+  const { latitude, longitude } = spot
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) invalid('Latitude must be between -90 and 90')
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) invalid('Longitude must be between -180 and 180')
+  await run('locationUpdate', { latitude, longitude })
+  await refresh('myProfile')
+  // Distances on the cards are measured from here.
+  void refresh('discoverDeck')
 }
 
 /**
@@ -437,8 +444,8 @@ export const actions = {
   resetPassword,
   changeEmail,
   startGithubLogin,
-  loadDevInbox,
   updateProfile,
+  setLocation,
   createMissingProfile,
   uploadPicture,
   deletePicture,

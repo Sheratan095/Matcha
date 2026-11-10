@@ -26,7 +26,6 @@ import {
   TicketHeader,
   Wordmark,
 } from '@/ui'
-import { storeInfo } from '@/wb'
 import { GithubButton, OrRule } from './parts'
 import s from './Landing.module.css'
 
@@ -60,10 +59,8 @@ const STEPS = [
 const TICKER = ['Fresh matches daily', 'Stone-ground in Paris', 'Ceremonial grade romance', 'No sugar added', 'Swipe · Match · Chat']
 
 export default function LandingPage() {
-  const demo = storeInfo.backend === 'mock'
-  // In demo mode BuildMarkers hangs a short tab from the top edge: the masthead leaves it room.
   return (
-    <div className={s.page} data-markers={demo ? '' : undefined}>
+    <div className={s.page}>
       <title>Matcha · It's a match, stone-ground</title>
 
       <header className={s.masthead}>
@@ -146,17 +143,6 @@ export default function LandingPage() {
             </div>
             <OrRule />
             <GithubButton />
-            {demo ? (
-              <p className={s.demoNote}>
-                <Label size="sm" inverse>
-                  Demo
-                </Label>
-                <span>
-                  Try <strong>testuser</strong> or <strong>alice</strong>, password <strong>1234</strong>. Sign-up
-                  emails land in a demo inbox.
-                </span>
-              </p>
-            ) : null}
           </div>
 
           <div className={s.band}>

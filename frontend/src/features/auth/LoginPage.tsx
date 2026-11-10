@@ -6,20 +6,18 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { AuthLayout, Button, IconArrowLeft, Label, Notice, PasswordField, TextField } from '@/ui'
-import { actions, refresh, storeInfo, useNodeStatus } from '@/wb'
-import { DemoInbox } from './DemoInbox'
+import { AuthLayout, Button, IconArrowLeft, Notice, PasswordField, TextField } from '@/ui'
+import { actions, refresh, useNodeStatus } from '@/wb'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { readLoginState } from './navState'
 import { FormBanner, GithubButton, OrRule } from './parts'
-import { checkRequired } from './rules'
+import { checkRequired, CODE_LIFETIME } from './rules'
 import { useAuthForm } from './useAuthForm'
 import { VerifyCodeForm } from './VerifyCodeForm'
 import a from './auth.module.css'
 
 type Field = 'username' | 'password'
 const FIELDS: readonly Field[] = ['username', 'password']
-const DEMO_ACCOUNTS = ['testuser', 'alice'] as const
 const PASSWORD_ID = 'login-password'
 
 type Phase = 'form' | 'unverified'
@@ -34,9 +32,6 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false)
   const [phase, setPhase] = useState<Phase>('form')
   const [flash, setFlash] = useState<Flash>(arrived.verified ? 'verified' : arrived.reset ? 'reset' : null)
-  /** Bumped each time the backend re-sent a code: reloads the demo inbox. */
-  const [mailCount, setMailCount] = useState(0)
-  const [prefill, setPrefill] = useState<{ code: string; n: number }>({ code: '', n: 0 })
   const formRef = useRef<HTMLFormElement>(null)
   const sessionCheck = useNodeStatus('sessionCheck')
 
@@ -63,8 +58,6 @@ export default function LoginPage() {
     } catch (thrown) {
       const error = asApiError(thrown)
       if (error.code === 'EMAIL_NOT_VERIFIED') {
-        setMailCount((n) => n + 1)
-        setPrefill({ code: '', n: 0 })
         setPhase('unverified')
       } else if (error.status === 403) {
         setBanner({
@@ -112,24 +105,18 @@ export default function LoginPage() {
                 letter
               </>
             ),
-            marquee: ['Signed, sealed, delivered', 'One code per sign-in', 'Valid for one hour'],
+            marquee: ['Signed, sealed, delivered', 'One code per sign-in', `Valid for ${CODE_LIFETIME}`],
           }}
           footer={
-            <div className={a.below}>
-              <DemoInbox kind="verify-email" refreshKey={mailCount} onUseCode={(code) => setPrefill((p) => ({ code, n: p.n + 1 }))} />
-              <p className={a.links}>
-                Not your account?{' '}
-                <button type="button" className={a.inlineButton} onClick={() => setPhase('form')}>
-                  Use another one
-                </button>
-              </p>
-            </div>
+            <p className={a.links}>
+              Not your account?{' '}
+              <button type="button" className={a.inlineButton} onClick={() => setPhase('form')}>
+                Use another one
+              </button>
+            </p>
           }
         >
           <VerifyCodeForm
-            key={prefill.n}
-            initialCode={prefill.code}
-            autoSubmit={prefill.n > 0}
             submitLabel="Verify and continue"
             onVerified={() => {
               setFlash('verified')
@@ -192,9 +179,7 @@ export default function LoginPage() {
                 </Button>
               }
             >
-              {storeInfo.backend === 'real'
-                ? 'Signing in will fail until the Matcha backend is up.'
-                : 'The demo backend did not answer. Reload the page.'}
+              Signing in will fail until the Matcha backend is up.
             </Notice>
           ) : null}
 
@@ -236,30 +221,6 @@ export default function LoginPage() {
           </Button>
           <OrRule />
           <GithubButton />
-          {storeInfo.backend === 'mock' ? (
-            <div className={a.demo}>
-              <Label size="sm">Demo accounts · password 1234</Label>
-              <div className={a.demoButtons}>
-                {DEMO_ACCOUNTS.map((name) => (
-                  <Button
-                    key={name}
-                    size="sm"
-                    variant="paper"
-                    aria-label={`Fill in the demo account ${name}`}
-                    onClick={() => {
-                      setUsername(name)
-                      setPassword('1234')
-                      form.changed('username')
-                      form.changed('password')
-                      setBanner(null)
-                    }}
-                  >
-                    {name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </form>
       </AuthLayout>
     </>

@@ -6,10 +6,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthLayout, Button, ButtonLink, IconArrowLeft, Stamp, TextField } from '@/ui'
 import { actions } from '@/wb'
-import { DemoInbox } from './DemoInbox'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { FormBanner } from './parts'
-import { checkEmail, EMAIL_MAX, normaliseEmail } from './rules'
+import { checkEmail, CODE_LIFETIME, EMAIL_MAX, normaliseEmail } from './rules'
 import { useAuthForm } from './useAuthForm'
 import a from './auth.module.css'
 
@@ -26,7 +25,7 @@ const POSTER = {
       stress
     </>
   ),
-  marquee: ['Happens to the best of us', 'A fresh key in one email', 'Valid for one hour'],
+  marquee: ['Happens to the best of us', 'A fresh key in one email', `Valid for ${CODE_LIFETIME}`],
 }
 
 export default function ForgotPasswordPage() {
@@ -73,18 +72,15 @@ export default function ForgotPasswordPage() {
           kicker="Request received"
           intro={
             <>
-              If an account uses <strong>{sentTo}</strong>, a reset link is on its way. It works for one hour; asking
+              If an account uses <strong>{sentTo}</strong>, a reset link is on its way. It works for {CODE_LIFETIME}; asking
               again replaces it.
             </>
           }
           poster={POSTER}
           footer={
-            <div className={a.below}>
-              <DemoInbox kind="reset-password" to={sentTo} />
-              <p className={a.links}>
-                Remembered it? <Link to="/login">Sign in</Link>
-              </p>
-            </div>
+            <p className={a.links}>
+              Remembered it? <Link to="/login">Sign in</Link>
+            </p>
           }
         >
           <div className={a.result}>

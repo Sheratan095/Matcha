@@ -768,8 +768,8 @@ function Guide() {
                   <FormError error={{ message: 'Validation failed', messages: ['Password is too common.', 'Email is already registered.'] }} />
                   <FormError error="Please verify your email before signing in." action={<Button size="sm" variant="ink">Resend email</Button>} />
                   <Notice tone="success" title="Profile saved" />
-                  <Notice tone="info" title="Demo mode" onDismiss={() => undefined}>
-                    Data lives in this browser only.
+                  <Notice tone="info" title="Matches are simulated" onDismiss={() => undefined}>
+                    Discover and chat run in this browser for now.
                   </Notice>
                   <Notice tone="warning" title="Two photos to go">
                     Profiles with three pictures get twice the likes.
@@ -1007,7 +1007,7 @@ function Guide() {
                   <Button size="sm" variant="paper" onClick={() => toast.error('Could not send', 'Check your connection and try again.')}>
                     Error
                   </Button>
-                  <Button size="sm" variant="paper" onClick={() => toast.info('Demo mode', 'Data stays in this browser.')}>
+                  <Button size="sm" variant="paper" onClick={() => toast.info('Matches are simulated', 'Discover and chat run in this browser for now.')}>
                     Info
                   </Button>
                   <Button

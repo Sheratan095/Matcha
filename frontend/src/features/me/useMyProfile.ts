@@ -1,8 +1,8 @@
-import type { ApiError, Profile } from '@/api/types'
+import type { ApiError, OwnProfile } from '@/api/types'
 import { useNodeStatus, useNodeValue } from '@/wb'
 
 export type MyProfileState =
-  | { state: 'ready'; profile: Profile; error: ApiError | null }
+  | { state: 'ready'; profile: OwnProfile; error: ApiError | null }
   | { state: 'loading' }
   | { state: 'error'; error: ApiError | null }
   /** No session (normally the route guard redirects before this shows). */

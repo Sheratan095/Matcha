@@ -69,11 +69,6 @@ export function ok(body: unknown, status = 200): MockResponse {
   return { status, body }
 }
 
-/** A bare text body (Nest replies to a returned number or string with `res.send(String(value))`). */
-export function text(body: string | number, status = 200): MockResponse {
-  return { status, body: String(body), contentType: 'text/html; charset=utf-8' }
-}
-
 /** The guard of every authenticated endpoint. */
 export function unauthorized(): HttpError {
   return nestError(401, 'Missing or invalid access token')

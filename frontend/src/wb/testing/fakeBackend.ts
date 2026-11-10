@@ -2,7 +2,7 @@
  * Test-only: a small stateful backend behind the fake adapter, enough for the flows the actions run.
  * Independent of src/mock on purpose: these tests check the state layer, not the mock backend.
  */
-import type { Card, Match, Message, Profile } from '@/api/types'
+import type { Card, Match, Message, OwnProfile, Profile } from '@/api/types'
 import { API_URL, SOCIAL_URL } from '@/config'
 import { FakeServer, nestError, reply } from './fakeServer'
 
@@ -43,7 +43,7 @@ export interface FakeBackend {
   server: FakeServer
   state: {
     session: string | null
-    profile: Profile
+    profile: OwnProfile
     deck: Card[]
     swiped: Set<string>
     matches: Match[]
@@ -56,7 +56,7 @@ export function createFakeBackend(): FakeBackend {
   const server = new FakeServer()
   const state: FakeBackend['state'] = {
     session: null,
-    profile: profile(ME),
+    profile: { ...profile(ME), latitude: null, longitude: null },
     deck: [card('ann', { likedYou: true }), card('bea'), card('cid')],
     swiped: new Set(),
     matches: [],
@@ -91,6 +91,12 @@ export function createFakeBackend(): FakeBackend {
         updatedAt: new Date().toISOString(),
       }
       return state.profile
+    })
+    .on('PUT', `${API_URL}/profile/location`, ({ body }) => {
+      if (!state.session) return unauthorized()
+      const { latitude, longitude } = body as { latitude: number; longitude: number }
+      state.profile = { ...state.profile, latitude, longitude, updatedAt: new Date().toISOString() }
+      return { updated: true }
     })
     .on('POST', `${API_URL}/profile/pictures`, ({ body }) => {
       if (!state.session) return unauthorized()

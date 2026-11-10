@@ -2,7 +2,7 @@
  * Shared by the Me screen and onboarding: labels for the profile enums, completeness checks, and the
  * diff that turns a form draft into the partial `PATCH /profile` body.
  */
-import type { Gender, Profile, ProfileUpdatePayload, SexualPreference, UserPicture } from '@/api/types'
+import type { Gender, OwnProfile, Profile, ProfileUpdatePayload, SexualPreference, UserPicture } from '@/api/types'
 import { normaliseTags } from '@/wb'
 
 export const GENDER_OPTIONS: readonly { value: Gender; label: string }[] = [
@@ -34,6 +34,7 @@ export const SECTION_IDS = {
   identity: 'me-identity',
   biography: 'me-biography',
   interests: 'me-interests',
+  location: 'me-location',
 } as const
 
 export function interestNames(profile: Profile): string[] {
@@ -52,7 +53,7 @@ export function serialOf(userId: string): number {
   return Number.isFinite(value) ? value % 1_000_000 : 0
 }
 
-export type CheckKey = 'name' | 'gender' | 'preference' | 'biography' | 'interests' | 'photo'
+export type CheckKey = 'name' | 'gender' | 'preference' | 'biography' | 'interests' | 'location' | 'photo'
 
 export interface ProfileCheck {
   key: CheckKey
@@ -63,11 +64,11 @@ export interface ProfileCheck {
   /** Button text that leads to the fix (≤ 3 words). */
   fix: string
   done: boolean
-  /** Required by the backend's completeness rule (gender, preference, biography, an interest). */
+  /** Required to appear in Discover (gender, preference, biography, an interest, a location). */
   required: boolean
 }
 
-export function profileChecks(profile: Profile): ProfileCheck[] {
+export function profileChecks(profile: OwnProfile): ProfileCheck[] {
   return [
     { key: 'name', short: 'Name', missing: 'your first name', fix: 'Add name', done: Boolean(profile.firstName?.trim()), required: false },
     { key: 'gender', short: 'I am', missing: 'your gender', fix: 'Set gender', done: Boolean(profile.gender), required: true },
@@ -88,6 +89,14 @@ export function profileChecks(profile: Profile): ProfileCheck[] {
       required: true,
     },
     { key: 'interests', short: 'Tags', missing: 'an interest', fix: 'Add interests', done: profile.interests.length > 0, required: true },
+    {
+      key: 'location',
+      short: 'Place',
+      missing: 'your location',
+      fix: 'Set location',
+      done: profile.latitude != null && profile.longitude != null,
+      required: true,
+    },
     { key: 'photo', short: 'Photo', missing: 'a photo', fix: 'Add photo', done: profile.pictures.length > 0, required: false },
   ]
 }

@@ -56,11 +56,11 @@ Never call ports 3001–3003 from the browser: every microservice controller is 
 | `/docs`, `/docs-json` | gateway itself | Swagger |
 | anything else under `/notification/*` | not proxied | Nest 404 |
 
-The whole `/auth` and `/profile` trees are proxied, including endpoints the authors consider "internal" (`GET /auth/validate`, `POST /profile`, `GET /profile/:userId/is-complete`). They are reachable from a browser; see 2.
+The whole `/auth` and `/profile` trees are proxied, except service-to-service routes: the gateway answers **404** to any path with an `internal` segment (`/auth/internal/validate`, `/profile/internal/create`, `/profile/internal/<userId>/is-complete`, …) before any proxy runs.
 
-Identity middleware (runs before every proxy, `main.ts` lines 47–63):
+Identity middleware (runs before every proxy, `apps/gateway/src/main.ts`):
 1. Deletes any client-supplied `x-user-id` header.
-2. If the `Cookie` header contains `access_token=`, calls auth `GET /validate`; on success sets `x-user-id: <userId>` on the proxied request.
+2. If the `Cookie` header contains `access_token=`, calls auth `GET /internal/validate` directly (not through the gateway); on success sets `x-user-id: <userId>` on the proxied request.
 3. **Never rejects.** A missing/invalid/expired token just means the request is forwarded anonymously; the 401 comes from the microservice's `AuthenticatedUserGuard`.
 
 `apps/gateway/src/authMiddleware.ts` (`requireAuthenticatedUser`) exists but is **not mounted anywhere**.
@@ -185,6 +185,7 @@ Errors:
 | 400 | `{ "message": "This password is too common. Please choose a more secure password.", "error": "COMMON_PASSWORD", "statusCode": 400 }` |
 | 400 | `{ "message": "This username isn't available. Please choose a different username.", "error": "RESERVED_USERNAME", "statusCode": 400 }` |
 | 400 | `{ "message": "Invalid date of birth: it must be a real date and you must be at least 18 years old", "error": "Bad Request", "statusCode": 400 }` (relayed from the profile service; the user row is rolled back) |
+| 400 | `{ "message": "Invalid first name: it may only contain letters, with single spaces, hyphens or apostrophes between parts", "error": "Bad Request", "statusCode": 400 }`, same for `Invalid last name` (the name rule lives in the database: letters from any alphabet, so `Jean-Luc`, `O'Brien`, `José` pass; relayed like the date of birth) |
 | 409 | `{ "message": "User already exists", "error": "Conflict", "statusCode": 409 }` (username taken) |
 | 409 | `{ "message": "Email already in use", "error": "Conflict", "statusCode": 409 }` |
 | 500 | `{ "message": "User registration failed", "error": "Internal Server Error", "statusCode": 500 }` |
@@ -196,7 +197,7 @@ Common passwords: `infra/security/policies/common-password.txt`, 186 lines, exac
 
 #### POST `/auth/verify-email` — Auth: no
 
-Body: `{ "token": string }` (trimmed, non-empty). The token is 16 hex chars (`randomBytes(8).toString('hex')`), valid 1 hour, one live token per user.
+Body: `{ "token": string }` (trimmed, non-empty). The token is 16 hex chars (`randomBytes(8).toString('hex')`), valid 15 minutes (`EMAIL_VERIFICATION_EXPIRATION_MS`, also printed in the email), one live token per user.
 
 Success **200**: `{ "message": "Email verified successfully", "userId": "<uuid>" }`. **No cookies are set** — send the user to the login page.
 
@@ -235,13 +236,13 @@ No body. Success **200** + both cookies re-issued: `{ "message": "Tokens refresh
 
 Errors: **403** `{ "message": "Invalid refresh token", "error": "Forbidden", "statusCode": 403 }` (missing, malformed, expired, or not the one stored in DB); 403 `"User not found"`.
 
-#### POST `/auth/logout` — Auth: none required
+#### POST `/auth/logout` — Auth: access token (`AuthenticatedUserGuard`)
 
-No body. Success **200**: `{ "message": "Logged out successfully" }`; clears both cookies. Works even when not logged in. Also deletes the refresh token server-side and closes the user's notification sockets (best effort).
+No body. Success **200**: `{ "message": "Logged out successfully" }`; clears both cookies. Also deletes the refresh token server-side and closes the user's notification sockets (best effort). Without a valid access token: **401** `{ "message": "Missing or invalid access token", "error": "Unauthorized", "statusCode": 401 }` (the frontend treats that as "already signed out").
 
 #### GET `/auth/validate` — Auth: none required (reads `access_token` cookie)
 
-Intended for the gateway, but reachable from the browser and it is the **only "am I logged in / who am I" endpoint**. Always **200**:
+The public twin of the gateway's `/auth/internal/validate`, and the **only "am I logged in / who am I" endpoint**. Always **200**:
 
 ```json
 { "valid": true,  "userId": "<uuid>" }
@@ -258,7 +259,7 @@ Success **200**: `{ "message": "If an account with this email exists, you will r
 
 Errors: 400 validation.
 
-Email link: `http://localhost:4000/reset-password?token=<token>`; token is 24 hex chars, valid 1 hour. Frontend needs a `/reset-password` route reading `?token=`.
+Email link: `http://localhost:4000/reset-password?token=<token>`; token is 24 hex chars, valid 15 minutes (`FORGOT_PASSWORD_EXPIRATION_MS`). Frontend needs a `/reset-password` route reading `?token=`.
 
 #### POST `/auth/reset-password` — Auth: no
 
@@ -319,7 +320,9 @@ Profile JSON shape returned by GET/PATCH (class `Profile` in shared-types; dates
 
 - Nullable: `firstName`, `lastName`, `gender`, `sexualPreference`, `biography` (empty strings are returned as `null`).
 - `interests` has no defined order. `pictures` is ordered by `created_at` ascending (seeded pictures share one timestamp, so their relative order is not guaranteed — use `isProfile`).
-- It contains **no** username, email, age, location, fame rating or online status.
+- It also carries `username`, `age`, `fameRating` and `lastSeen`. The own profile (`GET` / `PATCH /profile`) adds
+  `latitude` and `longitude` (decimal degrees, full precision, both `null` until set); someone else's
+  (`GET /profile/:userId`) never has them, and adds `isOnline`, `relation` and `distanceKm` instead. [VERIFIED 2026-11-10]
 
 #### GET `/profile` — my profile — Auth: yes
 
@@ -354,6 +357,19 @@ Behaviour to know:
 - No maximum number of interests; empty-string tags are accepted.
 
 Success **200**: the full updated profile object. Errors: 400 validation (e.g. `"gender must be one of the following values: male, female, other"`); 401; **500** `{ "message": "Failed to update profile", ... }` (including "profile row missing").
+
+#### PUT `/profile/location` — set my location — Auth: yes
+
+Body (`UpdateLocationDto`): `{ "latitude": number, "longitude": number }`, both required, numbers (not strings),
+latitude in [-90, 90], longitude in [-180, 180]. Stored at full precision; others only see a distance computed
+from a copy snapped to ~1 km. The backend never locates anyone itself: the client sends the device's position,
+an IP-based guess or a spot picked on a map.
+
+Success **200**: `{ "updated": true }`. Errors: 400 validation, e.g.
+`{ "message": ["latitude must not be greater than 90"], "error": "Bad Request", "statusCode": 400 }`; 401; 404
+`"Profile not found"`. A location is part of `profile_is_complete()`, and `GET /profile/discover` and
+`GET /profile/search` answer **403** `"You must have a location to browse other users"` (resp. "to search") until
+one is set. [VERIFIED 2026-11-10]
 
 #### GET `/profile/viewers` — who viewed me — Auth: yes
 

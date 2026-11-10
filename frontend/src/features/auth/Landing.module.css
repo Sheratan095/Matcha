@@ -35,11 +35,6 @@
   display: none !important;
 }
 
-/* room for the PREVIEW / DEMO tab hanging from the top edge (16px) */
-.page[data-markers] .masthead {
-  padding-top: calc(var(--safe-t) + 22px);
-}
-
 .edition {
   display: none;
   flex-direction: column;
@@ -226,20 +221,6 @@
   gap: var(--s-3);
 }
 
-.demoNote {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-2);
-  margin: 0;
-  padding-top: var(--s-3);
-  border-top: var(--bw-thin) dashed var(--c-ink);
-  font-size: var(--fs-xs);
-  line-height: 1.45;
-}
-.demoNote > :first-child {
-  flex: none;
-}
-
 .band {
   grid-area: band;
   position: relative;
@@ -385,13 +366,6 @@
   }
   .masthead {
     padding-inline: var(--s-6);
-  }
-  /* wider: only the centred edition line is under the tab */
-  .page[data-markers] .masthead {
-    padding-top: calc(var(--safe-t) + var(--s-3));
-  }
-  .page[data-markers] .edition {
-    padding-top: 12px;
   }
   .hero {
     padding-inline: var(--s-6);

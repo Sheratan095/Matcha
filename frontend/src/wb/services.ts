@@ -1,4 +1,4 @@
-import { API_URL, MOCK_PREFIX, SOCIAL_URL } from '@/config'
+import { API_URL, SOCIAL_URL } from '@/config'
 import type { ServiceName } from './nodes/builders'
 import type { ServiceDef } from './types'
 
@@ -11,6 +11,4 @@ import type { ServiceDef } from './types'
 export const SERVICES: Record<ServiceName, ServiceDef> = {
   api: { target: API_URL, secure: false, authorization: null },
   social: { target: SOCIAL_URL, secure: false, authorization: null },
-  /** The mock backend's own endpoints (demo conveniences such as the email inbox), in every mode. */
-  mock: { target: MOCK_PREFIX, secure: false, authorization: null },
 }

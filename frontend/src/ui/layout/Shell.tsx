@@ -110,7 +110,7 @@ export interface AppShellProps {
   children: ReactNode
   /** Right side of the top bar (icon buttons). */
   actions?: ReactNode
-  /** A strip above everything (e.g. the DEMO marker). */
+  /** A strip above everything (e.g. a back link). */
   banner?: ReactNode
   /** The giant margin word on wide screens (usually the section name). */
   poster?: string

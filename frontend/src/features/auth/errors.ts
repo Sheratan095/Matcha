@@ -4,7 +4,8 @@
  */
 import type { ApiError } from '@/api/types'
 import { API_URL } from '@/config'
-import { LOCAL_ERROR, storeInfo, toApiError } from '@/wb'
+import { LOCAL_ERROR, toApiError } from '@/wb'
+import { NAME_RULE } from './rules'
 
 export type FieldErrors<Field extends string> = Partial<Record<Field, string>>
 
@@ -39,9 +40,7 @@ function friendly(property: string, message: string): string {
   if (/must be a date in YYYY-MM-DD format$/.test(message)) return 'Use the format YYYY-MM-DD.'
   if (/must match .* regular expression$/.test(message)) {
     if (property === 'username') return 'Letters, digits, dots and underscores only.'
-    if (property === 'firstName' || property === 'lastName') {
-      return 'Letters A–Z only: no spaces, hyphens, apostrophes or accents.'
-    }
+    if (property === 'firstName' || property === 'lastName') return NAME_RULE
     if (property === 'password') return "Can't be only spaces or contain line breaks."
   }
   return message
@@ -52,10 +51,7 @@ export function bannerFor(error: ApiError): Banner {
   if (error.code === LOCAL_ERROR.NETWORK) {
     return {
       title: "Can't reach the server",
-      detail:
-        storeInfo.backend === 'real'
-          ? `Nothing answered at ${API_URL}. Check that the Matcha backend is running, or start the all-in-browser demo with npm run dev:demo.`
-          : "The demo backend in this browser didn't answer. Reload the page and try again.",
+      detail: `Nothing answered at ${API_URL}. Check that the Matcha backend is running.`,
       retry: true,
     }
   }

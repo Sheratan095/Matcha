@@ -8,7 +8,7 @@ import type { DepDef, HttpMethod, LoadingActionDef, NodeDef } from '../types'
 
 // ---------------------------------------------------------------- specs
 
-export type ServiceName = 'api' | 'social' | 'mock'
+export type ServiceName = 'api' | 'social'
 
 interface Spec<Type extends LoadingActionDef['type']> {
   dep: DepDef[]

@@ -3,7 +3,7 @@
  * `@ts-expect-error` must be an error, every `expectTypeOf` must hold). Nothing here touches a store.
  */
 import { describe, expectTypeOf, it } from 'vitest'
-import type { ApiError, Card, LoginResult, Match, Profile, SwipeResult } from '@/api/types'
+import type { ApiError, Card, LoginResult, Match, OwnProfile, SwipeResult } from '@/api/types'
 import {
   actions,
   getNodeValue,
@@ -26,7 +26,7 @@ describe('typed surface', () => {
     const typeChecks = () => {
       expectTypeOf(run('login', { username: 'a', password: 'b' })).toEqualTypeOf<Promise<LoginResult>>()
       expectTypeOf(run('swipe', { targetId: 'x', action: 'like' })).toEqualTypeOf<Promise<SwipeResult>>()
-      expectTypeOf(getNodeValue('myProfile')).toEqualTypeOf<Profile | null | undefined>()
+      expectTypeOf(getNodeValue('myProfile')).toEqualTypeOf<OwnProfile | null | undefined>()
       expectTypeOf(node$('matches')).toEqualTypeOf<Observable<Match[] | null | undefined>>()
       expectTypeOf<ReturnType<typeof useNodeValue<'visibleDeck'>>>().toEqualTypeOf<Card[] | null | undefined>()
       expectTypeOf<ReturnType<typeof useNode<'filterDistance'>>>().toEqualTypeOf<

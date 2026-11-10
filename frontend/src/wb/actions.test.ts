@@ -2,7 +2,7 @@ import { Subject } from 'rxjs'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LOCAL_ERROR } from '@/api/http'
 import type { RealtimeEvent } from '@/api/types'
-import { API_URL, MOCK_PREFIX, SOCIAL_URL } from '@/config'
+import { API_URL, SOCIAL_URL } from '@/config'
 import { actions } from './actions'
 import { refresh } from './commands'
 import { DEFAULT_DISCOVER_FILTERS } from './filters'
@@ -74,6 +74,24 @@ describe('session', () => {
     expect(`${last?.method} ${last?.url}`).toBe(`GET ${API_URL}/auth/validate`)
   })
 
+  it('logout still signs out when the backend answers 401 (the session was already gone)', async () => {
+    await signIn()
+    // e.g. the access cookie expired and a sign-in elsewhere replaced the refresh token (one per user)
+    server().on('POST', `${API_URL}/auth/logout`, () => {
+      store.backend.state.session = null
+      return nestError(401, 'Missing or invalid access token', 'Unauthorized')
+    })
+    await expect(actions.logout()).resolves.toBeUndefined()
+    expect(getNodeValue('sessionUserId')).toBeNull()
+    expect(getNodeValue('authStatus')).toBe('anonymous')
+  })
+
+  it('logout still rejects on other failures', async () => {
+    await signIn()
+    server().on('POST', `${API_URL}/auth/logout`, () => nestError(500, 'Internal server error', 'Internal Server Error'))
+    await expect(actions.logout()).rejects.toMatchObject({ status: 500 })
+  })
+
   it('creates the missing profile row of a GitHub user once, then loads the profile', async () => {
     let hasRow = false
     server().on('GET', `${API_URL}/profile`, () =>
@@ -92,19 +110,6 @@ describe('session', () => {
   })
 })
 
-describe('demo inbox', () => {
-  it('loads only when asked, from the mock prefix, and the action is refused with the real backend', async () => {
-    server().on('GET', `${MOCK_PREFIX}/dev/inbox`, () => [
-      { to: 'a@b.c', kind: 'verify-email', token: 'abc', link: '/verify-email?token=abc', sentAt: 'x' },
-    ])
-    expect(server().sent('GET', `${MOCK_PREFIX}/dev/inbox`)).toHaveLength(0)
-    await refresh('devInbox')
-    expect(getNodeValue('devInbox')?.[0].token).toBe('abc')
-    // The tests run with the real-backend .env.
-    await expect(actions.loadDevInbox()).rejects.toMatchObject({ code: LOCAL_ERROR.UNAVAILABLE })
-  })
-})
-
 describe('own profile', () => {
   it('updateProfile resolves once myProfile and profileComplete reflect the change', async () => {
     await signIn()
@@ -118,7 +123,24 @@ describe('own profile', () => {
     })
     expect(saved.biography).toBe('Hello')
     expect(getNodeValue('myProfile')?.biography).toBe('Hello')
+    // still no location: discover would answer 403
+    expect(getNodeValue('profileComplete')).toBe(false)
+  })
+
+  it('setLocation stores the position and completes the profile once myProfile has it', async () => {
+    await signIn()
+    await actions.updateProfile({ ...COMPLETE, interests: [...COMPLETE.interests] })
+    await actions.setLocation({ latitude: 41.8905, longitude: 12.5127 })
+    expect(server().sent('PUT', `${API_URL}/profile/location`)[0].body).toEqual({ latitude: 41.8905, longitude: 12.5127 })
+    expect(getNodeValue('myProfile')).toMatchObject({ latitude: 41.8905, longitude: 12.5127 })
     expect(getNodeValue('profileComplete')).toBe(true)
+  })
+
+  it('setLocation refuses impossible coordinates without a request', async () => {
+    await signIn()
+    await expect(actions.setLocation({ latitude: 91, longitude: 0 })).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    await expect(actions.setLocation({ latitude: 0, longitude: Number.NaN })).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    expect(server().sent('PUT', `${API_URL}/profile/location`)).toHaveLength(0)
   })
 
   it('uploads a picture as multipart field "file" and validates it first', async () => {

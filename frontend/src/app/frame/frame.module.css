@@ -1,4 +1,4 @@
-/* Full-page states of the frame (loader, server down, errors) and the build markers. */
+/* Full-page states of the frame (loader, server down, errors). */
 
 .page {
   position: relative;
@@ -96,89 +96,4 @@
 .trouble {
   width: 100%;
   padding: var(--s-8) 0;
-}
-
-/* ------------------------------------------------------------ build markers
-   A short index tab hanging from the top edge of the document, on every screen. It scrolls with the
-   page (absolute, not fixed), so it only ever sits over chrome: the shell's top bar or the mat on
-   wide screens, the poster band of the auth screens, the landing masthead, the chat header. */
-.markers {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: calc(var(--z-overlay) - 1);
-  display: flex;
-  translate: -50% 0;
-  border: var(--bw-thin) solid var(--c-ink);
-  border-top: 0;
-  border-radius: 0 0 var(--r-xs) var(--r-xs);
-  background: var(--c-ink);
-  box-shadow: 2px 2px 0 var(--c-ink);
-  overflow: hidden;
-}
-
-.marker {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 14px;
-  padding: 0 7px;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 9.5px;
-  line-height: 1;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--c-ink);
-  background: var(--c-yolk);
-}
-/* a taller hit area than the thin tab */
-.marker::after {
-  content: '';
-  position: absolute;
-  inset: -2px 0 -16px;
-}
-.marker + .marker {
-  border-left: var(--bw-thin) solid var(--c-ink);
-}
-.marker:focus-visible {
-  outline: var(--bw) solid var(--c-focus);
-  outline-offset: -3px;
-}
-@media (hover: hover) {
-  .marker:hover {
-    background: var(--c-paper-hi);
-    color: var(--c-ink);
-  }
-}
-.marker::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.about {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-5);
-}
-.aboutSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-.aboutSection + .aboutSection {
-  padding-top: var(--s-5);
-  border-top: var(--bw-thin) dashed var(--c-ink);
-}
-.aboutSection code {
-  padding: 0 4px;
-  border: 1.5px solid var(--c-ink);
-  border-radius: var(--r-xs);
-  background: var(--c-paper);
-  overflow-wrap: anywhere;
 }

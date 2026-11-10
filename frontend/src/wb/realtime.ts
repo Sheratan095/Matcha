@@ -5,14 +5,14 @@
  *   `mockEvents$`: the real socket carries no events) for toasts and typing indicators.
  * - Each event also refreshes the nodes it makes stale: a message reloads the open conversation and
  *   the matches, a match reloads matches and likes, a like reloads likes.
- * - With the real backend, an authenticated socket.io connection to the gateway is kept open while
- *   signed in. It carries nothing; it only makes the user count in `GET /notification/online`. Any
- *   failure there is logged and ignored.
+ * - An authenticated socket.io connection to the gateway is kept open while signed in. It carries
+ *   nothing; it only makes the user count in `GET /notification/online`. Any failure there is logged
+ *   and ignored.
  */
 import { Subject, type Observable, type Subscription } from 'rxjs'
 import type { Socket } from 'socket.io-client'
 import type { RealtimeEvent } from '@/api/types'
-import { API_URL, BACKEND } from '@/config'
+import { API_URL } from '@/config'
 import { refresh } from './commands'
 import { getNodeValue, isStoreLive, node$, onStoreStop } from './store'
 
@@ -24,7 +24,7 @@ export const realtime$: Observable<RealtimeEvent> = events.asObservable()
 export interface RealtimeOptions {
   /** Where events come from (`mockEvents$` from `@/mock`). */
   events$: Observable<RealtimeEvent>
-  /** Keep the gateway's socket.io connection open while signed in. Default: with the real backend only. */
+  /** Keep the gateway's socket.io connection open while signed in. Default: true. */
   socket?: boolean
 }
 
@@ -103,7 +103,7 @@ export function startRealtime(options: RealtimeOptions): () => void {
       },
     }),
   )
-  if (options.socket ?? BACKEND === 'real') subscriptions.push(keepPresenceSocket())
+  if (options.socket ?? true) subscriptions.push(keepPresenceSocket())
   const stop = (): void => subscriptions.splice(0).forEach((subscription) => subscription.unsubscribe())
   onStoreStop(stop)
   return stop

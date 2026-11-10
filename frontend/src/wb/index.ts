@@ -4,7 +4,7 @@
  * - Hooks: `useNodeValue`, `useNode`, `useNodeStatus`, `useFilters`.
  * - Imperative: `getNodeValue`, `setNode`, `node$`, `getNodeStatus`, `nodeStatus$`, `refresh`, `run`.
  * - `actions`: the flows screens call.
- * - `realtime$`, `storeInfo`.
+ * - `realtime$`.
  * - Boot (main.tsx only): `installStoreHttp`, `startStore`, `getViewerId`, `startRealtime`.
  */
 export { actions, MAX_MESSAGE_LENGTH, type Actions } from './actions'
@@ -36,8 +36,6 @@ export {
   nodeStatus$,
   setNode,
   startStore,
-  storeInfo,
   type StoreHandle,
-  type StoreInfo,
 } from './store'
 export { isApiError, LOCAL_ERROR, toApiError } from '@/api/http'

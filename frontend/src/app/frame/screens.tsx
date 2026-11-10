@@ -23,7 +23,7 @@ import {
   Text,
   Wordmark,
 } from '@/ui'
-import { actions, refresh, storeInfo, toApiError } from '@/wb'
+import { actions, refresh, toApiError } from '@/wb'
 import s from './frame.module.css'
 
 /** The root route: a new page starts at the top, Back restores where you were. */
@@ -63,7 +63,6 @@ export interface ServerDownProps {
 
 /** The session probe got no answer: nothing signed-in can be shown. */
 export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
-  const real = storeInfo.backend === 'real'
   return (
     <main id="main" className={s.page}>
       <title>Can't reach the server · Matcha</title>
@@ -78,24 +77,17 @@ export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
           Can't reach the server
         </Headline>
         <Text size="lead">We couldn't check whether you're signed in, so the press is on hold.</Text>
-        {real ? (
-          <Card label="Backend checklist" meta={API_URL} shadow={3}>
-            <ol className={s.checklist}>
-              <li>
-                Start the backend: <code>cd backend</code> then <code>make dev</code>. The gateway listens on{' '}
-                <code>{API_URL}</code>.
-              </li>
-              <li>
-                Open the app on <code>http://localhost:4000</code>: the gateway only accepts that origin.
-              </li>
-              <li>
-                No backend at hand? <code>npm run dev:demo</code> runs everything in this browser instead.
-              </li>
-            </ol>
-          </Card>
-        ) : (
-          <Text>The demo backend runs inside this page and should always answer. Reload the page.</Text>
-        )}
+        <Card label="Backend checklist" meta={API_URL} shadow={3}>
+          <ol className={s.checklist}>
+            <li>
+              Start the backend: <code>cd backend</code> then <code>make dev</code>. The gateway listens on{' '}
+              <code>{API_URL}</code>.
+            </li>
+            <li>
+              Open the app on <code>http://localhost:4000</code>: the gateway only accepts that origin.
+            </li>
+          </ol>
+        </Card>
         {error ? (
           <Notice tone="error" title={bannerFor(error).title}>
             {error.message}

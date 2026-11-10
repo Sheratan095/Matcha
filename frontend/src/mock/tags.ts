@@ -1,4 +1,4 @@
-/** The interest tag catalogue shared by the mock people, the demo accounts and `GET /social/tags`. */
+/** The interest tag catalogue shared by the mock people and `GET /social/tags`. */
 import type { InterestTag } from '@/api/types'
 import { uuidFrom } from './ids'
 

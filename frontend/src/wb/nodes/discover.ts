@@ -1,4 +1,4 @@
-/** Discovery: filters, the deck, swipes (mocked service, docs/ARCHITECTURE.md §5.2). */
+/** Discovery: filters, the deck, swipes (mocked service, docs/ARCHITECTURE.md §5.1). */
 import type { Card, DiscoverSort, RewindResult, SwipePayload, SwipeResult } from '@/api/types'
 import {
   commands,

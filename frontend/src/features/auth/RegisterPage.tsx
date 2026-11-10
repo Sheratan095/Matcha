@@ -1,15 +1,14 @@
 /**
  * /register. Client rules mirror the backend's RegisterDto (rules.ts); server answers are mapped back
  * onto the fields (RESERVED_USERNAME, COMMON_PASSWORD, 409 username taken / email in use, the profile
- * service's date-of-birth verdict, validation arrays). Success does not sign in: the email must be verified first, so the page turns into
- * "check your inbox" with the code form (and the demo inbox in demo mode).
+ * service's date-of-birth and name verdicts, validation arrays). Success does not sign in: the email
+ * must be verified first, so the page turns into "check your inbox" with the code form.
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LANGUAGES, type Language } from '@/api/types'
 import { AuthLayout, Button, PasswordField, Segmented, Text, TextField } from '@/ui'
 import { actions } from '@/wb'
-import { DemoInbox } from './DemoInbox'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { FormBanner, GithubButton, OrRule } from './parts'
 import {
@@ -18,10 +17,12 @@ import {
   checkName,
   checkNewPassword,
   checkUsername,
+  CODE_LIFETIME,
   dateOfBirthBounds,
   EMAIL_MAX,
   MIN_AGE,
   NAME_MAX,
+  NAME_RULE,
   normaliseEmail,
   normaliseUsername,
   PASSWORD_MAX,
@@ -63,7 +64,6 @@ export default function RegisterPage() {
   const [banner, setBanner] = useState<Banner | null>(null)
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState<{ email: string; username: string } | null>(null)
-  const [prefill, setPrefill] = useState<{ code: string; n: number }>({ code: '', n: 0 })
   const formRef = useRef<HTMLFormElement>(null)
 
   const form = useAuthForm<Field>(
@@ -124,6 +124,9 @@ export default function RegisterPage() {
       } else if (error.status === 400 && /date of birth/i.test(error.message)) {
         // The profile service's verdict, relayed by auth as a single message (not a validation array)
         form.fail({ dateOfBirth: `Enter a real date: you must be at least ${MIN_AGE} to join.` })
+      } else if (error.status === 400 && /^Invalid (first|last) name\b/i.test(error.message)) {
+        // Also the profile service's verdict (the name rule lives in the database), relayed the same way
+        form.fail(/^Invalid first/i.test(error.message) ? { firstName: NAME_RULE } : { lastName: NAME_RULE })
       } else if (error.status === 400) {
         const mapped = mapValidation<Field>(error, (property) => (isField(property) ? property : null))
         form.fail(mapped.fields)
@@ -146,7 +149,7 @@ export default function RegisterPage() {
           intro={
             <>
               We sent a verification link to <strong>{sent.email}</strong>. Open it, or enter the code from the email
-              below. It works for one hour.
+              below. It works for {CODE_LIFETIME}.
             </>
           }
           poster={{
@@ -159,21 +162,15 @@ export default function RegisterPage() {
                 got mail
               </>
             ),
-            marquee: ['Signed, sealed, delivered', 'Verify to start swiping', 'Valid for one hour'],
+            marquee: ['Signed, sealed, delivered', 'Verify to start swiping', `Valid for ${CODE_LIFETIME}`],
           }}
           footer={
-            <div className={a.below}>
-              <DemoInbox kind="verify-email" to={sent.email} onUseCode={(code) => setPrefill((p) => ({ code, n: p.n + 1 }))} />
-              <p className={a.links}>
-                Already verified? <Link to="/login" state={{ username: sent.username }}>Sign in</Link>
-              </p>
-            </div>
+            <p className={a.links}>
+              Already verified? <Link to="/login" state={{ username: sent.username }}>Sign in</Link>
+            </p>
           }
         >
           <VerifyCodeForm
-            key={prefill.n}
-            initialCode={prefill.code}
-            autoSubmit={prefill.n > 0}
             onVerified={() => navigate('/login', { state: { verified: true, username: sent.username } })}
           />
         </AuthLayout>

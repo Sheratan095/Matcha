@@ -6,6 +6,7 @@
 import { Suspense } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AppShell, Avatar, IconCards, IconChat, IconHeart, IconLogout, IconUser, Loader, Menu, toast, type ShellTab } from '@/ui'
+import { useAutoLocation } from '@/features/location/useAutoLocation'
 import { actions, toApiError, useNodeValue } from '@/wb'
 
 const SECTIONS = [
@@ -40,6 +41,7 @@ function AccountMenu() {
 }
 
 export default function AppLayout() {
+  useAutoLocation()
   const { pathname } = useLocation()
   const unread = useNodeValue('unreadCount') ?? 0
   const likes = useNodeValue('likesReceived')?.length ?? 0

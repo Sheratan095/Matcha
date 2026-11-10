@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { API_URL, MOCK_PREFIX, SOCIAL_URL } from '@/config'
+import { API_URL, SOCIAL_URL } from '@/config'
 import { FUNCTIONS } from './functions'
 import { NODES } from './nodes'
 import { validateGraph } from './nodes/validate'
@@ -15,6 +15,7 @@ describe('registry: the app graph', () => {
     ['GET', `${API_URL}/profile/3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963`, 'apiProfile'],
     ['GET', `${API_URL}/profile`, 'myProfile'],
     ['PATCH', `${API_URL}/profile`, 'profileUpdateResult'],
+    ['PUT', `${API_URL}/profile/location`, 'locationUpdateResult'],
     ['POST', `${API_URL}/profile`, 'profileCreateResult'],
     ['POST', `${API_URL}/profile/pictures`, 'pictureUploadResult'],
     ['DELETE', `${API_URL}/profile/pictures/p1`, 'pictureDeleteResult'],
@@ -30,7 +31,6 @@ describe('registry: the app graph', () => {
     ['POST', `${SOCIAL_URL}/swipes/rewind`, 'rewindResult'],
     ['GET', `${SOCIAL_URL}/profiles/u1`, 'socialProfile'],
     ['POST', `${SOCIAL_URL}/reset`, 'demoResetResult'],
-    ['GET', `${MOCK_PREFIX}/dev/inbox`, 'devInbox'],
   ])('%s %s -> %s', (method, url, name) => {
     expect(registry.match(method, url)).toBe(name)
   })

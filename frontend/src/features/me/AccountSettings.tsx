@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { MockEmail } from '@/api/types'
-import { API_URL, IS_MOCK_BACKEND, MOCK_PREFIX, SOCIAL_URL } from '@/config'
+import { API_URL, MOCK_PREFIX, SOCIAL_URL } from '@/config'
 import {
   Barcode,
   Button,
@@ -12,7 +11,6 @@ import {
   IconLogout,
   IconMail,
   IconRefresh,
-  ListRow,
   Modal,
   Notice,
   Serial,
@@ -20,69 +18,11 @@ import {
   Text,
   TextField,
 } from '@/ui'
-import { actions, storeInfo, toApiError, useNodeStatus, useNodeValue } from '@/wb'
+import { actions, toApiError } from '@/wb'
 import { describe, splitApiError } from './errors'
 import s from './AccountSettings.module.css'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-const EMAIL_KIND: Record<MockEmail['kind'], string> = {
-  'verify-email': 'Verify your email',
-  'reset-password': 'Reset your password',
-}
-
-function sentAt(iso: string): string {
-  const date = new Date(iso)
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
-// ---------------------------------------------------------------- demo inbox
-
-/** Demo mode: the emails the mock backend "sent", with their links. */
-function DemoInbox({ highlight }: { highlight: string | null }) {
-  const inbox = useNodeValue('devInbox')
-  const status = useNodeStatus('devInbox')
-  const [asked, setAsked] = useState(false)
-  const loading = status.status === 'loading'
-
-  const open = () => {
-    setAsked(true)
-    // the error, if any, is on the node's status
-    void actions.loadDevInbox().catch(() => undefined)
-  }
-
-  return (
-    <div className={s.inbox} data-surface="ink">
-      <div className={s.inboxHead}>
-        <span className={s.inboxTitle}>
-          <IconMail size={18} /> Demo inbox
-        </span>
-        <Button size="sm" variant="yolk" icon={inbox ? <IconRefresh size={16} /> : undefined} loading={loading} onClick={open}>
-          {inbox ? 'Refresh' : 'Open inbox'}
-        </Button>
-      </div>
-      <p className={s.inboxNote}>No email leaves this browser in demo mode: the links land here instead.</p>
-      {status.status === 'error' && status.error ? <FormError error={describe(status.error)} /> : null}
-      {asked && inbox && inbox.length === 0 ? <p className={s.inboxNote}>Nothing yet.</p> : null}
-      {inbox && inbox.length > 0 ? (
-        <ul className={s.inboxList}>
-          {inbox.slice(0, 5).map((email) => (
-            <li key={email.token}>
-              <ListRow
-                to={email.link}
-                title={EMAIL_KIND[email.kind]}
-                subtitle={`To ${email.to}`}
-                meta={sentAt(email.sentAt)}
-                unread={highlight !== null && email.to === highlight && email.kind === 'verify-email'}
-                className={s.inboxRow}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------- email
 
@@ -108,7 +48,6 @@ function EmailSection() {
       await actions.changeEmail(value)
       setSentTo(value.toLowerCase())
       setEmail('')
-      if (IS_MOCK_BACKEND) void actions.loadDevInbox().catch(() => undefined)
     } catch (failure) {
       const split = splitApiError(toApiError(failure), { newEmail: 'New email' }, 'newEmail')
       setError(split.fields.newEmail)
@@ -151,10 +90,9 @@ function EmailSection() {
         {sentTo ? (
           <Notice tone="success" title="Check the new inbox" onDismiss={() => setSentTo(null)}>
             A verification link is on its way to <strong>{sentTo}</strong>. Your sign-in email changes once you open
-            it.{IS_MOCK_BACKEND ? ' This is the demo: find the link in the demo inbox below.' : ''}
+            it.
           </Notice>
         ) : null}
-        {IS_MOCK_BACKEND ? <DemoInbox highlight={sentTo} /> : null}
       </Stack>
     </Card>
   )
@@ -224,9 +162,9 @@ function DemoDataSection() {
           Reset demo matches
         </Headline>
         <Text size="sm">
-          Discover, likes, matches and chats are simulated in this browser
-          {IS_MOCK_BACKEND ? '' : ', even with the real backend, which has no such service yet'}. Resetting brings back the
-          starting set of people, matches and messages. Your account, profile and photos are not touched.
+          Discover, likes, matches and chats are simulated in this browser: the backend has no such service yet.
+          Resetting brings back the starting set of people, matches and messages. Your account, profile and photos are
+          not touched.
         </Text>
         <FormError error={error} title="Could not reset" />
         {done ? (
@@ -270,7 +208,6 @@ function DemoDataSection() {
 // ---------------------------------------------------------------- about this build
 
 function AboutBuild() {
-  const profileBackend = storeInfo.backend === 'real' ? `Real gateway · ${API_URL}` : 'Mock, in this browser'
   const socialBackend = SOCIAL_URL.startsWith(MOCK_PREFIX) ? 'Mock, in this browser' : SOCIAL_URL
   return (
     <Card as="section" tone="ink" aria-labelledby="me-build-title" label="About this build" meta={<Serial value={2026} tone="paper" />}>
@@ -281,14 +218,14 @@ function AboutBuild() {
         <dl className={s.specs}>
           <div>
             <dt>Account & profile</dt>
-            <dd>{profileBackend}</dd>
+            <dd>Gateway · {API_URL}</dd>
           </div>
           <div>
             <dt>Matches & chat</dt>
             <dd>{socialBackend}</dd>
           </div>
         </dl>
-        <Barcode value={`matcha-${storeInfo.backend}`} height={28} tone="paper" caption />
+        <Barcode value="matcha-gateway" height={28} tone="paper" caption />
       </Stack>
     </Card>
   )

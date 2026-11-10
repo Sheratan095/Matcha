@@ -105,6 +105,25 @@ export interface RefreshResult {
   userId: string
 }
 
+/**
+ * GET /profile and PATCH /profile: the signed-in user's own profile, with what nobody else gets.
+ * Others only ever see a distance, computed from a position snapped to ~1 km.
+ */
+export interface OwnProfile extends Profile {
+  /** Decimal degrees, full precision; both null until a location is set. */
+  latitude: number | null
+  longitude: number | null
+}
+
+/** PUT /profile/location. Latitude in [-90, 90], longitude in [-180, 180]. */
+export interface LocationPayload {
+  latitude: number
+  longitude: number
+}
+export interface LocationResult {
+  updated: boolean
+}
+
 /** PATCH /profile: only the provided fields are applied; `interests` is a full replacement. */
 export interface ProfileUpdatePayload {
   firstName?: string
@@ -225,13 +244,3 @@ export type RealtimeEvent =
   | { type: 'typing'; matchId: string; userId: string }
   | { type: 'match'; match: Match }
   | { type: 'like'; from: Card }
-
-/** Demo-mode only: emails the mock auth service "sent". GET /__mock/dev/inbox. */
-export interface MockEmail {
-  to: string
-  kind: 'verify-email' | 'reset-password'
-  token: string
-  /** In-app path, e.g. /verify-email?token=... */
-  link: string
-  sentAt: string
-}

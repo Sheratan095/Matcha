@@ -1,9 +1,9 @@
 /** The onboarding steps, and where a returning user resumes. */
-import type { Profile } from '@/api/types'
+import type { OwnProfile } from '@/api/types'
 import type { DraftKey } from '@/features/me/profile'
 import type { Tone } from '@/ui'
 
-export type StepKey = 'about' | 'into' | 'bio' | 'interests' | 'photos'
+export type StepKey = 'about' | 'into' | 'bio' | 'interests' | 'location' | 'photos'
 
 export interface StepDef {
   key: StepKey
@@ -57,6 +57,16 @@ export const STEPS: readonly StepDef[] = [
     lead: 'Shared interests are printed first on cards, on both sides. One at least.',
   },
   {
+    key: 'location',
+    label: 'Location',
+    poster: 'Here',
+    tone: 'strawberry',
+    // Saved on its own (PUT /profile/location), not through the profile PATCH.
+    fields: [],
+    title: ['Where do', 'you brew?'],
+    lead: 'Discover deals you people nearby. Others see how far away you are, never where.',
+  },
+  {
     key: 'photos',
     label: 'Photos',
     poster: 'Smile',
@@ -70,11 +80,12 @@ export const STEPS: readonly StepDef[] = [
 export const STEP_LABELS: readonly string[] = STEPS.map((step) => step.label)
 
 /** Index of the first step whose required content is missing. */
-export function firstRequiredGap(profile: Profile): number {
+export function firstRequiredGap(profile: OwnProfile): number {
   if (!profile.firstName?.trim() || !profile.gender) return 0
   if (!profile.sexualPreference) return 1
   if (!profile.biography?.trim()) return 2
   if (profile.interests.length === 0) return 3
+  if (profile.latitude == null || profile.longitude == null) return 4
   return -1
 }
 
@@ -82,7 +93,7 @@ export function firstRequiredGap(profile: Profile): number {
  * Where to resume: the first step with something missing; the photos step while there is no photo;
  * `STEPS.length` when there is nothing left to do.
  */
-export function resumeStep(profile: Profile): number {
+export function resumeStep(profile: OwnProfile): number {
   const gap = firstRequiredGap(profile)
   if (gap >= 0) return gap
   return profile.pictures.length === 0 ? STEPS.length - 1 : STEPS.length

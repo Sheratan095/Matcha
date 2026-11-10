@@ -1,7 +1,7 @@
 /** Small pieces shared by the auth screens. */
-import { useId, useState, type ReactNode } from 'react'
-import { Button, FormError, IconGithub, IconInfo, IconRefresh } from '@/ui'
-import { actions, storeInfo } from '@/wb'
+import { useState, type ReactNode } from 'react'
+import { Button, FormError, IconGithub, IconRefresh } from '@/ui'
+import { actions } from '@/wb'
 import { asApiError, type Banner } from './errors'
 import a from './auth.module.css'
 
@@ -40,26 +40,9 @@ export function OrRule({ children = 'or' }: { children?: ReactNode }) {
   )
 }
 
-/**
- * GitHub OAuth: a top-level navigation to the gateway. It only exists with the real backend, so in
- * demo mode the button is disabled and says why.
- */
+/** GitHub OAuth: a top-level navigation to the gateway. */
 export function GithubButton({ label = 'Continue with GitHub', size = 'md' }: { label?: string; size?: 'md' | 'lg' }) {
-  const noteId = useId()
   const [error, setError] = useState<string | null>(null)
-  if (storeInfo.backend !== 'real') {
-    return (
-      <div className={a.github}>
-        <Button variant="ink" size={size} block icon={<IconGithub size={20} />} disabled aria-describedby={noteId}>
-          {label}
-        </Button>
-        <p id={noteId} className={a.githubNote}>
-          <IconInfo size={16} strokeWidth={2.75} />
-          <span>GitHub sign-in needs the real backend. This demo runs entirely in your browser.</span>
-        </p>
-      </div>
-    )
-  }
   return (
     <div className={a.github}>
       <Button

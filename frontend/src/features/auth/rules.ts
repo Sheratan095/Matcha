@@ -15,10 +15,21 @@ export const PASSWORD_MAX = 128
 export const NAME_MAX = 50
 
 const USERNAME_PATTERN = /^[a-z0-9_.]+$/
-const NAME_PATTERN = /^[a-zA-Z]+$/
+/**
+ * profiles_*_name_format_check (backend/infra/db/migrations/002_profiles.sql): letters from any alphabet,
+ * with single spaces, hyphens or apostrophes between parts ("Jean-Luc", "O'Brien", "José", "Anne Marie").
+ */
+const NAME_PATTERN = /^\p{L}+(?:[ '’-]\p{L}+)*$/u
+export const NAME_RULE = 'Letters only, with single spaces, hyphens or apostrophes between parts.'
+
+/**
+ * How long a verification or reset code works: the backend's EMAIL_VERIFICATION_EXPIRATION_MS and
+ * FORGOT_PASSWORD_EXPIRATION_MS defaults (900000 ms), also printed in the emails themselves.
+ */
+export const CODE_LIFETIME = '15 minutes'
 /** `Matches(/^(?!\s*$).+$/)`: not whitespace-only, and `.` never matches a line break. */
 const PASSWORD_PATTERN = /^(?!\s*$).+$/
-/** Close to validator.js `isEmail` for ordinary addresses (the same pattern the demo backend uses). */
+/** Close to validator.js `isEmail` for ordinary addresses. */
 const EMAIL_PATTERN =
   /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.[a-z]{2,}$/i
 
@@ -88,7 +99,7 @@ export function checkName(raw: string, what: 'first' | 'last'): string | null {
   const value = raw.trim()
   if (!value) return what === 'first' ? 'Enter your first name.' : 'Enter your last name.'
   if (value.length > NAME_MAX) return `At most ${NAME_MAX} characters.`
-  if (!NAME_PATTERN.test(value)) return 'Letters A–Z only: no spaces, hyphens, apostrophes or accents.'
+  if (!NAME_PATTERN.test(value)) return NAME_RULE
   return null
 }
 

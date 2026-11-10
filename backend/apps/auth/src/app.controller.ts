@@ -131,6 +131,25 @@ export class AppController
 		return (this.appService.validateToken(req.cookies.access_token));
 	}
 
+	// PUBLIC twin of internal/validate, for the frontend: its only "am I logged in / who am I" call
+	// (on boot, after login/logout and after the GitHub redirect). The gateway blocks every /internal/
+	// path, so the browser can't use the route above. Safe to expose: it only answers about the
+	// caller's OWN cookie, and is always 200 (never 401), so it can't start a refresh loop.
+	@Get('validate')
+	@ApiCookieAuth('access_token')
+	@ApiOperation({ summary: 'Current session', description: 'Reads the access_token cookie and tells whether it is valid, and whose it is. Always 200.' })
+	@ApiResponse({ status: 200, type: ValidateTokenResponseDto })
+	getSession(@Request() req: any)
+	{
+		const	token = req.cookies?.access_token;
+
+		// Anonymous visitors carry no cookie: answer directly instead of logging a "Token invalid" each time.
+		if (!token)
+			return ({ valid: false, userId: null });
+
+		return (this.appService.validateToken(token));
+	}
+
 	@Post('forgot-password')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Forgot password', description: 'Emails a password reset code to the address, if an account uses it.' })

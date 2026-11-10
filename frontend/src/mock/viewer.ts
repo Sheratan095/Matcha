@@ -1,15 +1,13 @@
 /**
  * Who is asking, and what the mock knows about them.
  *
- * Demo mode: the mock session and the demo account's profile. Real mode: `getViewerId()`, and a
- * profile *hint* read passively from the real `GET /profile` / `PATCH /profile` responses that pass
- * through the adapter (gender, preference, interests, first name), so discovery can filter by
- * orientation and compute common tags. Without a hint the defaults apply: no orientation filter, no
+ * The viewer is `getViewerId()` (the real session), with a profile *hint* read passively from the
+ * real `GET /profile` / `PATCH /profile` responses that pass through the adapter (gender, preference,
+ * interests, first name), so discovery can filter by orientation and compute common tags. Without a hint the defaults apply: no orientation filter, no
  * common tags.
  */
 import type { Gender, SexualPreference } from '@/api/types'
 import { GENDERS, SEXUAL_PREFERENCES } from '@/api/types'
-import { accountProfile, sessionUserId } from './accounts'
 import { runtime } from './runtime'
 import { isRecord, isString } from './storage'
 
@@ -47,18 +45,6 @@ export function forgetHints(): void {
 }
 
 export function currentViewer(): Viewer | null {
-  if (runtime.options.auth) {
-    const id = sessionUserId()
-    if (!id) return null
-    const profile = accountProfile(id)
-    return {
-      id,
-      firstName: profile?.firstName || null,
-      gender: profile?.gender ?? null,
-      sexualPreference: profile?.sexualPreference ?? null,
-      interests: profile?.interests.slice() ?? [],
-    }
-  }
   let id: string | null = null
   try {
     id = runtime.options.getViewerId()

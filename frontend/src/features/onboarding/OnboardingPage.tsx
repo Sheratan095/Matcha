@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import type { Profile } from '@/api/types'
+import type { OwnProfile } from '@/api/types'
 import { MAX_BIOGRAPHY_LENGTH, MAX_INTEREST_LENGTH } from '@/api/types'
+import { savedSpot, sameSpot, type PlacedSpot } from '@/features/location/geo'
+import { LocationPicker } from '@/features/location/LocationPicker'
+import { locationMode, modeAfterSaving, setLocationMode } from '@/features/location/mode'
+import { describe } from '@/features/me/errors'
 import { focusFirstInvalid } from '@/features/me/focus'
 import { PhotoManager } from '@/features/me/PhotoManager'
 import { ProfileLoading, ProfileUnavailable, SignedOut } from '@/features/me/ProfileStatus'
@@ -32,7 +36,7 @@ import {
   toast,
   Wordmark,
 } from '@/ui'
-import { actions, useNodeValue } from '@/wb'
+import { actions, toApiError, useNodeValue } from '@/wb'
 import { Celebration } from './Celebration'
 import { firstRequiredGap, resumeStep, STEP_LABELS, STEPS } from './steps'
 import s from './Onboarding.module.css'
@@ -202,7 +206,7 @@ function InterestFields({ form }: { form: ProfileDraftApi }) {
 
 // ---------------------------------------------------------------- wizard
 
-function Wizard({ profile }: { profile: Profile }) {
+function Wizard({ profile }: { profile: OwnProfile }) {
   const navigate = useNavigate()
   const [start] = useState(() => resumeStep(profile))
   const [index, setIndex] = useState(() => Math.min(start, STEPS.length - 1))
@@ -211,6 +215,12 @@ function Wizard({ profile }: { profile: Profile }) {
   const [announcement, setAnnouncement] = useState('')
   const stepRef = useRef<HTMLFormElement>(null)
   const form = useProfileDraft(profile)
+  /** The location step's pin: saved separately from the profile draft. */
+  const [spot, setSpot] = useState<PlacedSpot | null>(() => savedSpot(profile))
+  const [spotError, setSpotError] = useState<string | undefined>()
+  const [spotFailure, setSpotFailure] = useState<string | null>(null)
+  const [savingSpot, setSavingSpot] = useState(false)
+  const saving = form.saving || savingSpot
   const complete = useNodeValue('profileComplete') === true
   /** Set by `go`: once the new step has rendered, scroll to its top and focus its first field. */
   const moved = useRef(false)
@@ -221,7 +231,9 @@ function Wizard({ profile }: { profile: Profile }) {
     moved.current = false
     // the screen's scrolling middle (kit Screen): back to the top-left of the new step
     el.closest('main')?.scrollTo({ top: 0, left: 0 })
-    el.querySelector<HTMLElement>('input:not([type="file"]):not(:disabled), textarea, input[type="file"]:not(:disabled)')?.focus({
+    el.querySelector<HTMLElement>(
+      'input:not([type="file"]):not(:disabled):not([data-skip-autofocus]), textarea, input[type="file"]:not(:disabled)',
+    )?.focus({
       preventScroll: true,
     })
   }, [index])
@@ -248,11 +260,40 @@ function Wizard({ profile }: { profile: Profile }) {
     setCelebrating(true)
   }
 
+  /** The location step: saves the pin when it moved. Returns false (and says why) when it cannot go on. */
+  const saveSpot = async (): Promise<boolean> => {
+    if (!spot) {
+      setSpotError('Place your pin: use your location, search a place or tap the map.')
+      return false
+    }
+    const stored = savedSpot(profile)
+    if (stored && sameSpot(stored, spot)) return true
+    setSavingSpot(true)
+    setSpotFailure(null)
+    try {
+      await actions.setLocation(spot)
+      setLocationMode(profile.userId, modeAfterSaving(spot.source, locationMode(profile.userId)))
+      return true
+    } catch (failure) {
+      setSpotFailure(describe(toApiError(failure)))
+      return false
+    } finally {
+      setSavingSpot(false)
+    }
+  }
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (form.saving) return
+    if (saving) return
     if (last) {
       finish()
+      return
+    }
+    if (step.key === 'location') {
+      if (await saveSpot()) {
+        setGapNotice(null)
+        go(index + 1)
+      }
       return
     }
     const ok = await form.save(step.fields, { keepDraft: true })
@@ -285,7 +326,7 @@ function Wizard({ profile }: { profile: Profile }) {
               icon={<IconArrowLeft size={22} />}
               aria-label={`Back to ${STEPS[index - 1].label.toLowerCase()}`}
               title="Back"
-              disabled={form.saving}
+              disabled={saving}
               onClick={() => go(index - 1)}
             />
           ) : null}
@@ -293,11 +334,11 @@ function Wizard({ profile }: { profile: Profile }) {
             type="submit"
             form={FORM_ID}
             size="lg"
-            loading={form.saving}
+            loading={saving}
             className={s.grow}
             iconRight={last ? <IconCheck size={20} strokeWidth={3.5} /> : <IconArrowRight size={20} />}
           >
-            {form.saving ? 'Saving' : nextLabel}
+            {saving ? 'Saving' : nextLabel}
           </Button>
         </div>
       }
@@ -341,10 +382,21 @@ function Wizard({ profile }: { profile: Profile }) {
           {step.key === 'into' ? <IntoFields form={form} /> : null}
           {step.key === 'bio' ? <BioFields form={form} /> : null}
           {step.key === 'interests' ? <InterestFields form={form} /> : null}
+          {step.key === 'location' ? (
+            <LocationPicker
+              value={spot}
+              onChange={(next) => {
+                setSpot(next)
+                setSpotError(undefined)
+              }}
+              locateWhenEmpty
+              error={spotError}
+            />
+          ) : null}
           {step.key === 'photos' ? <PhotoManager profile={profile} label="Your photos" /> : null}
         </div>
 
-        <FormError error={form.formError} title="Not saved" />
+        <FormError error={step.key === 'location' ? spotFailure : form.formError} title="Not saved" />
       </form>
 
       <p className="sr-only" role="status" aria-live="polite">

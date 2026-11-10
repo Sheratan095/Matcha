@@ -1,5 +1,5 @@
 import type { FormEvent, ReactNode } from 'react'
-import type { Profile } from '@/api/types'
+import type { OwnProfile, Profile } from '@/api/types'
 import { MAX_BIOGRAPHY_LENGTH, MAX_INTEREST_LENGTH } from '@/api/types'
 import {
   Button,
@@ -15,6 +15,7 @@ import {
   TextField,
 } from '@/ui'
 import { focusFirstInvalid } from './focus'
+import { LocationSection } from './LocationSection'
 import { GENDER_OPTIONS, isEmptyChange, PREFERENCE_OPTIONS, SECTION_IDS, type DraftKey } from './profile'
 import { useProfileDraft, type ProfileDraftApi } from './useProfileDraft'
 import { useTagCatalogue } from './useTagCatalogue'
@@ -183,13 +184,14 @@ function InterestsSection({ profile }: { profile: Profile }) {
 }
 
 /** The editable parts of the own profile, one partial save each. */
-export function EditSections({ profile }: { profile: Profile }) {
+export function EditSections({ profile }: { profile: OwnProfile }) {
   return (
     <Stack gap={6}>
       <NamesSection profile={profile} />
       <IdentitySection profile={profile} />
       <BiographySection profile={profile} />
       <InterestsSection profile={profile} />
+      <LocationSection profile={profile} number={5} />
     </Stack>
   )
 }

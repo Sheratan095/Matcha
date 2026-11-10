@@ -1,23 +1,49 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Subscription } from 'rxjs'
-import type { Card, LoginResult, Match, Message, RealtimeEvent, RewindResult, SwipeResult } from '@/api/types'
+import type { Card, Match, Message, RealtimeEvent, RewindResult, SwipeResult } from '@/api/types'
+import { uuidFrom } from './ids'
 import { installMockBackend, mockEvents$, uninstallMockBackend } from './index'
 import { call } from './testkit'
+import { rememberProfile } from './viewer'
 
 const DECK = '/__mock/social/discover?ageMin=18&ageMax=45&distance=50&sort=best'
 
 let events: RealtimeEvent[] = []
 let subscription: Subscription | null = null
+/** Who the real auth reports (`getViewerId()`). */
+let viewer: string | null = null
 
-async function login(username: string): Promise<string> {
-  const answer = await call<LoginResult>('POST', '/__mock/auth/login', { username, password: '1234' })
-  return answer.data.userId
+interface ProfileFields {
+  firstName: string
+  gender: string
+  sexualPreference: string
+  interests: readonly string[]
+}
+
+/** The viewers of these tests, as their real profile describes them. */
+const PROFILES = {
+  alice: { firstName: 'Alice', gender: 'female', sexualPreference: 'both', interests: ['travel', 'reading'] },
+  testuser: { firstName: 'Test', gender: 'other', sexualPreference: 'other', interests: ['hiking', 'photography'] },
+} as const satisfies Record<string, ProfileFields>
+
+/** What the adapter learns when the viewer's real `GET /profile` response passes through it. */
+function profileSeen(userId: string, fields: ProfileFields): void {
+  rememberProfile({ userId, ...fields, interests: fields.interests.map((name) => ({ id: uuidFrom(`tag:${name}`), name })) })
+}
+
+/** `name` signs in: the real auth reports a stable id for them, and their profile has been loaded. */
+function signIn(name: keyof typeof PROFILES): string {
+  const id = uuidFrom(`account:${name}`)
+  profileSeen(id, PROFILES[name])
+  viewer = id
+  return id
 }
 
 beforeEach(() => {
   localStorage.clear()
   vi.useFakeTimers({ now: new Date('2026-10-03T12:00:00Z') })
-  installMockBackend({ auth: true, getViewerId: () => null, latency: 0 })
+  viewer = null
+  installMockBackend({ getViewerId: () => viewer, latency: 0 })
   events = []
   subscription = mockEvents$.subscribe((event) => events.push(event))
 })
@@ -31,7 +57,7 @@ afterEach(() => {
 
 describe('a new viewer', () => {
   it('starts with matches (some unread), 4-6 likes and a deck where many liked them', async () => {
-    await login('alice')
+    signIn('alice')
     const matches = (await call<Match[]>('GET', '/__mock/social/matches')).data
     expect(matches.length).toBeGreaterThanOrEqual(3)
     expect(matches.length).toBeLessThanOrEqual(4)
@@ -68,12 +94,12 @@ describe('a new viewer', () => {
   })
 
   it('is the same world for the same viewer, and a different one for another viewer', async () => {
-    await login('alice')
+    signIn('alice')
     const first = (await call<Match[]>('GET', '/__mock/social/matches')).data.map((match) => match.profile.userId)
     localStorage.clear()
     uninstallMockBackend()
-    installMockBackend({ auth: true, getViewerId: () => null, latency: 0 })
-    await login('alice')
+    installMockBackend({ getViewerId: () => viewer, latency: 0 })
+    signIn('alice')
     const again = (await call<Match[]>('GET', '/__mock/social/matches')).data.map((match) => match.profile.userId)
     expect(again.sort()).toEqual(first.slice().sort())
   })
@@ -97,21 +123,11 @@ describe('every orientation', () => {
   ] as const
 
   it.each(cases)('a %s viewer into %s gets compatible matches, 4-6 likes and a usable deck', async (gender, preference) => {
-    const username = `u_${gender}_${preference}`
-    await call('POST', '/__mock/auth/register', {
-      username,
-      email: `${username}@example.com`,
-      password: 'long enough password',
-      firstName: 'Demo',
-      lastName: 'Viewer',
-      dateOfBirth: '1994-09-21',
-    })
-    const mail = (await call<{ token: string }[]>('GET', '/__mock/dev/inbox')).data[0]!
-    await call('POST', '/__mock/auth/verify-email', { token: mail.token })
-    await call('POST', '/__mock/auth/login', { username, password: 'long enough password' })
+    const id = uuidFrom(`account:u_${gender}_${preference}`)
+    viewer = id
     // the starter world is seeded before onboarding (no orientation yet)...
     await call('GET', '/__mock/social/matches')
-    await call('PATCH', '/__mock/profile', { gender, sexualPreference: preference, biography: 'Hi.', interests: ['music'] })
+    profileSeen(id, { firstName: 'New', gender, sexualPreference: preference, interests: ['music'] })
     // ...and reseeded for the orientation, since the viewer has not done anything yet
     const matches = (await call<Match[]>('GET', '/__mock/social/matches')).data
     const likes = (await call<Card[]>('GET', '/__mock/social/likes')).data
@@ -132,7 +148,7 @@ describe('every orientation', () => {
 
 describe('discover', () => {
   it('filters by age, distance and tags, and sorts', async () => {
-    await login('testuser')
+    signIn('testuser')
     const young = (await call<Card[]>('GET', '/__mock/social/discover', undefined, { params: { ageMin: 20, ageMax: 26, distance: 50, sort: 'age', tags: null } })).data
     expect(young.length).toBeGreaterThan(0)
     expect(young.every((card) => card.age >= 20 && card.age <= 26 && card.distanceKm <= 50)).toBe(true)
@@ -160,7 +176,7 @@ describe('discover', () => {
   })
 
   it('answers [] once the deck is exhausted', async () => {
-    await login('testuser')
+    signIn('testuser')
     for (;;) {
       const deck = (await call<Card[]>('GET', DECK)).data
       if (deck.length === 0) break
@@ -172,7 +188,7 @@ describe('discover', () => {
 
 describe('the social journey', () => {
   it('like someone who liked you -> match -> message -> typing and reply -> unmatch / block -> reset', async () => {
-    const aliceId = await login('alice')
+    const aliceId = signIn('alice')
     const seeded = (await call<Match[]>('GET', '/__mock/social/matches')).data
     const deck = (await call<Card[]>(`GET`, DECK)).data
     const admirer = deck.find((card) => card.likedYou) as Card
@@ -244,7 +260,7 @@ describe('the social journey', () => {
   })
 
   it('rewinds a pass but not a match', async () => {
-    await login('alice')
+    signIn('alice')
     const deck = (await call<Card[]>('GET', DECK)).data
     const other = deck.find((card) => !card.likedYou) as Card
     const admirer = deck.find((card) => card.likedYou) as Card
@@ -260,26 +276,25 @@ describe('the social journey', () => {
   })
 
   it('stops talking when the viewer leaves (no timer leaks across viewers)', async () => {
-    await login('alice')
+    signIn('alice')
     const match = (await call<Match[]>('GET', '/__mock/social/matches')).data[0] as Match
     await call('POST', '/__mock/social/messages', { matchId: match.id, text: 'Hello?' })
-    await call('POST', '/__mock/auth/logout', {})
-    await login('testuser')
+    // another account signs in in this browser
+    signIn('testuser')
     await call('GET', '/__mock/social/matches')
     await vi.advanceTimersByTimeAsync(10_000)
     expect(events.some((event) => event.type === 'message' && event.matchId === match.id)).toBe(false)
     expect(events.some((event) => event.type === 'typing' && event.matchId === match.id)).toBe(false)
 
     // back as alice: the pending reply was persisted and is delivered then
-    await call('POST', '/__mock/auth/logout', {})
-    await login('alice')
+    signIn('alice')
     await call('GET', '/__mock/social/matches')
     await vi.advanceTimersByTimeAsync(1_000)
     expect(events.some((event) => event.type === 'message' && event.matchId === match.id)).toBe(true)
   })
 
   it('reset cancels pending replies', async () => {
-    await login('alice')
+    signIn('alice')
     const match = (await call<Match[]>('GET', '/__mock/social/matches')).data[0] as Match
     await call('POST', '/__mock/social/messages', { matchId: match.id, text: 'Are you there?' })
     await call('POST', '/__mock/social/reset', {})
@@ -289,7 +304,7 @@ describe('the social journey', () => {
 
   it('sends a like now and then while the viewer is active, and only then', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1)
-    await login('alice')
+    signIn('alice')
     const before = (await call<Card[]>('GET', '/__mock/social/likes')).data.length
     await vi.advanceTimersByTimeAsync(70_000)
     const like = events.find((event) => event.type === 'like')
@@ -305,11 +320,8 @@ describe('the social journey', () => {
   })
 })
 
-describe('real-backend mode', () => {
-  it('serves the social endpoints to getViewerId() with defaults', async () => {
-    let viewer: string | null = null
-    installMockBackend({ auth: false, getViewerId: () => viewer, latency: 0 })
-    expect((await call('GET', DECK)).status).toBe(401)
+describe('a viewer whose profile was never seen', () => {
+  it('gets the defaults: no orientation filter, no common tags', async () => {
     viewer = '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963'
     const deck = (await call<Card[]>('GET', DECK)).data
     expect(deck.length).toBe(20)

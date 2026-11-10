@@ -1,4 +1,4 @@
-import type { Profile } from '@/api/types'
+import type { OwnProfile, Profile } from '@/api/types'
 import {
   Button,
   Chip,
@@ -32,7 +32,7 @@ import {
 import s from './ProfileHeader.module.css'
 
 export interface ProfileHeaderProps {
-  profile: Profile
+  profile: OwnProfile
   onEdit: () => void
   onFix: (key: CheckKey) => void
   /** "See how others see you". Hidden when omitted. */

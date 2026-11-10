@@ -38,45 +38,11 @@
   gap: var(--s-2);
 }
 
-.githubNote {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-2);
-  margin: 0;
-  font-size: var(--fs-xs);
-  line-height: 1.4;
-  color: var(--c-ink-2);
-}
-.githubNote svg {
-  flex: none;
-  margin-top: 1px;
-  color: var(--c-blue);
-}
-
 /* the code field prints like a ticket number */
 .code {
   font-family: var(--font-mono);
   font-weight: 700;
   letter-spacing: 0.12em;
-}
-
-/* "fill in a demo account": a stub torn off the ticket */
-.demo {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-2) var(--s-3);
-  padding: var(--s-3);
-  border: var(--bw-thin) dashed var(--c-ink);
-  border-radius: var(--r-md);
-  background: var(--c-yolk-tint);
-}
-.demoButtons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
 }
 
 /* a phase that replaced the form: a big stamp, a sentence, what to do next */
@@ -97,13 +63,7 @@
   width: 100%;
 }
 
-/* under the ticket: the demo inbox, then the links */
-.below {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-6);
-  width: 100%;
-}
+/* under the ticket */
 .links {
   margin: 0;
   text-align: center;

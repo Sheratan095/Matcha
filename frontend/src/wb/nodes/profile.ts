@@ -1,5 +1,8 @@
 /** The signed-in user's profile and pictures, plus the real "profile by id" read (docs/API_CONTRACT.md §2.2, §4). */
 import type {
+  LocationPayload,
+  LocationResult,
+  OwnProfile,
   PicturesResult,
   Profile,
   ProfileCreatePayload,
@@ -22,7 +25,9 @@ import {
 } from './builders'
 
 export interface ProfileCommands {
-  profileUpdate: Command<ProfileUpdatePayload, Profile>
+  profileUpdate: Command<ProfileUpdatePayload, OwnProfile>
+  /** `PUT /profile/location`. */
+  locationUpdate: Command<LocationPayload, LocationResult>
   /** `POST /profile`: workaround for GitHub-created users, who have no profile row. */
   profileCreate: Command<ProfileCreatePayload, ProfileCreateResult>
   /** Payload: a `FormData` with one field named `file`. */
@@ -36,7 +41,7 @@ export interface ProfileCommands {
 export interface ProfileNodes extends CommandNodes<ProfileCommands> {
   myProfileRefresh: number
   /** `GET /profile`. Fails with 500 for a user that has no profile row (see `profileCreate`). */
-  myProfile: Profile
+  myProfile: OwnProfile
   /** null while `myProfile` is not loaded. */
   profileComplete: boolean
   /** Shared by `myViewers` and `likesReceived`. */
@@ -64,6 +69,7 @@ export const profileNodes = {
   onlineCount: get('api', '/notification/online', [session(), trigger('presenceRefresh')]),
   ...commands<ProfileCommands>({
     profileUpdate: { method: 'PATCH', serviceName: 'api', addr: '/profile', payload: 'body' },
+    locationUpdate: { method: 'PUT', serviceName: 'api', addr: '/profile/location', payload: 'body' },
     profileCreate: { method: 'POST', serviceName: 'api', addr: '/profile', payload: 'body' },
     pictureUpload: { method: 'POST', serviceName: 'api', addr: '/profile/pictures', payload: 'body' },
     pictureDelete: {

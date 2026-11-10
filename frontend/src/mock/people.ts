@@ -1,5 +1,5 @@
 /**
- * The 36 people of the demo world. Static and deterministic: ids, pictures and every field are the
+ * The 36 people of the mock social world. Static and deterministic: ids, pictures and every field are the
  * same on every machine. What changes per viewer (likes, matches, presence) lives in social.ts.
  *
  * Distances are from central Paris: the mock places every viewer there.
@@ -865,7 +865,7 @@ export function personById(id: string): Person | undefined {
 
 const pictureCache = new Map<string, UserPicture[]>()
 
-/** The person as the profile service would return them (`GET /profile/{userId}` in demo mode). */
+/** The person in the profile service's shape (`Profile`), the base of their cards. */
 export function personProfile(person: Person): Profile {
   return {
     userId: person.id,

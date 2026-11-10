@@ -5,7 +5,6 @@
  */
 import type { HttpSpec, SelectionSpec } from './builders'
 import { toNodeDefs } from './builders'
-import { devNodes, type DevNodes } from './dev'
 import { discoverNodes, type DiscoverCommands, type DiscoverNodes } from './discover'
 import { profileNodes, type ProfileCommands, type ProfileNodes } from './profile'
 import { sessionNodes, type SessionCommands, type SessionNodes } from './session'
@@ -14,7 +13,7 @@ import { socialNodes, type SocialCommands, type SocialNodes } from './social'
 export { DEFAULT_FILTERS } from './discover'
 
 /** Every node of the graph and the type of its value once loaded (a node may also be `null` or `undefined`). */
-export interface NodeValues extends SessionNodes, ProfileNodes, DiscoverNodes, SocialNodes, DevNodes {}
+export interface NodeValues extends SessionNodes, ProfileNodes, DiscoverNodes, SocialNodes {}
 export type NodeName = keyof NodeValues
 
 /** What a node can hold: its value, `null` (loading / reset / failed) or `undefined` (never loaded). */
@@ -26,7 +25,7 @@ export type CommandName = keyof Commands
 export type CommandPayload<Name extends CommandName> = Commands[Name]['payload']
 export type CommandResult<Name extends CommandName> = Commands[Name]['result']
 
-const specs = { ...sessionNodes, ...profileNodes, ...discoverNodes, ...socialNodes, ...devNodes }
+const specs = { ...sessionNodes, ...profileNodes, ...discoverNodes, ...socialNodes }
 type Specs = typeof specs
 type NamesOf<Kind> = { [Name in keyof Specs]: Specs[Name] extends Kind ? Name : never }[keyof Specs]
 
@@ -46,7 +45,6 @@ export const REFRESH_TRIGGERS = {
   discoverDeck: 'discoverRefresh',
   matches: 'matchesRefresh',
   chatMessages: 'chatRefresh',
-  devInbox: 'devInboxRefresh',
 } as const satisfies Partial<Record<HttpNodeName, NamesOf<SelectionSpec>>>
 export type RefreshableNodeName = keyof typeof REFRESH_TRIGGERS
 

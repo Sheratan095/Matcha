@@ -7,7 +7,6 @@
  */
 import type { BehaviorSubject, Observable } from 'rxjs'
 import { httpEvents$ } from '@/api/http'
-import { BACKEND } from '@/config'
 import { createGraphEngine } from './engine/graph'
 import type { EngineConfig, StoreEngine } from './engine/types'
 import { FUNCTIONS } from './functions'
@@ -23,15 +22,6 @@ export const GRAPH: EngineConfig = { nodes: NODES, services: SERVICES, functions
 
 /** Request -> node attribution, built once from the graph. */
 export const registry = createRegistry(NODES, SERVICES)
-
-export interface StoreInfo {
-  /** `real`: auth and profile hit the gateway; `mock`: everything is served in the browser. */
-  readonly backend: 'real' | 'mock'
-}
-
-export const storeInfo: StoreInfo = Object.freeze({
-  backend: BACKEND,
-})
 
 /** What `main.tsx` needs to drive the boot screens. */
 export interface StoreHandle {

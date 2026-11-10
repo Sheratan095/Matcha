@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { ApiError, Profile } from '@/api/types'
+import type { ApiError, OwnProfile } from '@/api/types'
 import { MAX_USER_PICTURES } from '@/api/types'
 import ProfileSheet from '@/features/profile/ProfileSheet'
 import { Button, ButtonLink, Card, IconArrowRight, IconRefresh, Notice, TabPanel, Tabs, Text } from '@/ui'
@@ -30,10 +30,11 @@ const FIX_TARGET: Record<CheckKey, { tab: Tab; id: string }> = {
   preference: { tab: 'details', id: SECTION_IDS.identity },
   biography: { tab: 'details', id: SECTION_IDS.biography },
   interests: { tab: 'details', id: SECTION_IDS.interests },
+  location: { tab: 'details', id: SECTION_IDS.location },
   photo: { tab: 'photos', id: 'me-photos' },
 }
 
-function MeScreen({ profile, refreshError }: { profile: Profile; refreshError: ApiError | null }) {
+function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError: ApiError | null }) {
   const [params, setParams] = useSearchParams()
   const tab = tabFrom(params.get('tab'))
   const [previewing, setPreviewing] = useState(false)
@@ -97,7 +98,7 @@ function MeScreen({ profile, refreshError }: { profile: Profile; refreshError: A
             </ButtonLink>
           }
         >
-          Gender, preference, a biography and one interest put you in the deck.
+          Gender, preference, a biography, one interest and your location put you in the deck.
         </Notice>
       ) : null}
 

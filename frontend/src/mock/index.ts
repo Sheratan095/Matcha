@@ -2,9 +2,9 @@
  * The in-browser mock backend (docs/ARCHITECTURE.md §5).
  *
  * `installMockBackend` wraps `axios.defaults.adapter`: requests under MOCK_PREFIX (`/__mock`) are
- * answered here, everything else goes to the network untouched. It always serves the social service
- * (`/__mock/social/*`); with `auth: true` (demo mode) it also stands in for the real auth, profile and
- * notification services and offers the dev inbox. Calling it again only updates the options.
+ * answered here, everything else goes to the network untouched. It serves the social service
+ * (`/__mock/social/*`), which has no backend yet, to the viewer the real auth reports. Calling it
+ * again only updates the options.
  *
  * `mockEvents$` carries what the realtime channel would: typing, messages, new matches, new likes.
  */
@@ -19,9 +19,7 @@ import { forget, STORAGE_PREFIX } from './storage'
 import { forgetHints, rememberProfile } from './viewer'
 
 export interface MockBackendOptions {
-  /** true in demo mode: also serve /auth/*, /profile/*, /notification/* under /__mock. */
-  auth: boolean
-  /** Who is logged in when auth is real (the mock cannot read HttpOnly cookies). */
+  /** Who is logged in, per the real auth (the mock cannot read HttpOnly cookies). */
   getViewerId: () => string | null
   /**
    * Simulated latency in ms, a fixed value or an inclusive `[min, max]` range. Default `[120, 450]`.
@@ -47,11 +45,10 @@ function latency(): number {
 }
 
 /**
- * Real mode only: learn the viewer's orientation and interests from the real profile responses
+ * Learns the viewer's orientation and interests from the real profile responses
  * (`GET` / `PATCH {API_URL}/profile`), read-only, so discovery can filter and find common tags.
  */
 function observe(config: InternalAxiosRequestConfig, response: AxiosResponse): void {
-  if (runtime.options.auth) return
   const method = (config.method ?? 'get').toLowerCase()
   if (method !== 'get' && method !== 'patch') return
   const path = (config.url ?? '').split(/[?#]/)[0] ?? ''
@@ -61,7 +58,7 @@ function observe(config: InternalAxiosRequestConfig, response: AxiosResponse): v
 }
 
 function onStorage(event: StorageEvent): void {
-  // another tab changed the demo data: drop the memory copy, the next read takes theirs
+  // another tab changed the mock data: drop the memory copy, the next read takes theirs
   if (event.key === null) forget()
   else if (event.key.startsWith(STORAGE_PREFIX)) forget(event.key)
 }
@@ -77,8 +74,8 @@ export function installMockBackend(options: MockBackendOptions): void {
   const previous = registry[REGISTRY]
   if (previous && previous.uninstall !== uninstallMockBackend) previous.uninstall()
 
-  runtime.options = { auth: options.auth, getViewerId: options.getViewerId, latency: latencyRange(options.latency) }
-  installAdapter({ handle: (request) => dispatch(request, runtime.options.auth), latency, observe })
+  runtime.options = { getViewerId: options.getViewerId, latency: latencyRange(options.latency) }
+  installAdapter({ handle: dispatch, latency, observe })
   if (!listening && typeof window !== 'undefined') {
     window.addEventListener('storage', onStorage)
     listening = true

@@ -57,7 +57,7 @@ export function save(scope: string, value: unknown): boolean {
   if (!target) {
     if (!warnedUnavailable) {
       warnedUnavailable = true
-      console.warn('[mock] localStorage is unavailable: demo data will not survive a reload.')
+      console.warn('[mock] localStorage is unavailable: mock data will not survive a reload.')
     }
     return true
   }

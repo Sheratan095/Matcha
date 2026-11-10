@@ -1,7 +1,5 @@
 /** The route table of the mock backend and the dispatch of one request to its handler. */
-import { authRoutes, devRoutes } from './accounts'
 import { notFoundRoute, type Handler, type MockRequest, type MockResponse } from './nest'
-import { profileRoutes } from './profiles'
 import { socialRoutes } from './social'
 
 interface RouteSpec {
@@ -11,13 +9,11 @@ interface RouteSpec {
 }
 
 interface CompiledRoute extends RouteSpec {
-  /** Demo mode only (the real backend serves these otherwise). */
-  demoOnly: boolean
   regex: RegExp
   names: string[]
 }
 
-function compile(route: RouteSpec, demoOnly: boolean): CompiledRoute {
+function compile(route: RouteSpec): CompiledRoute {
   const names: string[] = []
   const source = route.pattern
     .split('/')
@@ -28,15 +24,10 @@ function compile(route: RouteSpec, demoOnly: boolean): CompiledRoute {
     })
     .join('/')
   // Express routing is not strict: a trailing slash matches too.
-  return { ...route, demoOnly, regex: new RegExp(`^${source}/?$`), names }
+  return { ...route, regex: new RegExp(`^${source}/?$`), names }
 }
 
-const ROUTES: readonly CompiledRoute[] = [
-  ...authRoutes.map((route) => compile(route, true)),
-  ...profileRoutes.map((route) => compile(route, true)),
-  ...devRoutes.map((route) => compile(route, false)),
-  ...socialRoutes.map((route) => compile(route, false)),
-]
+const ROUTES: readonly CompiledRoute[] = socialRoutes.map(compile)
 
 function decode(segment: string): string {
   try {
@@ -46,16 +37,10 @@ function decode(segment: string): string {
   }
 }
 
-/** Nest reports the path the microservice saw: the gateway strips the service prefix. */
-function servicePath(path: string): string {
-  const stripped = /^\/(auth|profile|notification)(\/.*)?$/.exec(path)
-  return stripped ? (stripped[2] ?? '/') : path
-}
-
 /** Runs the handler of `request` (handlers throw HttpError for error responses). */
-export async function dispatch(request: MockRequest, demo: boolean): Promise<MockResponse> {
+export async function dispatch(request: MockRequest): Promise<MockResponse> {
   for (const route of ROUTES) {
-    if ((route.demoOnly && !demo) || route.method !== request.method) continue
+    if (route.method !== request.method) continue
     const found = route.regex.exec(request.path)
     if (!found) continue
     const params: Record<string, string> = {}
@@ -64,5 +49,5 @@ export async function dispatch(request: MockRequest, demo: boolean): Promise<Moc
     })
     return route.handler(request, params)
   }
-  throw notFoundRoute(request.method, servicePath(request.path))
+  throw notFoundRoute(request.method, request.path)
 }

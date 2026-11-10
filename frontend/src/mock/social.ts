@@ -1,5 +1,5 @@
 /**
- * The social service (`/__mock/social/*`, docs/ARCHITECTURE.md §5.2): discovery, swipes, matches,
+ * The social service (`/__mock/social/*`, docs/ARCHITECTURE.md §5.1): discovery, swipes, matches,
  * chat, likes received, blocks, and the "live" world around them.
  *
  * State is per viewer (`matcha.mock.v1.social.<viewerId>`). A new viewer is seeded deterministically
@@ -112,7 +112,6 @@ interface SocialState {
   touched: boolean
   swipes: SwipeRecord[]
   likedBy: Dated[]
-  viewedBy: Dated[]
   matches: MatchRecord[]
   blocked: string[]
   agenda: AgendaItem[]
@@ -164,7 +163,6 @@ function acceptState(raw: unknown, viewerId: string): SocialState | null {
     touched: raw.touched === true,
     swipes: arrayOf(raw.swipes, isSwipe).map((swipe) => ({ ...swipe, matchId: isString(swipe.matchId) ? swipe.matchId : null })),
     likedBy: arrayOf(raw.likedBy, isDated),
-    viewedBy: arrayOf(raw.viewedBy, isDated),
     matches: (Array.isArray(raw.matches) ? raw.matches : []).map(acceptMatch).filter((match): match is MatchRecord => match !== null),
     blocked: arrayOf(raw.blocked, isString),
     agenda: arrayOf(raw.agenda, isAgendaItem).map((item) => ({
@@ -249,7 +247,6 @@ function seedState(viewer: Viewer, now: number): SocialState {
   const nearby = rest.filter(withinDefaults)
   const likeCount = Math.min(nearby.length, Math.max(4, Math.min(6, Math.round(nearby.length * 0.4))))
   const likers = nearby.slice(0, likeCount)
-  const lurkers = rest.filter((person) => !likers.includes(person)).slice(0, 2)
   return {
     v: 1,
     viewerId: viewer.id,
@@ -258,10 +255,6 @@ function seedState(viewer: Viewer, now: number): SocialState {
     touched: false,
     swipes: [],
     likedBy: likers.map((person, index) => ({ personId: person.id, at: now - (14 + index * 173) * MIN })),
-    viewedBy: [
-      ...likers.map((person, index) => ({ personId: person.id, at: now - (15 + index * 173) * MIN })),
-      ...lurkers.map((person, index) => ({ personId: person.id, at: now - (40 + index * 290) * MIN })),
-    ],
     matches: matched.map((person, index) => starterMatch(viewer, person, STARTER_SLOTS[index] as StarterSlot, now)),
     blocked: [],
     agenda: [],
@@ -283,8 +276,8 @@ function stateFor(viewer: Viewer, now: number): SocialState {
 
 // ---------------------------------------------------------------- cards and matches
 
-function presence(person: Person, state: SocialState | null, now: number): { online: boolean; lastSeen: string | null } {
-  const talked = state?.talkedAt[person.id] ?? 0
+function presence(person: Person, state: SocialState, now: number): { online: boolean; lastSeen: string | null } {
+  const talked = state.talkedAt[person.id] ?? 0
   if (now - talked < 10 * MIN) return { online: true, lastSeen: null }
   const quarter = 15 * MIN
   const bucket = Math.floor(now / quarter)
@@ -345,11 +338,6 @@ function createMatch(state: SocialState, person: Person, now: number): MatchReco
   }
   state.matches.push(match)
   return match
-}
-
-function addView(state: SocialState, personId: string, now: number): void {
-  state.viewedBy = state.viewedBy.filter((view) => view.personId !== personId)
-  state.viewedBy.push({ personId, at: now })
 }
 
 // ---------------------------------------------------------------- the agenda
@@ -530,14 +518,9 @@ function likeTick(viewerId: string): void {
     const person = candidates[Math.floor(Math.random() * candidates.length)]
     if (person && Math.random() < LIVE.likeChance) {
       state.likedBy.push({ personId: person.id, at: now })
-      addView(state, person.id, now)
       state.lastLikeAt = now
       store(state)
       emit({ type: 'like', from: cardOf(person, viewer, state, now) })
-    } else if (person && Math.random() < 0.5) {
-      // a profile view without a like
-      addView(state, person.id, now)
-      store(state)
     }
   }
   scheduleLikes(viewerId)
@@ -561,17 +544,6 @@ function enter(): Context {
   syncAgenda(state)
   scheduleLikes(viewer.id)
   return { viewer, state, now }
-}
-
-/** Demo-mode `GET /profile/viewers`: people who viewed the viewer, most recent first. */
-export function mockViewers(viewer: Viewer): { id: string; at: number }[] {
-  return stateFor(viewer, Date.now()).viewedBy.map((view) => ({ id: view.personId, at: view.at }))
-}
-
-/** Demo-mode `GET /notification/online`: people online right now, plus the viewer. */
-export function onlineNow(): number {
-  const now = Date.now()
-  return PEOPLE.filter((person) => presence(person, null, now).online).length + 1
 }
 
 function findMatch(state: SocialState, matchId: string | undefined): MatchRecord {
