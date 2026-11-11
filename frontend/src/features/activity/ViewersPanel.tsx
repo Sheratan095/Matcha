@@ -1,19 +1,15 @@
 /**
- * "Viewed you": the profile service only gives the ids of the people who opened the viewer's
- * profile, so they are shown as what they are: numbered ticket stubs with a short id.
+ * "Viewed you": the people who opened the viewer's profile (`GET /profile/viewers`), newest first,
+ * as numbered ticket stubs with their username.
  */
 import { Barcode, Button, ButtonLink, EmptyState, IconEye, IconPencil, IconRefresh, Notice, Skeleton, TicketHeader } from '@/ui'
+import type { ProfileViewer } from '@/api/types'
 import type { NodeStatus } from '@/wb'
 import { pad2 } from '@/features/chat/time'
 import s from './ActivityPage.module.css'
 
-/** "3f9a2c1e-..." -> "3F9A2C". */
-function shortId(id: string): string {
-  return id.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase() || '??????'
-}
-
 export interface ViewersPanelProps {
-  viewers: string[] | null
+  viewers: ProfileViewer[] | null
   status: NodeStatus
   onOpen: (userId: string) => void
   onRetry: () => void
@@ -65,22 +61,19 @@ export function ViewersPanel({ viewers, status, onOpen, onRetry }: ViewersPanelP
   return (
     <>
       <TicketHeader label="Visitors · newest first" meta={pad2(viewers.length)} />
-      <p className={s.honest}>
-        The profile service shares who visited by ticket number only, not by name. Open a stub to see who it is: that
-        counts as a visit to their profile too.
-      </p>
+      <p className={s.honest}>Open a stub to see their profile: that counts as a visit to theirs too.</p>
       <ol className={s.stubs}>
-        {viewers.map((id, index) => (
-          <li key={id}>
+        {viewers.map(({ viewerId: id, username }, index) => (
+          <li key={`${id}-${index}`}>
             <button type="button" className={s.stub} onClick={() => onOpen(id)}>
               <span className={s.stubMain}>
                 <span className={s.stubKicker} aria-hidden="true">
                   Admit one · Visitor
                 </span>
                 <span className={s.stubId}>
-                  <span aria-hidden="true">#</span>
+                  <span aria-hidden="true">@</span>
                   <span className="sr-only">Visitor </span>
-                  {shortId(id)}
+                  {username}
                 </span>
                 <Barcode value={id} height={20} className={s.stubBarcode} />
               </span>

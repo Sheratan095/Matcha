@@ -39,7 +39,7 @@ describe('the graph at rest', () => {
     await signIn()
     await flush(30)
     expect(server().sent('GET', `${API_URL}/profile`)).toHaveLength(1)
-    expect(server().sent('GET', `${SOCIAL_URL}/discover`)).toHaveLength(1)
+    expect(server().sent('GET', `${API_URL}/profile/discover`)).toHaveLength(1)
     expect(server().sent('GET', `${SOCIAL_URL}/matches`)).toHaveLength(1)
     expect(server().sent('GET', `${API_URL}/auth/validate`)).toHaveLength(2)
   })
@@ -143,7 +143,7 @@ describe('refresh', () => {
     const before = getNodeValue('matches')
     expect(before).toEqual([])
     store.backend.state.matches = [
-      { id: 'm1', profile: store.backend.state.deck[0], matchedAt: 'x', lastMessage: null, unread: 2 },
+      { id: 'm1', profile: store.backend.state.people[0], matchedAt: 'x', lastMessage: null, unread: 2 },
     ]
     const seen: unknown[] = []
     const subscription = node$('matches').subscribe((value) => seen.push(value))

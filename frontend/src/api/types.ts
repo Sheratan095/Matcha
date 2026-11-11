@@ -44,7 +44,68 @@ export interface Profile {
   pictures: UserPicture[]
   createdAt: string
   updatedAt: string
+  username?: string
+  /** Computed by the database from the date of birth; null when it is not set. */
+  age?: number | null
+  /** Public 0-100 popularity score. */
+  fameRating?: number
+  /** ISO date of the last connection, null when unknown. */
+  lastSeen?: string | null
 }
+
+/** GET /profile/:userId for someone else: what only another user's profile carries. */
+export interface ProfileRelation {
+  /** You liked them. */
+  liked: boolean
+  /** They liked you. */
+  likesYou: boolean
+  /** Both: you are connected and can chat. */
+  matched: boolean
+}
+
+export interface OtherProfile extends Profile {
+  /** Absent on your own profile. */
+  isOnline?: boolean
+  relation?: ProfileRelation
+  /** Whole kilometres (at least 1), from a ~1 km-snapped position; null when either has no location. */
+  distanceKm?: number | null
+}
+
+/**
+ * One card of GET /profile/discover: a light summary. The full profile (bio, pictures, tags) comes
+ * from GET /profile/:userId when the card is opened, which records a profile view.
+ */
+export interface DeckCard {
+  userId: string
+  username: string
+  firstName: string | null
+  age: number
+  /** Whole kilometres, at least 1; null when YOU have no location. */
+  distanceKm: number | null
+  /** 0-100. */
+  fameRating: number
+  /** Interest tags shared with you. */
+  commonTagCount: number
+  /** They already liked you: liking back is a match. */
+  likesYou?: boolean
+  profilePictureUrl: string
+}
+
+/** Swipes the backend knows: POST /profile/:userId/like and POST /profile/:userId/pass. */
+export type DeckAction = 'like' | 'pass'
+
+/** POST /profile/:userId/like. */
+export interface LikeResult {
+  liked: true
+  /** This like completed a match. */
+  matched: boolean
+}
+
+/**
+ * How the deck is ordered. The backend filters and ranks ('best'); every other order is applied in
+ * the browser to the whole list (subject IV.3: sortable by age, location, fame and common tags).
+ */
+export type DiscoverSort = 'best' | 'distance' | 'age' | 'fame' | 'tags'
 
 /** GET /auth/validate. Always 200. */
 export interface SessionCheck {
@@ -146,21 +207,28 @@ export interface ProfileViewer {
   profilePictureUrl: string | null
 }
 
+/**
+ * One connection (mutual like) on GET /profile/matches/map. The position is snapped to a ~1 km grid
+ * by the backend (neighbourhood accuracy); both null when they have no location.
+ */
+export interface MapMatch {
+  userId: string
+  username: string
+  profilePictureUrl: string | null
+  latitude: number | null
+  longitude: number | null
+}
+
+/** GET /profile/matches/map. */
+export interface MatchesMapResult {
+  matches: MapMatch[]
+}
+
 /** GET /profile/viewers. */
 export interface ViewersResult {
   viewers: ProfileViewer[]
 }
 
-/** POST /profile (workaround for OAuth users that have no profile row). */
-export interface ProfileCreatePayload {
-  userId: string
-  firstName?: string
-  lastName?: string
-}
-export interface ProfileCreateResult {
-  message: string
-  userId: string
-}
 
 /**
  * Normalised form of the Nest error body `{ message: string | string[], error, statusCode }`.
@@ -195,7 +263,6 @@ export interface Card extends Profile {
 }
 
 export type SwipeAction = 'like' | 'pass' | 'superlike'
-export type DiscoverSort = 'best' | 'distance' | 'fame' | 'age'
 
 export interface SwipePayload {
   targetId: string

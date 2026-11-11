@@ -1,5 +1,5 @@
 /** Small, pure helpers shared by the deck and the profile sheet. */
-import type { Card, Gender, Profile, SexualPreference, UserPicture } from '@/api/types'
+import type { Card, DeckCard, Gender, OtherProfile, Profile, SexualPreference, UserPicture } from '@/api/types'
 
 /** The profile picture, else the first one, else null. */
 export function mainPicture(profile: Pick<Profile, 'pictures'> | null | undefined): UserPicture | null {
@@ -19,9 +19,38 @@ export function displayName(profile: Pick<Profile, 'firstName'> | null | undefin
   return name ? name : 'Someone'
 }
 
-/** True when the value carries the social extras (age, city, fame...), not only the real profile. */
+/** "Alice" (the first name), else the username. */
+export function cardName(card: Pick<DeckCard, 'firstName' | 'username'>): string {
+  return card.firstName?.trim() || card.username
+}
+
+/** True for a mocked social card (city, common tags...), not a real profile. */
 export function isCard(profile: Profile | Card): profile is Card {
-  return 'age' in profile && typeof (profile as Card).age === 'number'
+  return 'commonTags' in profile && Array.isArray((profile as Card).commonTags)
+}
+
+/**
+ * What a deck card already tells about someone, shaped as a profile: shown at once while
+ * `GET /profile/{userId}` loads the rest (bio, every picture, interests, presence).
+ */
+export function deckPreviewProfile(card: DeckCard): OtherProfile {
+  return {
+    userId: card.userId,
+    username: card.username,
+    firstName: card.firstName,
+    lastName: null,
+    gender: null,
+    sexualPreference: null,
+    biography: null,
+    interests: [],
+    pictures: card.profilePictureUrl ? [{ id: `preview-${card.userId}`, url: card.profilePictureUrl, isProfile: true }] : [],
+    createdAt: '',
+    updatedAt: '',
+    age: card.age,
+    fameRating: card.fameRating,
+    distanceKm: card.distanceKm,
+    relation: { liked: false, likesYou: card.likesYou === true, matched: false },
+  }
 }
 
 /** A stable 4-digit "print run" number for a person, printed in ticket strips. */
@@ -71,5 +100,5 @@ export function identityText(profile: Pick<Profile, 'gender' | 'sexualPreference
 /** "Alice, 27" / "Alice". */
 export function nameAndAge(profile: Profile | Card): string {
   const name = displayName(profile)
-  return isCard(profile) ? `${name}, ${profile.age}` : name
+  return typeof profile.age === 'number' ? `${name}, ${profile.age}` : name
 }

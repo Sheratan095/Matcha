@@ -42,6 +42,7 @@ export const REFRESH_TRIGGERS = {
   myViewers: 'activityRefresh',
   likesReceived: 'activityRefresh',
   onlineCount: 'presenceRefresh',
+  matchesMap: 'matchesMapRefresh',
   discoverDeck: 'discoverRefresh',
   matches: 'matchesRefresh',
   chatMessages: 'chatRefresh',

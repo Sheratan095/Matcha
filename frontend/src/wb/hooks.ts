@@ -67,10 +67,11 @@ export function useFilters(): DiscoverFilters {
   const ageMin = useNodeValue('filterAgeMin')
   const ageMax = useNodeValue('filterAgeMax')
   const distance = useNodeValue('filterDistance')
+  const fameMin = useNodeValue('filterFameMin')
   const sort = useNodeValue('filterSort')
   const tags = useNodeValue('filterTags')
   return useMemo(
-    () => filtersFrom({ ageMin, ageMax, distance, sort, tags }),
-    [ageMin, ageMax, distance, sort, tags],
+    () => filtersFrom({ ageMin, ageMax, distance, fameMin, sort, tags }),
+    [ageMin, ageMax, distance, fameMin, sort, tags],
   )
 }

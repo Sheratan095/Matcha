@@ -1,11 +1,11 @@
 /**
- * The signed-in frame: the kit's AppShell with the four sections, their badges (unread messages,
+ * The signed-in frame: the kit's AppShell with the five sections, their badges (unread messages,
  * likes received), the section name as margin poster on wide screens, and the account menu.
  * Pages render in the Outlet; a lazy page that is still loading keeps the shell on screen.
  */
 import { Suspense } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { AppShell, Avatar, IconCards, IconChat, IconHeart, IconLogout, IconUser, Loader, Menu, toast, type ShellTab } from '@/ui'
+import { AppShell, Avatar, IconCards, IconChat, IconGlobe, IconHeart, IconLogout, IconUser, Loader, Menu, toast, type ShellTab } from '@/ui'
 import { useAutoLocation } from '@/features/location/useAutoLocation'
 import { actions, toApiError, useNodeValue } from '@/wb'
 
@@ -13,6 +13,7 @@ const SECTIONS = [
   { to: '/discover', label: 'Discover', poster: 'discover', icon: <IconCards size={22} /> },
   { to: '/matches', label: 'Matches', poster: 'matches', icon: <IconChat size={22} /> },
   { to: '/activity', label: 'Activity', poster: 'activity', icon: <IconHeart size={22} /> },
+  { to: '/map', label: 'Map', poster: 'map', icon: <IconGlobe size={22} /> },
   { to: '/me', label: 'Me', poster: 'profile', icon: <IconUser size={22} /> },
 ] as const
 

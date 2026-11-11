@@ -8,7 +8,7 @@ import { refresh } from './commands'
 import { DEFAULT_DISCOVER_FILTERS } from './filters'
 import { realtime$, startRealtime } from './realtime'
 import { getNodeStatus, getNodeValue, setNode } from './store'
-import { incoming, ME } from './testing/fakeBackend'
+import { card, incoming, ME } from './testing/fakeBackend'
 import { nestError } from './testing/fakeServer'
 import { flush, startTestStore, type TestStore } from './testing/harness'
 
@@ -92,21 +92,12 @@ describe('session', () => {
     await expect(actions.logout()).rejects.toMatchObject({ status: 500 })
   })
 
-  it('creates the missing profile row of a GitHub user once, then loads the profile', async () => {
-    let hasRow = false
-    server().on('GET', `${API_URL}/profile`, () =>
-      hasRow ? { ...store.backend.state.profile } : nestError(500, 'Failed to fetch profile', 'Internal Server Error'),
-    )
-    server().on('POST', `${API_URL}/profile`, ({ body }) => {
-      hasRow = true
-      return { message: 'Profile created', userId: (body as { userId: string }).userId }
-    })
+  it('a failed profile only reports the error: nothing is sent to repair it', async () => {
+    server().on('GET', `${API_URL}/profile`, () => nestError(500, 'Failed to fetch profile', 'Internal Server Error'))
     await signIn()
     await flush(50)
-    expect(server().sent('POST', `${API_URL}/profile`)).toHaveLength(1)
-    expect(server().sent('POST', `${API_URL}/profile`)[0].body).toEqual({ userId: ME })
-    expect(getNodeValue('myProfile')?.userId).toBe(ME)
-    expect(getNodeStatus('myProfile').status).toBe('success')
+    expect(server().requests.some((request) => request.method === 'POST' && request.url === `${API_URL}/profile`)).toBe(false)
+    expect(getNodeStatus('myProfile')).toMatchObject({ status: 'error', error: { status: 500 } })
   })
 })
 
@@ -161,31 +152,56 @@ describe('own profile', () => {
 })
 
 describe('discover', () => {
-  it('setFilters changes several filters with one deck request', async () => {
+  const DISCOVER = `${API_URL}/profile/discover`
+  const ids = () => getNodeValue('visibleDeck')?.map((card) => card.userId)
+
+  it('setFilters sends the backend filters with one deck request; the sort is applied locally', async () => {
     await signIn()
-    const before = server().sent('GET', `${SOCIAL_URL}/discover`).length
-    await actions.setFilters({ ageMin: 21, ageMax: 30, sort: 'fame', tags: ['#Art', 'music'] })
-    const sent = server().sent('GET', `${SOCIAL_URL}/discover`)
+    const before = server().sent('GET', DISCOVER).length
+    await actions.setFilters({ ageMin: 21, ageMax: 30, fameMin: 40, sort: 'fame', tags: ['#Art', 'music'] })
+    const sent = server().sent('GET', DISCOVER)
     expect(sent.length - before).toBe(1)
-    expect(sent.at(-1)?.params).toEqual({ ageMin: 21, ageMax: 30, distance: 50, sort: 'fame', tags: 'art,music' })
+    expect(sent.at(-1)?.params).toEqual({ minAge: 21, maxAge: 30, maxDistanceKm: 50, minFame: 40, tags: 'art,music' })
     expect(getNodeValue('discoverDeck')).not.toBeNull()
     await expect(actions.setFilters({ ageMin: 40, ageMax: 30 })).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    await expect(actions.setFilters({ distance: 500 })).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
   })
 
-  it('a matching swipe refreshes matches and likes, and the card leaves visibleDeck', async () => {
+  it('changing only the sort reorders the deck without a request', async () => {
+    await signIn()
+    store.backend.state.deck[1].fameRating = 90
+    store.backend.state.deck[2].age = 20
+    await actions.reloadDeck()
+    const before = server().sent('GET', DISCOVER).length
+    await actions.setFilters({ sort: 'fame' })
+    expect(ids()).toEqual(['bea', 'ann', 'cid'])
+    await actions.setFilters({ sort: 'age' })
+    expect(ids()).toEqual(['cid', 'ann', 'bea'])
+    await actions.setFilters({ sort: 'best' })
+    expect(ids()).toEqual(['ann', 'bea', 'cid'])
+    expect(server().sent('GET', DISCOVER).length).toBe(before)
+  })
+
+  it('a like that completes a match says so, and the card leaves visibleDeck', async () => {
     await signIn()
     const ann = getNodeValue('visibleDeck')?.find((card) => card.userId === 'ann')
     expect(ann).toBeDefined()
     const result = await actions.swipe(ann!, 'like')
-    expect(result.match?.id).toBe('m-ann')
-    expect(getNodeValue('matches')?.map((match) => match.id)).toEqual(['m-ann'])
+    expect(result.matched).toBe(true)
+    expect(server().sent('POST', `${API_URL}/profile/ann/like`)).toHaveLength(1)
     expect(getNodeValue('visibleDeck')?.some((card) => card.userId === 'ann')).toBe(false)
-    expect(server().sent('GET', `${SOCIAL_URL}/likes`).length).toBeGreaterThan(1)
+  })
+
+  it('a pass posts to /pass and is not a match', async () => {
+    await signIn()
+    const bea = getNodeValue('visibleDeck')!.find((card) => card.userId === 'bea')!
+    expect(await actions.swipe(bea, 'pass')).toEqual({ matched: false })
+    expect(server().sent('POST', `${API_URL}/profile/bea/pass`)).toHaveLength(1)
   })
 
   it('a failed swipe puts the card back', async () => {
     await signIn()
-    server().on('POST', `${SOCIAL_URL}/swipes`, () => nestError(500, 'down', 'Internal Server Error'))
+    server().on('POST', `${API_URL}/profile/:id/pass`, () => nestError(500, 'down', 'Internal Server Error'))
     const bea = getNodeValue('visibleDeck')!.find((card) => card.userId === 'bea')!
     const pending = actions.swipe(bea, 'pass')
     expect(getNodeValue('visibleDeck')?.some((card) => card.userId === 'bea')).toBe(false)
@@ -193,19 +209,86 @@ describe('discover', () => {
     expect(getNodeValue('visibleDeck')?.some((card) => card.userId === 'bea')).toBe(true)
   })
 
-  it('fetches the next deck once the last card is swiped', async () => {
+  it('rewind brings a pass back on top, and takes a like back with DELETE', async () => {
     await signIn()
-    const before = server().sent('GET', `${SOCIAL_URL}/discover`).length
+    const [, bea, cid] = getNodeValue('visibleDeck')!
+    await actions.swipe(bea, 'pass')
+    await actions.swipe(cid, 'like')
+    const undoLike = await actions.rewind()
+    expect(undoLike.restored?.userId).toBe('cid')
+    expect(server().sent('DELETE', `${API_URL}/profile/cid/like`)).toHaveLength(1)
+    expect(ids()?.[0]).toBe('cid')
+    const undoPass = await actions.rewind()
+    expect(undoPass.restored?.userId).toBe('bea')
+    expect(ids()?.[0]).toBe('bea')
+    expect(await actions.rewind()).toEqual({ restored: null, matched: false })
+  })
+
+  it('a like that made a match is not rewound', async () => {
+    await signIn()
+    await actions.swipe(getNodeValue('visibleDeck')![0], 'like')
+    expect(await actions.rewind()).toEqual({ restored: null, matched: true })
+    expect(server().sent('DELETE', `${API_URL}/profile/ann/like`)).toHaveLength(0)
+  })
+
+  it('asks for more once the last card is swiped, but the passes of this session stay hidden until reloadDeck', async () => {
+    await signIn()
+    const before = server().sent('GET', DISCOVER).length
     for (const card of [...getNodeValue('visibleDeck')!]) await actions.swipe(card, 'pass')
-    expect(server().sent('GET', `${SOCIAL_URL}/discover`).length).toBe(before + 1)
-    expect(getNodeValue('visibleDeck')).toEqual([])
+    expect(server().sent('GET', DISCOVER).length).toBe(before + 1)
+    // the server ranks the passes last but still sends them: the deck stays empty ("that's everyone")
+    expect(ids()).toEqual([])
+    // the last pass can still be rewound
+    expect((await actions.rewind()).restored?.userId).toBe('cid')
+    await actions.reloadDeck()
+    expect(ids()).toEqual(['ann', 'bea', 'cid'])
+  })
+
+  it('reloads once, after the last swipe in flight, and never shows a card whose like is still on its way', async () => {
+    await signIn()
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    server().on('POST', `${API_URL}/profile/:id/like`, async ({ route }) => {
+      if (route.id === 'bea') await gate
+      store.backend.state.liked.add(route.id)
+      return { liked: true, matched: false }
+    })
+    const [ann, bea, cid] = getNodeValue('visibleDeck')!
+    const slow = actions.swipe(bea, 'like')
+    await actions.swipe(ann, 'pass')
+    // an explicit reload while bea's like is unanswered: bea stays hidden
+    await actions.reloadDeck()
+    expect(ids()).toEqual(['cid', 'ann'])
+    const before = server().sent('GET', DISCOVER).length
+    await actions.swipe(cid, 'pass')
+    await actions.swipe(getNodeValue('visibleDeck')![0], 'pass')
+    expect(server().sent('GET', DISCOVER).length).toBe(before) // bea still in flight: no reload yet
+    release()
+    await slow
+    expect(server().sent('GET', DISCOVER).length).toBe(before + 1)
+    expect(ids()).toEqual([])
+  })
+
+  it('can like the same person again after a rewind (the same payload is sent again)', async () => {
+    await signIn()
+    const bea = getNodeValue('visibleDeck')!.find((card) => card.userId === 'bea')!
+    await actions.swipe(bea, 'like')
+    await actions.rewind()
+    await actions.swipe(bea, 'like')
+    expect(server().sent('POST', `${API_URL}/profile/bea/like`)).toHaveLength(2)
+    expect(ids()?.includes('bea')).toBe(false)
+  })
+
+  it('tagCatalogue lists the interest names in use', async () => {
+    await signIn()
+    expect(getNodeValue('tagCatalogue')).toEqual(['art', 'music'])
   })
 })
 
 describe('matches and chat', () => {
   async function matched(): Promise<void> {
     await signIn()
-    await actions.swipe(getNodeValue('visibleDeck')!.find((card) => card.userId === 'ann')!, 'like')
+    await actions.answerLike(card('ann', { likedYou: true }), 'like')
   }
 
   it('openChat loads the conversation and then the unread counts; sendMessage shows the message', async () => {
@@ -258,12 +341,10 @@ describe('matches and chat', () => {
     expect(getNodeValue('matches')).toEqual([])
   })
 
-  it('resetDemoData posts the reset and reloads the social nodes', async () => {
+  it('resetDemoData posts the reset and reloads the mocked social nodes', async () => {
     await matched()
     await actions.resetDemoData()
     expect(server().sent('POST', `${SOCIAL_URL}/reset`)).toHaveLength(1)
     expect(getNodeValue('matches')).toEqual([])
-    expect(getNodeValue('swipedIds')).toEqual([])
-    expect(getNodeValue('visibleDeck')?.map((card) => card.userId)).toEqual(['ann', 'bea', 'cid'])
   })
 })

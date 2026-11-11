@@ -25,3 +25,12 @@ dist-ssr
 
 # WaveBinder license file (personal, issued by wavebinder.it). See README.
 src/wb/license.json
+
+# Environment (keep .env.example)
+.env
+.env.*
+!.env.example
+
+# Build / tooling
+*.tsbuildinfo
+coverage

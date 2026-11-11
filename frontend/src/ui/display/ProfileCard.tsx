@@ -17,6 +17,8 @@ export interface ProfileCardProps {
   seed?: string
   city?: string
   distanceKm?: number
+  /** Public fame rating (0-100), printed with the distance. */
+  fame?: number
   online?: boolean
   /** Interest names, without '#'. */
   tags?: readonly string[]
@@ -60,6 +62,7 @@ export function ProfileCard({
   seed,
   city,
   distanceKm,
+  fame,
   online,
   tags = [],
   commonTags = [],
@@ -80,7 +83,11 @@ export function ProfileCard({
   const ordered = [...common, ...others]
   const visible = ordered.slice(0, 4)
   const rest = ordered.length - visible.length
-  const where = [distanceKm != null ? `${distanceKm < 1 ? '<1' : Math.round(distanceKm)} km away` : null, city]
+  const where = [
+    distanceKm != null ? `${distanceKm < 1 ? '<1' : Math.round(distanceKm)} km away` : null,
+    city,
+    fame != null ? `Fame ${Math.round(fame)}` : null,
+  ]
     .filter(Boolean)
     .join(' · ')
   const strength = Math.max(0, Math.min(1, stampStrength))

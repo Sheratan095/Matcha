@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ApiError } from '@/api/types'
-import { Button, ButtonLink, EmptyState, FormError, IconRefresh, Loader, Row, Stack, Text } from '@/ui'
-import { actions, refresh, toApiError } from '@/wb'
+import { Button, ButtonLink, EmptyState, FormError, IconRefresh, Loader, Stack, Text } from '@/ui'
+import { refresh } from '@/wb'
 import { describe } from './errors'
 
 export function ProfileLoading({ caption = 'Fetching your profile' }: { caption?: string }) {
@@ -17,32 +17,14 @@ export function SignedOut() {
   )
 }
 
-/**
- * `myProfile` failed. Retry reloads it; a 500 is also what the backend answers for an account that
- * has no profile row (GitHub sign-ups), so that case offers to create the row.
- */
+/** `myProfile` failed: retry reloads it. */
 export function ProfileUnavailable({ error }: { error: ApiError | null }) {
-  const [busy, setBusy] = useState<'retry' | 'create' | null>(null)
-  const [createError, setCreateError] = useState<ApiError | null>(null)
-  const missingRow = error?.status === 500
+  const [busy, setBusy] = useState(false)
 
   const retry = async () => {
-    setBusy('retry')
-    setCreateError(null)
+    setBusy(true)
     await refresh('myProfile')
-    setBusy(null)
-  }
-
-  const create = async () => {
-    setBusy('create')
-    setCreateError(null)
-    try {
-      await actions.createMissingProfile()
-    } catch (failure) {
-      setCreateError(toApiError(failure))
-    } finally {
-      setBusy(null)
-    }
+    setBusy(false)
   }
 
   return (
@@ -51,26 +33,14 @@ export function ProfileUnavailable({ error }: { error: ApiError | null }) {
       stampTone="strawberry"
       title="Your profile didn’t print"
       action={
-        <Row gap={3} wrap justify="center">
-          <Button variant="paper" icon={<IconRefresh size={18} />} loading={busy === 'retry'} disabled={busy === 'create'} onClick={retry}>
-            Try again
-          </Button>
-          {missingRow ? (
-            <Button variant="matcha" loading={busy === 'create'} disabled={busy === 'retry'} onClick={create}>
-              Create my profile
-            </Button>
-          ) : null}
-        </Row>
+        <Button variant="paper" icon={<IconRefresh size={18} />} loading={busy} onClick={retry}>
+          Try again
+        </Button>
       }
     >
       <Stack gap={4}>
-        <Text>
-          {missingRow
-            ? 'The server could not read your profile. Accounts created through GitHub sometimes have none yet: creating it fixes that.'
-            : 'We could not load your profile.'}
-        </Text>
+        <Text>We could not load your profile.</Text>
         {error ? <FormError error={describe(error)} /> : null}
-        <FormError error={createError ? describe(createError) : null} title="Could not create the profile" />
       </Stack>
     </EmptyState>
   )

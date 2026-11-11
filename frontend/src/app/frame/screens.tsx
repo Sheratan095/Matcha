@@ -23,7 +23,7 @@ import {
   Text,
   Wordmark,
 } from '@/ui'
-import { actions, refresh, toApiError } from '@/wb'
+import { refresh } from '@/wb'
 import s from './frame.module.css'
 
 /** The root route: a new page starts at the top, Back restores where you were. */
@@ -109,19 +109,12 @@ export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
 /** `myProfile` failed: the pages behind RequireCompleteProfile need it. */
 export function ProfileTrouble({ error, fullPage }: { error: ApiError | null; fullPage?: boolean }) {
   const [busy, setBusy] = useState(false)
-  const [lastError, setLastError] = useState<ApiError | null>(null)
-  const shown = lastError ?? error
+  // refresh() never rejects: a new failure lands on the node's status, i.e. back in `error`.
   const retry = () => {
     setBusy(true)
-    setLastError(null)
-    // A 500 is what the backend answers for a GitHub user without a profile row: create it.
-    const attempt =
-      error?.status === 500
-        ? actions.createMissingProfile().then(() => undefined)
-        : refresh('myProfile')
-    attempt.catch((thrown: unknown) => setLastError(toApiError(thrown))).finally(() => setBusy(false))
+    void refresh('myProfile').finally(() => setBusy(false))
   }
-  const banner = shown ? bannerFor(shown) : null
+  const banner = error ? bannerFor(error) : null
   const content = (
     <div className={s.trouble}>
       <title>Profile unavailable · Matcha</title>

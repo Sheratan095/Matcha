@@ -76,7 +76,7 @@
 
 .slot[data-depth='0'] > .drag {
   cursor: grab;
-  /* the deck owns every gesture on the live card (up = super like); the page fits without scrolling */
+  /* the deck owns every gesture on the live card; the page fits without scrolling */
   touch-action: none;
 }
 
@@ -102,7 +102,6 @@
 .buttons {
   --like: 0;
   --nope: 0;
-  --super: 0;
   flex: none;
   display: flex;
   align-items: center;
@@ -125,10 +124,6 @@
 
 .btn[data-kind='pass'] {
   scale: calc(1 + var(--nope) * 0.16);
-}
-
-.btn[data-kind='super'] {
-  scale: calc(1 + var(--super) * 0.2);
 }
 
 /* ------------------------------------------------------------ keyboard legend (mouse + keyboard devices) */

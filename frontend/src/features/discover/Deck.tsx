@@ -1,9 +1,9 @@
 /**
- * The swipe deck: the live card on top, the next two beneath it with depth, the four action buttons.
+ * The swipe deck: the live card on top, the next two beneath it with depth, the three action buttons.
  *
  * - The drag is the RxJS pipeline of `gesture.ts`; this component turns its frames into one inline
  *   `transform` per animation frame on the live card's drag layer, plus three CSS custom properties
- *   (`--p` on the stack for the cards beneath, `--like` / `--nope` / `--super` on the buttons). The
+ *   (`--p` on the stack for the cards beneath, `--like` / `--nope` on the buttons). The
  *   verdict stamp is React state, quantised to 1/20 so the card re-renders only when it visibly changes.
  * - A committed swipe (drag, button, key, profile sheet) throws the card with the Web Animations API
  *   and calls `onSwipe` at once: the store drops the card from the deck immediately, and the card
@@ -15,8 +15,8 @@
 import { memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, Ref } from 'react'
 import { distinctUntilChanged, map, Subject } from 'rxjs'
-import type { Card, SwipeAction } from '@/api/types'
-import { displayName, mainPicture, serialOf } from '@/features/profile/format'
+import type { DeckAction, DeckCard } from '@/api/types'
+import { cardName, serialOf } from '@/features/profile/format'
 import { ActionButton, ProfileCard, type CardStamp } from '@/ui'
 import { cardDrag } from './gesture'
 import {
@@ -42,23 +42,23 @@ import s from './Deck.module.css'
 
 export interface SwipeRecord {
   userId: string
-  action: SwipeAction
+  action: DeckAction
 }
 
 export interface DeckHandle {
   /** Throws the live card exactly like a drag would (buttons, keys, the profile sheet). */
-  throwTop(action: SwipeAction): void
+  throwTop(action: DeckAction): void
 }
 
 export interface DeckProps {
   /** The deck still to show, top first (`visibleDeck`). */
-  cards: readonly Card[]
+  cards: readonly DeckCard[]
   /** What the tray shows when there is no card (loading, error, empty). */
   placeholder?: ReactNode
   /** A swipe was committed (the card is already flying away). */
-  onSwipe: (card: Card, action: SwipeAction) => void
+  onSwipe: (card: DeckCard, action: DeckAction) => void
   /** A tap on the live card, or its info button. */
-  onOpen: (card: Card) => void
+  onOpen: (card: DeckCard) => void
   onRewind: () => void
   rewinding?: boolean
   /** Arrow keys swipe, Backspace / Z rewind. Turn off while a sheet is open. */
@@ -69,8 +69,8 @@ export interface DeckProps {
 }
 
 interface Flight {
-  card: Card
-  action: SwipeAction
+  card: DeckCard
+  action: DeckAction
 }
 
 interface LiveStamp {
@@ -78,41 +78,35 @@ interface LiveStamp {
   strength: number
 }
 
-const STAMP: Record<SwipeAction, CardStamp> = { like: 'like', pass: 'nope', superlike: 'super' }
+const STAMP: Record<DeckAction, CardStamp> = { like: 'like', pass: 'nope' }
 
 type Depth = 0 | 1 | 2 | 'fly'
 
 interface SlotProps {
-  card: Card
+  card: DeckCard
   depth: Depth
   stamp: CardStamp | null
   strength: number
-  onOpen?: (card: Card) => void
+  onOpen?: (card: DeckCard) => void
 }
 
 /** One card of the stack. Memoised: during a drag only the live card re-renders (its stamp). */
 const Slot = memo(function Slot({ card, depth, stamp, strength, onOpen }: SlotProps) {
   const live = depth === 0
-  const tags = useMemo(() => card.interests.map((tag) => tag.name), [card.interests])
   return (
     <div className={s.slot} data-depth={depth} data-user={card.userId} aria-hidden={live ? undefined : true} inert={!live}>
       <div className={s.drag} data-drag="">
         <ProfileCard
-          name={displayName(card)}
+          name={cardName(card)}
           age={card.age}
-          photo={mainPicture(card)?.url}
+          photo={card.profilePictureUrl}
           seed={card.userId}
-          city={card.city}
-          distanceKm={card.distanceKm}
-          online={card.online}
-          tags={tags}
-          commonTags={card.commonTags}
-          likedYou={card.likedYou}
+          distanceKm={card.distanceKm ?? undefined}
+          fame={card.fameRating}
+          likedYou={card.likesYou === true}
           stamp={stamp}
           stampStrength={strength}
           serial={serialOf(card.userId)}
-          photoCount={card.pictures.length}
-          photoIndex={0}
           onInfo={live && onOpen ? () => onOpen(card) : undefined}
           fill
         />
@@ -124,7 +118,7 @@ const Slot = memo(function Slot({ card, depth, stamp, strength, onOpen }: SlotPr
 const DRAG_LAYER = ':scope > [data-drag]'
 
 interface Grip {
-  card: Card
+  card: DeckCard
   element: HTMLElement
   /** Where the card was when grabbed (mid-spring, it is not at rest). */
   base: Pose
@@ -155,7 +149,7 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
     latest.current = { top, onSwipe, onOpen, onRewind, history }
   })
 
-  const openCard = useCallback((card: Card) => latest.current.onOpen(card), [])
+  const openCard = useCallback((card: DeckCard) => latest.current.onOpen(card), [])
 
   const dragLayer = useCallback((userId: string): HTMLElement | null => {
     const slot = stackRef.current?.querySelector<HTMLElement>(`[data-user="${CSS.escape(userId)}"]`)
@@ -165,13 +159,12 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
   /** Per-frame feedback outside React: the cards beneath rise, the matching button swells. */
   const paintIntent = useCallback((intent: Intent | null) => {
     const p = intent?.strength ?? 0
-    const value = (action: SwipeAction) => (intent?.action === action ? p.toFixed(3) : '0')
+    const value = (action: DeckAction) => (intent?.action === action ? p.toFixed(3) : '0')
     stackRef.current?.style.setProperty('--p', p.toFixed(3))
     const buttons = buttonsRef.current
     if (buttons) {
       buttons.style.setProperty('--like', value('like'))
       buttons.style.setProperty('--nope', value('pass'))
-      buttons.style.setProperty('--super', value('superlike'))
     }
   }, [])
 
@@ -199,7 +192,7 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
 
   /** Throws a card off the screen and commits the swipe. */
   const launch = useCallback(
-    (card: Card, element: HTMLElement, from: Pose, action: SwipeAction, velocity: { vx: number; vy: number }, edges: Edges) => {
+    (card: DeckCard, element: HTMLElement, from: Pose, action: DeckAction, velocity: { vx: number; vy: number }, edges: Edges) => {
       const reduced = prefersReducedMotion()
       const motion = reduced ? fadeOutMotion({ ...from, r: 0 }) : flingMotion(from, action, velocity, edges)
       cancelAnimations(element)
@@ -225,7 +218,7 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
   }, [])
 
   const throwTop = useCallback(
-    (action: SwipeAction) => {
+    (action: DeckAction) => {
       if (dragging.current) return
       const card = latest.current.top
       const element = card ? dragLayer(card.userId) : null
@@ -332,7 +325,7 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
     element.animate(motion.keyframes, motion.options)
   }, [top, dragLayer])
 
-  // Keyboard: ← pass, → like, ↑ super-like, Backspace / Z rewind.
+  // Keyboard: ← pass, → like, Backspace / Z rewind.
   useEffect(() => {
     if (!keyboard) return
     const onKey = (event: KeyboardEvent) => {
@@ -345,16 +338,14 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
       ) {
         return
       }
-      const action: SwipeAction | 'rewind' | null =
+      const action: DeckAction | 'rewind' | null =
         event.key === 'ArrowLeft'
           ? 'pass'
           : event.key === 'ArrowRight'
             ? 'like'
-            : event.key === 'ArrowUp'
-              ? 'superlike'
-              : event.key === 'Backspace' || event.key === 'z' || event.key === 'Z'
-                ? 'rewind'
-                : null
+            : event.key === 'Backspace' || event.key === 'z' || event.key === 'Z'
+              ? 'rewind'
+              : null
       if (!action) return
       event.preventDefault()
       if (event.repeat) return
@@ -365,12 +356,12 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
     return () => window.removeEventListener('keydown', onKey)
   }, [keyboard, throwTop])
 
-  const items: { card: Card; depth: Depth }[] = [
+  const items: { card: DeckCard; depth: Depth }[] = [
     ...flights.map((flight) => ({ card: flight.card, depth: 'fly' as const })),
     ...shown.map((card, index) => ({ card, depth: index as 0 | 1 | 2 })),
   ]
   const flightAction = new Map(flights.map((flight) => [flight.card.userId, flight.action]))
-  const name = top ? displayName(top) : null
+  const name = top ? cardName(top) : null
 
   return (
     <div className={s.deck}>
@@ -405,16 +396,6 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
             aria-keyshortcuts="ArrowLeft"
           />
         </span>
-        <span className={s.btn} data-kind="super">
-          <ActionButton
-            kind="superlike"
-            size="md"
-            label={name ? `Super like ${name}` : 'Super like'}
-            onClick={() => throwTop('superlike')}
-            disabled={!top}
-            aria-keyshortcuts="ArrowUp"
-          />
-        </span>
         <span className={s.btn} data-kind="like">
           <ActionButton
             kind="like"
@@ -430,9 +411,6 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
       <p className={s.legend} aria-hidden="true">
         <span>
           <kbd>←</kbd> Nope
-        </span>
-        <span>
-          <kbd>↑</kbd> Super
         </span>
         <span>
           <kbd>→</kbd> Like

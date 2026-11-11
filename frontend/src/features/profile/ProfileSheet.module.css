@@ -142,3 +142,12 @@
   border-radius: 0;
   border-width: 0 0 var(--bw);
 }
+
+/* Like / unlike on a real profile opened outside the deck. */
+.relationActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}

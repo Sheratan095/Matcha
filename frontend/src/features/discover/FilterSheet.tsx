@@ -3,7 +3,7 @@ import { useId, useState } from 'react'
 import type { DiscoverSort } from '@/api/types'
 import { Button, Chip, DualSlider, Field, FormError, Segmented, Sheet, Skeleton, Slider, Stack, Text } from '@/ui'
 import { actions, DEFAULT_DISCOVER_FILTERS, toApiError, useNodeStatus, useNodeValue, type DiscoverFilters } from '@/wb'
-import { AGE_RANGE, DISTANCE_RANGE, sameFilters, SORT_LABEL } from './filterRules'
+import { AGE_RANGE, DISTANCE_RANGE, FAME_RANGE, sameFilters, SORT_LABEL } from './filterRules'
 import s from './FilterSheet.module.css'
 
 const SORT_OPTIONS = (Object.keys(SORT_LABEL) as DiscoverSort[]).map((value) => ({ value, label: SORT_LABEL[value] }))
@@ -23,7 +23,7 @@ export function FilterSheet({ open, onClose, filters, onApplied }: FilterSheetPr
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<ReturnType<typeof toApiError> | null>(null)
   const catalogue = useNodeValue('tagCatalogue')
-  const catalogueStatus = useNodeStatus('tagCatalogue')
+  const catalogueStatus = useNodeStatus('interestCatalogue')
   const me = useNodeValue('myProfile')
   const tagsLabelId = useId()
 
@@ -112,6 +112,14 @@ export function FilterSheet({ open, onClose, filters, onApplied }: FilterSheetPr
           step={DISTANCE_RANGE.step}
           unit="km"
         />
+        <Slider
+          label="Minimum fame rating"
+          value={Math.max(FAME_RANGE.min, Math.min(draft.fameMin, FAME_RANGE.max))}
+          onChange={(fameMin) => patch({ fameMin })}
+          min={FAME_RANGE.min}
+          max={FAME_RANGE.max}
+          step={FAME_RANGE.step}
+        />
         <Segmented<DiscoverSort>
           label="Order the deck by"
           options={SORT_OPTIONS}
@@ -122,7 +130,7 @@ export function FilterSheet({ open, onClose, filters, onApplied }: FilterSheetPr
           label="Interests"
           labelId={tagsLabelId}
           aside={draft.tags.length > 0 ? `${String(draft.tags.length).padStart(2, '0')} picked` : 'Any'}
-          hint="People who share at least one of these."
+          hint="People who have at least one of these."
         >
           {catalogue ? (
             <div role="group" aria-labelledby={tagsLabelId} className={s.tags}>

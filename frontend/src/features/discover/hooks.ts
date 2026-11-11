@@ -1,7 +1,6 @@
 /** Screen-level helpers for the deck: image preloading, a polite live region, and fitting the viewport. */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { Card } from '@/api/types'
-import { mainPicture } from '@/features/profile/format'
+import type { DeckCard } from '@/api/types'
 
 const preloaded = new Set<string>()
 const PRELOAD_MEMORY = 200
@@ -17,11 +16,8 @@ function preload(url: string): void {
   image.decode?.().catch(() => undefined)
 }
 
-/**
- * Warms the images of the next cards: the main picture of the next few, and every picture of the
- * live card (the profile sheet's carousel).
- */
-export function usePreloadDeck(cards: readonly Card[], ahead = 5): void {
+/** Warms the profile pictures of the next few cards, so the one underneath paints at once. */
+export function usePreloadDeck(cards: readonly DeckCard[], ahead = 5): void {
   const key = cards
     .slice(0, ahead)
     .map((card) => card.userId)
@@ -32,11 +28,7 @@ export function usePreloadDeck(cards: readonly Card[], ahead = 5): void {
   })
   useEffect(() => {
     const next = latest.current.slice(0, ahead)
-    for (const card of next) {
-      const url = mainPicture(card)?.url
-      if (url) preload(url)
-    }
-    for (const picture of next[0]?.pictures ?? []) preload(picture.url)
+    for (const card of next) if (card.profilePictureUrl) preload(card.profilePictureUrl)
   }, [key, ahead])
 }
 

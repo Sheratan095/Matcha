@@ -18,20 +18,20 @@ import {
   PICTURE_MIME_TYPES,
   type BlockPayload,
   type Card,
+  type DeckAction,
+  type DeckCard,
   type LoginPayload,
   type LocationPayload,
   type LoginResult,
   type Message,
   type MessageResult,
+  type OtherProfile,
   type OwnProfile,
   type PicturesResult,
-  type Profile,
   type ProfileUpdatePayload,
   type RegisterPayload,
   type RegisterResult,
   type ResetPasswordPayload,
-  type RewindResult,
-  type SwipeAction,
   type SwipeResult,
   type VerifyEmailResult,
 } from '@/api/types'
@@ -46,7 +46,7 @@ import {
   type DiscoverFilters,
 } from './filters'
 import type { AuthStatus } from './functions'
-import { firstTimeForStore, getNodeValue, node$, nodeStatus$, onStoreStop, setNode, writeNode } from './store'
+import { firstTimeForStore, getNodeValue, node$, onStoreStop, setNode, writeNode } from './store'
 
 export const MAX_MESSAGE_LENGTH = 1000
 
@@ -79,6 +79,17 @@ function unhideFromDeck(userId: string): void {
   if (swiped.includes(userId)) setNode('swipedIds', swiped.filter((id) => id !== userId))
 }
 
+/** This session's deck swipes, newest last: what `rewind` can take back. */
+interface SwipeRecord {
+  card: DeckCard
+  action: DeckAction
+  matched: boolean
+}
+const swipeHistory: SwipeRecord[] = []
+const MAX_SWIPE_HISTORY = 50
+/** Deck swipes whose request has not answered yet: their cards stay hidden, whatever reloads. */
+const swipesInFlight = new Set<string>()
+
 function closeChat(): void {
   setNode('activeMatchId', null)
 }
@@ -93,6 +104,7 @@ function resetSessionState(): void {
   closeChat()
   closeProfile()
   setNode('swipedIds', [])
+  swipeHistory.length = 0
   writeFilters({ ...DEFAULT_DISCOVER_FILTERS, tags: [] })
 }
 
@@ -109,13 +121,13 @@ function profileUpdateBody(changes: ProfileUpdatePayload): ProfileUpdatePayload 
 }
 
 /**
- * Installed by `bootSession`, once per store:
- * - selection state is reset when the signed-in user changes or signs out;
- * - GitHub-created users have no profile row, so `GET /profile` answers 500 (API_CONTRACT §9.3):
- *   the first such failure for a user creates the row and reloads the profile.
+ * Installed by `bootSession`, once per store: selection state is reset when the signed-in user
+ * changes or signs out. (The backend creates the profile row at sign-up, GitHub included.)
  */
 function watchSession(): void {
   if (!firstTimeForStore('session-watch')) return
+  // A new store is a new session: nothing swiped before it can be rewound.
+  swipeHistory.length = 0
   let user: string | null = null
   let first = true
   const users = node$('sessionUserId').subscribe((value) => {
@@ -127,17 +139,7 @@ function watchSession(): void {
     }
     if (previous !== null && user !== previous) resetSessionState()
   })
-  const healed = new Set<string>()
-  const profiles = nodeStatus$('myProfile').subscribe(({ status, error }) => {
-    const userId = getNodeValue('sessionUserId')
-    if (status !== 'error' || error?.status !== 500 || !userId || healed.has(userId)) return
-    healed.add(userId)
-    void createMissingProfile().catch(() => undefined)
-  })
-  onStoreStop(() => {
-    users.unsubscribe()
-    profiles.unsubscribe()
-  })
+  onStoreStop(() => users.unsubscribe())
 }
 
 // ---------------------------------------------------------------- session
@@ -249,24 +251,6 @@ async function setLocation(spot: LocationPayload): Promise<void> {
   void refresh('discoverDeck')
 }
 
-/**
- * Gives a GitHub-created user the profile row the backend forgot (API_CONTRACT §9.3) and reloads
- * `myProfile`. Also done automatically the first time `myProfile` fails with 500 for a user.
- */
-async function createMissingProfile(): Promise<Profile | null> {
-  const userId = getNodeValue('sessionUserId')
-  if (!userId) throw apiError(401, 'Sign in first.')
-  try {
-    await run('profileCreate', { userId })
-  } catch (error) {
-    // 409: the row exists, the profile failed for another reason; reload it anyway.
-    if (toApiError(error).status !== 409) throw error
-  }
-  const failed = await reload('myProfile')
-  if (failed) throw failed
-  return getNodeValue('myProfile') ?? null
-}
-
 /** Uploads one picture (JPEG / PNG / WEBP, 5 MB, 5 pictures at most); resolves once `myProfile` has it. */
 async function uploadPicture(file: Blob): Promise<PicturesResult> {
   if (!PICTURE_MIME_TYPES.includes(file.type)) invalid('Only JPEG, PNG and WEBP images are allowed')
@@ -294,7 +278,7 @@ async function setMainPicture(pictureId: string): Promise<PicturesResult> {
 }
 
 /** Opens a real user's profile (`GET /profile/{id}`; records a profile view). Resolves with it. */
-async function showApiProfile(userId: string): Promise<Profile> {
+async function showApiProfile(userId: string): Promise<OtherProfile> {
   pathId(userId, 'user id')
   const loaded = getNodeValue('apiProfile')
   if (getNodeValue('apiProfileId') === userId && loaded?.userId === userId) return loaded
@@ -307,7 +291,10 @@ async function showApiProfile(userId: string): Promise<Profile> {
 
 // ---------------------------------------------------------------- discover
 
-/** Changes some filters; one deck request for the lot. Resolves once `discoverDeck` reloaded. */
+/**
+ * Changes some filters. The sort applies at once (no request); the other filters reload the deck with
+ * one request for the lot. Resolves once `visibleDeck` reflects them.
+ */
 async function setFilters(changes: Partial<DiscoverFilters>): Promise<void> {
   const current = currentFilters()
   const next: DiscoverFilters = {
@@ -321,47 +308,120 @@ async function setFilters(changes: Partial<DiscoverFilters>): Promise<void> {
   if (outcome.error) throw outcome.error
 }
 
+/** What a like or a pass did. */
+export interface SwipeOutcome {
+  /** The like completed a match (always false for a pass). */
+  matched: boolean
+}
+
+async function sendSwipe(userId: string, action: DeckAction): Promise<SwipeOutcome> {
+  if (action === 'like') return { matched: (await run('like', userId))?.matched === true }
+  await run('pass', userId)
+  return { matched: false }
+}
+
 /**
- * Swipes a card. It leaves `visibleDeck` at once and comes back if the request fails. On a match,
- * resolves after `matches` reloaded. When the deck runs out, the next page is fetched.
+ * Likes or passes on a deck card (`POST /profile/{userId}/like | pass`). It leaves `visibleDeck` at
+ * once and comes back if the request fails (e.g. 403: no profile picture yet). When the last card is
+ * gone and no swipe is still on its way, the deck is fetched again for anyone new; the people passed
+ * on in this session stay hidden until `reloadDeck` (so an empty deck can say "that's everyone").
  */
-async function swipe(card: Card, action: SwipeAction): Promise<SwipeResult> {
-  const userId = card.userId
+async function swipe(card: DeckCard, action: DeckAction): Promise<SwipeOutcome> {
+  const userId = pathId(card.userId, 'user id')
   hideFromDeck(userId)
-  let result: SwipeResult
+  swipesInFlight.add(userId)
+  let outcome: SwipeOutcome
   try {
-    result = await run('swipe', { targetId: userId, action })
+    outcome = await sendSwipe(userId, action)
   } catch (error) {
     unhideFromDeck(userId)
     throw error
+  } finally {
+    swipesInFlight.delete(userId)
   }
-  const follow: Promise<void>[] = []
-  if (result.match) follow.push(refresh('matches'))
-  if (result.match || card.likedYou) follow.push(refresh('likesReceived'))
-  if (getNodeValue('visibleDeck')?.length === 0) follow.push(refresh('discoverDeck'))
-  await Promise.all(follow)
-  return result
+  swipeHistory.push({ card, action, matched: outcome.matched })
+  if (swipeHistory.length > MAX_SWIPE_HISTORY) swipeHistory.shift()
+  if (outcome.matched) void refresh('matchesMap')
+  if (swipesInFlight.size === 0 && getNodeValue('visibleDeck')?.length === 0) await reload('discoverDeck')
+  return outcome
 }
 
-/** Undoes the last swipe (not one that matched). The restored card is back on top of `visibleDeck`. */
-async function rewind(): Promise<RewindResult> {
-  const result = await run('rewind')
-  const restored = result.restored
-  if (restored) {
-    unhideFromDeck(restored.userId)
-    const follow: Promise<void>[] = []
-    // Still in the loaded deck (hidden by `swipedIds`): it reappears where it was, i.e. on top.
-    if (!getNodeValue('discoverDeck')?.some((card) => card.userId === restored.userId)) follow.push(refresh('discoverDeck'))
-    if (restored.likedYou) follow.push(refresh('likesReceived'))
-    await Promise.all(follow)
-  }
-  return result
+/** What `rewind` brought back. */
+export interface RewindOutcome {
+  /** The card whose swipe was undone; null when there was nothing to undo. */
+  restored: DeckCard | null
+  /** The last swipe made a match, which is not undone (unlike from the profile instead). */
+  matched: boolean
 }
 
-/** Fetches the deck again with the current filters. */
+/**
+ * Takes back the last deck swipe: a pass is only hidden in this session, a like is removed
+ * (`DELETE /profile/{userId}/like`). A like that made a match is not undone. The card goes back on
+ * top of the loaded deck (a sort other than 'best' puts it where it belongs).
+ */
+async function rewind(): Promise<RewindOutcome> {
+  const last = swipeHistory[swipeHistory.length - 1]
+  if (!last) return { restored: null, matched: false }
+  if (last.matched) return { restored: null, matched: true }
+  const userId = pathId(last.card.userId, 'user id')
+  if (last.action === 'like') await run('unlike', userId)
+  swipeHistory.pop()
+  const deck = getNodeValue('discoverDeck')
+  if (deck) writeNode('discoverDeck', [last.card, ...deck.filter((card) => card.userId !== userId)])
+  unhideFromDeck(userId)
+  if (!deck) await reload('discoverDeck')
+  return { restored: last.card, matched: false }
+}
+
+/**
+ * Fetches the deck again with the current filters. Everyone passed on in this session comes back (at
+ * the bottom: the server ranks them last), so nothing is left to rewind. Cards whose swipe is still
+ * on its way stay hidden (a like not yet stored would otherwise come back).
+ */
 async function reloadDeck(): Promise<void> {
+  setNode('swipedIds', (getNodeValue('swipedIds') ?? []).filter((id) => swipesInFlight.has(id)))
+  swipeHistory.length = 0
   const error = await reload('discoverDeck')
   if (error) throw error
+}
+
+/** Likes or passes on someone from their opened profile: the deck's requests, without its bookkeeping. */
+async function likeUser(userId: string, action: DeckAction): Promise<SwipeOutcome> {
+  const outcome = await sendSwipe(pathId(userId, 'user id'), action)
+  hideFromDeck(userId)
+  if (outcome.matched) void refresh('matchesMap')
+  return outcome
+}
+
+/** Takes a like back (`DELETE /profile/{userId}/like`): disconnects a match, the chat closes. */
+async function unlikeUser(userId: string): Promise<void> {
+  await run('unlike', pathId(userId, 'user id'))
+  void refresh('matchesMap')
+  for (let i = swipeHistory.length - 1; i >= 0; i--) {
+    if (swipeHistory[i].card.userId === userId) swipeHistory.splice(i, 1)
+  }
+}
+
+/** Blocks a real user (`POST /profile/{userId}/block`): they leave the deck and every list. */
+async function blockUser(userId: string): Promise<void> {
+  await run('blockUser', pathId(userId, 'user id'))
+  hideFromDeck(userId)
+  void refresh('matchesMap')
+}
+
+/** Reports a real user as a fake account (`POST /profile/{userId}/report`). Idempotent. */
+async function reportUser(userId: string): Promise<void> {
+  await run('reportUser', pathId(userId, 'user id'))
+}
+
+/**
+ * Answers a like received on the activity page (mocked social service, `POST /swipes`). Resolves
+ * once `likesReceived` (and, on a match, `matches`) reloaded.
+ */
+async function answerLike(card: Card, action: DeckAction): Promise<SwipeResult> {
+  const result = await run('answerLike', { targetId: card.userId, action })
+  await Promise.all([refresh('likesReceived'), result.match ? refresh('matches') : Promise.resolve()])
+  return result
 }
 
 /** Opens a mock person's card (`GET /profiles/{id}`). Resolves with it. */
@@ -425,13 +485,12 @@ async function block(userId: string, reason?: string): Promise<void> {
   await Promise.all([refresh('matches'), refresh('likesReceived')])
 }
 
-/** Restores the viewer's demo data (`POST /__mock/social/reset`) and reloads every social node. */
+/** Restores the viewer's mocked matches, chat and likes (`POST /__mock/social/reset`) and reloads them. */
 async function resetDemoData(): Promise<void> {
   await run('demoReset')
   closeChat()
   closeProfile()
-  setNode('swipedIds', [])
-  await Promise.all([refresh('matches'), refresh('discoverDeck'), refresh('likesReceived')])
+  await Promise.all([refresh('matches'), refresh('likesReceived')])
 }
 
 export const actions = {
@@ -446,7 +505,6 @@ export const actions = {
   startGithubLogin,
   updateProfile,
   setLocation,
-  createMissingProfile,
   uploadPicture,
   deletePicture,
   setMainPicture,
@@ -455,6 +513,11 @@ export const actions = {
   swipe,
   rewind,
   reloadDeck,
+  likeUser,
+  unlikeUser,
+  blockUser,
+  reportUser,
+  answerLike,
   showSocialProfile,
   closeProfile,
   openChat,

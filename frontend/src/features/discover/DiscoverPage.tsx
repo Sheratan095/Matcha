@@ -1,15 +1,16 @@
 /**
  * /discover: the swipe deck, its filters, the match moment and the profile sheet.
  *
- * Data: `visibleDeck` + `useNodeStatus('discoverDeck')` (loading vs failure), `useFilters()`,
- * `myProfile` (your side of the match moment). Flows: `actions.swipe / rewind / setFilters /
- * reloadDeck / resetDemoData`. Ephemeral view state (drag, flights, open sheets) stays here.
+ * Data: `visibleDeck` (GET /profile/discover, sorted in the browser) + `useNodeStatus('discoverDeck')`
+ * (loading vs failure), `useFilters()`, `myProfile` (your side of the match moment). Flows:
+ * `actions.swipe / rewind / setFilters / reloadDeck`. Opening a card loads the full profile
+ * (GET /profile/:userId, which records a visit). Ephemeral view state (drag, flights, sheets) stays here.
  */
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Card, Match, SwipeAction } from '@/api/types'
+import type { DeckAction, DeckCard } from '@/api/types'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
-import { displayName, mainPicture, nameAndAge } from '@/features/profile/format'
+import { cardName, deckPreviewProfile, displayName, mainPicture } from '@/features/profile/format'
 import { ActionButton, CountBadge, IconSliders, MatchMoment, toast } from '@/ui'
 import { actions, toApiError, useFilters, useNodeStatus, useNodeValue, type DiscoverFilters } from '@/wb'
 import { Deck, type DeckHandle, type SwipeRecord } from './Deck'
@@ -20,19 +21,22 @@ import { useAnnouncer, usePreloadDeck, useViewportFit } from './hooks'
 import { prefersReducedMotion } from './motion'
 import s from './DiscoverPage.module.css'
 
-const NO_CARDS: readonly Card[] = []
+const NO_CARDS: readonly DeckCard[] = []
 
-const DONE: Record<SwipeAction, string> = { like: 'Liked', pass: 'Passed on', superlike: 'Super liked' }
+const DONE: Record<DeckAction, string> = { like: 'Liked', pass: 'Passed on' }
 
-type Busy = 'retry' | 'widen' | 'reload' | 'reset' | null
+type Busy = 'retry' | 'widen' | 'reload' | null
+
+/** "Alice, 27" */
+const nameAndAge = (card: DeckCard) => `${cardName(card)}, ${card.age}`
 
 function FilterTicket({ filters, onOpen }: { filters: DiscoverFilters; onOpen: () => void }) {
   const changed = changedFilters(filters)
   const tags = filters.tags
   const into = tags.length === 0 ? 'Anyone' : tags.length === 1 ? `#${tags[0]}` : `#${tags[0]} +${tags.length - 1}`
-  const summary = `ages ${filters.ageMin} to ${filters.ageMax}, within ${filters.distance} km, sorted by ${SORT_LABEL[filters.sort]}, ${
-    tags.length ? `into ${tags.join(', ')}` : 'any interests'
-  }`
+  const summary = `ages ${filters.ageMin} to ${filters.ageMax}, within ${filters.distance} km, ${
+    filters.fameMin > 0 ? `fame ${filters.fameMin} or more, ` : ''
+  }sorted by ${SORT_LABEL[filters.sort]}, ${tags.length ? `into ${tags.join(', ')}` : 'any interests'}`
   return (
     <button type="button" className={s.ticket} onClick={onOpen} aria-haspopup="dialog" aria-label={`Filters: ${summary}. Change filters`}>
       <span className={s.seg}>
@@ -74,8 +78,9 @@ export default function DiscoverPage() {
 
   const [sheet, setSheet] = useState<ProfileTarget | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [matches, setMatches] = useState<Match[]>([])
-  const [shownMatch, setShownMatch] = useState<Match | null>(null)
+  /** People this session's likes connected with, waiting for their match moment. */
+  const [matches, setMatches] = useState<DeckCard[]>([])
+  const [shownMatch, setShownMatch] = useState<DeckCard | null>(null)
   const [rewinding, setRewinding] = useState(false)
   const [pendingSwipes, setPendingSwipes] = useState(0)
   const [busy, setBusy] = useState<Busy>(null)
@@ -94,8 +99,8 @@ export default function DiscoverPage() {
   // ---------------------------------------------------------------- flows
 
   const onSwipe = useCallback(
-    (card: Card, action: SwipeAction) => {
-      const name = displayName(card)
+    (card: DeckCard, action: DeckAction) => {
+      const name = cardName(card)
       const next = latestCards.current.find((other) => other.userId !== card.userId)
       announce(`${DONE[action]} ${name}.${next ? ` Next: ${nameAndAge(next)}.` : ''}`)
       setPendingSwipes((n) => n + 1)
@@ -103,9 +108,8 @@ export default function DiscoverPage() {
         .swipe(card, action)
         .then(
           (result) => {
-            if (result.match) {
-              const made = result.match
-              setMatches((queue) => [...queue, made])
+            if (result.matched) {
+              setMatches((queue) => [...queue, card])
               announce(`It's a match! You and ${name} liked each other.`)
             }
           },
@@ -129,8 +133,16 @@ export default function DiscoverPage() {
       const result = await actions.rewind()
       if (result.restored) {
         announce(`Rewound. ${nameAndAge(result.restored)} is back on top.`)
+      } else if (result.matched) {
+        toast.show({
+          id: 'rewind',
+          tone: 'blue',
+          title: 'That one is a match',
+          message: 'A match is not undone here: open their profile to disconnect.',
+        })
+        announce('The last swipe made a match, which cannot be undone here.')
       } else {
-        toast.show({ id: 'rewind', tone: 'blue', title: 'Nothing to undo', message: 'No swipe to take back (a match cannot be undone).' })
+        toast.show({ id: 'rewind', tone: 'blue', title: 'Nothing to undo', message: 'No swipe to take back in this session.' })
         announce('Nothing to undo.')
       }
     } catch (error) {
@@ -143,7 +155,10 @@ export default function DiscoverPage() {
     }
   }, [announce])
 
-  const onOpen = useCallback((card: Card) => setSheet({ userId: card.userId, source: 'social', preview: card }), [])
+  const onOpen = useCallback(
+    (card: DeckCard) => setSheet({ userId: card.userId, source: 'api', preview: deckPreviewProfile(card) }),
+    [],
+  )
 
   const run = useCallback(
     async (kind: Exclude<Busy, null>, task: () => Promise<void>, done?: string) => {
@@ -163,7 +178,7 @@ export default function DiscoverPage() {
   )
 
   /** From the profile sheet: close it, then throw the card the same way the buttons do. */
-  const swipeFromSheet = (action: SwipeAction) => {
+  const swipeFromSheet = (action: DeckAction) => {
     const target = sheet
     setSheet(null)
     if (!target) return
@@ -206,15 +221,14 @@ export default function DiscoverPage() {
         busy={busy === 'retry' ? null : busy}
         onWiden={canWiden(filters) ? () => void run('widen', () => actions.setFilters(WIDEST), 'Filters widened.') : null}
         onEditFilters={() => setFiltersOpen(true)}
-        onReload={() => void run('reload', () => actions.reloadDeck(), 'Deck reloaded.')}
-        onReset={() =>
+        onReload={() =>
           void run(
-            'reset',
+            'reload',
             async () => {
-              await actions.resetDemoData()
+              await actions.reloadDeck()
               history.length = 0
             },
-            'Demo data reset: everyone is back.',
+            'Deck reloaded.',
           )
         }
         onRewind={() => void onRewind()}
@@ -266,9 +280,8 @@ export default function DiscoverPage() {
         actions={
           sheetCard ? (
             <div className={s.sheetActions}>
-              <ActionButton kind="pass" size="lg" label={`Pass on ${displayName(sheetCard)}`} onClick={() => swipeFromSheet('pass')} />
-              <ActionButton kind="superlike" size="md" label={`Super like ${displayName(sheetCard)}`} onClick={() => swipeFromSheet('superlike')} />
-              <ActionButton kind="like" size="lg" label={`Like ${displayName(sheetCard)}`} onClick={() => swipeFromSheet('like')} />
+              <ActionButton kind="pass" size="lg" label={`Pass on ${cardName(sheetCard)}`} onClick={() => swipeFromSheet('pass')} />
+              <ActionButton kind="like" size="lg" label={`Like ${cardName(sheetCard)}`} onClick={() => swipeFromSheet('like')} />
             </div>
           ) : undefined
         }
@@ -280,14 +293,13 @@ export default function DiscoverPage() {
           onClose={() => setMatches((queue) => queue.slice(1))}
           me={{ name: me ? displayName(me) : 'You', photo: mainPicture(me)?.url, seed: me?.userId ?? 'me' }}
           them={{
-            name: displayName(shownMatch.profile),
-            photo: mainPicture(shownMatch.profile)?.url,
-            seed: shownMatch.profile.userId,
+            name: cardName(shownMatch),
+            photo: shownMatch.profilePictureUrl,
+            seed: shownMatch.userId,
           }}
           onMessage={() => {
-            const id = shownMatch.id
             setMatches([])
-            navigate(`/chat/${id}`)
+            navigate('/matches')
           }}
         />
       ) : null}

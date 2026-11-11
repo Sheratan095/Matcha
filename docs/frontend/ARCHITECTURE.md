@@ -25,7 +25,7 @@ RxJS-based engine (`src/wb`). Companion document in this folder:
 | Service | Served by |
 |---|---|
 | `api` (auth, profile, notification) | the gateway at `VITE_API_URL` (`http://localhost:3000`) |
-| `social` (discover, swipes, matches, chat) | the in-browser mock (§5): the backend has no such service yet. `VITE_SOCIAL_URL` overrides it |
+| `social` (matches, chat, likes received, mocked block) | the in-browser mock (§5), until those screens are wired to the backend. `VITE_SOCIAL_URL` overrides it. Discover, like / pass and the real profile view already go to `api` |
 
 `npm run dev` must run on **port 4000** (CORS, OAuth redirect and email links are hardcoded to
 `http://localhost:4000`). `src/config.ts` exposes `API_URL`, `SOCIAL_URL`, `MOCK_PREFIX`, and the third-party
@@ -202,26 +202,27 @@ dependency; F inputs are always optional (4.2).
 | `profileComplete` | F | `myProfile` (opt) | `boolean` (gender, preference, biography, ≥ 1 interest, a location); `null` while no profile |
 | `profileUpdate` | Payload + PATCH api `/profile` | payload | `OwnProfile` |
 | `locationUpdate` | Payload + PUT api `/profile/location` | payload | `LocationResult` |
-| `profileCreate` | Payload + POST api `/profile` | payload | `ProfileCreateResult`; workaround for OAuth users without a profile row |
 | `pictureUpload` | Payload (`FormData`, field `file`) + POST api `/profile/pictures` | payload | `PicturesResult` |
 | `pictureDelete` | Payload (picture id) + DELETE api `/profile/pictures/{pictureId}` | payload (PATH_VARIABLE) | `PicturesResult` |
 | `pictureMain` | Payload (picture id) + PATCH api `/profile/pictures/{pictureId}/profile` | payload (PATH_VARIABLE) | `PicturesResult` |
 | `myViewers` | GET api `/profile/viewers` | `sessionUserId`, `activityRefresh` (opt) | `ViewersResult` |
 | `apiProfileId` → `apiProfile` | P → GET api `/profile/{userId}` | `sessionUserId`, id (PATH_VARIABLE) | `Profile` (real user; records a profile view) |
+| `matchesMap` | GET api `/profile/matches/map` | `sessionUserId`, `matchesMapRefresh` (opt) | `MatchesMapResult`: connections with a ~1 km-snapped position (the `/map` page) |
 | `onlineCount` | GET api `/notification/online` | `sessionUserId`, `presenceRefresh` (opt) | `number` |
 
 **Discover**
 
 | Node | Kind | Depends on | Value |
 |---|---|---|---|
-| `filterAgeMin` / `filterAgeMax` / `filterDistance` / `filterSort` | P with `defaultValue` (18 / 45 / 50 / `'best'`) | — | number / `DiscoverSort` |
+| `filterAgeMin` / `filterAgeMax` / `filterDistance` / `filterFameMin` | P with `defaultValue` (18 / 45 / 50 / 0) | — | number |
+| `filterSort` | P, default `'best'` | — | `DiscoverSort` (`best` / `distance` / `age` / `fame` / `tags`); NOT a request parameter |
 | `filterTags` | P | — | comma-separated tag names, or `null` |
-| `discoverDeck` | GET social `/discover` | `sessionUserId`, the filters (REQUEST_PARAMETER `ageMin`, `ageMax`, `distance`, `sort`, `tags` (opt)), `discoverRefresh` (opt) | `Card[]` |
+| `discoverDeck` | GET api `/profile/discover` | `sessionUserId`, the filters (REQUEST_PARAMETER `minAge`, `maxAge`, `maxDistanceKm`, `minFame`, `tags` (opt)), `discoverRefresh` (opt) | `DeckCard[]`: the whole filtered list (200 max), best first |
 | `swipedIds` | P, default `[]` | — | ids swiped (or blocked) in this session |
-| `visibleDeck` | F | `discoverDeck` (opt), `swipedIds` (opt) | `Card[]` still to show; `null` while no deck |
-| `swipe` | Payload + POST social `/swipes` | payload | `SwipeResult` |
-| `rewind` | Payload (nonce) + POST social `/swipes/rewind` | payload | `RewindResult` |
-| `tagCatalogue` | GET social `/tags` | `sessionUserId` | `string[]` |
+| `visibleDeck` | F | `discoverDeck` (opt), `swipedIds` (opt), `filterSort` (opt) | `DeckCard[]` still to show, sorted in the browser (stable: ties keep the server's ranking); `null` while no deck |
+| `like` / `pass` / `unlike` | Payload (user id) + POST / POST / DELETE api `/profile/{userId}/like` \| `/pass` | payload (PATH_VARIABLE) | `LikeResult` (`{ liked, matched }`) / empty |
+| `blockUser` / `reportUser` | Payload (user id) + POST api `/profile/{userId}/block` \| `/report` | payload (PATH_VARIABLE) | empty |
+| `interestCatalogue` → `tagCatalogue` | GET api `/profile/interests` → F | `sessionUserId` | `string[]` (names, alphabetical) |
 
 **Matches, chat, activity**
 
@@ -269,17 +270,18 @@ is `NodeValues[N] | null | undefined`.
   | `startGithubLogin(): void` | navigates to `${API_URL}/auth/github` |
   | `updateProfile(changes): Promise<OwnProfile>` | `myProfile` / `profileComplete` reflect it (interests normalised and de-duplicated) |
   | `setLocation({ latitude, longitude }): Promise<void>` | `myProfile` / `profileComplete` have it (out-of-range coordinates rejected `INVALID` first); the deck reloads |
-  | `createMissingProfile(): Promise<Profile \| null>` | the row exists and `myProfile` reloaded (also automatic on the first 500 of `myProfile` per user) |
   | `uploadPicture(file)`, `deletePicture(id)`, `setMainPicture(id)`: `Promise<PicturesResult>` | `myProfile` has the new pictures (upload validated first: type, 5 MB, 5 pictures) |
   | `showApiProfile(userId): Promise<Profile>`, `showSocialProfile(userId): Promise<Card>`, `closeProfile(): void` | the profile is in `apiProfile` / `socialProfile` |
-  | `setFilters(partial): Promise<void>` | the deck reloaded (one request for the lot) |
-  | `swipe(card, action): Promise<SwipeResult>` | the card left `visibleDeck` at once (back on failure); on a match `matches` reloaded; next deck fetched when empty |
-  | `rewind(): Promise<RewindResult>` | the restored card is back on top of `visibleDeck` |
-  | `reloadDeck(): Promise<void>` | the deck reloaded |
+  | `setFilters(partial): Promise<void>` | the deck reloaded (one request for the lot); a sort-only change sends nothing |
+  | `swipe(card, 'like' \| 'pass'): Promise<SwipeOutcome>` | the card left `visibleDeck` at once (back on failure, e.g. 403 without a picture); `matched` says the like made a match; the deck is fetched again when empty |
+  | `rewind(): Promise<RewindOutcome>` | the last swipe of this session is undone (a like with `DELETE .../like`) and its card is back on top; a like that matched is not undone |
+  | `reloadDeck(): Promise<void>` | the deck reloaded; this session's passes come back |
+  | `likeUser(userId, action)`, `unlikeUser(userId)`, `blockUser(userId)`, `reportUser(userId)` | the request succeeded (from an opened real profile) |
+  | `answerLike(card, action): Promise<SwipeResult>` | the mocked answer to a like received (activity page) |
   | `openChat(matchId): Promise<Message[]>`, `closeChat(): void` | messages loaded, then `matches` (unread counts) |
   | `sendMessage(matchId, text): Promise<Message>` | the open chat and `matches` show it (1–1000 chars) |
   | `unmatch(matchId)`, `block(userId, reason?)`: `Promise<void>` | `matches` (and likes) reloaded, the open chat closed if affected |
-  | `resetDemoData(): Promise<void>` | `POST /__mock/social/reset` done and every social node reloaded |
+  | `resetDemoData(): Promise<void>` | `POST /__mock/social/reset` done and the mocked social nodes reloaded |
 
 - `realtime$` — `Observable<RealtimeEvent>` for toasts and typing indicators. `startRealtime` also
   reacts to events (message → open chat then matches; match → matches and likes; like → likes) and

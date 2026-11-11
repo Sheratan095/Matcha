@@ -2,7 +2,7 @@
  * Test-only: a small stateful backend behind the fake adapter, enough for the flows the actions run.
  * Independent of src/mock on purpose: these tests check the state layer, not the mock backend.
  */
-import type { Card, Match, Message, OwnProfile, Profile } from '@/api/types'
+import type { Card, DeckCard, Match, Message, OwnProfile, Profile } from '@/api/types'
 import { API_URL, SOCIAL_URL } from '@/config'
 import { FakeServer, nestError, reply } from './fakeServer'
 
@@ -39,12 +39,32 @@ export function card(userId: string, patch: Partial<Card> = {}): Card {
   }
 }
 
+export function deckCard(userId: string, patch: Partial<DeckCard> = {}): DeckCard {
+  return {
+    userId,
+    username: userId,
+    firstName: userId,
+    age: 30,
+    distanceKm: 3,
+    fameRating: 50,
+    commonTagCount: 0,
+    likesYou: false,
+    profilePictureUrl: `http://img.test/${userId}.webp`,
+    ...patch,
+  }
+}
+
 export interface FakeBackend {
   server: FakeServer
   state: {
     session: string | null
     profile: OwnProfile
-    deck: Card[]
+    /** GET /profile/discover, best first. */
+    deck: DeckCard[]
+    liked: Set<string>
+    passed: Set<string>
+    /** People of the mocked social service (likes received, matches, chat). */
+    people: Card[]
     swiped: Set<string>
     matches: Match[]
     messages: Map<string, Message[]>
@@ -57,7 +77,10 @@ export function createFakeBackend(): FakeBackend {
   const state: FakeBackend['state'] = {
     session: null,
     profile: { ...profile(ME), latitude: null, longitude: null },
-    deck: [card('ann', { likedYou: true }), card('bea'), card('cid')],
+    deck: [deckCard('ann', { likesYou: true }), deckCard('bea'), deckCard('cid')],
+    liked: new Set(),
+    passed: new Set(),
+    people: [card('ann', { likedYou: true }), card('bea'), card('cid')],
     swiped: new Set(),
     matches: [],
     messages: new Map(),
@@ -108,20 +131,44 @@ export function createFakeBackend(): FakeBackend {
     })
     .on('GET', `${API_URL}/profile/viewers`, () => (state.session ? { viewers: [] } : unauthorized()))
     .on('GET', `${API_URL}/notification/online`, () => 1)
-    .on('GET', `${SOCIAL_URL}/discover`, () =>
-      state.session ? state.deck.filter((person) => !state.swiped.has(person.userId)) : unauthorized(),
+    // Liked people leave the list; passed ones sink to the bottom.
+    .on('GET', `${API_URL}/profile/discover`, () => {
+      if (!state.session) return unauthorized()
+      const left = state.deck.filter((person) => !state.liked.has(person.userId))
+      return [...left.filter((person) => !state.passed.has(person.userId)), ...left.filter((person) => state.passed.has(person.userId))]
+    })
+    .on('POST', `${API_URL}/profile/:id/like`, ({ route }) => {
+      if (!state.session) return unauthorized()
+      const person = state.deck.find((entry) => entry.userId === route.id)
+      if (!person) return nestError(404, 'User not found', 'Not Found')
+      const created = !state.liked.has(route.id)
+      state.liked.add(route.id)
+      return { liked: true, matched: created && person.likesYou === true }
+    })
+    .on('DELETE', `${API_URL}/profile/:id/like`, ({ route }) => {
+      if (!state.session) return unauthorized()
+      state.liked.delete(route.id)
+      return reply(200, '')
+    })
+    .on('POST', `${API_URL}/profile/:id/pass`, ({ route }) => {
+      if (!state.session) return unauthorized()
+      state.passed.add(route.id)
+      return reply(200, '')
+    })
+    .on('GET', `${API_URL}/profile/matches/map`, () => (state.session ? { matches: [] } : unauthorized()))
+    .on('GET', `${API_URL}/profile/interests`, () =>
+      state.session ? { interests: [{ id: 't1', name: 'music' }, { id: 't2', name: 'art' }] } : unauthorized(),
     )
     .on('POST', `${SOCIAL_URL}/swipes`, ({ body }) => {
       const { targetId, action } = body as { targetId: string; action: string }
       state.swiped.add(targetId)
-      const person = state.deck.find((entry) => entry.userId === targetId)
+      const person = state.people.find((entry) => entry.userId === targetId)
       if (!person || action === 'pass' || !person.likedYou) return { match: null }
       const match: Match = { id: `m-${targetId}`, profile: person, matchedAt: new Date().toISOString(), lastMessage: null, unread: 0 }
       state.matches = [match, ...state.matches]
       state.likes = state.likes.filter((entry) => entry.userId !== targetId)
       return { match }
     })
-    .on('POST', `${SOCIAL_URL}/swipes/rewind`, () => ({ restored: null }))
     .on('GET', `${SOCIAL_URL}/matches`, () => (state.session ? state.matches : unauthorized()))
     .on('GET', `${SOCIAL_URL}/matches/:id/messages`, ({ route }) => {
       const list = state.messages.get(route.id) ?? []
@@ -136,7 +183,6 @@ export function createFakeBackend(): FakeBackend {
       return message
     })
     .on('GET', `${SOCIAL_URL}/likes`, () => (state.session ? state.likes : unauthorized()))
-    .on('GET', `${SOCIAL_URL}/tags`, () => ['art', 'music'])
     .on('POST', `${SOCIAL_URL}/reset`, () => {
       state.swiped.clear()
       state.matches = []

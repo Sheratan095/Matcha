@@ -1,5 +1,11 @@
-/** Discovery: filters, the deck, swipes (mocked service, docs/ARCHITECTURE.md §5.1). */
-import type { Card, DiscoverSort, RewindResult, SwipePayload, SwipeResult } from '@/api/types'
+/**
+ * Discovery: filters, the deck, likes and passes — the real profile service (`GET /profile/discover`,
+ * `POST /profile/{userId}/like | pass`, `DELETE /profile/{userId}/like`).
+ *
+ * The backend FILTERS (age, distance, fame, tags) and ranks; the ORDER the user picks is applied in
+ * the browser by `visibleDeck`, on the whole list, so changing it sends no request.
+ */
+import type { DeckCard, DiscoverSort, InterestTag, LikeResult } from '@/api/types'
 import {
   commands,
   derived,
@@ -18,29 +24,40 @@ export const DEFAULT_FILTERS = {
   ageMin: 18,
   ageMax: 45,
   distance: 50,
+  fameMin: 0,
   sort: 'best' as DiscoverSort,
 } as const
 
 export interface DiscoverCommands {
-  swipe: Command<SwipePayload, SwipeResult>
-  rewind: Command<void, RewindResult>
+  /** Payload: the liked user's id. */
+  like: Command<string, LikeResult>
+  /** Payload: the passed user's id. They sink to the bottom of the deck rather than disappear. */
+  pass: Command<string, void>
+  /** Payload: the user's id. Takes a like back (undoing a deck like; disconnects a match). */
+  unlike: Command<string, void>
 }
 
 export interface DiscoverNodes extends CommandNodes<DiscoverCommands> {
   filterAgeMin: number
   filterAgeMax: number
-  /** Kilometres. */
+  /** Kilometres (the backend caps it at 100). */
   filterDistance: number
+  /** Minimum fame rating, 0-100. */
+  filterFameMin: number
+  /** Not a request parameter: `visibleDeck` sorts in the browser. */
   filterSort: DiscoverSort
   /** Comma-separated tag names; null for "any". */
   filterTags: string
   discoverRefresh: number
-  /** At most 20 cards, already excluding people swiped, matched or blocked. */
-  discoverDeck: Card[]
+  /** The whole filtered list (200 at most), best first; excludes people liked or blocked. */
+  discoverDeck: DeckCard[]
   /** User ids swiped (or blocked) in this session: they leave `visibleDeck` at once. */
   swipedIds: string[]
-  /** `discoverDeck` minus `swipedIds`; null while there is no deck. */
-  visibleDeck: Card[]
+  /** `discoverDeck` minus `swipedIds`, in `filterSort` order; null while there is no deck. */
+  visibleDeck: DeckCard[]
+  /** `GET /profile/interests`: every tag in use. */
+  interestCatalogue: { interests: InterestTag[] }
+  /** Tag names of `interestCatalogue`, sorted; null while not loaded. */
   tagCatalogue: string[]
 }
 
@@ -48,25 +65,32 @@ export const discoverNodes = {
   filterAgeMin: selection(DEFAULT_FILTERS.ageMin),
   filterAgeMax: selection(DEFAULT_FILTERS.ageMax),
   filterDistance: selection(DEFAULT_FILTERS.distance),
+  filterFameMin: selection(DEFAULT_FILTERS.fameMin),
   filterSort: selection(DEFAULT_FILTERS.sort),
   filterTags: selection(),
   discoverRefresh: selection(),
   // Each filter is a dependency, so each filter write is one request: `actions.setFilters` changes
   // several at once behind a closed gate (it holds `filterAgeMin` at null meanwhile).
-  discoverDeck: get('social', '/discover', [
+  discoverDeck: get('api', '/profile/discover', [
     session(),
-    queryParameter('filterAgeMin', 'ageMin'),
-    queryParameter('filterAgeMax', 'ageMax'),
-    queryParameter('filterDistance', 'distance'),
-    queryParameter('filterSort', 'sort'),
+    queryParameter('filterAgeMin', 'minAge'),
+    queryParameter('filterAgeMax', 'maxAge'),
+    queryParameter('filterDistance', 'maxDistanceKm'),
+    queryParameter('filterFameMin', 'minFame'),
     queryParameter('filterTags', 'tags', { optional: true }),
     trigger('discoverRefresh'),
   ]),
   swipedIds: selection([]),
-  visibleDeck: derived('visibleDeck', [input('discoverDeck', 'deck'), input('swipedIds', 'swiped')]),
-  tagCatalogue: get('social', '/tags', [session()]),
+  visibleDeck: derived('visibleDeck', [
+    input('discoverDeck', 'deck'),
+    input('swipedIds', 'swiped'),
+    input('filterSort', 'sort'),
+  ]),
+  interestCatalogue: get('api', '/profile/interests', [session()]),
+  tagCatalogue: derived('tagCatalogue', [input('interestCatalogue', 'catalogue')]),
   ...commands<DiscoverCommands>({
-    swipe: { method: 'POST', serviceName: 'social', addr: '/swipes', payload: 'body' },
-    rewind: { method: 'POST', serviceName: 'social', addr: '/swipes/rewind', payload: 'none' },
+    like: { method: 'POST', serviceName: 'api', addr: '/profile/{userId}/like', payload: { pathVariable: 'userId' } },
+    pass: { method: 'POST', serviceName: 'api', addr: '/profile/{userId}/pass', payload: { pathVariable: 'userId' } },
+    unlike: { method: 'DELETE', serviceName: 'api', addr: '/profile/{userId}/like', payload: { pathVariable: 'userId' } },
   }),
 } satisfies SpecsFor<DiscoverNodes>

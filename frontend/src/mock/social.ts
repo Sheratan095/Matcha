@@ -601,6 +601,7 @@ function ranked(cards: Card[], sort: DiscoverSort, viewer: Viewer): Card[] {
     distance: (a, b) => a.distanceKm - b.distanceKm || b.fame - a.fame,
     fame: (a, b) => b.fame - a.fame || a.distanceKm - b.distanceKm,
     age: (a, b) => a.age - b.age || a.distanceKm - b.distanceKm,
+    tags: (a, b) => b.commonTags.length - a.commonTags.length || a.distanceKm - b.distanceKm,
   }
   return cards.sort((a, b) => order[sort](a, b) || a.userId.localeCompare(b.userId))
 }

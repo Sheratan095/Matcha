@@ -7,10 +7,10 @@
  * - `realtime$`.
  * - Boot (main.tsx only): `installStoreHttp`, `startStore`, `getViewerId`, `startRealtime`.
  */
-export { actions, MAX_MESSAGE_LENGTH, type Actions } from './actions'
+export { actions, MAX_MESSAGE_LENGTH, type Actions, type RewindOutcome, type SwipeOutcome } from './actions'
 export { getViewerId, installStoreHttp } from './boot'
 export { refresh, run, type RunArgs } from './commands'
-export { DEFAULT_DISCOVER_FILTERS, DISCOVER_SORTS, normaliseTags, type DiscoverFilters } from './filters'
+export { DEFAULT_DISCOVER_FILTERS, DISCOVER_SORTS, FILTER_LIMITS, normaliseTags, type DiscoverFilters } from './filters'
 export type { AuthStatus } from './functions'
 export { useFilters, useNode, useNodeStatus, useNodeValue } from './hooks'
 export {

@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Card, Match, SwipeAction } from '@/api/types'
 import { firstNameOf, mainPicture } from '@/features/chat/people'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
+import { isCard } from '@/features/profile/format'
 import { ActionButton, IconEye, IconHeart, MatchMoment, PageHeader, TabPanel, toast } from '@/ui'
 import { actions, refresh, toApiError, useNodeStatus, useNodeValue } from '@/wb'
 import { LikesPanel } from './LikesPanel'
@@ -58,7 +59,7 @@ export default function ActivityPage() {
     const name = firstNameOf(card)
     setBusy(action)
     setSwipeError(null)
-    actions.swipe(card, action).then(
+    actions.answerLike(card, action).then(
       (result) => {
         setBusy(null)
         setTarget(null)
@@ -73,7 +74,7 @@ export default function ActivityPage() {
     )
   }
 
-  const card = target?.source === 'social' ? target.preview : undefined
+  const card = target?.source === 'social' && target.preview && isCard(target.preview) ? target.preview : undefined
   const sheetActions = card ? (
     <div className={s.answer}>
       <p className={s.answerNote}>

@@ -1,5 +1,5 @@
 /** Matches, chat and activity (mocked service, docs/ARCHITECTURE.md §5.1). */
-import type { BlockPayload, Card, Match, Message, OkResult, SendMessagePayload } from '@/api/types'
+import type { BlockPayload, Card, Match, Message, OkResult, SendMessagePayload, SwipePayload, SwipeResult } from '@/api/types'
 import {
   commands,
   derived,
@@ -15,6 +15,8 @@ import {
 } from './builders'
 
 export interface SocialCommands {
+  /** `POST /swipes`: answers a like received (activity page, still mocked). */
+  answerLike: Command<SwipePayload, SwipeResult>
   sendMessage: Command<SendMessagePayload, Message>
   /** Payload: the match id. */
   unmatch: Command<string, OkResult>
@@ -56,6 +58,7 @@ export const socialNodes = {
   socialProfileId: selection(),
   socialProfile: get('social', '/profiles/{userId}', [session(), pathVariable('socialProfileId', 'userId')]),
   ...commands<SocialCommands>({
+    answerLike: { method: 'POST', serviceName: 'social', addr: '/swipes', payload: 'body' },
     sendMessage: { method: 'POST', serviceName: 'social', addr: '/messages', payload: 'body' },
     unmatch: {
       method: 'DELETE',

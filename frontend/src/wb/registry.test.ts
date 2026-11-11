@@ -16,7 +16,6 @@ describe('registry: the app graph', () => {
     ['GET', `${API_URL}/profile`, 'myProfile'],
     ['PATCH', `${API_URL}/profile`, 'profileUpdateResult'],
     ['PUT', `${API_URL}/profile/location`, 'locationUpdateResult'],
-    ['POST', `${API_URL}/profile`, 'profileCreateResult'],
     ['POST', `${API_URL}/profile/pictures`, 'pictureUploadResult'],
     ['DELETE', `${API_URL}/profile/pictures/p1`, 'pictureDeleteResult'],
     ['PATCH', `${API_URL}/profile/pictures/p1/profile`, 'pictureMainResult'],
@@ -26,9 +25,15 @@ describe('registry: the app graph', () => {
     ['GET', `${SOCIAL_URL}/matches/m1/messages`, 'chatMessages'],
     ['DELETE', `${SOCIAL_URL}/matches/m1`, 'unmatchResult'],
     ['GET', `${SOCIAL_URL}/matches`, 'matches'],
-    ['GET', `${SOCIAL_URL}/discover`, 'discoverDeck'],
-    ['POST', `${SOCIAL_URL}/swipes`, 'swipeResult'],
-    ['POST', `${SOCIAL_URL}/swipes/rewind`, 'rewindResult'],
+    ['GET', `${API_URL}/profile/discover`, 'discoverDeck'],
+    ['GET', `${API_URL}/profile/matches/map`, 'matchesMap'],
+    ['GET', `${API_URL}/profile/interests`, 'interestCatalogue'],
+    ['POST', `${API_URL}/profile/u1/like`, 'likeResult'],
+    ['DELETE', `${API_URL}/profile/u1/like`, 'unlikeResult'],
+    ['POST', `${API_URL}/profile/u1/pass`, 'passResult'],
+    ['POST', `${API_URL}/profile/u1/block`, 'blockUserResult'],
+    ['POST', `${API_URL}/profile/u1/report`, 'reportUserResult'],
+    ['POST', `${SOCIAL_URL}/swipes`, 'answerLikeResult'],
     ['GET', `${SOCIAL_URL}/profiles/u1`, 'socialProfile'],
     ['POST', `${SOCIAL_URL}/reset`, 'demoResetResult'],
   ])('%s %s -> %s', (method, url, name) => {
@@ -36,7 +41,7 @@ describe('registry: the app graph', () => {
   })
 
   it('ignores the query string and the method case', () => {
-    expect(registry.match('get', `${SOCIAL_URL}/discover?ageMin=18&sort=best`)).toBe('discoverDeck')
+    expect(registry.match('get', `${API_URL}/profile/discover?minAge=18&tags=art`)).toBe('discoverDeck')
   })
 
   it('does not attribute requests no node sends', () => {

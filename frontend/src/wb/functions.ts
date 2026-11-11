@@ -8,7 +8,7 @@
  *   parses `fn.toString()`, and an extra parameter makes it append a snapshot argument;
  * - synchronous and pure; every input may be `null` (reset / failed) or `undefined` (never loaded).
  */
-import type { Card, Match, OwnProfile, SessionCheck } from '@/api/types'
+import type { DeckCard, DiscoverSort, InterestTag, Match, OwnProfile, SessionCheck } from '@/api/types'
 import type { FunctionDef } from './types'
 
 export type AuthStatus = 'checking' | 'anonymous' | 'authenticated'
@@ -45,12 +45,42 @@ export function profileComplete(profile: OwnProfile | null | undefined): boolean
   )
 }
 
-/** Cards still to show: the loaded deck minus what was swiped in this session. null while there is no deck. */
-export function visibleDeck(deck: Card[] | null | undefined, swiped: string[] | null | undefined): Card[] | null {
+/** Nearest first; an unknown distance (no location) last. */
+function byDistance(a: DeckCard, b: DeckCard): number {
+  return (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY)
+}
+
+/**
+ * How each order compares two cards. Ties keep the backend's ranking (the sort is stable), so "best"
+ * is still the tie-breaker of every other order.
+ */
+const DECK_ORDER: Record<Exclude<DiscoverSort, 'best'>, (a: DeckCard, b: DeckCard) => number> = {
+  distance: byDistance,
+  age: (a, b) => a.age - b.age,
+  fame: (a, b) => b.fameRating - a.fameRating,
+  tags: (a, b) => b.commonTagCount - a.commonTagCount,
+}
+
+/**
+ * Cards still to show: the loaded deck minus what was swiped in this session, in the chosen order
+ * ('best' keeps the backend's ranking). null while there is no deck.
+ */
+export function visibleDeck(
+  deck: DeckCard[] | null | undefined,
+  swiped: string[] | null | undefined,
+  sort: DiscoverSort | null | undefined,
+): DeckCard[] | null {
   if (!deck) return null
-  if (!swiped || swiped.length === 0) return deck
-  const hidden = new Set(swiped)
-  return deck.filter((card) => !hidden.has(card.userId))
+  const hidden = new Set(swiped ?? [])
+  const left = hidden.size > 0 ? deck.filter((card) => !hidden.has(card.userId)) : [...deck]
+  const order = sort && sort !== 'best' ? DECK_ORDER[sort] : undefined
+  return order ? left.sort(order) : left
+}
+
+/** The tag names in use, alphabetical; null while not loaded. */
+export function tagCatalogue(catalogue: { interests: InterestTag[] } | null | undefined): string[] | null {
+  if (!catalogue || !Array.isArray(catalogue.interests)) return null
+  return catalogue.interests.map((tag) => tag.name).sort((a, b) => a.localeCompare(b))
 }
 
 /** Unread messages across all matches; 0 while the matches are not loaded. */
@@ -64,5 +94,6 @@ export const FUNCTIONS: FunctionDef[] = [
   { name: 'authStatus', implementation: authStatus },
   { name: 'profileComplete', implementation: profileComplete },
   { name: 'visibleDeck', implementation: visibleDeck },
+  { name: 'tagCatalogue', implementation: tagCatalogue },
   { name: 'unreadCount', implementation: unreadCount },
 ]

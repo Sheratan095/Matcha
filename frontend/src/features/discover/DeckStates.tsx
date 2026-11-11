@@ -102,13 +102,13 @@ export interface DeckEmptyProps {
   /** null when the filters are already as wide as they go. */
   onWiden: (() => void) | null
   onEditFilters: () => void
+  /** Fetches the deck again: the people passed on come back, at the bottom. */
   onReload: () => void
-  onReset: () => void
   onRewind: () => void
-  busy: 'widen' | 'reload' | 'reset' | null
+  busy: 'widen' | 'reload' | null
 }
 
-export function DeckEmpty({ scope, onWiden, onEditFilters, onReload, onReset, onRewind, busy }: DeckEmptyProps) {
+export function DeckEmpty({ scope, onWiden, onEditFilters, onReload, onRewind, busy }: DeckEmptyProps) {
   return (
     <PosterPanel word="Sold out" wordTone="matcha" halftone="yolk" role="status">
       <Label tone="muted" className={s.kicker}>
@@ -118,7 +118,7 @@ export function DeckEmpty({ scope, onWiden, onEditFilters, onReload, onReset, on
         That&rsquo;s everyone
       </Headline>
       <Text size="sm" className={s.copy}>
-        Nobody new {scope}. Widen the net, check again, or roll the demo world back to the start.
+        Nobody new {scope}. Widen the net, or go round again: the people you passed on come back.
       </Text>
       <div className={s.actions}>
         {onWiden ? (
@@ -130,14 +130,9 @@ export function DeckEmpty({ scope, onWiden, onEditFilters, onReload, onReset, on
             Edit filters
           </Button>
         )}
-        <div className={s.pair}>
-          <Button variant="paper" size="sm" loading={busy === 'reload'} onClick={onReload}>
-            Reload
-          </Button>
-          <Button variant="paper" size="sm" loading={busy === 'reset'} onClick={onReset}>
-            Reset demo
-          </Button>
-        </div>
+        <Button variant="paper" size="sm" block loading={busy === 'reload'} onClick={onReload}>
+          Go round again
+        </Button>
         <button type="button" className={s.textButton} onClick={onRewind}>
           Undo my last swipe
         </button>
