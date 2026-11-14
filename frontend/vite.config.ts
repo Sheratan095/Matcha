@@ -2,6 +2,10 @@
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { loadEnv } from 'vite'
+
+// Load environment variables from .env file
+const env = loadEnv('', process.cwd(), '')
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -17,7 +21,7 @@ export default defineConfig({
     proxy: {
       // Browser calls /api/... on :4000, Vite forwards to the gateway on :8000.
       '/api': {
-        target: 'http://localhost:3000',
+        target: env.BACKEND_URL,
         changeOrigin: true,
         ws: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
