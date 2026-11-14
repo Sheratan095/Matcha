@@ -14,6 +14,16 @@ export default defineConfig({
     // emails are all hardcoded to http://localhost:4000 (see docs/API_CONTRACT.md).
     port: 4000,
     strictPort: true,
+    proxy: {
+      // Browser calls /api/... on :4000, Vite forwards to the gateway on :8000.
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        cookiePathRewrite: { '*': '/' },
+      },
+    },
   },
   preview: { port: 4000, strictPort: true },
   test: {
