@@ -22,6 +22,18 @@ export async function sendEmailVerification(email: string, token: string, langua
 	}
 }
 
+// The "your password was changed" alert, sent after a successful reset. Unlike the two above there
+// is nothing to retry: the caller fires it and only logs a failure.
+export async function sendPasswordChangedEmail(email: string, language: SupportedLanguage, httpService: HttpService)
+{
+	// HttpService is already configured with internal-key header in app.module
+	await httpService.post(`${env.NOTIFICATION_HOST}:${env.NOTIFICATION_PORT}/internal/password-changed`,
+	{
+		email,
+		language
+	}).toPromise();
+}
+
 export async function sendForgotPasswordEmail(email: string, token: string, language: SupportedLanguage, httpService: HttpService)
 {
 	// HttpService is already configured with internal-key header in app.module

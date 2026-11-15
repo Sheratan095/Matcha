@@ -29,10 +29,9 @@ BACKEND_URL=http://localhost:3000
 
 - Mancano le traduzioni
 
-- Manca la pagine di "ricerca avanzata"
+- Manca la pagina di "ricerca avanzata"
 
 - Bisognerebbe trovare un modo per avere la lista degli utenti bloccati per aver modo di sbloccarli
-
 
 - Durante la registrazionw, quando ti chiede le preferenze fa delle call strane che falliscono (vedi console)
 
@@ -64,6 +63,10 @@ BACKEND_URL=http://localhost:3000
     	- rimuovere "About this build"
 - Matches
     - al caricamento della pagina viene fatta sia la chiamata a dicovery che a map (perchè?)
+  
+- User profile
+    - Paris 18e che minghia è? leviamolo sembra il suo indirizzo di casa
+    - i km di distanza non mi sembrano veri
 
 - Activity
     - al caricamento della pagine vengono fatte mille richieste a caso (likes, map, discover, likes, likes)
@@ -71,10 +74,11 @@ BACKEND_URL=http://localhost:3000
 
 - Notifiche
   - sembra che non ci sia la notifica di quando qualcuno ti mette like
+  - it's a match ws notify dovrebbe apparire con l'animazione carina dovunque tu sia, ora lo fa solo se tu metti like a qualcuno che ti ha già messo like SOLO nella pagina activity
   
 ### TO DO BACKEND
 
-- Controlla che quando si resetta la psw vengano revocati i jwt
+[x] Controlla che quando si resetta la psw vengano revocati i jwt
 
 - Implementare nuovo oaut2 method
 

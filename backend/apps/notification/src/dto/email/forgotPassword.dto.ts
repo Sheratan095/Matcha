@@ -35,3 +35,21 @@ export class ForgotPasswordResponseDto
 	@ApiProperty({ example: 'Password reset email queued', description: 'Optional message' })
 	message?: string;
 }
+// Body of internal/password-changed: no token, the email only reports that the change happened
+export class PasswordChangedDto
+{
+	@ApiProperty({ example: 'user@example.com', description: 'User email' })
+	@IsEmail()
+	@IsNotEmpty()
+	@Transform(({ value }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
+	email: string;
+
+	@ApiProperty({
+		example: SupportedLanguages.ENGLISH,
+		description: 'Preferred language for the email (optional)',
+		enum: SupportedLanguages,
+	})
+	@IsOptional()
+	@IsEnum(SupportedLanguages)
+	language?: SupportedLanguage;
+}
