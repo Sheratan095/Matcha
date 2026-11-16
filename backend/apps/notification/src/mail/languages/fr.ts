@@ -40,3 +40,23 @@ export const frenchForgotPasswordPack = {
 	plainText: 'Votre code de réinitialisation de mot de passe est : {{OTP_CODE}}. Ce code expirera dans {{EXPIRY_MINUTES}} minutes. Si vous n\'avez pas demandé cela, veuillez ignorer cet e-mail.',
 	allRightsReserved: 'Tous droits réservés',
 };
+
+export const frenchPasswordChangedPack = {
+	subject: 'Votre mot de passe a été modifié',
+	title: 'Mot de passe modifié',
+	greeting: 'Bonjour',
+	message: 'Le mot de passe de votre compte Matcha vient d\'être modifié, et tous les appareils connectés à ce compte ont été déconnectés.',
+	alertMessage: 'Si vous n\'êtes pas à l\'origine de cette modification, quelqu\'un d\'autre a peut-être accès à votre e-mail. Réinitialisez votre mot de passe immédiatement et sécurisez votre compte e-mail.',
+	buttonText: 'Réinitialiser le mot de passe',
+	noteText: 'Si vous êtes à l\'origine de cette modification, vous pouvez ignorer cet e-mail.',
+	securityTitle: 'Conseils de sécurité :',
+	securityPoints: [
+		'Utilisez un mot de passe que vous n\'utilisez nulle part ailleurs',
+		'Matcha ne vous demandera jamais votre mot de passe par e-mail ou par message',
+		'Vérifiez que votre compte e-mail lui-même est sécurisé',
+	],
+	footerMessage: 'Cordialement,',
+	footerText: 'L\'équipe Matcha',
+	plainText: 'Le mot de passe de votre compte Matcha vient d\'être modifié. Si vous n\'êtes pas à l\'origine de cette modification, réinitialisez votre mot de passe immédiatement : {{RESET_LINK}}',
+	allRightsReserved: 'Tous droits réservés',
+};

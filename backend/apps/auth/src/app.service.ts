@@ -8,7 +8,7 @@ import { User } from '@repo/shared-types';
 import { hashPassword, comparePasswords, validatePassword } from './utils/password';
 import { loadReservedUsernames, validateUsername, isReservedUsername, usernameFromProvider, usernameWithSuffix } from './utils/username';
 import { createUserProfile, checkProfileCompleteness } from './utils/profile';
-import { closeWsConnections } from './utils/notification';
+import { closeWsConnections, sendPasswordChangedEmail } from './utils/notification';
 
 // Services contain the core business logic like the db calls
 
@@ -316,6 +316,17 @@ export class AppService implements OnModuleInit
 
 		// Invalidate all existing tokens
 		await this.jwtHelper.revokeTokens(null, this.dbService, user.id);
+
+		// Sockets are authenticated once, at the handshake, so revoking tokens doesn't touch the open
+		// ones: a session the reset is meant to kick out would keep receiving live notifications.
+		// Fire-and-forget like logout: a notification-service hiccup must not fail the reset.
+		closeWsConnections(user.id, this.httpService)
+			.catch(err => this.logger.warn(`Failed to close WebSocket connections for user ${user.id}: ${err.message}`));
+
+		// The user's alarm bell if they did not make the change (someone who got hold of their email
+		// could have). Fire-and-forget: the password IS changed, a mail hiccup must not report otherwise.
+		sendPasswordChangedEmail(user.email, user.language, this.httpService)
+			.catch(err => this.logger.warn(`Failed to send password changed email to user ${user.id}: ${err.message}`));
 
 		this.logger.log(`Password reset successful for user ID ${user.id}`);
 

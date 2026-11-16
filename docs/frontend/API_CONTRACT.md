@@ -265,7 +265,7 @@ Email link: `http://localhost:4000/reset-password?token=<token>`; token is 24 he
 
 Body (`ResetPasswordDto`): `{ "token": string, "password": string }` — `token` trimmed, non-empty; `password` same rules as registration.
 
-Success **200**: `{ "message": "Password reset successfully" }`. Does not log the user in and does not clear cookies; the server-side refresh token is deleted.
+Success **200**: `{ "message": "Password reset successfully" }`. Does not log the user in and does not clear cookies; the server-side refresh token is deleted. It also closes the user's open notification sockets on every device and emails a "Your password was changed" alert (in the account's language, with a button to `/forgot-password` in case the user did not make the change). Both are best effort: if the notification service is down, the reset still succeeds.
 
 Errors:
 

@@ -54,8 +54,10 @@ export class JwtHelper
 			res.clearCookie('refresh_token');
 		}
 
+		// Awaited: the caller (logout, password reset) must not report success before the refresh
+		// token is actually gone, and a failure must reach it instead of becoming an unhandled rejection.
 		if (dbService && userId)
-			dbService.deleteRefreshToken(userId); // Ensure the refresh token is also removed from the database for security
+			await dbService.deleteRefreshToken(userId);
 	}
 
 	// Return the user ID from the access token

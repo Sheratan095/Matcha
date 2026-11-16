@@ -2,6 +2,10 @@
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { loadEnv } from 'vite'
+
+// Load environment variables from .env file
+const env = loadEnv('', process.cwd(), '')
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,6 +18,16 @@ export default defineConfig({
     // emails are all hardcoded to http://localhost:4000 (see docs/API_CONTRACT.md).
     port: 4000,
     strictPort: true,
+    proxy: {
+      // Browser calls /api/... on :4000, Vite forwards to the gateway on :8000.
+      '/api': {
+        target: env.BACKEND_URL,
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        cookiePathRewrite: { '*': '/' },
+      },
+    },
   },
   preview: { port: 4000, strictPort: true },
   test: {

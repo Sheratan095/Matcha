@@ -320,14 +320,14 @@ export class AppService
 	{
 		try
 		{
-			this.logger.log(`Matches for map requested for user ID ${userId}`);
+			this.logger.log(`Matches map requested for user ID ${userId}`);
 
 			return (await this.dbService.getMatchesMap(userId));
 		}
 		catch (error: any)
 		{
-			this.logger.error(`Error fetching matches for map for user ID ${userId}`, error);
-			throw new InternalServerErrorException('Failed to fetch matches for map');
+			this.logger.error(`Error fetching for map for user ID ${userId}`, error);
+			throw new InternalServerErrorException('Failed to fetch for map');
 		}
 	}
 

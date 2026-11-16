@@ -40,3 +40,23 @@ export const spanishForgotPasswordPack = {
 	plainText: 'Tu código para restablecer la contraseña es: {{OTP_CODE}}. Este código expirará en {{EXPIRY_MINUTES}} minutos. Si no solicitaste esto, ignora este correo.',
 	allRightsReserved: 'Todos los derechos reservados',
 };
+
+export const spanishPasswordChangedPack = {
+	subject: 'Tu contraseña ha sido cambiada',
+	title: 'Contraseña cambiada',
+	greeting: 'Hola',
+	message: 'La contraseña de tu cuenta de Matcha acaba de cambiarse, y se ha cerrado la sesión en todos los dispositivos conectados a ella.',
+	alertMessage: 'Si no hiciste este cambio, puede que alguien más tenga acceso a tu correo. Restablece tu contraseña de inmediato y protege tu cuenta de correo.',
+	buttonText: 'Restablecer contraseña',
+	noteText: 'Si hiciste este cambio, puedes ignorar este correo.',
+	securityTitle: 'Consejos de seguridad:',
+	securityPoints: [
+		'Usa una contraseña que no uses en ningún otro sitio',
+		'Matcha nunca te pedirá tu contraseña por correo o mensaje',
+		'Comprueba que tu cuenta de correo también esté protegida',
+	],
+	footerMessage: 'Saludos cordiales,',
+	footerText: 'El equipo de Matcha',
+	plainText: 'La contraseña de tu cuenta de Matcha acaba de cambiarse. Si no hiciste este cambio, restablece tu contraseña de inmediato: {{RESET_LINK}}',
+	allRightsReserved: 'Todos los derechos reservados',
+};

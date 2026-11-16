@@ -3,7 +3,7 @@ import { AppService } from './app.service';
 import { AuthenticatedUserGuard, CurrentUser, InternalKeyGuard } from '@repo/utils';
 import { ApiTags, ApiBody, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EmailVerificationDto, EmailVerificationResponseDto } from './dto/email/email_verification.dto';
-import { ForgotPasswordDto, ForgotPasswordResponseDto } from './dto/email/forgotPassword.dto';
+import { ForgotPasswordDto, ForgotPasswordResponseDto, PasswordChangedDto } from './dto/email/forgotPassword.dto';
 import { CloseWsConnectionsDto } from './dto/ws_endpoints.dto';
 import { ProfileViewNotifyDto, ProfileViewNotifyResponseDto } from './dto/wsNotify/notifyView.dto';
 import { ProfileLikeNotifyDto, ProfileLikeNotifyResponseDto } from './dto/wsNotify/notifyLike.dto';
@@ -50,6 +50,18 @@ export class AppController
 	sendForgotPasswordEmail(@Body() req: ForgotPasswordDto)
 	{
 		return (this.appService.sendForgotPasswordEmail(req.email, req.token, req.language));
+	}
+
+	@Post('internal/password-changed')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Send password changed email - INTERNAL 🔒', description: 'Tells the user their password was just changed, with a link to reset it if they did not do it.' })
+	@ApiBody({ type: PasswordChangedDto })
+	@ApiResponse({ status: 200, type: ForgotPasswordResponseDto, description: 'Password changed email sent successfully' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	sendPasswordChangedEmail(@Body() req: PasswordChangedDto)
+	{
+		return (this.appService.sendPasswordChangedEmail(req.email, req.language));
 	}
 
 	@Get('online')

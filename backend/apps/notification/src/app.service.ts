@@ -30,6 +30,13 @@ export class AppService
 		return ('Sending forgot password email to ' + email + ' with token ' + token);
 	}
 
+	async sendPasswordChangedEmail(email: string, language: SupportedLanguage = SupportedLanguages.ENGLISH)
+	{
+		await this.mailerService.sendPasswordChangedEmail(email, language);
+
+		return ('Sending password changed email to ' + email);
+	}
+
 	async isUserOnline(userId: string): Promise<boolean>
 	{
 		return (this.wsGateway.isUserOnline(userId));

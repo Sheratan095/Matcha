@@ -40,3 +40,24 @@ export const englishForgotPasswordPack = {
 	plainText: 'Your password reset code is: {{OTP_CODE}}. This code will expire in {{EXPIRY_MINUTES}} minutes. If you did not request this, please ignore this email.',
 	allRightsReserved: 'All rights reserved',
 };
+
+// Sent right after a successful password reset: the user's alarm bell if they did not make the change
+export const englishPasswordChangedPack = {
+	subject: 'Your password was changed',
+	title: 'Password Changed',
+	greeting: 'Hello',
+	message: 'The password of your Matcha account was just changed, and every device signed in to it has been signed out.',
+	alertMessage: 'If you did not make this change, someone else may have access to your email. Reset your password right away and secure your email account.',
+	buttonText: 'Reset Password',
+	noteText: 'If you made this change, you can ignore this email.',
+	securityTitle: 'Security Tips:',
+	securityPoints: [
+		'Use a password you do not use anywhere else',
+		'Matcha will never ask for your password via email or message',
+		'Check that your email account itself is secure',
+	],
+	footerMessage: 'Best regards,',
+	footerText: 'The Matcha Team',
+	plainText: 'The password of your Matcha account was just changed. If you did not make this change, reset your password right away: {{RESET_LINK}}',
+	allRightsReserved: 'All rights reserved',
+};

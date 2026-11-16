@@ -4,7 +4,7 @@ import { SupportedLanguage, SupportedLanguages } from '@repo/shared-types';
 import * as nodemailer from 'nodemailer';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getVerificationPack, getForgotPasswordPack } from './languages';
+import { getVerificationPack, getForgotPasswordPack, getPasswordChangedPack } from './languages';
 
 export enum EmailType
 {
@@ -245,6 +245,58 @@ export class MailerService
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			this.logger.error(`Error sending forgot password email: ${errorMessage}`);
 			throw error;
+		}
+	}
+
+	// Sent after a successful password reset. Reuses the forgot-password template: same layout (alert
+	// box, one button, a short note, security tips), only the texts differ. The button leads to
+	// /forgot-password, so a user who did NOT make the change can take the account back right away.
+	async sendPasswordChangedEmail(to: string, language: SupportedLanguage = SupportedLanguages.ENGLISH): Promise<void>
+	{
+		const	langPack = getPasswordChangedPack(language);
+		const	resetLink = `${FRONTEND_BASE_URL}/forgot-password`;
+
+		try
+		{
+			const	htmlTemplate = fs.readFileSync(path.join(__dirname, 'templates', 'forgot-password-template.html'), 'utf8');
+			const	securityPointsHtml = langPack.securityPoints
+				.map((point) => `<li>${escapeHtml(point)}</li>`)
+				.join('');
+
+			const	htmlContent = renderTemplate(htmlTemplate,
+			{
+				LANGUAGE:            language,
+				TITLE:               langPack.title,
+				GREETING:            langPack.greeting,
+				MESSAGE:             langPack.message,
+				ALERT_MESSAGE:       langPack.alertMessage,
+				BUTTON_TEXT:         langPack.buttonText,
+				RESET_LINK:          resetLink,
+				// The template's expiry line carries the "if it was you, ignore this" note
+				EXPIRY_TEXT:         langPack.noteText,
+				SECURITY_TITLE:      langPack.securityTitle,
+				SECURITY_POINTS:     securityPointsHtml,
+				FOOTER_MESSAGE:      langPack.footerMessage,
+				FOOTER_TEXT:         langPack.footerText,
+				ALL_RIGHTS_RESERVED: langPack.allRightsReserved,
+			}, ['SECURITY_POINTS']);
+
+			await this.transporter.sendMail({
+				from: `"Matcha" <${env.SMTP_USER}>`,
+				to,
+				subject: langPack.subject,
+				text: langPack.plainText.replace(/{{RESET_LINK}}/g, resetLink),
+				html: htmlContent,
+			});
+
+			this.logger.log(`Password changed email sent to ${to}`);
+		}
+		catch (error: unknown)
+		{
+			const	errorMessage = error instanceof Error ? error.message : String(error);
+
+			this.logger.error(`Error sending password changed email to ${to}: ${errorMessage}`);
+			throw (error);
 		}
 	}
 }
