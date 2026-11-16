@@ -81,8 +81,6 @@ BACKEND_URL=http://localhost:3000
   
 ### TO DO BACKEND
 
-- Pass endpoint works even if the user has not photos
-
 - Implementare nuovo oaut2 method
 
 - Un certo oAuth state viene inserito nei cookie dopo il login - con il logout non scompare

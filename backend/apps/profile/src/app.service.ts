@@ -369,6 +369,21 @@ export class AppService
 		if (passedId === passerId)
 			throw new BadRequestException('You cannot pass yourself');
 
+		// A block in either direction hides the target: report it as not found — identical to a
+		// nonexistent user (the FK-miss 404 below) — so a block is never distinguishable from
+		// "user doesn't exist", matching how getProfile hides a blocked profile.
+		if (await this.dbService.isBlocked(passerId, passedId))
+		{
+			this.logger.warn(`Pass attempt from ${passerId} to ${passedId} blocked due to a block`);
+			throw new NotFoundException('User not found');
+		}
+
+		if (await this.dbService.hasAnyPicture(passerId) === false)
+		{
+			this.logger.warn(`Pass attempt from ${passerId} to ${passedId} failed: user has no pictures`);
+			throw new ForbiddenException('You must have at least one picture to pass other users');
+		}
+
 		try
 		{
 			const	created = await this.dbService.passUser(passerId, passedId);
