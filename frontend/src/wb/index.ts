@@ -10,9 +10,16 @@
 export { actions, MAX_MESSAGE_LENGTH, type Actions, type RewindOutcome, type SwipeOutcome } from './actions'
 export { getViewerId, installStoreHttp } from './boot'
 export { refresh, run, type RunArgs } from './commands'
-export { DEFAULT_DISCOVER_FILTERS, DISCOVER_SORTS, FILTER_LIMITS, normaliseTags, type DiscoverFilters } from './filters'
+export {
+  DEFAULT_DISCOVER_FILTERS,
+  DISCOVER_SORTS,
+  FILTER_LIMITS,
+  normaliseTags,
+  tagFromInput,
+  type DiscoverFilters,
+} from './filters'
 export type { AuthStatus } from './functions'
-export { useFilters, useNode, useNodeStatus, useNodeValue } from './hooks'
+export { useFilters, useNode, useNodeStatus, useNodeValue, useSearchCriteria } from './hooks'
 export {
   DEFAULT_FILTERS,
   type CommandName,
@@ -27,6 +34,7 @@ export {
   type WritableNodeName,
 } from './nodes'
 export { realtime$, startRealtime, type RealtimeOptions } from './realtime'
+export { EMPTY_SEARCH, hasSearchCriteria, type SearchCriteria } from './search'
 export type { NodeStatus, RequestStatus } from './status'
 export {
   getNodeStatus,

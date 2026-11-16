@@ -46,6 +46,7 @@ import {
   type DiscoverFilters,
 } from './filters'
 import type { AuthStatus } from './functions'
+import { currentSearch, EMPTY_SEARCH, hasSearchCriteria, normaliseQuery, searchProblem, writeSearch, type SearchCriteria } from './search'
 import { firstTimeForStore, getNodeValue, node$, onStoreStop, setNode, writeNode } from './store'
 
 export const MAX_MESSAGE_LENGTH = 1000
@@ -103,6 +104,7 @@ function closeProfile(): void {
 function resetSessionState(): void {
   closeChat()
   closeProfile()
+  writeSearch(EMPTY_SEARCH)
   setNode('swipedIds', [])
   swipeHistory.length = 0
   writeFilters({ ...DEFAULT_DISCOVER_FILTERS, tags: [] })
@@ -407,6 +409,8 @@ async function blockUser(userId: string): Promise<void> {
   await run('blockUser', pathId(userId, 'user id'))
   hideFromDeck(userId)
   void refresh('matchesMap')
+  // the backend leaves blocked people out of search results
+  if (getNodeValue('searchActive') != null) void refresh('searchResults')
 }
 
 /** Reports a real user as a fake account (`POST /profile/{userId}/report`). Idempotent. */
@@ -434,6 +438,41 @@ async function showSocialProfile(userId: string): Promise<Card> {
   const card = getNodeValue('socialProfile')
   if (!card) throw apiError(0, 'The profile could not be loaded.', LOCAL_ERROR.NOT_SENT)
   return card
+}
+
+// ---------------------------------------------------------------- search
+
+/**
+ * Changes some search criteria (`GET /profile/search`): the name (`q`, a case-insensitive substring
+ * of the username, first name, last name or "first last", 50 characters at most) and the deck's
+ * filters, each null for "no limit". One request however many criteria changed; a sort-only change
+ * sends nothing (`visibleSearch` sorts in the browser); the same criteria again refetch in place (a
+ * retry). Resolves with the results once `searchResults` holds them. Rejects with the backend's error
+ * (403 without a location) or INVALID when nothing would be sent or a value is out of range.
+ */
+async function search(changes: Partial<SearchCriteria>): Promise<DeckCard[]> {
+  const current = currentSearch()
+  const pick = <Key extends keyof SearchCriteria>(key: Key): SearchCriteria[Key] =>
+    changes[key] !== undefined ? (changes[key] as SearchCriteria[Key]) : current[key]
+  const next: SearchCriteria = {
+    q: changes.q !== undefined ? normaliseQuery(changes.q) : current.q,
+    ageMin: pick('ageMin'),
+    ageMax: pick('ageMax'),
+    distance: pick('distance'),
+    fameMin: pick('fameMin'),
+    tags: changes.tags !== undefined ? normaliseTags(changes.tags) : current.tags,
+    sort: pick('sort'),
+  }
+  const problem = searchProblem(next)
+  if (problem) invalid(problem)
+  const outcome = await awaitLoad('searchResults', () => writeSearch(next))
+  if (outcome.error) throw outcome.error
+  return getNodeValue('searchResults') ?? []
+}
+
+/** Ends the search: every criterion is dropped, `searchResults` resets and a request still on its way is dropped (DROPPED). */
+function clearSearch(): void {
+  if (hasSearchCriteria(currentSearch()) || getNodeValue('searchActive') != null) writeSearch(EMPTY_SEARCH)
 }
 
 // ---------------------------------------------------------------- matches and chat
@@ -517,6 +556,8 @@ export const actions = {
   unlikeUser,
   blockUser,
   reportUser,
+  search,
+  clearSearch,
   answerLike,
   showSocialProfile,
   closeProfile,

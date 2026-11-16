@@ -137,6 +137,29 @@ export function createFakeBackend(): FakeBackend {
       const left = state.deck.filter((person) => !state.liked.has(person.userId))
       return [...left.filter((person) => !state.passed.has(person.userId)), ...left.filter((person) => state.passed.has(person.userId))]
     })
+    // Search: a substring of the username or first name, within the age / distance / fame limits
+    // (tags are accepted, not applied). Needs a location; liked people stay.
+    .on('GET', `${API_URL}/profile/search`, ({ params }) => {
+      if (!state.session) return unauthorized()
+      if (Object.keys(params).length === 0) return nestError(400, 'At least one search criterion is required', 'Bad Request')
+      if (state.profile.latitude == null) return nestError(403, 'You must have a location to search other users', 'Forbidden')
+      const q = typeof params.q === 'string' ? params.q.toLowerCase() : null
+      const limit = (key: string): number | null => (params[key] === undefined ? null : Number(params[key]))
+      const minAge = limit('minAge')
+      const maxAge = limit('maxAge')
+      const maxKm = limit('maxDistanceKm')
+      const minFame = limit('minFame')
+      return state.deck
+        .filter((person) => q === null || person.username.toLowerCase().includes(q) || (person.firstName ?? '').toLowerCase().includes(q))
+        .filter((person) => (minAge === null || person.age >= minAge) && (maxAge === null || person.age <= maxAge))
+        .filter((person) => maxKm === null || (person.distanceKm !== null && person.distanceKm <= maxKm))
+        .filter((person) => minFame === null || person.fameRating >= minFame)
+        .map((person) => {
+          const result = { ...person }
+          delete result.likesYou
+          return result
+        })
+    })
     .on('POST', `${API_URL}/profile/:id/like`, ({ route }) => {
       if (!state.session) return unauthorized()
       const person = state.deck.find((entry) => entry.userId === route.id)

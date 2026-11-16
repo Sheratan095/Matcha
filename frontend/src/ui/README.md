@@ -347,7 +347,9 @@ focus restored, `aria-modal`, exit animation. Props: `open`, `onClose`, `title` 
 **`AppShell`**: the signed-in frame. Phones: sticky top bar (wordmark + `actions`), content, sticky bottom tab bar.
 From 960px of its own width: side rail (wordmark, tabs, colour bar), the content as a phone-sized sheet on a cutting
 mat with crop marks, and `poster` lettering in the margin. Props: `tabs: {to, label, icon, badge?, end?}[]`,
-`children`, `actions`, `banner` (strip above everything, e.g. a back link), `poster` (margin word, e.g.
+`children`, `actions`, `search` (a search bar between the wordmark and the actions; the top bar is positioned, so a
+drop-down inside the bar can span the column, and on phones under 480px the wordmark hides while the bar carries
+`data-search-expanded`), `banner` (strip above everything, e.g. a back link), `poster` (margin word, e.g.
 the section name), `homeTo` ("/discover"), `hideTabBar`, `flush` (no side padding, for the deck). Use it in
 `AppLayout` with `<Outlet />` as children.
 `<AppShell tabs={[{ to: '/discover', label: 'Discover', icon: <IconCards /> }, { to: '/matches', label: 'Matches', icon: <IconChat />, badge: unread }]} poster="discover"><Outlet /></AppShell>`

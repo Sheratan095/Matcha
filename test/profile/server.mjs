@@ -681,6 +681,14 @@ const	PAGE = /* html */ `<!doctype html>
 	const	codeEl = document.getElementById('code');
 	const	picsEl = document.getElementById('pics');
 
+	// Everything below that reaches innerHTML and did not originate on this page (interest names,
+	// ids, urls: other users' data) goes through this first. An interest name is the dangerous
+	// one: it is stored once and listed to EVERY user by GET /profile/interests.
+	function escapeHtml(s)
+	{
+		return (String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
+	}
+
 	// Central fetch wrapper: shows status + pretty body, returns the parsed payload.
 	async function call(method, path, opts = {})
 	{
@@ -730,7 +738,7 @@ const	PAGE = /* html */ `<!doctype html>
 		const	el = document.getElementById('status');
 
 		if (s && s.loggedIn)
-			el.innerHTML = 'logged in as <b>' + (s.userId || '?') + '</b>';
+			el.innerHTML = 'logged in as <b>' + escapeHtml(s.userId || '?') + '</b>';
 		else
 			el.textContent = 'not logged in';
 	}
@@ -1017,9 +1025,9 @@ const	PAGE = /* html */ `<!doctype html>
 			row.dataset.name = opt.name;
 
 			if (opt.create)
-				row.innerHTML = '<span>+ add "' + opt.name + '"</span><span class="tag">new</span>';
+				row.innerHTML = '<span>+ add "' + escapeHtml(opt.name) + '"</span><span class="tag">new</span>';
 			else
-				row.innerHTML = '<span>' + opt.name + '</span><span class="tag">existing</span>';
+				row.innerHTML = '<span>' + escapeHtml(opt.name) + '</span><span class="tag">existing</span>';
 
 			// mousedown (not click) so it fires before the input's blur hides the dropdown.
 			row.addEventListener('mousedown', ev =>
@@ -1181,14 +1189,24 @@ const	PAGE = /* html */ `<!doctype html>
 			const	card = document.createElement('div');
 
 			card.className = 'pic' + (p.isProfile ? ' isprofile' : '');
+			// Static markup only: the url, the id and the handlers are set as properties below, so
+			// none of that data is ever parsed as HTML or as a JS string inside an attribute.
 			card.innerHTML =
-				'<img src="' + p.url + '" alt="" onerror="this.style.opacity=.25" />' +
+				'<img alt="" />' +
 				(p.isProfile ? '<div class="badge">★ profile</div>' : '') +
-				'<div class="id">' + p.id + '</div>' +
+				'<div class="id"></div>' +
 				'<div class="pbtns">' +
-					'<button onclick="setProfilePicture(\\'' + p.id + '\\')">set</button>' +
-					'<button class="danger" onclick="deletePicture(\\'' + p.id + '\\')">del</button>' +
+					'<button class="set">set</button>' +
+					'<button class="danger del">del</button>' +
 				'</div>';
+
+			const	img = card.querySelector('img');
+
+			img.src = p.url;
+			img.onerror = () => { img.style.opacity = '.25'; };
+			card.querySelector('.id').textContent = p.id;
+			card.querySelector('.set').onclick = () => setProfilePicture(p.id);
+			card.querySelector('.del').onclick = () => deletePicture(p.id);
 
 			picsEl.appendChild(card);
 		}
@@ -1444,7 +1462,7 @@ const	MAP_PAGE = /* html */ `<!doctype html>
 		}
 
 		statusEl.innerHTML = (s && s.loggedIn)
-			? ('logged in as <b>' + (s.userId || '?') + '</b>')
+			? ('logged in as <b>' + escapeHtml(s.userId || '?') + '</b>')
 			: 'not logged in';
 	}
 
@@ -1459,7 +1477,7 @@ const	MAP_PAGE = /* html */ `<!doctype html>
 	function picHtml(url, cls)
 	{
 		if (url)
-			return ('<img class="' + cls + '" src="' + url + '" onerror="this.style.opacity=.25" />');
+			return ('<img class="' + escapeHtml(cls) + '" src="' + escapeHtml(url) + '" onerror="this.style.opacity=.25" />');
 
 		return ('<div class="noimg">🙂</div>');
 	}

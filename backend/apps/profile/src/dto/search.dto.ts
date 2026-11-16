@@ -2,6 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsArray, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { Gender, SexualPreference } from '@repo/shared-types';
+import { singleLine } from '@repo/utils';
 import { DiscoverQueryDto } from './discover.dto';
 
 const GENDERS: Gender[]                       = ['male', 'female', 'other'];
@@ -33,7 +34,7 @@ export class SearchQueryDto extends DiscoverQueryDto
 {
 	@ApiPropertyOptional({ example: 'ali', description: 'Case-insensitive substring of the username, first name, last name or "first last".' })
 	@IsOptional()
-	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+	@Transform(({ value }) => singleLine(value))
 	@IsString()
 	@Length(1, 50)
 	q?: string;

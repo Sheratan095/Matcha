@@ -26,6 +26,7 @@ describe('registry: the app graph', () => {
     ['DELETE', `${SOCIAL_URL}/matches/m1`, 'unmatchResult'],
     ['GET', `${SOCIAL_URL}/matches`, 'matches'],
     ['GET', `${API_URL}/profile/discover`, 'discoverDeck'],
+    ['GET', `${API_URL}/profile/search`, 'searchResults'],
     ['GET', `${API_URL}/profile/matches/map`, 'matchesMap'],
     ['GET', `${API_URL}/profile/interests`, 'interestCatalogue'],
     ['POST', `${API_URL}/profile/u1/like`, 'likeResult'],

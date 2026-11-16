@@ -1,12 +1,13 @@
 /**
  * The signed-in frame: the kit's AppShell with the five sections, their badges (unread messages,
- * likes received), the section name as margin poster on wide screens, and the account menu.
+ * likes received), the section name as margin poster on wide screens, the search bar and the account menu.
  * Pages render in the Outlet; a lazy page that is still loading keeps the shell on screen.
  */
 import { Suspense } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AppShell, Avatar, IconCards, IconChat, IconGlobe, IconHeart, IconLogout, IconUser, Loader, Menu, toast, type ShellTab } from '@/ui'
 import { useAutoLocation } from '@/features/location/useAutoLocation'
+import { SearchBar } from '@/features/search/SearchBar'
 import { actions, toApiError, useNodeValue } from '@/wb'
 
 const SECTIONS = [
@@ -62,6 +63,7 @@ export default function AppLayout() {
       homeTo="/discover"
       // The deck runs edge to edge, like the designer's shell demo.
       flush={section?.to === '/discover'}
+      search={<SearchBar />}
       actions={<AccountMenu />}
     >
       <Suspense fallback={<Loader fill>Turning the page</Loader>}>

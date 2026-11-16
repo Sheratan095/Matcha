@@ -17,9 +17,23 @@ function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
 }
 
-/** An in-app path only: "/x", never "//host" or "https://…" (no open redirect). */
+/**
+ * A backslash or a control character. Browsers read "\" as "/" in a URL path and strip tabs and
+ * newlines out of it, so "/\evil.com" and "/<TAB>/evil.com" both become "//evil.com" once parsed,
+ * although neither STARTS with "//".
+ */
+function hasUrlTrick(value: string): boolean {
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0
+    if (char === '\\' || code < 0x20 || code === 0x7f) return true
+  }
+  return false
+}
+
+/** An in-app path only: "/x", never "//host", "/\host" or "https://…" (no open redirect). */
 export function safeFrom(value: unknown): string | null {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return null
+  if (hasUrlTrick(value)) return null
   if (value === '/login' || value.startsWith('/login?')) return null
   return value
 }

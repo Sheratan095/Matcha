@@ -6,6 +6,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import { skip, type Observable } from 'rxjs'
 import { filtersFrom, type DiscoverFilters } from './filters'
+import { searchCriteriaFrom, type SearchCriteria } from './search'
 import type { HttpNodeName, NodeName, NodeValue, NodeValues, WritableNodeName } from './nodes'
 import type { NodeStatus } from './status'
 import { nodeSubject, setNode, statusSource } from './store'
@@ -73,5 +74,20 @@ export function useFilters(): DiscoverFilters {
   return useMemo(
     () => filtersFrom({ ageMin, ageMax, distance, fameMin, sort, tags }),
     [ageMin, ageMax, distance, fameMin, sort, tags],
+  )
+}
+
+/** The search criteria as one object (stable until one of them changes). Write with `actions.search`. */
+export function useSearchCriteria(): SearchCriteria {
+  const q = useNodeValue('searchQuery')
+  const ageMin = useNodeValue('searchAgeMin')
+  const ageMax = useNodeValue('searchAgeMax')
+  const distance = useNodeValue('searchDistance')
+  const fameMin = useNodeValue('searchFameMin')
+  const tags = useNodeValue('searchTags')
+  const sort = useNodeValue('searchSort')
+  return useMemo(
+    () => searchCriteriaFrom({ q, ageMin, ageMax, distance, fameMin, tags, sort }),
+    [q, ageMin, ageMax, distance, fameMin, tags, sort],
   )
 }

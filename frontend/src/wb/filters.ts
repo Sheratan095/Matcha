@@ -38,16 +38,61 @@ export const DEFAULT_DISCOVER_FILTERS: Readonly<DiscoverFilters> = Object.freeze
   tags: [],
 })
 
-/** Lowercase, trimmed, without a leading '#', no empties, no duplicates (the backend 500s on duplicates). */
+/**
+ * What an interest may contain, mirroring the backend allow-list (INTEREST_NAME_PATTERN in
+ * backend/apps/profile/src/dto/profile/interest.dto.ts; keep the two in step): letters of any
+ * alphabet, digits, accents, emoji and their joiners, spaces, and . _ ' + # -
+ * Tags are the one piece of text shared by every user (the picker lists everybody's), which is why
+ * the backend refuses anything else with a 400 instead of storing it.
+ *
+ * The emoji joiners (ZWJ, variation selector 16) and the curly apostrophe are written as code
+ * points: the first two are invisible, and an invisible character in a regex is a trap.
+ * The hyphen stays last in the class so it is a literal one and not a range.
+ */
+const TAG_EXTRA_CHARS = String.fromCharCode(0x200d, 0xfe0f, 0x2019)
+const TAG_FORBIDDEN = new RegExp(String.raw`[^\p{L}\p{N}\p{M}\p{Extended_Pictographic}${TAG_EXTRA_CHARS} _.'+#-]`, 'gu')
+/** A tag starts with a letter, a digit or an emoji; anything before that goes (a '#', a dash, a space...). */
+const TAG_LEADING_JUNK = /^[^\p{L}\p{N}\p{Extended_Pictographic}]+/u
+
+/**
+ * One tag as the backend stores it: Unicode NFC, whitespace folded to single spaces, every character
+ * outside the allowed set dropped (so "<b>" becomes "b" and a control character vanishes),
+ * no leading '#' or punctuation, lowercase. Empty when nothing usable is left.
+ */
+function cleanTagName(raw: string): string {
+  return raw
+    .normalize('NFC')
+    .replace(/\s+/g, ' ')
+    .replace(TAG_FORBIDDEN, '')
+    .replace(TAG_LEADING_JUNK, '')
+    .trim()
+    .toLowerCase()
+}
+
+/**
+ * Cleaned (see cleanTagName), no empties, no duplicates (the backend 500s on duplicates). A comma
+ * separates tags, as in the `?tags=` filter value.
+ */
 export function normaliseTags(tags: readonly string[]): string[] {
   const seen = new Set<string>()
   for (const raw of tags) {
     for (const part of raw.split(',')) {
-      const tag = part.trim().replace(/^#+/, '').trim().toLowerCase()
+      const tag = cleanTagName(part)
       if (tag) seen.add(tag)
     }
   }
   return [...seen]
+}
+
+/**
+ * What the interests box turns typed text into: the same cleaning as `normaliseTags`, then spaces and
+ * commas become dashes ("Rock, jazz" -> "rock-jazz"). Pass it as `TagInput`'s `normalize`, so the chip
+ * the user sees is the tag that gets saved, not something the save step quietly rewrites.
+ */
+export function tagFromInput(raw: string): string {
+  return cleanTagName(raw.replace(/[\s,]+/g, ' '))
+    .replace(/ /g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 /** `filterTags` holds the comma-separated query value, or null for "any". */

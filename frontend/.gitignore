@@ -1,36 +1,57 @@
-# Logs
-logs
+# Matcha frontend: Vite + React + TypeScript, Vitest, oxlint, npm.
+# Rules are relative to frontend/. The backend has its own .gitignore.
+
+# Dependencies
+node_modules/
+
+# Other package managers' lockfiles: this app is installed with npm (package-lock.json is
+# tracked), the backend with pnpm. A stray pnpm/yarn/bun lockfile here is always a mistake.
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+bun.lock
+
+# Build output (vite build) and preview artifacts
+dist/
+
+# Vite: temporary compiled config (vite.config.ts.timestamp-*.mjs) left behind when the
+# process is killed mid-start, and the dep pre-bundle cache when cacheDir is moved out of node_modules
+vite.config.*.timestamp-*
+.vite/
+
+# TypeScript incremental state (tsc -b). The tsconfigs already point tsBuildInfoFile into
+# node_modules/.tmp; this catches the default location too.
+*.tsbuildinfo
+
+# Vitest coverage (vitest run --coverage) and reporter output
+coverage/
+.vitest/
+
+# Environment: keep the committed template, ignore every real one
+.env
+.env.*
+!.env.example
+
+# WaveBinder license file (personal, issued by wavebinder.it). See README.
+src/wb/license.json
+
+# Logs and debug output
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# Editors
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# WaveBinder license file (personal, issued by wavebinder.it). See README.
-src/wb/license.json
-
-# Environment (keep .env.example)
-.env
-.env.*
-!.env.example
-
-# Build / tooling
-*.tsbuildinfo
-coverage
+Thumbs.db
+Desktop.ini

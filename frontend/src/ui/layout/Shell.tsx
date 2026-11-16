@@ -110,6 +110,12 @@ export interface AppShellProps {
   children: ReactNode
   /** Right side of the top bar (icon buttons). */
   actions?: ReactNode
+  /**
+   * A search bar between the wordmark and the actions. The top bar is positioned, so a drop-down
+   * inside the bar can span the column; on phones under 480px the wordmark hides while the bar
+   * carries `data-search-expanded`.
+   */
+  search?: ReactNode
   /** A strip above everything (e.g. a back link). */
   banner?: ReactNode
   /** The giant margin word on wide screens (usually the section name). */
@@ -131,6 +137,7 @@ export function AppShell({
   tabs,
   children,
   actions,
+  search,
   banner,
   poster,
   homeTo = '/discover',
@@ -170,6 +177,7 @@ export function AppShell({
             <Link to={homeTo} className={s.topMark} aria-label="Matcha home">
               <Wordmark size="sm" />
             </Link>
+            {search ? <div className={s.topSearch}>{search}</div> : null}
             <div className={s.topActions}>{actions}</div>
           </header>
           <main id="main" tabIndex={-1} className={cx(s.main, flush && s.flush)}>

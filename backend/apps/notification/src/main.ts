@@ -3,7 +3,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { env } from "@repo/config";
-import { protectDocsWithInternalKey } from '@repo/utils';
+import { protectDocsWithInternalKey, SanitizeInputPipe } from '@repo/utils';
 
 function swaggerSetup(app: any)
 {
@@ -27,9 +27,11 @@ async function bootstrap()
 {
 	const app = await NestFactory.create(AppModule);
 
-	// Strip unknown fields and run class-validator/class-transformer on request DTOs
+	// SanitizeInputPipe FIRST: it strips control / invisible characters from every incoming string
+	// so the DTO rules below validate the text that will actually be stored (see @repo/utils sanitize.ts).
+	// Then strip unknown fields and run class-validator/class-transformer on request DTOs
 	// (matches the auth and profile services).
-	app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+	app.useGlobalPipes(new SanitizeInputPipe(), new ValidationPipe({ whitelist: true, transform: true }));
 
 	swaggerSetup(app);
 

@@ -97,6 +97,20 @@
   gap: var(--s-3);
 }
 
+.topSearch {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* a narrow phone: while the search bar is in use, the wordmark gives it the room */
+@container (max-width: 479px) {
+  .topbar:has([data-search-expanded]) .topMark {
+    display: none;
+  }
+}
+
 .main {
   display: block;
   min-width: 0;
@@ -398,7 +412,7 @@
   .topMark {
     display: none;
   }
-  .topbar:has(.topActions:empty) {
+  .topbar:has(.topActions:empty):not(:has(.topSearch)) {
     display: none;
   }
   .topActions {

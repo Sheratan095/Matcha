@@ -1,0 +1,285 @@
+/*
+ * The search box lives in the shell's top bar; the result list is positioned against the top bar
+ * itself (the nearest positioned ancestor), so it spans the whole column under the masthead rule.
+ * The root is therefore not positioned.
+ */
+.root {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 26rem;
+  margin-left: auto;
+}
+
+.form {
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------ the box: a compact Field box */
+.box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  border: var(--line);
+  border-radius: var(--r-pill);
+  background: var(--c-paper-hi);
+  box-shadow: inset 2px 2px 0 rgb(21 19 15 / 9%);
+  transition:
+    translate var(--dur-press) var(--ease-press),
+    box-shadow var(--dur-press) var(--ease-press);
+}
+.box:focus-within {
+  translate: -2px -2px;
+  box-shadow: 4px 4px 0 var(--c-ink);
+}
+.box:has(.clear:focus-visible) {
+  translate: none;
+  box-shadow: inset 2px 2px 0 rgb(21 19 15 / 9%);
+}
+
+.lead {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 100%;
+  color: var(--c-ink);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--s-2) 0 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  font-size: 1rem; /* 16px: no zoom on iOS */
+  font-weight: 600;
+  line-height: 1.3;
+  caret-color: var(--c-matcha-deep);
+  outline: none;
+}
+.input::placeholder {
+  color: var(--c-ink-3);
+  font-weight: 450;
+  opacity: 1;
+}
+
+.clear {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin-right: 3px;
+  border-radius: var(--r-pill);
+  color: var(--c-ink);
+}
+@media (hover: hover) {
+  .clear:hover {
+    background: var(--c-matcha);
+  }
+}
+.clear:focus-visible {
+  outline-offset: 0;
+}
+
+/* ------------------------------------------------------------ the drop-down */
+@keyframes search-drop {
+  from {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + var(--bw));
+  left: 0;
+  right: 0;
+  z-index: var(--z-overlay);
+  max-height: min(60dvh, 30rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: var(--line);
+  border-top: 0;
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-3);
+  animation: search-drop var(--dur-fast) var(--ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-4) 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+.list[aria-busy='true'] .option {
+  opacity: 0.55;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 56px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  color: var(--c-ink);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) linear;
+}
+.option + .option {
+  margin-top: 2px;
+}
+.optionActive,
+.list[aria-busy='true'] .optionActive {
+  background: var(--c-ink);
+  color: var(--c-paper-hi);
+  opacity: 1;
+}
+.optionActive .optionSub {
+  color: var(--c-paper-lo);
+}
+
+.optionMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.optionTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: var(--wd-narrow);
+  font-size: 1.0625rem;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.optionSub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+/* ------------------------------------------------------------ searching / nobody / failed */
+.state {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-4);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-ink-2);
+}
+.stateStack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+.stateTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: 1.0625rem;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--c-ink);
+}
+.stateText {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--c-ink-2);
+}
+
+/* ------------------------------------------------------------ the filter knob, inside the box */
+.divider {
+  flex: none;
+  width: var(--bw-thin);
+  height: 20px;
+  margin: 0 2px 0 4px;
+  border-radius: 1px;
+  background: var(--c-ink);
+  opacity: 0.35;
+}
+
+.knob {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 100%;
+  border-radius: 0 var(--r-pill) var(--r-pill) 0;
+  color: var(--c-ink);
+  transition: background-color var(--dur-fast) linear;
+}
+@media (hover: hover) {
+  .knob:hover {
+    background: var(--c-yolk);
+  }
+}
+.knob[data-active] {
+  background: var(--c-matcha);
+}
+.knob:focus-visible {
+  outline-offset: -3px;
+}
+.box:has(.knob:focus-visible) {
+  translate: none;
+  box-shadow: inset 2px 2px 0 rgb(21 19 15 / 9%);
+}
+
+.knobBadge {
+  position: absolute;
+  top: -7px;
+  right: -3px;
+  rotate: 8deg;
+}
+
+.headScope {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.stateActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

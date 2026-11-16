@@ -5,6 +5,10 @@ import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedExceptio
 // WHO is calling (see auth.ts). Re-exported here so consumers keep importing from '@repo/utils'.
 export * from './auth';
 
+// Input sanitisation (control / invisible characters, single- vs multi-line text), shared by
+// every service's DTOs and global pipes (see sanitize.ts).
+export * from './sanitize';
+
 /**
  * @brief Validate that a provided key matches the configured internal key.
  *

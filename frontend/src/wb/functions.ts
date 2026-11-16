@@ -61,6 +61,12 @@ const DECK_ORDER: Record<Exclude<DiscoverSort, 'best'>, (a: DeckCard, b: DeckCar
   tags: (a, b) => b.commonTagCount - a.commonTagCount,
 }
 
+/** Sorts the cards in place in the chosen order; 'best' keeps the backend's ranking. */
+export function sortCards(cards: DeckCard[], sort: DiscoverSort | null | undefined): DeckCard[] {
+  const order = sort && sort !== 'best' ? DECK_ORDER[sort] : undefined
+  return order ? cards.sort(order) : cards
+}
+
 /**
  * Cards still to show: the loaded deck minus what was swiped in this session, in the chosen order
  * ('best' keeps the backend's ranking). null while there is no deck.
@@ -73,8 +79,13 @@ export function visibleDeck(
   if (!deck) return null
   const hidden = new Set(swiped ?? [])
   const left = hidden.size > 0 ? deck.filter((card) => !hidden.has(card.userId)) : [...deck]
-  const order = sort && sort !== 'best' ? DECK_ORDER[sort] : undefined
-  return order ? left.sort(order) : left
+  return sortCards(left, sort)
+}
+
+/** Search results in the chosen order ('best' is the backend's: nearest first). null while there are none. */
+export function visibleSearch(results: DeckCard[] | null | undefined, sort: DiscoverSort | null | undefined): DeckCard[] | null {
+  if (!results) return null
+  return sortCards([...results], sort)
 }
 
 /** The tag names in use, alphabetical; null while not loaded. */
@@ -94,6 +105,7 @@ export const FUNCTIONS: FunctionDef[] = [
   { name: 'authStatus', implementation: authStatus },
   { name: 'profileComplete', implementation: profileComplete },
   { name: 'visibleDeck', implementation: visibleDeck },
+  { name: 'visibleSearch', implementation: visibleSearch },
   { name: 'tagCatalogue', implementation: tagCatalogue },
   { name: 'unreadCount', implementation: unreadCount },
 ]

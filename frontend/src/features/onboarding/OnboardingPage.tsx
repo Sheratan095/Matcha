@@ -36,7 +36,7 @@ import {
   toast,
   Wordmark,
 } from '@/ui'
-import { actions, toApiError, useNodeValue } from '@/wb'
+import { actions, tagFromInput, toApiError, useNodeValue } from '@/wb'
 import { Celebration } from './Celebration'
 import { firstRequiredGap, resumeStep, STEP_LABELS, STEPS } from './steps'
 import s from './Onboarding.module.css'
@@ -191,6 +191,7 @@ function InterestFields({ form }: { form: ProfileDraftApi }) {
         label="Interests"
         value={form.value.interests}
         onChange={(tags) => form.set('interests', tags)}
+        normalize={tagFromInput}
         suggestions={catalogue.tags}
         suggestionLimit={14}
         maxLength={MAX_INTEREST_LENGTH}

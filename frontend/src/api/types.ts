@@ -72,8 +72,8 @@ export interface OtherProfile extends Profile {
 }
 
 /**
- * One card of GET /profile/discover: a light summary. The full profile (bio, pictures, tags) comes
- * from GET /profile/:userId when the card is opened, which records a profile view.
+ * One card of GET /profile/discover and GET /profile/search: a light summary. The full profile (bio,
+ * pictures, tags) comes from GET /profile/:userId when the card is opened, which records a profile view.
  */
 export interface DeckCard {
   userId: string
@@ -86,7 +86,7 @@ export interface DeckCard {
   fameRating: number
   /** Interest tags shared with you. */
   commonTagCount: number
-  /** They already liked you: liking back is a match. */
+  /** They already liked you: liking back is a match. Discover only: search results omit it. */
   likesYou?: boolean
   profilePictureUrl: string
 }
@@ -106,6 +106,9 @@ export interface LikeResult {
  * the browser to the whole list (subject IV.3: sortable by age, location, fame and common tags).
  */
 export type DiscoverSort = 'best' | 'distance' | 'age' | 'fame' | 'tags'
+
+/** `q` of GET /profile/search (a substring of the username, first name, last name or "first last"): 1 to 50 characters. */
+export const MAX_SEARCH_QUERY_LENGTH = 50
 
 /** GET /auth/validate. Always 200. */
 export interface SessionCheck {

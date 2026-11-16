@@ -15,3 +15,49 @@ Only the gateway is reachable from other machines.
   The internal key stays the second layer: every service HTTP route requires it
   (InternalKeyGuard), and so does the notification socket handshake, so a local process
   still cannot claim an x-user-id without going through the gateway.
+
+Input sanitisation and XSS
+  The rule is: sanitise on the way IN, encode on the way OUT.
+  Free text is stored as typed and is NEVER HTML-escaped at the door ("<3" must stay "<3", and
+  escaping on input double-encodes on the next render). Whoever renders it escapes it: React does
+  by default, the mailer escapes every template value, and the frontend has no
+  dangerouslySetInnerHTML anywhere. The Leaflet markers (features/map/MatchMap.tsx) are built from
+  DOM nodes, never HTML strings, because Leaflet would insert a string as innerHTML.
+
+  What happens on the way in:
+  - SanitizeInputPipe (packages/utils/src/sanitize.ts) runs BEFORE the ValidationPipe in the auth,
+    profile and notification services, on every body, query and path parameter. It removes control
+    characters (a NUL makes Postgres reject the statement, i.e. a 500), bidi overrides / isolates
+    ("Trojan Source" display spoofing), and zero-width space / word joiner / BOM (invisible, so they
+    fake an "empty" message or a lookalike name). It KEEPS ZWJ / ZWNJ (emoji sequences, Persian and
+    Indic scripts) and LRM / RLM, normalises to Unicode NFC, leaves `password` byte for byte, drops
+    a "__proto__" key, and answers 400 to a payload nested deeper than 8 levels.
+  - Each free-text field then states its own shape in its DTO: singleLine() (title, report reason,
+    search text) or multiline() (biography, chat message, event description). Length limits are
+    checked AFTER that, on the text that will be stored, and a chat message that is empty once
+    cleaned is a 400.
+  - Interest tags are the one text SHARED by every user (stored once, listed to everybody by
+    GET /profile/interests, used as a filter value), so they get an allow-list instead:
+    INTEREST_NAME_PATTERN in profile/src/dto/profile/interest.dto.ts. Letters of any alphabet,
+    digits, accents, emoji, spaces and . _ ' + # - only. frontend/src/wb/filters.ts (cleanTagName)
+    cleans typed text to the same set, so the UI never sends what the API refuses: keep the two in step.
+  - A user id in a body or path is checked as a UUID (calendar inviteeId included).
+
+  Every response from the gateway carries nosniff, X-Frame-Options DENY, Referrer-Policy
+  no-referrer and a CSP of default-src 'none' (apps/gateway/src/securityHeaders.ts). /docs only
+  gets the anti-framing part, because the Swagger UI needs its own inline script.
+
+  Uploaded pictures are decoded and re-encoded to WebP by sharp, so an SVG, a polyglot or a
+  renamed script never reaches storage as anything but pixels.
+
+  The dev harnesses in test/ are held to the same rule as the app: never build HTML from API data
+  (interest names and picture urls are other users' data). Use textContent, or escape.
+
+  Not done:
+  - A Content-Security-Policy for the frontend. It needs checking in a browser against the real
+    origins (the API and its websocket, the geocoder, the IP geolocation service, the map tiles, and
+    the Garage host the pictures are served from), because a wrong one blanks the app.
+  - Strict-Transport-Security: belongs to whatever terminates TLS in front of the gateway.
+  - Tags stored BEFORE the allow-list existed are not migrated. A user whose profile carries one
+    gets a 400 on save until they remove it. To find them:
+      SELECT name FROM interest_tags WHERE name ~ '[<>"`&/\\=;:(){}|%$@!?*~^,]' OR name ~ '\[|\]';

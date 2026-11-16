@@ -10,6 +10,7 @@ import { Logger } from '@nestjs/common';
 import { createNotificationSocketProxy, isNotificationSocketRequest } from './websocketGateway';
 import { proxyErrorHandler, PROXY_TIMEOUT_MS } from './proxyErrors';
 import { applyGlobalRateLimit, applyRouteRateLimits, checkUpgradeRateLimit } from './rateLimit';
+import { applySecurityHeaders } from './securityHeaders';
 import { authenticateRequest, USER_ID_HEADER } from '@repo/utils';
 
 const logger = new Logger('GatewayBootstrap');
@@ -62,6 +63,10 @@ async function bootstrap()
 		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
 		allowedHeaders: ['Content-Type', 'x-internal-key']
 	});
+
+	// Baseline security headers (nosniff, no framing, no referrer, locked-down CSP on API responses).
+	// Before the rate limiters so even a 429 carries them. See securityHeaders.ts.
+	applySecurityHeaders(app);
 
 	// RATE LIMITING, layer 1 (global, per IP). After CORS so a 429 still carries the CORS headers
 	// (otherwise the browser hides it as a network error), and BEFORE the identity middleware so

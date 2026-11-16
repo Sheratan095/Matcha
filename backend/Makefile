@@ -1,4 +1,4 @@
-.PHONY: install build setup dev up infra down clean db-migrate db-reset storage seed-pictures generate_env
+.PHONY: install build setup dev up infra down clean db-migrate db-seed db-reset storage seed-pictures generate_env
 
 # Plain `make` starts the whole backend in production mode, whatever target comes first in this file
 .DEFAULT_GOAL := up
@@ -72,6 +72,18 @@ db-migrate:
 	docker compose up -d --wait postgres
 	docker compose exec -T postgres sh -c 'for f in /init-scripts/migrations/*.sql; do echo "-- applying $$(basename $$f)"; psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -f "$$f"; done'
 	@echo "Migrations applied (no reset, data preserved)."
+
+# Add the test accounts of infra/db/seeds/003_test_accounts.sql (one per onboarding step, all
+# verified, password 1234) to the ALREADY-RUNNING database, without a reset. Idempotent, so it can
+# be re-run; accounts you have completed since keep their data. Only that file: 001 and 002 are
+# init-only (002 inserts pictures without ON CONFLICT, so a second run trips
+# one_profile_picture_per_user). SEED=<file> applies another seed instead, if it is re-runnable.
+db-seed: SEED ?= 003_test_accounts.sql
+db-seed:
+	@echo "Applying seeds/$(SEED) to the running database..."
+	docker compose up -d --wait postgres
+	docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -f /init-scripts/seeds/$(SEED)'
+	@echo "Seed applied (no reset, data preserved)."
 
 # Reset Database: Stop containers, remove volumes, and start again to trigger init scripts.
 # Garage volumes are wiped too: the picture URLs lived in the database that was just reset.

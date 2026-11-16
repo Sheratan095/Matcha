@@ -8,8 +8,8 @@ import { refresh } from './commands'
 import { DEFAULT_DISCOVER_FILTERS } from './filters'
 import { realtime$, startRealtime } from './realtime'
 import { getNodeStatus, getNodeValue, setNode } from './store'
-import { card, incoming, ME } from './testing/fakeBackend'
-import { nestError } from './testing/fakeServer'
+import { card, deckCard, incoming, ME } from './testing/fakeBackend'
+import { nestError, reply } from './testing/fakeServer'
 import { flush, startTestStore, type TestStore } from './testing/harness'
 
 let store: TestStore
@@ -346,5 +346,109 @@ describe('matches and chat', () => {
     await actions.resetDemoData()
     expect(server().sent('POST', `${SOCIAL_URL}/reset`)).toHaveLength(1)
     expect(getNodeValue('matches')).toEqual([])
+  })
+})
+
+describe('search', () => {
+  const SEARCH = `${API_URL}/profile/search`
+  const HERE = { latitude: 45.07, longitude: 7.69 }
+  const sent = () => server().sent('GET', SEARCH)
+  const ids = (cards: { userId: string }[] | null | undefined) => (cards ?? []).map((entry) => entry.userId)
+
+  async function ready(): Promise<void> {
+    await signIn()
+    await actions.setLocation(HERE)
+    store.backend.state.deck = [
+      deckCard('ann', { age: 24, fameRating: 50 }),
+      deckCard('bea', { age: 35, distanceKm: 40, fameRating: 70 }),
+      deckCard('cid', { age: 52, fameRating: 80 }),
+    ]
+  }
+
+  it('rejects a blank search, an overlong name or an inverted age range without sending anything', async () => {
+    await signIn()
+    await expect(actions.search({ q: '   ' })).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    await expect(actions.search({ q: 'a'.repeat(51) })).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    await expect(actions.search({ ageMin: 40, ageMax: 30 })).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    expect(sent()).toHaveLength(0)
+    expect(getNodeValue('searchActive') ?? null).toBeNull()
+  })
+
+  it('rejects with the backend error when the viewer has no location', async () => {
+    await signIn()
+    await expect(actions.search({ q: 'ann' })).rejects.toMatchObject({ status: 403 })
+    expect(getNodeValue('searchResults')).toBeNull()
+    expect(getNodeStatus('searchResults')).toMatchObject({ status: 'error', error: { status: 403 } })
+  })
+
+  it('sends q trimmed and resolves once searchResults holds the cards', async () => {
+    await ready()
+    const found = await actions.search({ q: '  Ann ' })
+    expect(sent().at(-1)?.params).toEqual({ q: 'Ann' })
+    expect(ids(found)).toEqual(['ann'])
+    expect(found[0]).not.toHaveProperty('likesYou')
+    expect(getNodeValue('searchResults')).toBe(found)
+    expect(getNodeStatus('searchResults').status).toBe('success')
+  })
+
+  it('sends the filters as the discover parameters, in one request however many changed', async () => {
+    await ready()
+    const found = await actions.search({ ageMin: 30, ageMax: 60, distance: 50, fameMin: 60, tags: ['#Art', 'tea', 'art'] })
+    expect(sent()).toHaveLength(1)
+    expect(sent()[0].params).toEqual({ minAge: 30, maxAge: 60, maxDistanceKm: 50, minFame: 60, tags: 'art,tea' })
+    expect(ids(found)).toEqual(['bea', 'cid'])
+    // a name narrows the same search further
+    await actions.search({ q: 'ci' })
+    expect(sent()).toHaveLength(2)
+    expect(sent()[1].params).toEqual({ q: 'ci', minAge: 30, maxAge: 60, maxDistanceKm: 50, minFame: 60, tags: 'art,tea' })
+    // a null limit is not sent
+    await actions.search({ fameMin: null, tags: [] })
+    expect(sent()[2].params).toEqual({ q: 'ci', minAge: 30, maxAge: 60, maxDistanceKm: 50 })
+  })
+
+  it('a sort-only change reorders visibleSearch in the browser without a request', async () => {
+    await ready()
+    await actions.search({ q: 'a' })
+    expect(ids(getNodeValue('visibleSearch'))).toEqual(['ann', 'bea'])
+    await actions.search({ sort: 'fame' })
+    expect(sent()).toHaveLength(1)
+    expect(ids(getNodeValue('visibleSearch'))).toEqual(['bea', 'ann'])
+    expect(ids(getNodeValue('searchResults'))).toEqual(['ann', 'bea'])
+  })
+
+  it('the same criteria again refetch in place; dropping every criterion is refused, clearSearch ends it', async () => {
+    await ready()
+    await actions.search({ q: 'ann' })
+    await actions.search({ q: 'ann' })
+    expect(sent()).toHaveLength(2)
+    await expect(actions.search({ q: null })).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    expect(getNodeValue('searchQuery')).toBe('ann')
+    actions.clearSearch()
+    expect(getNodeValue('searchActive')).toBeNull()
+    expect(getNodeValue('searchQuery')).toBeNull()
+    expect(getNodeValue('searchResults')).toBeNull()
+    expect(getNodeValue('visibleSearch')).toBeNull()
+    await flush(30)
+    expect(sent()).toHaveLength(2)
+  })
+
+  it('a sign-out clears the search, filters included', async () => {
+    await ready()
+    await actions.search({ q: 'ann', distance: 20, sort: 'age' })
+    await actions.logout()
+    expect(getNodeValue('searchActive')).toBeNull()
+    expect(getNodeValue('searchQuery')).toBeNull()
+    expect(getNodeValue('searchDistance')).toBeNull()
+    expect(getNodeValue('searchSort')).toBe('best')
+    expect(getNodeValue('searchResults')).toBeNull()
+  })
+
+  it('blocking someone refetches the open search', async () => {
+    await ready()
+    await actions.search({ q: 'ann' })
+    server().on('POST', `${API_URL}/profile/:id/block`, () => reply(200, ''))
+    await actions.blockUser('ann')
+    await flush(30)
+    expect(sent()).toHaveLength(2)
   })
 })

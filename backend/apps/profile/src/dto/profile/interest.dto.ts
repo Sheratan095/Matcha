@@ -1,7 +1,7 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional, ApiPropertyOptions } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsString, IsUUID, MaxLength, IsOptional } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsString, IsUUID, Matches, MaxLength, IsOptional } from 'class-validator';
 
 // THE single definition of an interest tag, for every DTO on both sides of the API:
 //   - OUTGOING: InterestTagDto / InterestTagListDto, the { id, name } shape every response uses.
@@ -17,6 +17,32 @@ import { ArrayMaxSize, IsArray, IsString, IsUUID, MaxLength, IsOptional } from '
 
 export const MAX_INTEREST_NAME_LENGTH = 50; // matches interest_tags.name VARCHAR(50)
 export const MAX_INTERESTS_PER_USER   = 20;
+
+// WHAT A TAG NAME MAY CONTAIN, an allow-list rather than a block-list.
+//
+// Tags are the one piece of free text that is SHARED: a tag one user types is stored once and
+// then returned to every user by GET /profile/interests and used as a filter value. So unlike a
+// biography (shown to whoever opens that one profile), a hostile name here lands in everybody's
+// picker. It is also identifier-like, which makes a strict character set cheap:
+//   - first character: a letter, a digit or an emoji (no leading punctuation, '#' is stripped before);
+//   - then: letters (any alphabet), digits, combining marks (accents), emoji and their joiners
+//     (zero-width joiner, variation selector 16), spaces, and . _ + # - plus the straight and curly
+//     apostrophe (so "c++", "c#", "sci-fi", "rock n roll", "it's" pass).
+// Everything that can open a tag, quote an attribute or break out of a context is out:
+// < > " ` & / \ = ; : ( ) { } [ ] | % $ @ ! ? * ~ ^
+// A comma is out because it is the list separator of ?tags=a,b: a tag containing one could be
+// stored but never filtered on.
+//
+// frontend/src/wb/filters.ts (normaliseTags) cleans typed text to this same set, so the UI never
+// sends a name this rejects; keep the two in step.
+// The joiners and the curly apostrophe are written as code points, not literals: the first two
+// are INVISIBLE, and an invisible character inside a regex is a trap for the next person to edit
+// it. The hyphen stays LAST so it is a literal one and not the start of a range.
+const	TAG_EXTRA_CHARS = `${String.fromCharCode(0x200D, 0xFE0F, 0x2019)} _.'+#-`;
+export const INTEREST_NAME_PATTERN = new RegExp(
+	String.raw`^[\p{L}\p{N}\p{Extended_Pictographic}][\p{L}\p{N}\p{M}\p{Extended_Pictographic}${TAG_EXTRA_CHARS}]*$`,
+	'u',
+);
 
 // An interest tag as it leaves the API. Stored and returned WITHOUT the leading '#': the
 // frontend adds it for display.
@@ -45,9 +71,12 @@ export class InterestTagListDto
 // Lowercased because interest_tags.name is UNIQUE and '#Vegan' must not become a second row
 // next to 'vegan'; the leading '#' is stripped because the UI shows tags as #hashtags but the
 // column stores them bare.
+//
+// Inner whitespace is collapsed too ('foo   bar' -> 'foo bar'), for the same reason as the
+// lowercasing: two spellings of one tag must not become two rows.
 function normalizeInterestName(raw: string): string
 {
-	return (raw.trim().replace(/^#+/, '').trim().toLowerCase());
+	return (raw.trim().replace(/^#+/, '').trim().replace(/\s+/g, ' ').toLowerCase());
 }
 
 // Accepts BOTH shapes a tag list arrives in, which is why this lives in one helper rather than
@@ -105,5 +134,6 @@ export function InterestNamesProperty(apiOptions: ApiPropertyOptions = {}): Prop
 		ArrayMaxSize(MAX_INTERESTS_PER_USER),
 		IsString({ each: true }),
 		MaxLength(MAX_INTEREST_NAME_LENGTH, { each: true }),
+		Matches(INTEREST_NAME_PATTERN, { each: true, message: "Each interest may only contain letters, numbers, emoji, spaces and . _ ' + # -" }),
 	));
 }

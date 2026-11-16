@@ -20,10 +20,6 @@
 
 - [ ] remove the manual verification code entering now verification and psw reset works only with link
 
-## Missing parts (subject, mandatory first)
-
-The bonus is only graded when ALL of these work. Everything under "still mocked" talks to src/mock today.
-
 ### IV.2 User profile
 - [ ] "Who liked me": Activity > Likes still reads the mock (`likesReceived`, GET social /likes) -> GET /profile/likes
 - [ ] "Profiles I visited" (visit history): no screen yet -> GET /profile/visited
@@ -32,7 +28,8 @@ The bonus is only graded when ALL of these work. Everything under "still mocked"
 - [x] Remove `createMissingProfile` / `profileCreate` (POST /profile): that route no longer exists (only /internal/create, blocked by the gateway), so the "heal" path always failed
 
 ### IV.4 Research
-- [ ] Advanced search page: age range, fame range, location (distance), tags (ALL of them), name, gender, preference -> GET /profile/search; results sortable / filterable like the deck (reuse `visibleDeck` sorting)
+- [x] Search from the shell's top bar (src/features/search): name (`q`) plus the deck's filters (age range, distance, min fame, tags = ALL of them, sort in the browser) -> GET /profile/search; a result opens the profile sheet
+- [ ] Search by gender / preference (`genders`, `preferences`) and a fame / distance range (`maxFame`, `minDistanceKm`): accepted by GET /profile/search, no control yet
 
 ### IV.5 Profile view
 - [ ] Blocked users list + unblock in Me: GET /profile/blocks, DELETE /profile/:id/block
@@ -60,7 +57,7 @@ The bonus is only graded when ALL of these work. Everything under "still mocked"
 - [ ] No unhandled error in the console with the real backend (every page, logged in and out)
 - [ ] Check every page on Firefox and Chrome, and on a phone width
 
-## Bonus (only graded if the mandatory part is perfect)
+## Bonus 
 - [x] Interactive map of users (/map)
 - [x] GitHub OAuth
 - [ ] Calendar: plan dates with a match (title, description, place as coordinates, date and time): GET /profile/calendar, POST /profile/calendar/event, POST .../:eventId/accept | decline | cancel, socket `event-*`
@@ -76,7 +73,7 @@ The bonus is only graded when ALL of these work. Everything under "still mocked"
 | GET /profile/likes | who liked me (IV.2) |
 | GET /profile/visited | my visit history (IV.2) |
 | GET /profile/matches | connections list (IV.6) |
-| GET /profile/search | advanced search (IV.4) |
+| GET /profile/search | search (IV.4): `q`, `minAge`, `maxAge`, `maxDistanceKm`, `minFame`, `tags` sent from the top bar; `genders`, `preferences`, `maxFame`, `minDistanceKm` still unused |
 | GET /profile/blocks, DELETE /profile/:id/block | blocked list, unblock |
 | GET /notification/chat | conversation list |
 | GET /notification/chat/:chatId | conversation history |

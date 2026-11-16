@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { multiline } from '@repo/utils';
 import { OwnProfileDto } from './profile.dto';
 import { InterestNamesProperty } from './interest.dto';
 
@@ -32,9 +33,12 @@ export class UpdateProfileDto
 	@IsIn(['male', 'female', 'both', 'other'])
 	sexualPreference?: string;
 
+	// Free text, shown to every other user. Stored as typed (NOT HTML-escaped: "<3" must stay "<3";
+	// the frontend escapes on render), minus control / invisible characters, with line breaks
+	// normalised and trimmed. The length limit is checked AFTER this, on what will be stored.
 	@ApiProperty({ example: 'Curiouser and curiouser.', required: false })
 	@IsOptional()
-	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+	@Transform(({ value }) => multiline(value))
 	@IsString()
 	@MaxLength(500)
 	biography?: string;

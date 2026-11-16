@@ -2,6 +2,7 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional, ApiPropertyOptions } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsString, IsUUID, MaxLength, IsOptional, IsNotEmpty, IsISO8601, Matches, IsNumber, Min, Max } from 'class-validator';
+import { multiline, singleLine } from '@repo/utils';
 
 // Date + time + a mandatory offset ('Z' or '±hh:mm'); @IsISO8601 alone also accepts offset-less times.
 const ISO_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?(Z|[+-]\d{2}:\d{2})$/;
@@ -55,20 +56,25 @@ export class GetCalendarResponseDto
 
 export class PostCalendarEventDto
 {
-	@ApiProperty({ example: 'user123', description: 'Id of the invited user' })
-	@IsString()
+	// A user id is always a UUID: checking it here answers a malformed one with a clean 400
+	// instead of letting Postgres reject the cast (22P02) deeper in.
+	@ApiProperty({ example: '3f2b8c74-9d1e-4a6f-b0c5-7e81d2a4f963', description: 'Id of the invited user' })
+	@IsUUID()
 	inviteeId: string;
 
-	// typeof guard: a non-string title must fail @IsString with a 400, not crash .trim() with a 500
+	// One clean line, shown to the invitee and pushed in their notification. singleLine returns a
+	// non-string untouched: it must fail @IsString with a 400, not crash .trim() with a 500.
 	@ApiProperty({ example: 'Meeting with team', description: 'Event title' })
 	@IsString()
 	@IsNotEmpty()
 	@MaxLength(100)
-	@Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
+	@Transform(({ value }) => singleLine(value))
 	title: string;
 
+	// May span lines; control / invisible characters removed, trimmed. Stored as typed, escaped on render.
 	@ApiPropertyOptional({ example: 'Discuss project updates', description: 'Event description' })
 	@IsOptional()
+	@Transform(({ value }) => multiline(value))
 	@IsString()
 	@MaxLength(500)
 	description?: string;

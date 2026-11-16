@@ -224,6 +224,16 @@ dependency; F inputs are always optional (4.2).
 | `blockUser` / `reportUser` | Payload (user id) + POST api `/profile/{userId}/block` \| `/report` | payload (PATH_VARIABLE) | empty |
 | `interestCatalogue` → `tagCatalogue` | GET api `/profile/interests` → F | `sessionUserId` | `string[]` (names, alphabetical) |
 
+**Search**
+
+| Node | Kind | Depends on | Value |
+|---|---|---|---|
+| `searchQuery` / `searchAgeMin` / `searchAgeMax` / `searchDistance` / `searchFameMin` / `searchTags` | P | — | the criteria: a name substring (1-50 chars), age bounds, max km, min fame, comma-separated tags (ALL required); each `null` = not sent = no limit |
+| `searchSort` | P, default `'best'` | — | `DiscoverSort`; NOT a request parameter |
+| `searchActive` | P | — | nonce while a search is in force, `null` for none: the gate `writeSearch` (`src/wb/search.ts`) closes while it writes several criteria, so a change is one request |
+| `searchResults` | GET api `/profile/search` | `sessionUserId`, `searchActive` (required), the criteria (REQUEST_PARAMETER `q`, `minAge`, `maxAge`, `maxDistanceKm`, `minFame`, `tags`, all opt), `searchRefresh` (opt) | `DeckCard[]` without `likesYou`: the whole result list (200 max), nearest first; `null` while no search |
+| `visibleSearch` | F | `searchResults` (opt), `searchSort` (opt) | `DeckCard[]` in `searchSort` order (`best` = the server's); `null` while no results |
+
 **Matches, chat, activity**
 
 | Node | Kind | Depends on | Value |
@@ -240,9 +250,9 @@ dependency; F inputs are always optional (4.2).
 | `demoReset` | Payload (nonce) + POST social `/reset` | payload | `OkResult` |
 
 Refreshable in place (`refresh(name)` → nonce): `sessionCheck` (`sessionProbe`), `myProfile`,
-`myViewers` and `likesReceived` (both `activityRefresh`), `onlineCount`, `discoverDeck`, `matches`,
-`chatMessages`. Writable by screens (`setNode`, `useNode`): the filters, `swipedIds`, `activeMatchId`,
-`apiProfileId`, `socialProfileId` — prefer the actions.
+`myViewers` and `likesReceived` (both `activityRefresh`), `onlineCount`, `discoverDeck`, `searchResults`,
+`matches`, `chatMessages`. Writable by screens (`setNode`, `useNode`): the filters, `swipedIds`, the search
+criteria, `activeMatchId`, `apiProfileId`, `socialProfileId` — prefer the actions.
 
 ### 4.6 What the UI imports (`@/wb`)
 
@@ -276,6 +286,7 @@ is `NodeValues[N] | null | undefined`.
   | `swipe(card, 'like' \| 'pass'): Promise<SwipeOutcome>` | the card left `visibleDeck` at once (back on failure, e.g. 403 without a picture); `matched` says the like made a match; the deck is fetched again when empty |
   | `rewind(): Promise<RewindOutcome>` | the last swipe of this session is undone (a like with `DELETE .../like`) and its card is back on top; a like that matched is not undone |
   | `reloadDeck(): Promise<void>` | the deck reloaded; this session's passes come back |
+  | `search(partialCriteria): Promise<DeckCard[]>`, `clearSearch(): void` | `searchResults` holds the answer to `GET /profile/search` for the merged criteria (name + the deck's filters, `null` = no limit): one request however many changed, none for a sort-only change (`visibleSearch` sorts in the browser), a refetch in place for the same criteria; `INVALID` when nothing would be sent or a value is out of range. `clearSearch` drops every criterion, resets the results and drops a request still on its way |
   | `likeUser(userId, action)`, `unlikeUser(userId)`, `blockUser(userId)`, `reportUser(userId)` | the request succeeded (from an opened real profile) |
   | `answerLike(card, action): Promise<SwipeResult>` | the mocked answer to a like received (activity page) |
   | `openChat(matchId): Promise<Message[]>`, `closeChat(): void` | messages loaded, then `matches` (unread counts) |
@@ -408,6 +419,11 @@ Every account gets its own world. `POST /__mock/social/reset` (`actions.resetDem
 
 GitHub OAuth is a top-level navigation to `${API_URL}/auth/github`; the backend redirects back to `/`
 with cookies set, and the boot-time session probe picks the session up.
+
+Not a route: the search bar in the shell's top bar (`src/features/search`, the `search` slot of
+`AppShell`) searches people by name on every page of the signed-in frame, narrowed by the deck's
+filters (age, distance, fame, interests, sort; the same `FilterSheet`, where the open end of a rail
+means no limit), and opens a result in the shared profile sheet. "/" focuses it.
 
 ### 6.1 Location (`src/features/location`)
 

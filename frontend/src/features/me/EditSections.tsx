@@ -14,6 +14,7 @@ import {
   TextArea,
   TextField,
 } from '@/ui'
+import { tagFromInput } from '@/wb'
 import { focusFirstInvalid } from './focus'
 import { LocationSection } from './LocationSection'
 import { GENDER_OPTIONS, isEmptyChange, PREFERENCE_OPTIONS, SECTION_IDS, type DraftKey } from './profile'
@@ -174,6 +175,7 @@ function InterestsSection({ profile }: { profile: Profile }) {
         label="Your interests"
         value={form.value.interests}
         onChange={(tags) => form.set('interests', tags)}
+        normalize={tagFromInput}
         suggestions={catalogue.tags}
         maxLength={MAX_INTEREST_LENGTH}
         hint={catalogue.hint}
