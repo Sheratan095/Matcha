@@ -10,7 +10,7 @@
  * - `preview` shows at once while the full profile loads.
  * - Closing calls `onClose` and `actions.closeProfile()` (also when the caller sets `target` to null).
  */
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ApiError, Card, OtherProfile, Profile, ProfileRelation } from '@/api/types'
 import {
@@ -134,11 +134,18 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
         ? api
         : null
   const preview = shown?.preview?.userId === shown?.userId ? shown?.preview : undefined
-  const merged: Card | OtherProfile | null = loaded
-    ? preview && !isCard(loaded)
-      ? ({ ...preview, ...loaded } as Card | OtherProfile)
-      : loaded
-    : (preview ?? null)
+  // Memoized on purpose: the spread builds a NEW object, and `merged !== kept` below sets state
+  // during render. A fresh object on every render would make that check true forever
+  // ("Too many re-renders") as soon as the full profile arrives on top of a preview.
+  const merged: Card | OtherProfile | null = useMemo(
+    () =>
+      loaded
+        ? preview && !isCard(loaded)
+          ? ({ ...preview, ...loaded } as Card | OtherProfile)
+          : loaded
+        : (preview ?? null),
+    [loaded, preview],
+  )
 
   const [kept, setKept] = useState<Card | OtherProfile | null>(merged)
   if (open && merged && merged !== kept) setKept(merged)
