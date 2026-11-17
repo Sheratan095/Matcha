@@ -6,7 +6,7 @@
  * me precisely" asks the device's GPS and stores the result (`actions.setLocation`). A face opens
  * the real profile (GET /profile/:userId).
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { deviceSpot, savedSpot, type DeviceFailure } from '@/features/location/geo'
 import { setLocationMode } from '@/features/location/mode'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
@@ -26,7 +26,7 @@ import {
   TicketHeader,
   toast,
 } from '@/ui'
-import { actions, refresh, toApiError, useNodeStatus, useNodeValue } from '@/wb'
+import { actions, refresh, REVISIT_MS, toApiError, useLoad, useNodeStatus, useNodeValue } from '@/wb'
 import { kmText, placeMatches, type PlacedMatch } from './layout'
 import { MatchMap, type MatchMapHandle } from './MatchMap'
 import s from './MapPage.module.css'
@@ -50,10 +50,9 @@ export default function MapPage() {
   const [locating, setLocating] = useState(false)
   const [reloading, setReloading] = useState(false)
 
-  // Connections change with every like elsewhere in the app: fresh on each visit.
-  useEffect(() => {
-    void refresh('matchesMap')
-  }, [])
+  // Loads on the first visit; connections made or broken refresh it, and positions move: a later
+  // visit refetches it once it is getting old.
+  useLoad('matchesMap', { maxAgeMs: REVISIT_MS })
 
   const me = profile ? savedSpot(profile) : null
   const meLat = me?.latitude ?? null
@@ -92,12 +91,9 @@ export default function MapPage() {
     }
   }
 
-  const open = (person: PlacedMatch) => setTarget({ userId: person.userId, source: 'api' })
-  const closeSheet = () => {
-    setTarget(null)
-    // An unlike or a block from the sheet takes the person off the map.
-    void refresh('matchesMap')
-  }
+  const open = (person: PlacedMatch) => setTarget({ userId: person.userId })
+  // An unlike or a block from the sheet refreshes the map itself (actions.unlikeUser / blockUser).
+  const closeSheet = () => setTarget(null)
 
   const loading = matches == null && status.status !== 'error'
   const failed = matches == null && status.status === 'error'
@@ -204,7 +200,7 @@ export default function MapPage() {
                   leading={<Avatar src={person.profilePictureUrl} name={person.username} size="sm" decorative />}
                   title={`@${person.username}`}
                   subtitle="No location shared"
-                  onClick={() => setTarget({ userId: person.userId, source: 'api' })}
+                  onClick={() => setTarget({ userId: person.userId })}
                 />
               </li>
             ))}

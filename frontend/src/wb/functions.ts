@@ -8,7 +8,18 @@
  *   parses `fn.toString()`, and an extra parameter makes it append a snapshot argument;
  * - synchronous and pure; every input may be `null` (reset / failed) or `undefined` (never loaded).
  */
-import type { DeckCard, DiscoverSort, InterestTag, Match, OwnProfile, SessionCheck } from '@/api/types'
+import type {
+  ChatHistoryResult,
+  ChatListResult,
+  ConnectionsResult,
+  DeckCard,
+  DiscoverSort,
+  InterestTag,
+  Match,
+  Message,
+  OwnProfile,
+  SessionCheck,
+} from '@/api/types'
 import type { FunctionDef } from './types'
 
 export type AuthStatus = 'checking' | 'anonymous' | 'authenticated'
@@ -94,10 +105,47 @@ export function tagCatalogue(catalogue: { interests: InterestTag[] } | null | un
   return catalogue.interests.map((tag) => tag.name).sort((a, b) => a.localeCompare(b))
 }
 
+/**
+ * Each connection with its conversation (the chat list only has chats that hold a message) and its
+ * unread count, in the backend's order. null while the connections are not loaded; a chat list that
+ * is missing or failed leaves every conversation without a preview.
+ */
+export function matches(
+  connections: ConnectionsResult | null | undefined,
+  chats: ChatListResult | null | undefined,
+  unread: Record<string, number> | null | undefined,
+): Match[] | null {
+  if (!connections || !Array.isArray(connections.matches)) return null
+  const chatOf = new Map((Array.isArray(chats?.chats) ? chats.chats : []).map((chat) => [chat.userId, chat]))
+  return connections.matches.map((person) => {
+    const chat = chatOf.get(person.userId)
+    return {
+      userId: person.userId,
+      username: person.username,
+      profilePictureUrl: person.profilePictureUrl ?? null,
+      chatId: chat?.chatId ?? null,
+      lastMessage: chat ? { text: chat.lastMessage, sentAt: chat.timestamp, senderId: chat.lastSenderId } : null,
+      unread: unread?.[person.userId] ?? 0,
+    }
+  })
+}
+
 /** Unread messages across all matches; 0 while the matches are not loaded. */
 export function unreadCount(matches: Match[] | null | undefined): number {
   if (!matches) return 0
   return matches.reduce((total, match) => total + match.unread, 0)
+}
+
+/** The open conversation's messages as the thread draws them, oldest first; null while not loaded. */
+export function chatMessages(history: ChatHistoryResult | null | undefined): Message[] | null {
+  if (!history || !Array.isArray(history.messages)) return null
+  return history.messages.map((message) => ({
+    id: message.messageId,
+    senderId: message.userId,
+    text: message.content,
+    sentAt: message.timestamp,
+    status: message.status,
+  }))
 }
 
 export const FUNCTIONS: FunctionDef[] = [
@@ -107,5 +155,7 @@ export const FUNCTIONS: FunctionDef[] = [
   { name: 'visibleDeck', implementation: visibleDeck },
   { name: 'visibleSearch', implementation: visibleSearch },
   { name: 'tagCatalogue', implementation: tagCatalogue },
+  { name: 'matches', implementation: matches },
   { name: 'unreadCount', implementation: unreadCount },
+  { name: 'chatMessages', implementation: chatMessages },
 ]

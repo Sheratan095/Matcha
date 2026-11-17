@@ -15,7 +15,8 @@
 /* ------------------------------------------------------------ scoreboard tabs */
 .score {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: var(--s-3);
 }
 
@@ -100,6 +101,19 @@
 .scoreTab:not(.scoreActive) .scoreIcon {
   color: var(--c-ink);
 }
+/* three tickets side by side on a phone: tighter tickets, smaller numerals */
+@container (max-width: 560px) {
+  .score {
+    gap: var(--s-2);
+  }
+  .scoreTab {
+    padding: var(--s-3) var(--s-3) var(--s-3);
+  }
+  .scoreNum {
+    font-size: clamp(2.5rem, 13cqi, 3.5rem);
+    text-shadow: 3px 3px 0 var(--plate);
+  }
+}
 
 /* ------------------------------------------------------------ likes: pinned polaroids */
 .likes {
@@ -173,17 +187,6 @@
   box-shadow: var(--sh-1);
   rotate: -8deg;
 }
-.likeOnline {
-  position: absolute;
-  top: 9px;
-  left: 9px;
-  width: 14px;
-  height: 14px;
-  border: var(--line-thin);
-  border-radius: 50%;
-  background: var(--c-matcha);
-}
-
 .likeLabel {
   display: flex;
   flex-direction: column;
@@ -205,11 +208,6 @@
   font-size: 1.25rem;
   line-height: 1;
   text-transform: uppercase;
-}
-.likeAge {
-  font-weight: 500;
-  font-stretch: var(--wd-normal);
-  font-size: 1rem;
 }
 .likeMeta {
   font-family: var(--font-mono);

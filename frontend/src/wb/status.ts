@@ -40,6 +40,12 @@ export interface StatusTracker {
   get(name: string): NodeStatus
   /** The status subject itself, for `useSyncExternalStore` (stable per node). */
   source(name: string): StatusSource
+  /** When the value the node holds arrived (`Date.now()`); null unless `status` is `success`. */
+  loadedAt(name: string): number | null
+  /** Id of the node's most recently started request (ids grow with time, `HttpEvent.id`); 0 for none. */
+  requestId(name: string): number
+  /** Id of the most recently started request of any kind; 0 for none. */
+  lastRequestId(): number
   /** Starts following node values; called once the graph is live. */
   attach(getNode: (name: string) => Observable<unknown>): void
   dispose(): void
@@ -58,6 +64,8 @@ export function createStatusTracker(
 
   /** Id of the most recent request per node. */
   const latest = new Map<string, number>()
+  /** Per node in `success`: when its value arrived. */
+  const loadedAt = new Map<string, number>()
   const subscriptions: Subscription[] = []
 
   function subject(name: string): BehaviorSubject<NodeStatus> {
@@ -67,12 +75,17 @@ export function createStatusTracker(
   }
 
   function set(name: string, status: NodeStatus): void {
+    if (status === SUCCESS) loadedAt.set(name, Date.now())
+    else loadedAt.delete(name)
     const target = subject(name)
     if (target.getValue() !== status) target.next(status)
   }
 
+  let lastStarted = 0
+
   subscriptions.push(
     events$.subscribe((event) => {
+      if (event.phase === 'start' && event.id > lastStarted) lastStarted = event.id
       const name = registry.match(event.method, event.url)
       if (!name) return
       if (event.phase === 'start') {
@@ -92,6 +105,12 @@ export function createStatusTracker(
     status$: (name) => subject(name).asObservable(),
     get: (name) => subject(name).getValue(),
     source: (name) => subject(name),
+    loadedAt: (name) => (subject(name).getValue() === SUCCESS ? (loadedAt.get(name) ?? null) : null),
+    requestId: (name) => {
+      subject(name)
+      return latest.get(name) ?? 0
+    },
+    lastRequestId: () => lastStarted,
     attach(getNode) {
       for (const name of subjects.keys()) {
         subscriptions.push(

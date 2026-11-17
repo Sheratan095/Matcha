@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { API_URL, SOCIAL_URL } from '@/config'
+import { API_URL } from '@/config'
 import { FUNCTIONS } from './functions'
 import { NODES } from './nodes'
 import { validateGraph } from './nodes/validate'
@@ -21,10 +21,15 @@ describe('registry: the app graph', () => {
     ['PATCH', `${API_URL}/profile/pictures/p1/profile`, 'pictureMainResult'],
     ['GET', `${API_URL}/auth/validate`, 'sessionCheck'],
     ['POST', `${API_URL}/auth/refresh`, 'sessionRefreshResult'],
-    ['GET', `${API_URL}/notification/online`, 'onlineCount'],
-    ['GET', `${SOCIAL_URL}/matches/m1/messages`, 'chatMessages'],
-    ['DELETE', `${SOCIAL_URL}/matches/m1`, 'unmatchResult'],
-    ['GET', `${SOCIAL_URL}/matches`, 'matches'],
+    ['GET', `${API_URL}/profile/visited`, 'visitedProfiles'],
+    ['GET', `${API_URL}/profile/blocks`, 'blockedUsers'],
+    ['DELETE', `${API_URL}/profile/u1/block`, 'unblockUserResult'],
+    ['GET', `${API_URL}/chat/c1`, 'chatHistory'],
+    ['GET', `${API_URL}/chat`, 'chatList'],
+    ['POST', `${API_URL}/chat/message`, 'chatSendResult'],
+    ['POST', `${API_URL}/chat/c1/seen`, 'chatSeenResult'],
+    ['GET', `${API_URL}/profile/matches`, 'connections'],
+    ['GET', `${API_URL}/profile/likes`, 'likesReceived'],
     ['GET', `${API_URL}/profile/discover`, 'discoverDeck'],
     ['GET', `${API_URL}/profile/search`, 'searchResults'],
     ['GET', `${API_URL}/profile/matches/map`, 'matchesMap'],
@@ -34,9 +39,6 @@ describe('registry: the app graph', () => {
     ['POST', `${API_URL}/profile/u1/pass`, 'passResult'],
     ['POST', `${API_URL}/profile/u1/block`, 'blockUserResult'],
     ['POST', `${API_URL}/profile/u1/report`, 'reportUserResult'],
-    ['POST', `${SOCIAL_URL}/swipes`, 'answerLikeResult'],
-    ['GET', `${SOCIAL_URL}/profiles/u1`, 'socialProfile'],
-    ['POST', `${SOCIAL_URL}/reset`, 'demoResetResult'],
   ])('%s %s -> %s', (method, url, name) => {
     expect(registry.match(method, url)).toBe(name)
   })
@@ -46,7 +48,7 @@ describe('registry: the app graph', () => {
   })
 
   it('does not attribute requests no node sends', () => {
-    expect(registry.match('GET', `${SOCIAL_URL}/matches/m1/photos`)).toBeNull()
+    expect(registry.match('GET', `${API_URL}/chat/c1/photos`)).toBeNull()
     expect(registry.match('PUT', `${API_URL}/profile`)).toBeNull()
     expect(registry.match('GET', `${API_URL}/profile/`)).toBeNull() // an empty segment is not an id
     expect(registry.match('GET', 'http://elsewhere.test/profile')).toBeNull()

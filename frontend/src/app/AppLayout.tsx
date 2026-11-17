@@ -46,7 +46,7 @@ export default function AppLayout() {
   useAutoLocation()
   const { pathname } = useLocation()
   const unread = useNodeValue('unreadCount') ?? 0
-  const likes = useNodeValue('likesReceived')?.length ?? 0
+  const likes = useNodeValue('likesReceived')?.likes?.length ?? 0
   const section = SECTIONS.find((candidate) => pathname === candidate.to || pathname.startsWith(`${candidate.to}/`))
 
   const tabs: ShellTab[] = SECTIONS.map((candidate) => ({

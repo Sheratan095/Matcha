@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LOCAL_ERROR } from '@/api/http'
-import { API_URL, SOCIAL_URL } from '@/config'
+import { API_URL } from '@/config'
 import { actions } from './actions'
 import { refresh, run } from './commands'
+import { load } from './demand'
 import { getNodeStatus, getNodeValue, node$, stopStore } from './store'
-import { ME } from './testing/fakeBackend'
+import { incoming, ME, person } from './testing/fakeBackend'
 import { deferred, nestError } from './testing/fakeServer'
 import { flush, startTestStore, type TestStore } from './testing/harness'
 
@@ -35,13 +36,46 @@ describe('the graph at rest', () => {
     expect(getNodeValue('myProfile')).toBeNull()
   })
 
-  it('loads each authenticated read once when the session appears', async () => {
+  it('loads what the shell shows once when the session appears, and nothing a single page asks for', async () => {
     await signIn()
     await flush(30)
-    expect(server().sent('GET', `${API_URL}/profile`)).toHaveLength(1)
-    expect(server().sent('GET', `${API_URL}/profile/discover`)).toHaveLength(1)
-    expect(server().sent('GET', `${SOCIAL_URL}/matches`)).toHaveLength(1)
-    expect(server().sent('GET', `${API_URL}/auth/validate`)).toHaveLength(2)
+    const sent = server().requests.map((request) => `${request.method} ${request.url.replace(API_URL, '')}`)
+    expect(sent.sort()).toEqual(
+      [
+        'GET /auth/validate',
+        'POST /auth/login',
+        'GET /auth/validate',
+        // the guards and the avatar
+        'GET /profile',
+        // the Matches and Activity badges
+        'GET /profile/matches',
+        'GET /chat',
+        'GET /profile/likes',
+      ].sort(),
+    )
+  })
+
+  it('loads a read on demand once, however many screens ask for it at once', async () => {
+    await signIn()
+    await flush(30)
+    await Promise.all([load('myViewers'), load('myViewers'), load('matchesMap')])
+    expect(server().sent('GET', `${API_URL}/profile/viewers`)).toHaveLength(1)
+    expect(server().sent('GET', `${API_URL}/profile/matches/map`)).toHaveLength(1)
+    // young enough: nothing sent; marked stale or too old: refetched in place
+    await load('myViewers', 60_000)
+    expect(server().sent('GET', `${API_URL}/profile/viewers`)).toHaveLength(1)
+    await load('myViewers', 0)
+    expect(server().sent('GET', `${API_URL}/profile/viewers`)).toHaveLength(2)
+    expect(getNodeValue('myViewers')).toEqual({ viewers: [] })
+  })
+
+  it('closes every gate at sign-out: the next user loads only what they open', async () => {
+    await signIn()
+    await load('myViewers')
+    await actions.logout()
+    await signIn()
+    await flush(30)
+    expect(server().sent('GET', `${API_URL}/profile/viewers`)).toHaveLength(1)
   })
 })
 
@@ -140,32 +174,31 @@ describe('refresh', () => {
   it('refetches in place without flashing to null, and resolves once the node has the new value', async () => {
     await signIn()
     await flush(30)
-    const before = getNodeValue('matches')
-    expect(before).toEqual([])
-    store.backend.state.matches = [
-      { id: 'm1', profile: store.backend.state.people[0], matchedAt: 'x', lastMessage: null, unread: 2 },
-    ]
+    const before = getNodeValue('connections')
+    expect(before).toEqual({ matches: [] })
+    store.backend.state.connections = [person('ann')]
     const seen: unknown[] = []
-    const subscription = node$('matches').subscribe((value) => seen.push(value))
-    await refresh('matches')
+    const subscription = node$('connections').subscribe((value) => seen.push(value))
+    await refresh('connections')
     subscription.unsubscribe()
-    expect(seen).toEqual([before, store.backend.state.matches])
-    expect(getNodeValue('unreadCount')).toBe(2)
+    expect(seen).toEqual([before, { matches: [person('ann')] }])
+    expect(getNodeValue('matches')?.map((match) => match.userId)).toEqual(['ann'])
   })
 
   it('never rejects: a failure leaves the node null and the error on its status', async () => {
     await signIn()
     await flush(30)
-    server().on('GET', `${SOCIAL_URL}/matches`, () => nestError(500, 'down', 'Internal Server Error'))
-    await expect(refresh('matches')).resolves.toBeUndefined()
+    server().on('GET', `${API_URL}/profile/matches`, () => nestError(500, 'down', 'Internal Server Error'))
+    await expect(refresh('connections')).resolves.toBeUndefined()
+    expect(getNodeValue('connections')).toBeNull()
     expect(getNodeValue('matches')).toBeNull()
-    expect(getNodeStatus('matches')).toMatchObject({ status: 'error', error: { status: 500, message: 'down' } })
+    expect(getNodeStatus('connections')).toMatchObject({ status: 'error', error: { status: 500, message: 'down' } })
   })
 
   it('sends nothing for an authenticated read while anonymous', async () => {
     await actions.bootSession()
-    await refresh('matches')
-    expect(server().sent('GET', `${SOCIAL_URL}/matches`)).toHaveLength(0)
+    await refresh('connections')
+    expect(server().sent('GET', `${API_URL}/profile/matches`)).toHaveLength(0)
   })
 })
 
@@ -173,29 +206,32 @@ describe('late answers', () => {
   it('a read still loading at sign-out does not land in the reset node', async () => {
     await actions.bootSession()
     const gate = deferred()
-    const original = { ...store.backend.state }
-    server().on('GET', `${SOCIAL_URL}/matches`, async () => {
+    server().on('GET', `${API_URL}/profile/matches`, async () => {
       await gate.promise
-      return [{ id: 'm-old', profile: original.deck[0], matchedAt: 'x', lastMessage: null, unread: 0 }]
+      return { matches: [person('old')] }
     })
     await actions.login({ username: 'testuser', password: '1234' })
-    expect(getNodeStatus('matches').status).toBe('loading')
+    expect(getNodeStatus('connections').status).toBe('loading')
     await actions.logout()
     gate.resolve()
     await flush(30)
-    expect(getNodeValue('matches')).toBeNull()
-    expect(getNodeStatus('matches').status).toBe('idle')
+    expect(getNodeValue('connections')).toBeNull()
+    expect(getNodeStatus('connections').status).toBe('idle')
   })
 
   it('a conversation closed while loading stays empty', async () => {
+    incoming(store.backend, 'ann', 'hi')
+    const chatId = store.backend.state.chats.get('ann')!.chatId
     await signIn()
     await flush(30)
     const gate = deferred()
-    server().on('GET', `${SOCIAL_URL}/matches/:id/messages`, async () => {
+    server().on('GET', `${API_URL}/chat/:id`, async () => {
       await gate.promise
-      return [{ id: 'x', matchId: 'm1', senderId: 'ann', text: 'late', sentAt: 'x' }]
+      return { messages: [] }
     })
-    const opening = actions.openChat('m1')
+    const opening = actions.openChat('ann')
+    await flush(20)
+    expect(server().sent('GET', `${API_URL}/chat/${chatId}`)).toHaveLength(1)
     actions.closeChat()
     gate.resolve()
     await expect(opening).rejects.toMatchObject({ code: LOCAL_ERROR.DROPPED })
@@ -203,18 +239,27 @@ describe('late answers', () => {
   })
 
   it('a newer request still wins over an older one of the same node', async () => {
+    incoming(store.backend, 'ann', 'from ann')
+    incoming(store.backend, 'bea', 'from bea')
+    const annChat = store.backend.state.chats.get('ann')!.chatId
     await signIn()
     await flush(30)
     const gate = deferred()
-    server().on('GET', `${SOCIAL_URL}/matches/:id/messages`, async ({ route }) => {
-      if (route.id === 'm1') await gate.promise
-      return [{ id: route.id, matchId: route.id, senderId: 'ann', text: route.id, sentAt: 'x' }]
+    server().on('GET', `${API_URL}/chat/:id`, async ({ route }) => {
+      if (route.id === annChat) await gate.promise
+      const chat = [...store.backend.state.chats.values()].find((entry) => entry.chatId === route.id)
+      return { messages: chat?.messages ?? [] }
     })
-    const first = actions.openChat('m1')
-    await actions.openChat('m2')
+    const first = actions.openChat('ann')
+    await flush(20)
+    expect(server().sent('GET', `${API_URL}/chat/${annChat}`)).toHaveLength(1)
+    await actions.openChat('bea')
     gate.resolve()
-    await first
-    expect(getNodeValue('chatMessages')?.[0].text).toBe('m2')
+    // overtaken: it does not mark ann's conversation read
+    await expect(first).rejects.toMatchObject({ code: LOCAL_ERROR.DROPPED })
+    expect(getNodeValue('chatMessages')?.[0].text).toBe('from bea')
+    await flush(30)
+    expect(server().sent('POST', `${API_URL}/chat/${annChat}/seen`)).toHaveLength(0)
   })
 })
 
@@ -233,10 +278,13 @@ describe('status', () => {
   it('attributes /profile/viewers and /profile/{id} to their own nodes', async () => {
     await signIn()
     await flush(30)
-    server().on('GET', `${API_URL}/profile/:id`, () => nestError(500, 'Failed to fetch profile', 'Internal Server Error'))
+    // that id only: a `/profile/:id` route would also answer /profile/likes, which the same trigger reloads
+    server().on('GET', `${API_URL}/profile/22222222-2222-4222-8222-222222222222`, () =>
+      nestError(500, 'Failed to fetch profile', 'Internal Server Error'),
+    )
     server().on('GET', `${API_URL}/profile/viewers`, () => ({ viewers: ['v'] }))
     await expect(actions.showApiProfile('22222222-2222-4222-8222-222222222222')).rejects.toMatchObject({ status: 500 })
-    await refresh('myViewers')
+    await load('myViewers')
     expect(getNodeStatus('apiProfile').status).toBe('error')
     expect(getNodeStatus('myViewers').status).toBe('success')
     expect(getNodeValue('myViewers')).toEqual({ viewers: ['v'] })

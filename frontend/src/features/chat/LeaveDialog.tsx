@@ -1,18 +1,9 @@
 /** The confirmations behind the chat menu: unmatch, block. */
 import { useState } from 'react'
 import type { ApiError } from '@/api/types'
-import { Button, FormError, Modal, Segmented, Stack, Text } from '@/ui'
+import { Button, FormError, Modal, Stack, Text } from '@/ui'
 
 export type LeaveKind = 'unmatch' | 'block'
-
-const REASONS = [
-  { value: 'Not interested', label: 'Not for me' },
-  { value: 'Spam', label: 'Spam' },
-  { value: 'Rude or offensive', label: 'Rude' },
-  { value: 'Fake profile', label: 'Fake' },
-] as const
-
-type Reason = (typeof REASONS)[number]['value']
 
 export interface LeaveDialogProps {
   kind: LeaveKind | null
@@ -20,11 +11,10 @@ export interface LeaveDialogProps {
   busy: boolean
   error: ApiError | null
   onCancel: () => void
-  onConfirm: (kind: LeaveKind, reason?: string) => void
+  onConfirm: (kind: LeaveKind) => void
 }
 
 export function LeaveDialog({ kind, name, busy, error, onCancel, onConfirm }: LeaveDialogProps) {
-  const [reason, setReason] = useState<Reason | null>(null)
   // Keep the last kind while the dialog plays its exit animation.
   const [shown, setShown] = useState<LeaveKind>('unmatch')
   if (kind && kind !== shown) setShown(kind)
@@ -43,7 +33,7 @@ export function LeaveDialog({ kind, name, busy, error, onCancel, onConfirm }: Le
           <Button variant="paper" onClick={onCancel} disabled={busy}>
             {block ? 'Cancel' : 'Keep chatting'}
           </Button>
-          <Button variant="strawberry" loading={busy} onClick={() => onConfirm(shown, block ? (reason ?? undefined) : undefined)}>
+          <Button variant="strawberry" loading={busy} onClick={() => onConfirm(shown)}>
             {block ? 'Block' : 'Unmatch'}
           </Button>
         </>
@@ -51,20 +41,10 @@ export function LeaveDialog({ kind, name, busy, error, onCancel, onConfirm }: Le
     >
       <Stack gap={4}>
         {block ? (
-          <>
-            <Text>
-              {name} won&rsquo;t see you in Discover again and can&rsquo;t message you. Your match and this conversation are
-              removed.
-            </Text>
-            <Segmented
-              label="Reason (optional)"
-              options={REASONS.map((option) => ({ value: option.value, label: option.label }))}
-              value={reason}
-              onChange={setReason}
-              tone="strawberry"
-              disabled={busy}
-            />
-          </>
+          <Text>
+            {name} won&rsquo;t see you in Discover again and can&rsquo;t message you. Your match and this conversation are
+            removed.
+          </Text>
         ) : (
           <Text>
             The conversation disappears for both of you, and {name} leaves your matches. This can&rsquo;t be undone.

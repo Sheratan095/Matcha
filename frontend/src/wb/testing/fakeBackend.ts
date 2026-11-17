@@ -1,9 +1,9 @@
 /**
  * Test-only: a small stateful backend behind the fake adapter, enough for the flows the actions run.
- * Independent of src/mock on purpose: these tests check the state layer, not the mock backend.
+ * It answers the gateway's routes with the shapes the real services send.
  */
-import type { Card, DeckCard, Match, Message, OwnProfile, Profile } from '@/api/types'
-import { API_URL, SOCIAL_URL } from '@/config'
+import type { ChatMessage, DeckCard, OwnProfile, Profile, UserSummary } from '@/api/types'
+import { API_URL } from '@/config'
 import { FakeServer, nestError, reply } from './fakeServer'
 
 export const ME = '11111111-1111-4111-8111-111111111111'
@@ -24,21 +24,6 @@ function profile(userId: string, patch: Partial<Profile> = {}): Profile {
   }
 }
 
-export function card(userId: string, patch: Partial<Card> = {}): Card {
-  return {
-    ...profile(userId, { firstName: userId }),
-    age: 30,
-    city: 'Paris',
-    distanceKm: 3,
-    fame: 50,
-    online: true,
-    lastSeen: null,
-    likedYou: false,
-    commonTags: [],
-    ...patch,
-  }
-}
-
 export function deckCard(userId: string, patch: Partial<DeckCard> = {}): DeckCard {
   return {
     userId,
@@ -54,6 +39,17 @@ export function deckCard(userId: string, patch: Partial<DeckCard> = {}): DeckCar
   }
 }
 
+export function person(userId: string): UserSummary {
+  return { userId, username: userId, profilePictureUrl: `http://img.test/${userId}.webp` }
+}
+
+/** A chat between ME and `userId`; it exists from the moment they connect, like the backend's. */
+export interface FakeChat {
+  chatId: string
+  userId: string
+  messages: ChatMessage[]
+}
+
 export interface FakeBackend {
   server: FakeServer
   state: {
@@ -63,12 +59,16 @@ export interface FakeBackend {
     deck: DeckCard[]
     liked: Set<string>
     passed: Set<string>
-    /** People of the mocked social service (likes received, matches, chat). */
-    people: Card[]
-    swiped: Set<string>
-    matches: Match[]
-    messages: Map<string, Message[]>
-    likes: Card[]
+    /** GET /profile/likes: people who liked ME and whom ME has not liked back. */
+    likers: UserSummary[]
+    /** GET /profile/matches. */
+    connections: UserSummary[]
+    /** Per connection (user id). */
+    chats: Map<string, FakeChat>
+    /** GET /profile/blocks. */
+    blocked: UserSummary[]
+    /** GET /profile/visited, most recent first: GET /profile/{id} records a visit. */
+    visited: UserSummary[]
   }
 }
 
@@ -80,16 +80,37 @@ export function createFakeBackend(): FakeBackend {
     deck: [deckCard('ann', { likesYou: true }), deckCard('bea'), deckCard('cid')],
     liked: new Set(),
     passed: new Set(),
-    people: [card('ann', { likedYou: true }), card('bea'), card('cid')],
-    swiped: new Set(),
-    matches: [],
-    messages: new Map(),
-    likes: [],
+    likers: [person('ann')],
+    connections: [],
+    chats: new Map(),
+    blocked: [],
+    visited: [],
   }
   const unauthorized = () => nestError(401, 'Missing or invalid access token', 'Unauthorized')
   let counter = 0
 
+  const disconnect = (userId: string) => {
+    state.connections = state.connections.filter((entry) => entry.userId !== userId)
+    state.chats.delete(userId)
+  }
+  const chatById = (chatId: string) => [...state.chats.values()].find((chat) => chat.chatId === chatId)
+
   server
+    // First, so every more specific /profile/... route (registered after it) wins over it.
+    .on('GET', `${API_URL}/profile/:id`, ({ route }) => {
+      if (!state.session) return unauthorized()
+      state.visited = [person(route.id), ...state.visited.filter((entry) => entry.userId !== route.id)]
+      return {
+        ...profile(route.id),
+        username: route.id,
+        age: 30,
+        distanceKm: 3,
+        fameRating: 50,
+        lastSeen: null,
+        isOnline: false,
+        relation: { liked: state.liked.has(route.id), likesYou: false, matched: false },
+      }
+    })
     .on('GET', `${API_URL}/auth/validate`, () => ({ valid: state.session !== null, userId: state.session }))
     .on('POST', `${API_URL}/auth/login`, ({ body }) => {
       const { username, password } = body as { username: string; password: string }
@@ -134,8 +155,8 @@ export function createFakeBackend(): FakeBackend {
     // Liked people leave the list; passed ones sink to the bottom.
     .on('GET', `${API_URL}/profile/discover`, () => {
       if (!state.session) return unauthorized()
-      const left = state.deck.filter((person) => !state.liked.has(person.userId))
-      return [...left.filter((person) => !state.passed.has(person.userId)), ...left.filter((person) => state.passed.has(person.userId))]
+      const left = state.deck.filter((entry) => !state.liked.has(entry.userId))
+      return [...left.filter((entry) => !state.passed.has(entry.userId)), ...left.filter((entry) => state.passed.has(entry.userId))]
     })
     // Search: a substring of the username or first name, within the age / distance / fame limits
     // (tags are accepted, not applied). Needs a location; liked people stay.
@@ -150,77 +171,149 @@ export function createFakeBackend(): FakeBackend {
       const maxKm = limit('maxDistanceKm')
       const minFame = limit('minFame')
       return state.deck
-        .filter((person) => q === null || person.username.toLowerCase().includes(q) || (person.firstName ?? '').toLowerCase().includes(q))
-        .filter((person) => (minAge === null || person.age >= minAge) && (maxAge === null || person.age <= maxAge))
-        .filter((person) => maxKm === null || (person.distanceKm !== null && person.distanceKm <= maxKm))
-        .filter((person) => minFame === null || person.fameRating >= minFame)
-        .map((person) => {
-          const result = { ...person }
+        .filter((entry) => q === null || entry.username.toLowerCase().includes(q) || (entry.firstName ?? '').toLowerCase().includes(q))
+        .filter((entry) => (minAge === null || entry.age >= minAge) && (maxAge === null || entry.age <= maxAge))
+        .filter((entry) => maxKm === null || (entry.distanceKm !== null && entry.distanceKm <= maxKm))
+        .filter((entry) => minFame === null || entry.fameRating >= minFame)
+        .map((entry) => {
+          const result = { ...entry }
           delete result.likesYou
           return result
         })
     })
+    // A like back to someone who liked ME connects us (and opens our chat).
     .on('POST', `${API_URL}/profile/:id/like`, ({ route }) => {
       if (!state.session) return unauthorized()
-      const person = state.deck.find((entry) => entry.userId === route.id)
-      if (!person) return nestError(404, 'User not found', 'Not Found')
+      const card = state.deck.find((entry) => entry.userId === route.id)
+      if (!card) return nestError(404, 'User not found', 'Not Found')
       const created = !state.liked.has(route.id)
       state.liked.add(route.id)
-      return { liked: true, matched: created && person.likesYou === true }
+      const matched = created && card.likesYou === true
+      if (matched) connect({ server, state }, route.id)
+      return { liked: true, matched }
     })
     .on('DELETE', `${API_URL}/profile/:id/like`, ({ route }) => {
       if (!state.session) return unauthorized()
       state.liked.delete(route.id)
+      disconnect(route.id)
       return reply(200, '')
     })
     .on('POST', `${API_URL}/profile/:id/pass`, ({ route }) => {
       if (!state.session) return unauthorized()
       state.passed.add(route.id)
+      state.likers = state.likers.filter((entry) => entry.userId !== route.id)
       return reply(200, '')
     })
+    .on('POST', `${API_URL}/profile/:id/block`, ({ route }) => {
+      if (!state.session) return unauthorized()
+      state.liked.delete(route.id)
+      state.likers = state.likers.filter((entry) => entry.userId !== route.id)
+      disconnect(route.id)
+      if (!state.blocked.some((entry) => entry.userId === route.id)) state.blocked = [...state.blocked, person(route.id)]
+      return reply(200, '')
+    })
+    .on('DELETE', `${API_URL}/profile/:id/block`, ({ route }) => {
+      if (!state.session) return unauthorized()
+      state.blocked = state.blocked.filter((entry) => entry.userId !== route.id)
+      return reply(200, '')
+    })
+    .on('GET', `${API_URL}/profile/blocks`, () => (state.session ? { blocks: state.blocked } : unauthorized()))
+    .on('GET', `${API_URL}/profile/visited`, () => (state.session ? { visited: state.visited } : unauthorized()))
+    .on('GET', `${API_URL}/profile/matches`, () => (state.session ? { matches: state.connections } : unauthorized()))
+    .on('GET', `${API_URL}/profile/likes`, () =>
+      state.session
+        ? { likes: state.likers }
+        : unauthorized(),
+    )
     .on('GET', `${API_URL}/profile/matches/map`, () => (state.session ? { matches: [] } : unauthorized()))
     .on('GET', `${API_URL}/profile/interests`, () =>
       state.session ? { interests: [{ id: 't1', name: 'music' }, { id: 't2', name: 'art' }] } : unauthorized(),
     )
-    .on('POST', `${SOCIAL_URL}/swipes`, ({ body }) => {
-      const { targetId, action } = body as { targetId: string; action: string }
-      state.swiped.add(targetId)
-      const person = state.people.find((entry) => entry.userId === targetId)
-      if (!person || action === 'pass' || !person.likedYou) return { match: null }
-      const match: Match = { id: `m-${targetId}`, profile: person, matchedAt: new Date().toISOString(), lastMessage: null, unread: 0 }
-      state.matches = [match, ...state.matches]
-      state.likes = state.likes.filter((entry) => entry.userId !== targetId)
-      return { match }
+    // Only chats with a message are listed, newest first, as the backend's INNER JOIN does.
+    .on('GET', `${API_URL}/chat`, () => {
+      if (!state.session) return unauthorized()
+      const chats = [...state.chats.values()]
+        .filter((chat) => chat.messages.length > 0)
+        .map((chat) => {
+          const last = chat.messages[chat.messages.length - 1]
+          return {
+            chatId: chat.chatId,
+            userId: chat.userId,
+            username: chat.userId,
+            profilePictureUrl: null,
+            lastMessage: last.content,
+            timestamp: last.timestamp,
+            lastSenderId: last.userId,
+          }
+        })
+        .sort((a, b) => b.timestamp - a.timestamp)
+      return { chats }
     })
-    .on('GET', `${SOCIAL_URL}/matches`, () => (state.session ? state.matches : unauthorized()))
-    .on('GET', `${SOCIAL_URL}/matches/:id/messages`, ({ route }) => {
-      const list = state.messages.get(route.id) ?? []
-      state.matches = state.matches.map((match) => (match.id === route.id ? { ...match, unread: 0 } : match))
-      return list
+    // `?after=<epoch ms>`: only the newer messages.
+    .on('GET', `${API_URL}/chat/:id`, ({ route, params }) => {
+      if (!state.session) return unauthorized()
+      const chat = chatById(route.id)
+      if (!chat) return nestError(403, 'You are not a participant of this chat', 'Forbidden')
+      const after = params.after === undefined ? null : Number(params.after)
+      // copies, as a real answer would be: later messages must not show up in what the client holds
+      const messages = chat.messages.map((message) => ({ ...message }))
+      return { messages: after === null ? messages : messages.filter((message) => message.timestamp > after) }
     })
-    .on('POST', `${SOCIAL_URL}/messages`, ({ body }) => {
-      const { matchId, text } = body as { matchId: string; text: string }
-      const message: Message = { id: `msg${++counter}`, matchId, senderId: ME, text, sentAt: new Date().toISOString() }
-      state.messages.set(matchId, [...(state.messages.get(matchId) ?? []), message])
-      state.matches = state.matches.map((match) => (match.id === matchId ? { ...match, lastMessage: message } : match))
-      return message
+    .on('POST', `${API_URL}/chat/message`, ({ body }) => {
+      if (!state.session) return unauthorized()
+      const { toUserId, content } = body as { toUserId: string; content: string }
+      const chat = state.chats.get(toUserId)
+      if (!chat) return nestError(403, 'You can only message your matches', 'Forbidden')
+      chat.messages.push({
+        messageId: `msg${++counter}`,
+        content,
+        timestamp: Date.now(),
+        userId: ME,
+        username: 'testuser',
+        status: 'sent',
+        profilePictureUrl: null,
+      })
+      return { delivered: false }
     })
-    .on('GET', `${SOCIAL_URL}/likes`, () => (state.session ? state.likes : unauthorized()))
-    .on('POST', `${SOCIAL_URL}/reset`, () => {
-      state.swiped.clear()
-      state.matches = []
-      return reply(200, { ok: true })
+    .on('POST', `${API_URL}/chat/:id/seen`, ({ route }) => {
+      if (!state.session) return unauthorized()
+      const chat = chatById(route.id)
+      if (!chat) return nestError(403, 'You are not a participant of this chat', 'Forbidden')
+      chat.messages = chat.messages.map((message) => (message.userId === ME ? message : { ...message, status: 'read' }))
+      return { seen: true }
     })
 
   return { server, state }
 }
 
-/** Inbound message from the other person, as the mock would create it. */
-export function incoming(backend: FakeBackend, matchId: string, text: string): Message {
-  const message: Message = { id: `in-${text}`, matchId, senderId: 'ann', text, sentAt: new Date().toISOString() }
-  backend.state.messages.set(matchId, [...(backend.state.messages.get(matchId) ?? []), message])
-  backend.state.matches = backend.state.matches.map((match) =>
-    match.id === matchId ? { ...match, lastMessage: message, unread: match.unread + 1 } : match,
-  )
+/** ME and `userId` are now connected (mutual like): they appear in /profile/matches with an empty chat. */
+export function connect(backend: FakeBackend, userId: string): FakeChat {
+  const { state } = backend
+  if (!state.connections.some((entry) => entry.userId === userId)) state.connections = [...state.connections, person(userId)]
+  state.likers = state.likers.filter((entry) => entry.userId !== userId)
+  let chat = state.chats.get(userId)
+  if (!chat) {
+    chat = { chatId: `00000000-0000-4000-8000-${String(state.chats.size + 1).padStart(12, '0')}`, userId, messages: [] }
+    state.chats.set(userId, chat)
+  }
+  return chat
+}
+
+let inbound = 0
+
+/** A message from `userId` to ME, stored as the backend would; returns it as the socket carries it. */
+export function incoming(backend: FakeBackend, userId: string, text: string): ChatMessage {
+  const chat = connect(backend, userId)
+  inbound += 1
+  const message: ChatMessage = {
+    messageId: `in-${inbound}`,
+    content: text,
+    timestamp: Date.now(),
+    userId,
+    username: userId,
+    status: 'sent',
+    profilePictureUrl: null,
+  }
+  chat.messages.push(message)
   return message
 }

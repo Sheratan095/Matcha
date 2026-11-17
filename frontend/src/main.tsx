@@ -1,13 +1,12 @@
 /**
- * Boot sequence (docs/ARCHITECTURE.md §4): HTTP plumbing, mock social backend, store engine, then the app.
+ * Boot sequence (docs/ARCHITECTURE.md §4): HTTP plumbing, store engine, realtime socket, then the app.
  * Nothing renders the app before the store is live; a store that cannot start replaces the whole page
  * with an explanation.
  */
 import '@/ui/styles/index.css'
 import { StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { installMockBackend, mockEvents$ } from '@/mock'
-import { actions, getViewerId, installStoreHttp, startRealtime, startStore } from '@/wb'
+import { actions, installStoreHttp, startRealtime, startStore } from '@/wb'
 import App from './app/App'
 import { StoreFailure, StoreStarting } from './app/StoreScreens'
 
@@ -19,7 +18,6 @@ function render(content: ReactNode): void {
 
 async function boot(): Promise<void> {
   installStoreHttp()
-  installMockBackend({ getViewerId })
 
   const store = startStore()
   render(<StoreStarting />)
@@ -31,7 +29,7 @@ async function boot(): Promise<void> {
   // Not awaited: the guards show their own "checking" state until the probe answers. A failed probe
   // leaves the visitor anonymous; its error is on useNodeStatus('sessionCheck').
   actions.bootSession().catch((error: unknown) => console.warn('Session probe failed', error))
-  startRealtime({ events$: mockEvents$ })
+  startRealtime()
   render(<App />)
 }
 

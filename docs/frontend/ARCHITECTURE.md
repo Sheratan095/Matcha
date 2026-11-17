@@ -13,8 +13,8 @@ RxJS-based engine (`src/wb`). Companion document in this folder:
 - **Every HTTP call is an HTTP node.** Reads are `GET` nodes that depend on other nodes;
   writes are a `<name>Payload` node (`USER_SELECTION`) plus a `<name>Result` node (`POST`/`PATCH`/`DELETE`)
   that depends on it.
-- **The mock boundary is the URL, not the code.** Nodes do not know whether a service is real. Any URL
-  under `/__mock` is answered in the browser by `src/mock`; everything else goes to the network.
+- **There is no mock.** Every node calls the real gateway; tests swap the axios adapter for a fake
+  backend (`src/wb/testing`).
 - TypeScript: `strict`, `verbatimModuleSyntax` (use `import type`), `erasableSyntaxOnly` (no `enum`, no
   constructor parameter properties, no namespaces). Import alias `@/` = `src/`.
 - Styling: plain CSS with design tokens (`src/ui/styles/tokens.css`) and CSS Modules per component.
@@ -24,11 +24,11 @@ RxJS-based engine (`src/wb`). Companion document in this folder:
 
 | Service | Served by |
 |---|---|
-| `api` (auth, profile, notification) | the gateway at `VITE_API_URL` (`http://localhost:3000`) |
-| `social` (matches, chat, likes received, mocked block) | the in-browser mock (§5), until those screens are wired to the backend. `VITE_SOCIAL_URL` overrides it. Discover, like / pass and the real profile view already go to `api` |
+| `api` (auth, profile, notification: discovery, search, likes, connections, chat) | the gateway at `VITE_API_URL` (`http://localhost:3000`) |
+| realtime | the gateway's socket.io namespace `/notification` (§4.6, `src/wb/realtime.ts`) |
 
 `npm run dev` must run on **port 4000** (CORS, OAuth redirect and email links are hardcoded to
-`http://localhost:4000`). `src/config.ts` exposes `API_URL`, `SOCIAL_URL`, `MOCK_PREFIX`, and the third-party
+`http://localhost:4000`). `src/config.ts` exposes `API_URL` and the third-party
 location services (§6.1) `GEOIP_URL`, `GEOCODER_URL`, `MAP_TILES_URL` (each overridable with its `VITE_` variable).
 
 ## 3. Folder ownership
@@ -40,7 +40,6 @@ src/
   api/types.ts         wire types shared by everything                 (fixed contract)
   api/http.ts          axios defaults, http event stream, 401 refresh  (state)
   wb/                  state layer: engine, nodes, hooks, commands, actions                  (state)
-  mock/                in-browser social backend: adapter, seed, handlers, portraits         (mock)
   ui/                  design system: tokens, global css, components, AppShell               (design)
   app/                 router, guards
   features/<name>/     screens
@@ -55,16 +54,17 @@ src/wb/
   engine/           StoreEngine interface, the graph interpreter, request building
   nodes/            the graph (§4.5): builders, one file per domain, static validation
   functions.ts      CUSTOM_FUNCTION implementations
-  services.ts       the `api` and `social` services
+  services.ts       the `api` service
   registry.ts       request (method + URL) -> HTTP node
   store.ts          the running store: engine start-up, typed node access
   status.ts         request status per HTTP node
   stale.ts          drops in-flight reads whose node was reset
   commands.ts       run() and refresh()
+  demand.ts         load(): reads loaded on demand, and refetched only when stale
   filters.ts        discover filters (one request for several changes)
   actions.ts        the flows screens call
-  realtime.ts       realtime$ and the presence socket
-  boot.ts           installStoreHttp(), getViewerId() for main.tsx
+  realtime.ts       the socket, realtime$ and the refreshes its events cause
+  boot.ts           installStoreHttp() for main.tsx
   hooks.ts          React hooks
   testing/          test-only fake adapter / backend / harness
 ```
@@ -107,7 +107,7 @@ anything under `src/wb` stops the store and reloads the page (never two stores).
 - An HTTP node fires whenever a dependency emits and every non-optional dependency is non-null. So:
   - Reads that need a session depend on `sessionUserId` (non-optional, `onUpdate: true`, no `type`):
     they load on login and reset to `null` on logout. This also applies to the reads keyed by a
-    selection (`apiProfile`, `socialProfile`, `chatMessages`), so nothing is ever sent while anonymous.
+    selection (`apiProfile`, `chatHistory`), so nothing is ever sent while anonymous.
     Consequence, verified: the graph sends **no request at all while tangling**
     and only `GET /auth/validate` while anonymous.
   - A **refresh trigger** is a `USER_SELECTION` nonce node (`<name>Refresh`) used as an *optional*
@@ -120,6 +120,13 @@ anything under `src/wb` stops the store and reloads the page (never two stores).
     body is `{}` (payload-less commands use a nonce dependency without `type`).
   - Each dependency emission is one request: several filters are changed behind a closed gate
     (`filters.ts`: `filterAgeMin` is held at `null` while the others change, then written last).
+  - A read only some screens show **loads on demand**: it waits behind a gate, a `<x>Wanted`
+    selection node used as a *required* dependency with `onUpdate: false` and no `type` (`demand()` in
+    `nodes/builders.ts`, the map in `LAZY_GATES`). Nothing is sent for it at sign-in, refreshes and
+    realtime events send nothing while the gate is closed, and the first `load(name)` opens it for the
+    rest of the session (4.4). Sign-out closes every gate. Only what the shell itself shows loads at
+    sign-in: `myProfile` (guards, avatar), `connections` + `chatList` (Matches badge), `likesReceived`
+    (Activity badge).
 - Custom functions receive dependency values **in `dep` order** (never rely on parameter names: the
   engine falls back to order, and minifiers rename parameters). They declare exactly one parameter per
   dependency (more makes the engine append a snapshot). Their inputs are **optional** dependencies
@@ -130,16 +137,15 @@ anything under `src/wb` stops the store and reloads the page (never two stores).
 - Node names are one global namespace; use camelCase.
 - Never write to a node before the engine is ready.
 - Selection nodes cannot depend on `sessionUserId` (a `USER_SELECTION` node with dependencies is reset
-  on each of their emissions), so the per-user selection state (`activeMatchId`, `socialProfileId`,
-  `apiProfileId`, `swipedIds`, filters) is reset by a watcher installed by `actions.bootSession()` when
-  the signed-in user changes or signs out.
+  on each of their emissions), so the per-user selection state (`activeChatUserId`, `activeChatId`,
+  `unreadByUser`, `apiProfileId`, `swipedIds`, filters, the gates of the reads on demand) is reset by a
+  watcher installed by `actions.bootSession()` when the signed-in user changes or signs out.
 
 ### 4.3 Services
 
 | Name | Target | Notes |
 |---|---|---|
 | `api` | `API_URL` | The gateway. Cookie auth: `axios.defaults.withCredentials = true`. No `Authorization` header (not in the gateway's CORS allow-list). |
-| `social` | `SOCIAL_URL` (`/__mock/social`) | Mocked; see §5.1. |
 
 ### 4.4 HTTP plumbing (`src/api/http.ts`, `src/wb/status.ts`, `src/wb/commands.ts`)
 
@@ -171,11 +177,18 @@ The engine uses the default axios instance and exposes neither status nor errors
   store), which also resets their result node.
 - `refresh(name)` bumps the node's refresh nonce and resolves once the new value is in the node. It
   never rejects (the error is on the node's status) and resolves at once when nothing could be sent.
+- `load(name, maxAgeMs = ∞)` (`demand.ts`; `useLoad(name, { maxAgeMs, enabled })` in a screen) is how a
+  screen asks for what it shows, instead of refreshing on mount: it opens the gate of a lazy read (its
+  first load); sends nothing while a request of the node is on its way (StrictMode's double effects, two
+  screens asking at once); otherwise refetches in place only a read that failed, was never loaded, was
+  marked stale (`markStale`, e.g. the visit history after a profile view) or is older than `maxAgeMs`
+  (`REVISIT_MS` = 30 s for lists realtime already keeps current). `nodeStatus` remembers when each
+  value arrived for this.
 - A 401 from a guarded `api` endpoint (anything under `API_URL` except `/auth/refresh`, which includes
   `/auth/change-email`) triggers one single-flight refresh — the `sessionRefresh` command,
   `POST /auth/refresh` — then one retry with the same request id; if the refresh or the retry fails the
-  session is re-probed (throttled to once per 3 s), which makes the user anonymous. This is installed in
-  both modes (the mock implements `/auth/refresh`). `axios.defaults.timeout` is 15 s (60 s for uploads)
+  session is re-probed (throttled to once per 3 s), which makes the user anonymous.
+  `axios.defaults.timeout` is 15 s (60 s for uploads)
   because the gateway can hang when a microservice is down.
 
 ### 4.5 Node graph
@@ -205,10 +218,14 @@ dependency; F inputs are always optional (4.2).
 | `pictureUpload` | Payload (`FormData`, field `file`) + POST api `/profile/pictures` | payload | `PicturesResult` |
 | `pictureDelete` | Payload (picture id) + DELETE api `/profile/pictures/{pictureId}` | payload (PATH_VARIABLE) | `PicturesResult` |
 | `pictureMain` | Payload (picture id) + PATCH api `/profile/pictures/{pictureId}/profile` | payload (PATH_VARIABLE) | `PicturesResult` |
-| `myViewers` | GET api `/profile/viewers` | `sessionUserId`, `activityRefresh` (opt) | `ViewersResult` |
+| `myViewers` | GET api `/profile/viewers`, **on demand** | `sessionUserId`, `viewersWanted`, `viewersRefresh` (opt) | `ViewersResult` (Activity, Me) |
+| `visitedProfiles` | GET api `/profile/visited`, **on demand** | `sessionUserId`, `visitedWanted`, `visitedRefresh` (opt) | `VisitedResult`: the profiles you opened, latest first (Activity > You visited) |
+| `blockedUsers` | GET api `/profile/blocks`, **on demand** | `sessionUserId`, `blocksWanted`, `blocksRefresh` (opt) | `BlocksResult` (Me > Account) |
+| `unblockUser` | Payload (user id) + DELETE api `/profile/{userId}/block` | payload (PATH_VARIABLE) | empty |
 | `apiProfileId` → `apiProfile` | P → GET api `/profile/{userId}` | `sessionUserId`, id (PATH_VARIABLE) | `Profile` (real user; records a profile view) |
-| `matchesMap` | GET api `/profile/matches/map` | `sessionUserId`, `matchesMapRefresh` (opt) | `MatchesMapResult`: connections with a ~1 km-snapped position (the `/map` page) |
-| `onlineCount` | GET api `/notification/online` | `sessionUserId`, `presenceRefresh` (opt) | `number` |
+| `matchesMap` | GET api `/profile/matches/map`, **on demand** | `sessionUserId`, `mapWanted`, `matchesMapRefresh` (opt) | `MatchesMapResult`: connections with a ~1 km-snapped position (the `/map` page) |
+
+`GET /notification/online` (a global count of open sockets) is not read: nothing shows it.
 
 **Discover**
 
@@ -217,42 +234,56 @@ dependency; F inputs are always optional (4.2).
 | `filterAgeMin` / `filterAgeMax` / `filterDistance` / `filterFameMin` | P with `defaultValue` (18 / 45 / 50 / 0) | — | number |
 | `filterSort` | P, default `'best'` | — | `DiscoverSort` (`best` / `distance` / `age` / `fame` / `tags`); NOT a request parameter |
 | `filterTags` | P | — | comma-separated tag names, or `null` |
-| `discoverDeck` | GET api `/profile/discover` | `sessionUserId`, the filters (REQUEST_PARAMETER `minAge`, `maxAge`, `maxDistanceKm`, `minFame`, `tags` (opt)), `discoverRefresh` (opt) | `DeckCard[]`: the whole filtered list (200 max), best first |
+| `discoverDeck` | GET api `/profile/discover`, **on demand** (`/discover`) | `sessionUserId`, `discoverWanted`, the filters (REQUEST_PARAMETER `minAge`, `maxAge`, `maxDistanceKm`, `minFame`, `tags` (opt)), `discoverRefresh` (opt) | `DeckCard[]`: the whole filtered list (200 max), best first |
 | `swipedIds` | P, default `[]` | — | ids swiped (or blocked) in this session |
 | `visibleDeck` | F | `discoverDeck` (opt), `swipedIds` (opt), `filterSort` (opt) | `DeckCard[]` still to show, sorted in the browser (stable: ties keep the server's ranking); `null` while no deck |
 | `like` / `pass` / `unlike` | Payload (user id) + POST / POST / DELETE api `/profile/{userId}/like` \| `/pass` | payload (PATH_VARIABLE) | `LikeResult` (`{ liked, matched }`) / empty |
 | `blockUser` / `reportUser` | Payload (user id) + POST api `/profile/{userId}/block` \| `/report` | payload (PATH_VARIABLE) | empty |
-| `interestCatalogue` → `tagCatalogue` | GET api `/profile/interests` → F | `sessionUserId` | `string[]` (names, alphabetical) |
+| `interestCatalogue` → `tagCatalogue` | GET api `/profile/interests`, **on demand** (a tag picker) → F | `sessionUserId`, `interestsWanted`, `interestsRefresh` (opt) | `string[]` (names, alphabetical) |
 
 **Search**
 
 | Node | Kind | Depends on | Value |
 |---|---|---|---|
-| `searchQuery` / `searchAgeMin` / `searchAgeMax` / `searchDistance` / `searchFameMin` / `searchTags` | P | — | the criteria: a name substring (1-50 chars), age bounds, max km, min fame, comma-separated tags (ALL required); each `null` = not sent = no limit |
+| `searchQuery` / `searchAgeMin` / `searchAgeMax` / `searchDistance` / `searchFameMin` / `searchTags` / `searchGenders` / `searchPreferences` | P | — | the criteria: a name substring (1-50 chars), age bounds, max km, min fame, comma-separated tags (ALL required), comma-separated genders and sexual preferences (ANY of them, in the fixed order of `GENDERS` / `SEXUAL_PREFERENCES`); each `null` = not sent = no limit |
 | `searchSort` | P, default `'best'` | — | `DiscoverSort`; NOT a request parameter |
 | `searchActive` | P | — | nonce while a search is in force, `null` for none: the gate `writeSearch` (`src/wb/search.ts`) closes while it writes several criteria, so a change is one request |
-| `searchResults` | GET api `/profile/search` | `sessionUserId`, `searchActive` (required), the criteria (REQUEST_PARAMETER `q`, `minAge`, `maxAge`, `maxDistanceKm`, `minFame`, `tags`, all opt), `searchRefresh` (opt) | `DeckCard[]` without `likesYou`: the whole result list (200 max), nearest first; `null` while no search |
+| `searchResults` | GET api `/profile/search` | `sessionUserId`, `searchActive` (required), the criteria (REQUEST_PARAMETER `q`, `minAge`, `maxAge`, `maxDistanceKm`, `minFame`, `tags`, `genders`, `preferences`, all opt), `searchRefresh` (opt) | `DeckCard[]` without `likesYou`: the whole result list (200 max), nearest first; `null` while no search |
 | `visibleSearch` | F | `searchResults` (opt), `searchSort` (opt) | `DeckCard[]` in `searchSort` order (`best` = the server's); `null` while no results |
 
 **Matches, chat, activity**
 
 | Node | Kind | Depends on | Value |
 |---|---|---|---|
-| `matches` | GET social `/matches` | `sessionUserId`, `matchesRefresh` (opt) | `Match[]` |
+A conversation is addressed by the other person's user id (`/chat/:userId`): the backend lists a chat,
+and so gives its id, only once it holds a message.
+
+| Node | Kind | Depends on | Value |
+|---|---|---|---|
+| `connections` | GET api `/profile/matches` | `sessionUserId`, `connectionsRefresh` (opt) | `ConnectionsResult`: everyone you are connected to (mutual like) |
+| `chatList` | GET api `/chat` | `sessionUserId`, `chatListRefresh` (opt) | `ChatListResult`: chats that hold a message, with the last one |
+| `unreadByUser` | P, default `{}` | — | per user id, messages received over the socket since their chat was last opened (the backend keeps no unread count) |
+| `matches` | F | `connections` (opt), `chatList` (opt), `unreadByUser` (opt) | `Match[]`: each connection with its chat id (or `null`), last message and unread count; `null` while `connections` is not loaded |
 | `unreadCount` | F | `matches` (opt) | `number` (0 while not loaded) |
-| `activeMatchId` | P | — | match being read, or `null` |
-| `chatMessages` | GET social `/matches/{matchId}/messages` | `sessionUserId`, `activeMatchId` (PATH_VARIABLE), `chatRefresh` (opt) | `Message[]`; reading marks them read |
-| `sendMessage` | Payload + POST social `/messages` | payload | `Message` |
-| `unmatch` | Payload (match id) + DELETE social `/matches/{matchId}` | payload (PATH_VARIABLE) | `OkResult` |
-| `block` | Payload + POST social `/blocks` | payload | `OkResult` |
-| `likesReceived` | GET social `/likes` | `sessionUserId`, `activityRefresh` (opt) | `Card[]` |
-| `socialProfileId` → `socialProfile` | P → GET social `/profiles/{userId}` | `sessionUserId`, id (PATH_VARIABLE) | `Card` |
-| `demoReset` | Payload (nonce) + POST social `/reset` | payload | `OkResult` |
+| `activeChatUserId` / `activeChatId` | P | — | the open conversation's person and chat id (`null` when none, or no message yet) |
+| `chatAfter` | P (state layer only) | — | `?after=` of the next history request (epoch ms), `null` for the whole history; **each write fetches** the open conversation |
+| `chatHistory` | GET api `/chat/{chatId}[?after=]` | `sessionUserId`, `activeChatId` (PATH_VARIABLE), `chatAfter` (REQUEST_PARAMETER `after`, opt, onUpdate false) | `ChatHistoryResult`, oldest first: the last answer, whole or only the newer messages; a pure read |
+| `chatThread` | P (state layer only) | — | the open conversation, whole: a whole answer replaces it, a `?after=` answer is merged in (by message id), another conversation empties it (`watchChat` in `actions.ts`); `chat-seen` turns my messages read in place |
+| `chatMessages` | F | `chatThread` (opt) | `Message[]` as the thread draws them |
+| `chatSend` | Payload + POST api `/chat/message` | payload | `SendMessageResult` (`{ delivered }`); 403 unless connected |
+| `chatSeen` | Payload (chat id) + POST api `/chat/{chatId}/seen` | payload (PATH_VARIABLE) | `ChatSeenResult`; the other person gets `chat-seen` |
+| `likesReceived` | GET api `/profile/likes` | `sessionUserId`, `likesRefresh` (opt) | `LikersResult`: who liked you and was not liked back |
+
+Unmatch and block reuse the discover commands (`unlike`, `blockUser`).
 
 Refreshable in place (`refresh(name)` → nonce): `sessionCheck` (`sessionProbe`), `myProfile`,
-`myViewers` and `likesReceived` (both `activityRefresh`), `onlineCount`, `discoverDeck`, `searchResults`,
-`matches`, `chatMessages`. Writable by screens (`setNode`, `useNode`): the filters, `swipedIds`, the search
-criteria, `activeMatchId`, `apiProfileId`, `socialProfileId` — prefer the actions.
+`myViewers`, `visitedProfiles`, `blockedUsers`, `likesReceived`, `matchesMap`, `discoverDeck`,
+`interestCatalogue`, `searchResults`, `connections`, `chatList` (`REFRESH_TRIGGERS`). The open thread
+is refetched by writing `chatAfter` (whole: `openChat`; only what is new: `reloadOpenChat`). On demand
+(`LAZY_GATES`, 4.2): `discoverDeck`, `interestCatalogue`, `myViewers`, `visitedProfiles`,
+`blockedUsers`, `matchesMap`. Writable by screens (`setNode`, `useNode`): the filters, `swipedIds`, the
+search criteria, `unreadByUser`, `activeChatUserId`, `activeChatId`, `apiProfileId` — prefer the
+actions; gates, refresh nonces, payloads, `chatAfter` and `chatThread` are not.
 
 ### 4.6 What the UI imports (`@/wb`)
 
@@ -262,10 +293,13 @@ is `NodeValues[N] | null | undefined`.
 
 - Hooks (`useSyncExternalStore`; StrictMode-safe; snapshots stable until the node emits):
   `useNodeValue(name): NodeValue<N>`, `useNode(writableName): [value, set]` (stable `set`),
-  `useNodeStatus(httpNodeName): NodeStatus`, `useFilters(): DiscoverFilters`.
+  `useNodeStatus(httpNodeName): NodeStatus`, `useLoad(refreshableName, { maxAgeMs?, enabled? })` (4.4:
+  what a screen shows, loaded on mount when missing or stale), `useFilters(): DiscoverFilters`,
+  `useSearchCriteria(): SearchCriteria`.
 - Imperative: `getNodeValue(name)`, `setNode(writableName, value)`, `node$(name): Observable`,
-  `getNodeStatus(name)`, `nodeStatus$(name)`, `refresh(refreshableName): Promise<void>`,
-  `run(command, payload?): Promise<CommandResult>`, `isStoreLive()`.
+  `getNodeStatus(name)`, `nodeStatus$(name)`, `load(refreshableName, maxAgeMs?)`, `REVISIT_MS`,
+  `refresh(refreshableName): Promise<void>`, `run(command, payload?): Promise<CommandResult>`,
+  `isStoreLive()`.
 - `actions` — the flows screens actually call; each composes `run` / node writes / `refresh` so that the
   dependent nodes are fresh when it settles. Async ones reject with an `ApiError`; a failed follow-up
   refresh does not fail a successful mutation (its error is on the node's status).
@@ -281,127 +315,68 @@ is `NodeValues[N] | null | undefined`.
   | `updateProfile(changes): Promise<OwnProfile>` | `myProfile` / `profileComplete` reflect it (interests normalised and de-duplicated) |
   | `setLocation({ latitude, longitude }): Promise<void>` | `myProfile` / `profileComplete` have it (out-of-range coordinates rejected `INVALID` first); the deck reloads |
   | `uploadPicture(file)`, `deletePicture(id)`, `setMainPicture(id)`: `Promise<PicturesResult>` | `myProfile` has the new pictures (upload validated first: type, 5 MB, 5 pictures) |
-  | `showApiProfile(userId): Promise<Profile>`, `showSocialProfile(userId): Promise<Card>`, `closeProfile(): void` | the profile is in `apiProfile` / `socialProfile` |
+  | `showApiProfile(userId): Promise<OtherProfile>`, `closeProfile(): void` | the profile is in `apiProfile`; asked again while that profile loads, it joins the request (one GET, one recorded visit); `closeProfile` takes effect after the current task unless a profile opens meanwhile (StrictMode's close-and-reopen keeps the request); the visit history is marked stale |
   | `setFilters(partial): Promise<void>` | the deck reloaded (one request for the lot); a sort-only change sends nothing |
   | `swipe(card, 'like' \| 'pass'): Promise<SwipeOutcome>` | the card left `visibleDeck` at once (back on failure, e.g. 403 without a picture); `matched` says the like made a match; the deck is fetched again when empty |
   | `rewind(): Promise<RewindOutcome>` | the last swipe of this session is undone (a like with `DELETE .../like`) and its card is back on top; a like that matched is not undone |
   | `reloadDeck(): Promise<void>` | the deck reloaded; this session's passes come back |
-  | `search(partialCriteria): Promise<DeckCard[]>`, `clearSearch(): void` | `searchResults` holds the answer to `GET /profile/search` for the merged criteria (name + the deck's filters, `null` = no limit): one request however many changed, none for a sort-only change (`visibleSearch` sorts in the browser), a refetch in place for the same criteria; `INVALID` when nothing would be sent or a value is out of range. `clearSearch` drops every criterion, resets the results and drops a request still on its way |
-  | `likeUser(userId, action)`, `unlikeUser(userId)`, `blockUser(userId)`, `reportUser(userId)` | the request succeeded (from an opened real profile) |
-  | `answerLike(card, action): Promise<SwipeResult>` | the mocked answer to a like received (activity page) |
-  | `openChat(matchId): Promise<Message[]>`, `closeChat(): void` | messages loaded, then `matches` (unread counts) |
-  | `sendMessage(matchId, text): Promise<Message>` | the open chat and `matches` show it (1–1000 chars) |
-  | `unmatch(matchId)`, `block(userId, reason?)`: `Promise<void>` | `matches` (and likes) reloaded, the open chat closed if affected |
-  | `resetDemoData(): Promise<void>` | `POST /__mock/social/reset` done and the mocked social nodes reloaded |
+  | `search(partialCriteria): Promise<DeckCard[]>`, `clearSearch(): void` | `searchResults` holds the answer to `GET /profile/search` for the merged criteria (name + the deck's filters, `null` = no limit, + genders / preferences, empty = any): one request however many changed, none for a sort-only change (`visibleSearch` sorts in the browser), a refetch in place for the same criteria; `INVALID` when nothing would be sent or a value is out of range. `clearSearch` drops every criterion, resets the results and drops a request still on its way |
+  | `likeUser(userId, action)`, `reportUser(userId)` | the request succeeded (from an opened profile); a match reloads the connection lists in the background, "likes you" reloads when they were in it |
+  | `unlikeUser(userId)`, `blockUser(userId)`: `Promise<void>` | the request succeeded; with a connection: an open conversation with them is closed, their unread count dropped, the connection lists reload in the background (this is also unmatch / block from the chat); a block also reloads `blockedUsers` (when shown) and the lists they were in |
+  | `unblockUser(userId): Promise<void>` | `DELETE /profile/{userId}/block` succeeded and `blockedUsers` no longer has them; they may show up again in the deck |
+  | `answerLike(userId, action): Promise<SwipeOutcome>` | answering someone who liked you (activity page): `likesReceived` reloaded without them (one request) |
 
-- `realtime$` — `Observable<RealtimeEvent>` for toasts and typing indicators. `startRealtime` also
-  reacts to events (message → open chat then matches; match → matches and likes; like → likes) and
-  keeps the gateway's socket.io connection (`/notification`, websocket only) open while signed in, which
-  only makes the user count in `onlineCount`.
+  The backend pushes `match` / `unmatch` to both people, the one acting included, before it answers.
+  While a like / unlike / block is on its way, realtime hands such an echo to `claimEcho` instead of
+  refreshing: the action refreshes once its request settles. Whether a like made a match: the answer's
+  `matched`; when the answer does not carry it (today's backend answers an empty body), the `match`
+  echo; without the socket either, whether they had liked you first (`likesYou` on the card, or being
+  in `likesReceived`).
+  | `refreshMatches(): Promise<void>` | `connections` and `chatList` reloaded |
+  | `openChat(userId): Promise<Message[]>`, `closeChat(): void` | a fresh chat list gave the chat id, the whole history is in `chatMessages` (or `[]` before the first message) and is marked read; `DROPPED` when another conversation opened (or this one closed) meanwhile |
+  | `sendMessage(userId, text): Promise<void>` | the chat list and, when open, the thread show it (1–1000 chars; the first message gives the chat its id); the thread fetches only what is new (`?after=` its newest message minus 2 s, merged by id) |
+
+- `realtime$` — `Observable<RealtimeEvent>` for toasts. `startRealtime()` keeps the gateway's socket.io
+  connection (namespace `/notification`, websocket only) open while signed in (which also counts the
+  user as online). Its address comes from `API_URL` (`socketTarget`): an origin connects there on
+  `/socket.io`; a path prefix such as the Vite proxy's `/api` goes on the socket's `path`
+  (`/api/socket.io`, which the proxy forwards as `/socket.io`), never into the namespace. It turns its events (`message`, `match`, `unmatch`, `profile-like`, `profile-view`,
+  `chat-seen`, and the calendar's `event-invite`, `event-accept`, `event-decline`, `event-cancel`, which
+  become one `calendar` event with its `action`; payloads checked) into `RealtimeEvent`s and reacts to
+  them (a calendar event only shows a toast: no node holds the calendar): a message reloads the chat list
+  and, when its conversation is open, fetches the thread's new messages (marked read), otherwise it
+  counts in `unreadByUser`; a match or an unmatch reloads the connections, the chat list, the map and the
+  likes (unless it is the echo of this client's own change, above); a like the likes; a view the viewers;
+  `chat-seen` turns the open thread's ticks read with no request. Each event carries a mark (the last
+  request id when its change had already been made: at its arrival, or at the connection for the events
+  received in the 3 s after it, which are the backend's replay of what happened while we were offline).
+  A list is not reloaded when a request of it started after the mark (one reload serves a whole burst,
+  overtaken changes included), nor when, once the load on its way has landed, it already shows the
+  change (`profile-like` + `match` about one person). A read on demand that was never asked for is not
+  fetched by an event. Events queued by the backend while the user was offline arrive right
+  after connecting. `events$` injects extra events (tests).
 - Errors: `isApiError`, `toApiError`, `LOCAL_ERROR` (`NETWORK`, `TIMEOUT`, `NOT_SENT`, `INVALID`,
   `NO_SESSION`, `DROPPED`).
-- Boot (only `src/main.tsx`): `installStoreHttp()`, `installMockBackend({ getViewerId })` from
-  `@/mock`, `startStore()`, await `ready`, `actions.bootSession()`, `startRealtime({ events$: mockEvents$ })`,
-  render; `src/app/StoreScreens.tsx` shows the starting / failed / died screens.
+- Boot (only `src/main.tsx`): `installStoreHttp()`, `startStore()`, await `ready`,
+  `actions.bootSession()`, `startRealtime()`, render; `src/app/StoreScreens.tsx` shows the starting /
+  failed / died screens.
 
-## 5. The mock social backend (`src/mock`)
+## 5. Tests (`src/wb/testing`)
 
-```ts
-installMockBackend(options: {
-  /** Who is logged in, per the real auth (the mock cannot read HttpOnly cookies). */
-  getViewerId: () => string | null
-  /** Simulated latency in ms: fixed or [min, max]. Default [120, 450]; 0 answers on the next microtask. */
-  latency?: number | readonly [number, number]
-}): void
-uninstallMockBackend(): void          // tests: original adapter back, timers stopped, caches dropped
-export const mockEvents$: Observable<RealtimeEvent>
-```
+The state layer is tested against the real wiring (`installStoreHttp`, a live store) with the axios
+adapter swapped for a fake server:
 
 ```
-src/mock/
-  index.ts       install / uninstall, mockEvents$, profile hint
-  adapter.ts     the axios adapter wrapper
-  routes.ts      route table and dispatch
-  nest.ts        MockRequest / MockResponse, Nest-shaped errors
-  validate.ts    the class-validator subset (same messages, same order)
-  storage.ts     versioned localStorage documents with a memory copy
-  social.ts      social service: per-viewer state, seeding, live agenda, incoming likes
-  chat.ts        starter conversations and the reply bank
-  people.ts      the 36 seeded people
-  portraits.ts   risograph poster portraits (SVG data URLs)
-  tags.ts        tag catalogue, tag ids
-  viewer.ts      who is asking (getViewerId) and what is known about them
-  runtime.ts     options, event subject, viewer-scoped timers
-  ids.ts         hashing, deterministic UUIDs, tokens
-  testkit.ts     helpers for src/mock/*.test.ts
+src/wb/testing/
+  fakeServer.ts    route handlers (`:param` segments, later routes win), recorded requests, Nest-shaped errors
+  fakeBackend.ts   a small stateful gateway: session, profile, deck, likes, connections, chats (`?after=`),
+                   blocks, visits (GET /profile/{id} records one)
+  harness.ts       startTestStore() / flush()
 ```
 
-**Adapter.** It wraps `axios.defaults.adapter` only (no interceptors). A URL that does not start with
-`MOCK_PREFIX` (after `baseURL` is applied) goes to the original adapter, resolved with
-`axios.getAdapter`, with the same config, returning the same promise. A mock URL is answered after the
-latency with a genuine `AxiosResponse` whose `config` is the very object the adapter received, a JSON
-string body that axios' own `transformResponse` parses, `AxiosHeaders`, and `validateStatus` applied;
-failures are `AxiosError`s (`ERR_BAD_REQUEST` / `ERR_BAD_RESPONSE`) carrying that config and the
-response. Abort signals, cancel tokens and timeouts are honoured. Bodies are read as axios hands them
-over: JSON strings, urlencoded strings, `FormData` (an empty one, like `{}`, is a body-less POST); the
-query comes from the URL merged with `config.params` (null / undefined dropped). An unknown route is a
-Nest 404 (`Cannot GET /x`), a handler crash a Nest 500 (and a console error). Installing again replaces
-the wrapper instead of stacking it, and a newer copy of the module (Vite HMR) uninstalls the older one.
-
-**Persistence.** One `localStorage` document per viewer, `matcha.mock.v1.social.<viewerId>`. Missing, unparsable or wrongly shaped documents are reseeded; an
-unavailable storage degrades to memory; another tab's writes are picked up (`storage` event).
-
-**Ids** are UUIDs (URL-safe), deterministic for seeded things (people, their pictures, tags, starter
-matches), random for created ones.
-
-### 5.1 `/__mock/social/*`
-
-The viewer is `getViewerId()` (the real session); no viewer → 401 `Missing or invalid access token`. Bodies are validated in the Nest style (400 with a message array).
-
-| Method + path | Request | Response |
-|---|---|---|
-| GET `/discover` | query `ageMin`, `ageMax` (integers 18–120, defaults 18 / 120), `distance` (km, integer 1–20000, default no limit), `sort` (`best` / `distance` / `fame` / `age`, default `best`), `tags` (comma-separated, optional; `#`, case and spaces ignored) | `Card[]` (≤ 20) of people who fit the viewer's orientation both ways, within the filters, sharing at least one of `tags`; excluding people swiped, matched (or unmatched) and blocked; `[]` when exhausted. `best`: 10 per common tag, +6 if they liked you, +fame/10, −distance/5 (capped at 100 km), +3 if online, plus a small per-viewer tiebreak; `distance` ascending; `fame` descending; `age` ascending |
-| POST `/swipes` | `SwipePayload` | `SwipeResult`. 404 unknown or blocked, 409 `Already swiped`. `like` matches when `likedYou`; `superlike` matches when `likedYou` and otherwise 70% of the time (fixed per pair). A like that does not match may be returned later (20%, superlike 60%, after 8–25 s), as a `match` event |
-| POST `/swipes/rewind` | — | `RewindResult`: undoes the last swipe and returns the full `Card`; `restored: null` when there is none or it created a match (also by a later like-back) |
-| GET `/matches` | — | `Match[]`, most recent activity (last message, else `matchedAt`) first |
-| DELETE `/matches/{matchId}` | — | `OkResult`; 404 `Match not found`. The person stays out of the deck |
-| GET `/matches/{matchId}/messages` | — | `Message[]` oldest first; sets the match's `unread` to 0 (the next `GET /matches` shows it); 404 |
-| POST `/messages` | `SendMessagePayload` (`matchId` UUID, `text` trimmed, 1–1000 chars) | `Message`; marks the conversation read. The other person types (0.6–1.3 s) and replies (1.5–5 s); a burst of messages gets one reply, sometimes followed by a second bubble |
-| GET `/likes` | — | `Card[]` of people who liked the viewer and are not swiped, matched or blocked, newest first |
-| GET `/profiles/{userId}` | — | `Card`; 404 `Profile not found` when unknown or blocked |
-| POST `/blocks` | `BlockPayload` (`reason` ≤ 500) | `OkResult`; 404 for an unknown person; removes the match, hides the person everywhere, cancels what they had pending |
-| GET `/tags` | — | `string[]`: the 45-tag catalogue (it includes the backend's seed tags) plus the viewer's own interests, sorted |
-| POST `/reset` | — | `OkResult`; the viewer's social state (swipes, matches, messages, blocks, likes, pending events) is deleted and reseeded, timers are cancelled |
-
-**Orientation.** `male` / `female` want that gender; `both` and `other` are open to everyone,
-non-binary people included. A card is shown when each side accepts the other; an unknown side does not
-filter. The mock learns the viewer's gender, preference, interests and first name by reading (never changing) the real `GET` / `PATCH {API_URL}/profile` responses that pass through the
-adapter; without that, nothing is filtered and `commonTags` is empty.
-
-**People.** 36 people (16 women, 16 men, 4 non-binary; 19–48 years old; every preference), placed by
-distance from central Paris (the mock puts every viewer there), 3–6 interests each, 2–4 portraits,
-fame, a job, an opener, a story and a question they use in chat. Presence is derived per quarter hour from
-each person's activity level (online, or a `lastSeen` stable within the quarter); someone who just wrote
-is online.
-
-**A new viewer** gets a starter world that is a function of their id: 4 matches when 18 or more people
-fit them, else 3 (one wrote first and is unread, one is an ongoing conversation with 2 unread, one was
-answered and read, the fourth is fresh with no message); 4–6 likes received (~40% of the default deck,
-at least 4). While the viewer has not acted yet (swipe, message,
-unmatch, block, rewind), the starter world follows their orientation (it is reseeded after onboarding).
-Default-filter deck sizes: about 9 for one-gender preferences towards the other gender, 6–7 for
-same-gender ones (10 of 36 people fit), 12–20 for open preferences.
-
-**Realtime (`mockEvents$`).** `typing` before every reply, opener and second bubble; `message` for the
-other person's messages only; `match` for later like-backs only (an immediate match is in the
-`SwipeResult`); `like` when someone new likes the viewer: checked every 60–110 s while the viewer is
-active (a social request in the last 2 minutes), at most about once a minute. A new match opens the
-conversation half of the time (fixed per pair), 5–9 s later. Everything is persisted before it is
-emitted. What happens later is kept in a persisted agenda run by timers that belong to the current
-viewer: switching viewer (at their first social request), resetting or uninstalling cancels them, a timer
-that fires while its viewer is signed out does nothing, and the agenda resumes when that viewer is back.
-
-Every account gets its own world. `POST /__mock/social/reset` (`actions.resetDemoData()`) restores it.
+`connect(backend, userId)` makes a connection (with its empty chat, as the backend creates it on a
+match) and `incoming(backend, userId, text)` stores a message from them; realtime events are injected
+with `startRealtime({ events$, socket: false })`.
 
 ## 6. Routes
 
@@ -412,7 +387,7 @@ Every account gets its own world. `POST /__mock/social/reset` (`actions.resetDem
 | `/verify-email?token=`, `/reset-password?token=` | targets of the links in emails | any |
 | `/onboarding` | complete the profile | signed in, profile incomplete |
 | `/discover` | swipe deck | signed in + complete profile |
-| `/matches`, `/chat/:matchId` | matches and conversation | signed in + complete profile |
+| `/matches`, `/chat/:userId` | connections and the conversation with one | signed in + complete profile |
 | `/activity` | likes received, profile viewers | signed in + complete profile |
 | `/me` | own profile, pictures, settings | signed in |
 | `/styleguide` | design system showcase | any |

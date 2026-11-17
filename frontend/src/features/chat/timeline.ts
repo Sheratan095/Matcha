@@ -87,19 +87,14 @@ export function buildTimeline(
     }
   }
 
-  let lastTheirs = -1
-  messages.forEach((message, index) => {
-    if (message.senderId === partnerId) lastTheirs = index
-  })
-
-  const entries: Entry[] = messages.map((message, index) => {
+  const entries: Entry[] = messages.map((message) => {
     const mine = message.senderId !== partnerId
     return {
       key: claimed.get(message.id) ?? keyFor.get(message.id) ?? message.id,
       side: mine ? 'mine' : 'theirs',
       text: message.text,
-      at: Date.parse(message.sentAt),
-      status: mine ? (index < lastTheirs ? 'read' : 'sent') : undefined,
+      at: message.sentAt,
+      status: mine ? (message.status === 'read' ? 'read' : 'sent') : undefined,
     }
   })
   for (const item of pending) {

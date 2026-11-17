@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { API_URL, MOCK_PREFIX, SOCIAL_URL } from '@/config'
+import type { UserSummary } from '@/api/types'
+import { API_URL } from '@/config'
 import {
+  Avatar,
   Barcode,
   Button,
   Card,
@@ -11,14 +13,16 @@ import {
   IconLogout,
   IconMail,
   IconRefresh,
-  Modal,
+  ListRow,
   Notice,
   Serial,
+  Skeleton,
   Stack,
   Text,
   TextField,
+  toast,
 } from '@/ui'
-import { actions, toApiError } from '@/wb'
+import { actions, refresh, toApiError, useLoad, useNodeStatus, useNodeValue } from '@/wb'
 import { describe, splitApiError } from './errors'
 import s from './AccountSettings.module.css'
 
@@ -98,7 +102,7 @@ function EmailSection() {
   )
 }
 
-// ---------------------------------------------------------------- session + demo data
+// ---------------------------------------------------------------- session
 
 function SessionSection() {
   const navigate = useNavigate()
@@ -135,72 +139,105 @@ function SessionSection() {
   )
 }
 
-function DemoDataSection() {
-  const cancelRef = useRef<HTMLButtonElement>(null)
-  const [confirm, setConfirm] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState(false)
+// ---------------------------------------------------------------- blocked people
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** The people you blocked (`GET /profile/blocks`, loaded when this tab first shows), each with "Unblock". */
+function BlockedSection() {
+  useLoad('blockedUsers')
+  const result = useNodeValue('blockedUsers')
+  const status = useNodeStatus('blockedUsers')
+  const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const reset = async () => {
-    setConfirm(false)
-    setBusy(true)
-    setDone(false)
+  const blocks = result && Array.isArray(result.blocks) ? result.blocks : null
+
+  const unblock = async (person: UserSummary) => {
+    if (busyId) return
+    setBusyId(person.userId)
     setError(null)
     try {
-      await actions.resetDemoData()
-      setDone(true)
+      await actions.unblockUser(person.userId)
+      toast.show({
+        tone: 'matcha',
+        title: `@${person.username} is unblocked`,
+        message: 'They can show up in your deck and in searches again.',
+      })
     } catch (failure) {
       setError(describe(toApiError(failure)))
     } finally {
-      setBusy(false)
+      setBusyId(null)
     }
   }
-  return (
-    <Card as="section" aria-labelledby="me-demo-title" label="Simulated" meta="Social data">
-      <Stack gap={4}>
-        <Headline as="h2" id="me-demo-title" size="d3" width="condensed">
-          Reset demo matches
-        </Headline>
-        <Text size="sm">
-          Discover, likes, matches and chats are simulated in this browser: the backend has no such service yet.
-          Resetting brings back the starting set of people, matches and messages. Your account, profile and photos are
-          not touched.
-        </Text>
-        <FormError error={error} title="Could not reset" />
-        {done ? (
-          <Notice tone="success" title="Demo data restored" onDismiss={() => setDone(false)}>
-            A full deck and the starting matches are back.
-          </Notice>
-        ) : null}
-        <div>
-          <Button variant="paper" icon={<IconRefresh size={18} />} loading={busy} onClick={() => setConfirm(true)}>
-            Reset demo data
-          </Button>
+
+  let list
+  if (blocks === null) {
+    list =
+      status.status === 'error' ? (
+        <Notice
+          tone="error"
+          title="The list did not load"
+          action={
+            <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={() => void refresh('blockedUsers')}>
+              Try again
+            </Button>
+          }
+        >
+          {status.error ? describe(status.error) : 'Something went wrong.'}
+        </Notice>
+      ) : (
+        <div className={s.blocked} aria-busy="true" aria-label="Loading the people you blocked">
+          {[0, 1].map((index) => (
+            <Skeleton key={index} height={52} />
+          ))}
         </div>
-      </Stack>
-      <Modal
-        open={confirm}
-        onClose={() => setConfirm(false)}
-        title="Reset the demo data?"
-        kicker="Simulated social data"
-        size="sm"
-        initialFocus={cancelRef}
-        footer={
-          <>
-            <Button ref={cancelRef} variant="paper" onClick={() => setConfirm(false)}>
-              Cancel
-            </Button>
-            <Button variant="strawberry" onClick={reset}>
-              Reset
-            </Button>
-          </>
-        }
-      >
-        <Text>
-          Swipes, matches and conversations made in this browser are replaced by the starting set. Your profile and photos
-          stay.
+      )
+  } else if (blocks.length === 0) {
+    list = <Text size="sm">Nobody. Someone you block from their profile shows up here, and can be unblocked.</Text>
+  } else {
+    list = (
+      <ul className={s.blocked}>
+        {blocks.map((person) => (
+          <li key={person.userId}>
+            <ListRow
+              leading={<Avatar src={person.profilePictureUrl} name={person.username} size="sm" decorative />}
+              title={`@${person.username}`}
+              trailing={
+                <Button
+                  size="sm"
+                  variant="paper"
+                  loading={busyId === person.userId}
+                  disabled={busyId !== null && busyId !== person.userId}
+                  aria-label={`Unblock @${person.username}`}
+                  onClick={() => void unblock(person)}
+                >
+                  Unblock
+                </Button>
+              }
+            />
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  return (
+    <Card
+      as="section"
+      aria-labelledby="me-blocked-title"
+      label="Account"
+      meta={blocks ? `${pad2(blocks.length)} blocked` : 'Blocked'}
+    >
+      <Stack gap={4}>
+        <Headline as="h2" id="me-blocked-title" size="d3" width="condensed">
+          Blocked people
+        </Headline>
+        <Text size="sm" muted>
+          They do not show up in your deck or searches, and cannot reach you. Unblocking does not bring a match back.
         </Text>
-      </Modal>
+        {list}
+        <FormError error={error} title="Not unblocked" />
+      </Stack>
     </Card>
   )
 }
@@ -208,7 +245,6 @@ function DemoDataSection() {
 // ---------------------------------------------------------------- about this build
 
 function AboutBuild() {
-  const socialBackend = SOCIAL_URL.startsWith(MOCK_PREFIX) ? 'Mock, in this browser' : SOCIAL_URL
   return (
     <Card as="section" tone="ink" aria-labelledby="me-build-title" label="About this build" meta={<Serial value={2026} tone="paper" />}>
       <Stack gap={4}>
@@ -217,12 +253,8 @@ function AboutBuild() {
         </Headline>
         <dl className={s.specs}>
           <div>
-            <dt>Account & profile</dt>
+            <dt>Account, profile, matches & chat</dt>
             <dd>Gateway · {API_URL}</dd>
-          </div>
-          <div>
-            <dt>Matches & chat</dt>
-            <dd>{socialBackend}</dd>
           </div>
         </dl>
         <Barcode value="matcha-gateway" height={28} tone="paper" caption />
@@ -231,13 +263,13 @@ function AboutBuild() {
   )
 }
 
-/** The account tab: email, session, simulated data, and what this build runs on. */
+/** The account tab: email, blocked people, session, and what this build runs on. */
 export function AccountSettings() {
   return (
     <Stack gap={6}>
       <EmailSection />
+      <BlockedSection />
       <SessionSection />
-      <DemoDataSection />
       <AboutBuild />
     </Stack>
   )

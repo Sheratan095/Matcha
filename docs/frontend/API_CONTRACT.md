@@ -19,7 +19,7 @@ Unlabelled statements are [CODE].
 3. **CORS allows exactly one origin: `http://localhost:4000`** (`FRONTEND_URL:FRONTEND_PORT`). Run Vite on port 4000, or use a dev proxy. The GitHub OAuth redirect and the links in emails also point at `http://localhost:4000`.
 4. Error bodies are the NestJS default: `{ "message": string | string[], "error": string, "statusCode": number }`. The `code` / `timestamp` / `path` fields shown in Swagger do not exist.
 5. Real: register, login, verify email, refresh, logout, forgot/reset password, change email, GitHub OAuth, own profile read/update, pictures upload/delete/set-main, read a profile by UUID, list of viewer IDs, authenticated socket connection.
-6. **Absent, must be mocked:** discovery feed, like/pass, matches, chat, block/report, search/filters, geolocation, age/birth date, fame rating, notifications, per-user online status, account info (username/email), tag catalogue. See section 8.
+6. **Absent at that commit:** discovery feed, like/pass, matches, chat, block/report, search/filters, geolocation, age/birth date, fame rating, notifications, per-user online status, account info (username/email), tag catalogue. See section 8. (Since then the backend gained all of these; the frontend no longer mocks anything.)
 
 ---
 
@@ -762,7 +762,9 @@ Notes:
 
 ---
 
-## 8. What does NOT exist (real / mock boundary)
+## 8. What did NOT exist at that commit
+
+> **Superseded (2026-11-17).** This table describes commit `e41ebec`. The backend now has discovery, likes, connections, chat, block / report, search, location, age, fame and live notifications, and the frontend's in-browser mock (`src/mock`) has been removed: every screen calls the gateway. What is still missing is tracked in `frontend/TODO.md`.
 
 Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_verification_tokens`, `forgot_password_tokens`, `profiles`, `interest_tags`, `user_interests`, `user_pictures`, `profile_views`. Nothing else.
 
@@ -801,7 +803,7 @@ Database tables that exist: `users`, `oauth_accounts`, `refresh_tokens`, `email_
 | Tag catalogue / autocomplete | absent | tags are only visible inside profiles |
 | Rate limiting | present | enforced at the gateway: any route can answer **429** `{ "statusCode": 429, "message": "Too many requests, retry in N seconds", "error": "Too Many Requests" }` with a `Retry-After` header (seconds); `toApiError` maps it like any other error. Limits per route: [`docs/backend/rate-limiting.md`](../backend/rate-limiting.md) |
 
-**Where the boundary sits.** Real: the session, the logged-in user's own profile and pictures, opening one profile whose UUID is already known, the viewer-ID list, and an idle authenticated socket. Mock: anything that involves discovering or interacting with other users (feed, swipe, match, chat, block, notifications, presence), plus the per-card data Tinder-style UIs need that the profile lacks (age, distance, fame, username, online). A mock profile can extend `IProfile` with those extra fields.
+**Where the boundary sat (historical).** Real at that commit: the session, the logged-in user's own profile and pictures, opening one profile whose UUID is already known, the viewer-ID list, and an idle authenticated socket. Everything that involved discovering or interacting with other users was mocked in the browser until the backend caught up.
 
 ---
 

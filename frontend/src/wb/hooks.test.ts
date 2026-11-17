@@ -3,7 +3,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { API_URL } from '@/config'
 import type { DiscoverFilters } from './filters'
-import { useFilters, useNode, useNodeStatus, useNodeValue } from './hooks'
+import { actions } from './actions'
+import { useFilters, useLoad, useNode, useNodeStatus, useNodeValue } from './hooks'
 import { nodeSubject, setNode } from './store'
 import { deferred } from './testing/fakeServer'
 import { flush, startTestStore, type TestStore } from './testing/harness'
@@ -100,6 +101,41 @@ describe('hooks', () => {
     expect(container.textContent).toBe('success')
     // Status objects are shared constants: re-renders do not see new references for the same status.
     expect(new Set(seen.filter((status) => status.status === 'loading')).size).toBe(1)
+  })
+
+  it('useLoad under StrictMode sends one request, and none on a remount while the value is young', async () => {
+    await actions.login({ username: 'testuser', password: '1234' })
+    await flush(30)
+    const VIEWERS = `${API_URL}/profile/viewers`
+    function Viewers() {
+      useLoad('myViewers', { maxAgeMs: 60_000 })
+      const viewers = useNodeValue('myViewers')
+      return createElement('span', null, viewers ? String(viewers.viewers.length) : '…')
+    }
+    render(createElement(Viewers))
+    await act(() => flush(30))
+    expect(container.textContent).toBe('0')
+    expect(store.backend.server.sent('GET', VIEWERS)).toHaveLength(1)
+    // leaving the page and coming back
+    act(() => root.render(null))
+    render(createElement(Viewers))
+    await act(() => flush(30))
+    expect(store.backend.server.sent('GET', VIEWERS)).toHaveLength(1)
+  })
+
+  it('useLoad waits for `enabled`', async () => {
+    await actions.login({ username: 'testuser', password: '1234' })
+    await flush(30)
+    function Catalogue({ open }: { open: boolean }) {
+      useLoad('interestCatalogue', { enabled: open })
+      return null
+    }
+    render(createElement(Catalogue, { open: false }))
+    await act(() => flush(30))
+    expect(store.backend.server.sent('GET', `${API_URL}/profile/interests`)).toHaveLength(0)
+    render(createElement(Catalogue, { open: true }))
+    await act(() => flush(30))
+    expect(store.backend.server.sent('GET', `${API_URL}/profile/interests`)).toHaveLength(1)
   })
 
   it('useFilters returns one object per filter state', async () => {

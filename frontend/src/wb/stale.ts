@@ -3,7 +3,7 @@
  *
  * The engine applies responses in arrival order and cancels nothing. A newer request of the same node
  * is handled by the supersede rule of src/api/http.ts, but a node can also be reset with no newer
- * request at all: sign-out (`sessionUserId` -> null), a closed conversation (`activeMatchId` -> null).
+ * request at all: sign-out (`sessionUserId` -> null), a closed conversation (`activeChatId` -> null).
  * A GET still in flight at that moment would land afterwards and put stale data (possibly the previous
  * user's) into a node that should be `null`.
  *

@@ -48,9 +48,6 @@
   text-transform: uppercase;
   color: var(--c-ink-3);
 }
-.whoLive {
-  color: var(--c-matcha-deep);
-}
 
 .whoSkeleton {
   display: inline-flex;
@@ -84,22 +81,6 @@
   gap: var(--s-3);
   padding: var(--s-6) var(--gutter) var(--s-2);
   text-align: center;
-}
-.stubCommon {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px 8px;
-  max-width: 34ch;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: var(--fs-micro);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--c-ink-2);
-}
-.stubTag {
-  color: var(--c-matcha-deep);
 }
 
 /* ------------------------------------------------------------ intro (empty conversation) */
@@ -151,19 +132,6 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.4em;
-}
-
-.common {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--s-2);
-}
-.commonTags {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
 }
 
 .breakers {

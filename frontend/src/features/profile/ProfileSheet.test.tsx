@@ -37,10 +37,9 @@ const h = vi.hoisted(() => {
 vi.mock('@/wb', () => ({
   actions: {
     showApiProfile: vi.fn(() => Promise.resolve(h.full)),
-    showSocialProfile: vi.fn(() => Promise.resolve(null)),
+
     closeProfile: vi.fn(),
     blockUser: vi.fn(),
-    block: vi.fn(),
     reportUser: vi.fn(),
     likeUser: vi.fn(),
     unlikeUser: vi.fn(),
@@ -79,7 +78,7 @@ async function openThenLoad(withPreview: boolean): Promise<{ crashed: string | n
     likesYou: false,
   } as never)
   // One target object for the sheet's whole life, as DiscoverPage's `sheet` state is.
-  const target = { userId: h.full.userId, source: 'api' as const, preview: withPreview ? preview : undefined }
+  const target = { userId: h.full.userId, preview: withPreview ? preview : undefined }
   const element = () => <ProfileSheet target={target} onClose={() => undefined} />
 
   h.renders.n = 0

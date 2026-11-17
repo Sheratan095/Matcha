@@ -1,5 +1,5 @@
 /**
- * `/chat/:matchId`: one conversation, full screen (no app shell).
+ * `/chat/:userId`: the conversation with a connection, full screen (no app shell).
  *
  * Opens the conversation on enter (`actions.openChat`, which also marks it read) and closes it on
  * leave. New messages arrive through realtime refreshes of `chatMessages`; messages typed here are
@@ -16,7 +16,6 @@ import {
   ChatBubble,
   ChatComposer,
   ChatThread,
-  cx,
   DayDivider,
   EmptyState,
   IconBlock,
@@ -30,22 +29,20 @@ import {
   Screen,
   Skeleton,
   toast,
-  TypingIndicator,
 } from '@/ui'
 import { actions, getNodeValue, LOCAL_ERROR, MAX_MESSAGE_LENGTH, toApiError, useNodeStatus, useNodeValue } from '@/wb'
 import { useNow } from './hooks'
 import { LeaveDialog, type LeaveKind } from './LeaveDialog'
 import { MatchIntro } from './MatchIntro'
 import { firstNameOf, mainPicture } from './people'
-import { presenceLabel } from './time'
 import { buildTimeline, type PendingMessage } from './timeline'
-import { usePartnerTyping, useStickToBottom } from './useChatView'
+import { useStickToBottom } from './useChatView'
 import s from './ChatPage.module.css'
 
 export default function ChatPage() {
-  const { matchId = '' } = useParams()
+  const { userId = '' } = useParams()
   // One screen per conversation: drafts in progress, pending messages and scroll state never leak.
-  return <ChatScreen key={matchId} matchId={matchId} />
+  return <ChatScreen key={userId} partnerId={userId} />
 }
 
 /** Unsent drafts, per conversation, for this tab's lifetime. */
@@ -61,7 +58,7 @@ function newLocalId(): string {
  * Leaving a conversation closes it one tick later, unless the same conversation opens again at
  * once (StrictMode's remount, a retry): closing and reopening would drop the request in flight.
  */
-let closing: { matchId: string; timer: number } | null = null
+let closing: { userId: string; timer: number } | null = null
 
 /** Keeps the last non-null value (a refresh that fails must not blank what is on screen). */
 function useLastKnown<T>(value: T | null | undefined): T | null {
@@ -70,19 +67,26 @@ function useLastKnown<T>(value: T | null | undefined): T | null {
   return value ?? kept
 }
 
+/** 403: not connected (any more); 400 / INVALID: not a valid id. */
 function isNotFound(error: ApiError | null | undefined): boolean {
-  return error?.status === 404 || error?.code === LOCAL_ERROR.INVALID
+  return error?.status === 403 || error?.status === 404 || error?.status === 400 || error?.code === LOCAL_ERROR.INVALID
 }
 
-function ChatScreen({ matchId }: { matchId: string }) {
+/** Ids of the server messages that were already there when a message was typed. */
+function knownIds(messages: readonly Message[] | null): Set<string> {
+  return new Set((messages ?? []).map((message) => message.id))
+}
+
+function ChatScreen({ partnerId }: { partnerId: string }) {
   const navigate = useNavigate()
   const now = useNow(30_000)
 
   const matches = useNodeValue('matches')
-  const matchesStatus = useNodeStatus('matches')
-  const activeMatchId = useNodeValue('activeMatchId')
+  const connectionsStatus = useNodeStatus('connections')
+  const activeChatUserId = useNodeValue('activeChatUserId')
+  const activeChatId = useNodeValue('activeChatId')
   const chatMessages = useNodeValue('chatMessages')
-  const chatStatus = useNodeStatus('chatMessages')
+  const chatStatus = useNodeStatus('chatHistory')
   const myProfile = useNodeValue('myProfile')
   const myId = useNodeValue('sessionUserId')
 
@@ -90,41 +94,41 @@ function ChatScreen({ matchId }: { matchId: string }) {
   const [attempt, setAttempt] = useState(0)
   const [openFailure, setOpenFailure] = useState<{ attempt: number; error: ApiError } | null>(null)
   useEffect(() => {
-    if (closing?.matchId === matchId) {
+    if (closing?.userId === partnerId) {
       window.clearTimeout(closing.timer)
       closing = null
     }
     let live = true
-    actions.openChat(matchId).catch((error: unknown) => {
-      if (live) setOpenFailure({ attempt, error: toApiError(error) })
+    actions.openChat(partnerId).catch((error: unknown) => {
+      const problem = toApiError(error)
+      if (live && problem.code !== LOCAL_ERROR.DROPPED) setOpenFailure({ attempt, error: problem })
     })
     return () => {
       live = false
       const timer = window.setTimeout(() => {
         if (closing?.timer === timer) closing = null
         // Another conversation may have opened meanwhile: only close this one.
-        if (getNodeValue('activeMatchId') === matchId) actions.closeChat()
+        if (getNodeValue('activeChatUserId') === partnerId) actions.closeChat()
       }, 0)
-      closing = { matchId, timer }
+      closing = { userId: partnerId, timer }
     }
-  }, [matchId, attempt])
+  }, [partnerId, attempt])
   const openError = openFailure?.attempt === attempt ? openFailure.error : null
 
   // ------------------------------------------------------------ the match and its messages
   // While unmatching / blocking, the screen keeps what it showed until it navigates away.
   const [frozen, setFrozen] = useState<{ match: Match; messages: Message[] } | null>(null)
-  const listed = Array.isArray(matches) ? (matches.find((match) => match.id === matchId) ?? null) : undefined
+  const listed = Array.isArray(matches) ? (matches.find((match) => match.userId === partnerId) ?? null) : undefined
   const keptMatch = useLastKnown(listed)
   const match = frozen?.match ?? (listed === null ? null : keptMatch)
 
-  // Memoised: a new array on every render would never settle `useLastKnown`.
-  const liveMessages = useMemo(
-    () =>
-      activeMatchId === matchId && Array.isArray(chatMessages)
-        ? chatMessages.filter((message) => message.matchId === matchId)
-        : null,
-    [activeMatchId, chatMessages, matchId],
-  )
+  // Memoised: a new array on every render would never settle `useLastKnown`. Open without a chat id
+  // means nobody has written yet: an empty thread.
+  const liveMessages = useMemo<Message[] | null>(() => {
+    if (activeChatUserId !== partnerId) return null
+    if (!activeChatId) return []
+    return Array.isArray(chatMessages) ? chatMessages : null
+  }, [activeChatUserId, activeChatId, chatMessages, partnerId])
   const keptMessages = useLastKnown(liveMessages)
   const messages = frozen?.messages ?? keptMessages
 
@@ -132,10 +136,9 @@ function ChatScreen({ matchId }: { matchId: string }) {
     !frozen &&
     (isNotFound(openError) || (chatStatus.status === 'error' && isNotFound(chatStatus.error)) || listed === null)
   const loadError = !notFound && !messages ? (openError ?? (chatStatus.status === 'error' ? chatStatus.error : null)) : null
-  const matchesError = !match && !notFound && matchesStatus.status === 'error' ? matchesStatus.error : null
+  const matchesError = !match && !notFound && connectionsStatus.status === 'error' ? connectionsStatus.error : null
 
-  const partnerId = match?.profile.userId ?? null
-  const name = firstNameOf(match?.profile, 'Your match')
+  const name = match?.username || 'Your match'
   const me = {
     name: firstNameOf(myProfile, 'You'),
     photo: mainPicture(myProfile),
@@ -146,14 +149,17 @@ function ChatScreen({ matchId }: { matchId: string }) {
   const [pending, setPending] = useState<PendingMessage[]>([])
   const [keyFor, setKeyFor] = useState<ReadonlyMap<string, string>>(() => new Map())
 
-  const timeline = buildTimeline(messages ?? [], pending, partnerId ?? '', now, keyFor)
-  const typing = usePartnerTyping(matchId, partnerId, timeline.theirIds)
+  const timeline = buildTimeline(messages ?? [], pending, partnerId, now, keyFor)
 
   const deliver = useCallback(
-    (localId: string, text: string) => {
-      actions.sendMessage(matchId, text).then(
-        (message) => {
-          setKeyFor((current) => new Map(current).set(message.id, localId))
+    (localId: string, text: string, known: ReadonlySet<string>) => {
+      actions.sendMessage(partnerId, text).then(
+        () => {
+          // The server copy is in the thread now: it keeps the bubble's key, so nothing is redrawn.
+          const echo = (getNodeValue('chatMessages') ?? []).find(
+            (message) => message.senderId !== partnerId && message.text === text.trim() && !known.has(message.id),
+          )
+          if (echo) setKeyFor((current) => new Map(current).set(echo.id, localId))
           setPending((current) => current.filter((item) => item.localId !== localId))
         },
         (error: unknown) => {
@@ -164,7 +170,7 @@ function ChatScreen({ matchId }: { matchId: string }) {
         },
       )
     },
-    [matchId],
+    [partnerId],
   )
 
   // ------------------------------------------------------------ scrolling
@@ -181,10 +187,10 @@ function ChatScreen({ matchId }: { matchId: string }) {
   if (pinned && unseen !== 0) setUnseen(0)
 
   // ------------------------------------------------------------ composer
-  const [draft, setDraftState] = useState(() => drafts.get(matchId) ?? '')
+  const [draft, setDraftState] = useState(() => drafts.get(partnerId) ?? '')
   const setDraft = (value: string) => {
-    if (value) drafts.set(matchId, value)
-    else drafts.delete(matchId)
+    if (value) drafts.set(partnerId, value)
+    else drafts.delete(partnerId)
     setDraftState(value)
   }
   const composerRef = useRef<HTMLDivElement>(null)
@@ -207,24 +213,24 @@ function ChatScreen({ matchId }: { matchId: string }) {
   const send = (text: string) => {
     if (!canWrite) return
     const id = newLocalId()
-    const known = new Set((messages ?? []).map((message) => message.id))
+    const known = knownIds(messages)
     setPending((current) => [...current, { localId: id, text, status: 'sending', createdAt: Date.now(), known, error: null }])
     setDraft('')
     scrollToBottom()
-    deliver(id, text)
+    deliver(id, text, known)
   }
 
   const retry = (localId: string) => {
     const item = pending.find((candidate) => candidate.localId === localId)
     if (!item) return
-    const known = new Set((messages ?? []).map((message) => message.id))
+    const known = knownIds(messages)
     setPending((current) =>
       current.map((candidate) =>
         candidate.localId === localId ? { ...candidate, status: 'sending', error: null, known, createdAt: Date.now() } : candidate,
       ),
     )
     scrollToBottom()
-    deliver(localId, item.text)
+    deliver(localId, item.text, known)
   }
 
   const discard = (localId: string) => setPending((current) => current.filter((item) => item.localId !== localId))
@@ -236,8 +242,7 @@ function ChatScreen({ matchId }: { matchId: string }) {
 
   // ------------------------------------------------------------ profile sheet, unmatch, block
   const [profileOpen, setProfileOpen] = useState(false)
-  const profileTarget: ProfileTarget | null =
-    profileOpen && match ? { userId: match.profile.userId, source: 'social', preview: match.profile } : null
+  const profileTarget: ProfileTarget | null = profileOpen && match ? { userId: match.userId } : null
 
   const [leaveKind, setLeaveKind] = useState<LeaveKind | null>(null)
   const [leaveBusy, setLeaveBusy] = useState(false)
@@ -246,15 +251,15 @@ function ChatScreen({ matchId }: { matchId: string }) {
     setLeaveError(null)
     setLeaveKind(kind)
   }
-  const confirmLeave = (kind: LeaveKind, reason?: string) => {
+  const confirmLeave = (kind: LeaveKind) => {
     if (!match || leaveBusy) return
     setLeaveBusy(true)
     setLeaveError(null)
     setFrozen({ match, messages: messages ?? [] })
-    const done = kind === 'unmatch' ? actions.unmatch(match.id) : actions.block(match.profile.userId, reason)
+    const done = kind === 'unmatch' ? actions.unlikeUser(match.userId) : actions.blockUser(match.userId)
     done.then(
       () => {
-        drafts.delete(matchId)
+        drafts.delete(partnerId)
         toast.show({
           tone: 'ink',
           title: kind === 'block' ? `${name} is blocked` : `You unmatched ${name}`,
@@ -270,8 +275,13 @@ function ChatScreen({ matchId }: { matchId: string }) {
     )
   }
 
+  // A block or unmatch from the profile sheet ends the conversation too.
+  const onBlocked = () => {
+    drafts.delete(partnerId)
+    navigate('/matches', { replace: true })
+  }
+
   // ------------------------------------------------------------ render
-  const presence = match ? (typing ? 'Typing…' : presenceLabel(match.profile.online, match.profile.lastSeen, now)) : ''
   const header = (
     <PageHeader
       size="compact"
@@ -280,11 +290,11 @@ function ChatScreen({ matchId }: { matchId: string }) {
       title={
         match ? (
           <button type="button" className={s.who} onClick={() => setProfileOpen(true)}>
-            <Avatar src={mainPicture(match.profile)} name={name} size="sm" online={match.profile.online} decorative />
+            <Avatar src={match.profilePictureUrl} name={name} size="sm" decorative />
             <span className={s.whoText}>
               <span className={s.whoName}>{name}</span>
-              <span className={cx(s.whoPresence, (typing || match.profile.online) && s.whoLive)} aria-hidden={typing || undefined}>
-                {presence}
+              <span className={s.whoPresence} aria-hidden="true">
+                View profile
               </span>
             </span>
             <span className="sr-only">: view profile</span>
@@ -358,28 +368,27 @@ function ChatScreen({ matchId }: { matchId: string }) {
         {ready ? (
           <>
             <div className={s.conversation}>
-            <MatchIntro match={match} me={me} now={now} empty={empty} onIcebreaker={insertIcebreaker} />
-            <ChatThread label={`Conversation with ${name}`}>
-              {timeline.items.map((item) =>
-                item.kind === 'day' ? (
-                  <DayDivider key={item.key}>{item.label}</DayDivider>
-                ) : (
-                  <Fragment key={item.key}>
-                    <ChatBubble side={item.side} position={item.position} time={item.time} status={item.status}>
-                      {item.text}
-                    </ChatBubble>
-                    {item.status === 'failed' && item.pendingId ? (
-                      <FailedActions
-                        error={pending.find((candidate) => candidate.localId === item.pendingId)?.error ?? null}
-                        onRetry={() => retry(item.pendingId as string)}
-                        onDiscard={() => discard(item.pendingId as string)}
-                      />
-                    ) : null}
-                  </Fragment>
-                ),
-              )}
-              {typing ? <TypingIndicator name={name} /> : null}
-            </ChatThread>
+              <MatchIntro match={match} me={me} empty={empty} onIcebreaker={insertIcebreaker} />
+              <ChatThread label={`Conversation with ${name}`}>
+                {timeline.items.map((item) =>
+                  item.kind === 'day' ? (
+                    <DayDivider key={item.key}>{item.label}</DayDivider>
+                  ) : (
+                    <Fragment key={item.key}>
+                      <ChatBubble side={item.side} position={item.position} time={item.time} status={item.status}>
+                        {item.text}
+                      </ChatBubble>
+                      {item.status === 'failed' && item.pendingId ? (
+                        <FailedActions
+                          error={pending.find((candidate) => candidate.localId === item.pendingId)?.error ?? null}
+                          onRetry={() => retry(item.pendingId as string)}
+                          onDiscard={() => discard(item.pendingId as string)}
+                        />
+                      ) : null}
+                    </Fragment>
+                  ),
+                )}
+              </ChatThread>
             </div>
             {chatStatus.status === 'error' && !isNotFound(chatStatus.error) ? (
               <div className={s.inlineNotice}>
@@ -441,7 +450,7 @@ function ChatScreen({ matchId }: { matchId: string }) {
         onCancel={() => setLeaveKind(null)}
         onConfirm={confirmLeave}
       />
-      <ProfileSheet target={profileTarget} onClose={() => setProfileOpen(false)} />
+      <ProfileSheet target={profileTarget} onClose={() => setProfileOpen(false)} onBlocked={onBlocked} />
     </Screen>
   )
 }

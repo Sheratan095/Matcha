@@ -21,7 +21,7 @@ import {
   type NodeName,
   type RefreshableNodeName,
 } from './nodes'
-import { isStoreLive, nodeSubject, registry, writeNode } from './store'
+import { isStoreLive, nodeStatus$, nodeSubject, registry, writeNode } from './store'
 
 let nonce = 0
 
@@ -135,6 +135,33 @@ async function writeAndSettle(node: HttpNodeName, write: () => void, which: 'fir
 export function awaitLoad(node: HttpNodeName, write: () => void): Promise<LoadOutcome> {
   if (!isStoreLive()) return Promise.resolve({ sent: false, error: notRunning(), event: null })
   return writeAndSettle(node, write, 'all')
+}
+
+/**
+ * Waits for the load of `node` already on its way (at once when there is none), so a second caller
+ * joins it instead of sending another request. Resolves once the node holds the outcome; `event` is
+ * null (that request started before the wait). Internal to the state layer.
+ */
+export function awaitPending(node: HttpNodeName): Promise<LoadOutcome> {
+  if (!isStoreLive()) return Promise.resolve({ sent: false, error: notRunning(), event: null })
+  return new Promise((resolve) => {
+    let pending = false
+    let settled = false
+    let subscription: Subscription | null = null
+    subscription = nodeStatus$(node).subscribe(({ status, error }) => {
+      if (settled) return
+      if (status === 'loading') {
+        pending = true
+        return
+      }
+      settled = true
+      subscription?.unsubscribe()
+      // The status settles in the interceptor; the engine applies the value a few microtasks later.
+      void macrotask().then(() => resolve({ sent: pending, error: status === 'error' ? error : null, event: null }))
+    })
+    // A BehaviorSubject answers inside `subscribe`, before `subscription` is assigned.
+    if (settled) subscription.unsubscribe()
+  })
 }
 
 // ---------------------------------------------------------------- refresh

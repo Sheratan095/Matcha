@@ -18,7 +18,7 @@ import {
   Sticker,
   Text,
 } from '@/ui'
-import { useNodeStatus, useNodeValue } from '@/wb'
+import { REVISIT_MS, useLoad, useNodeStatus, useNodeValue } from '@/wb'
 import { CompletenessMeter } from './CompletenessMeter'
 import {
   GENDER_LABEL,
@@ -49,6 +49,7 @@ function identityLine(profile: Profile): string {
 /** The own profile as a poster: tilted main photo on a matcha band, the name in heavy type, the numbers. */
 export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHeaderProps) {
   const complete = useNodeValue('profileComplete') === true
+  useLoad('myViewers', { maxAgeMs: REVISIT_MS })
   const viewers = useNodeValue('myViewers')
   const viewersStatus = useNodeStatus('myViewers')
   const main = mainPicture(profile)

@@ -1,5 +1,5 @@
 /**
- * Routes (docs/ARCHITECTURE.md §6). Every page is a lazy chunk. `/chat/:matchId` sits outside the
+ * Routes (docs/ARCHITECTURE.md §6). Every page is a lazy chunk. `/chat/:userId` sits outside the
  * AppShell (its page renders a full-screen `Screen`), but behind the same guards.
  */
 import { createBrowserRouter, Navigate } from 'react-router-dom'
@@ -65,7 +65,7 @@ export const router = createBrowserRouter([
           },
           {
             element: <RequireCompleteProfile fullPage />,
-            children: [{ path: '/chat/:matchId', element: <ChatPage /> }],
+            children: [{ path: '/chat/:userId', element: <ChatPage /> }],
           },
         ],
       },

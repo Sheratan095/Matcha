@@ -8,6 +8,7 @@
 import type { DeckCard, DiscoverSort, InterestTag, LikeResult } from '@/api/types'
 import {
   commands,
+  demand,
   derived,
   get,
   input,
@@ -49,13 +50,18 @@ export interface DiscoverNodes extends CommandNodes<DiscoverCommands> {
   /** Comma-separated tag names; null for "any". */
   filterTags: string
   discoverRefresh: number
-  /** The whole filtered list (200 at most), best first; excludes people liked or blocked. */
+  /** Gate of `discoverDeck`: set once /discover asks for the deck (src/wb/demand.ts). */
+  discoverWanted: boolean
+  /** The whole filtered list (200 at most), best first; excludes people liked or blocked. Loads on demand. */
   discoverDeck: DeckCard[]
   /** User ids swiped (or blocked) in this session: they leave `visibleDeck` at once. */
   swipedIds: string[]
   /** `discoverDeck` minus `swipedIds`, in `filterSort` order; null while there is no deck. */
   visibleDeck: DeckCard[]
-  /** `GET /profile/interests`: every tag in use. */
+  /** Gate of `interestCatalogue`: set once a tag picker is shown. */
+  interestsWanted: boolean
+  interestsRefresh: number
+  /** `GET /profile/interests`: every tag in use. Loads on demand. */
   interestCatalogue: { interests: InterestTag[] }
   /** Tag names of `interestCatalogue`, sorted; null while not loaded. */
   tagCatalogue: string[]
@@ -69,10 +75,12 @@ export const discoverNodes = {
   filterSort: selection(DEFAULT_FILTERS.sort),
   filterTags: selection(),
   discoverRefresh: selection(),
+  discoverWanted: selection(),
   // Each filter is a dependency, so each filter write is one request: `actions.setFilters` changes
   // several at once behind a closed gate (it holds `filterAgeMin` at null meanwhile).
   discoverDeck: get('api', '/profile/discover', [
     session(),
+    demand('discoverWanted'),
     queryParameter('filterAgeMin', 'minAge'),
     queryParameter('filterAgeMax', 'maxAge'),
     queryParameter('filterDistance', 'maxDistanceKm'),
@@ -86,7 +94,9 @@ export const discoverNodes = {
     input('swipedIds', 'swiped'),
     input('filterSort', 'sort'),
   ]),
-  interestCatalogue: get('api', '/profile/interests', [session()]),
+  interestsWanted: selection(),
+  interestsRefresh: selection(),
+  interestCatalogue: get('api', '/profile/interests', [session(), demand('interestsWanted'), trigger('interestsRefresh')]),
   tagCatalogue: derived('tagCatalogue', [input('interestCatalogue', 'catalogue')]),
   ...commands<DiscoverCommands>({
     like: { method: 'POST', serviceName: 'api', addr: '/profile/{userId}/like', payload: { pathVariable: 'userId' } },

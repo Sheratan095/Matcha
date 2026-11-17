@@ -1,7 +1,7 @@
 /**
- * Wire types shared by the node graph, the mock backend and the UI.
- * The "real" section mirrors backend/packages/shared-types as it appears on the wire
- * (docs/API_CONTRACT.md); the "social" section is the contract of the mocked endpoints.
+ * Wire types shared by the node graph and the UI. They mirror backend/packages/shared-types and the
+ * response DTOs as they appear on the wire (docs/API_CONTRACT.md); `Message` and `Match` are the
+ * shapes the chat screens draw, derived from them in src/wb/functions.ts.
  */
 
 // ---------------------------------------------------------------- real backend
@@ -203,13 +203,6 @@ export interface PicturesResult {
   pictures: UserPicture[]
 }
 
-/** One entry of GET /profile/viewers: the viewer plus their username and profile picture. */
-export interface ProfileViewer {
-  viewerId: string
-  username: string
-  profilePictureUrl: string | null
-}
-
 /**
  * One connection (mutual like) on GET /profile/matches/map. The position is snapped to a ~1 km grid
  * by the backend (neighbourhood accuracy); both null when they have no location.
@@ -227,11 +220,20 @@ export interface MatchesMapResult {
   matches: MapMatch[]
 }
 
-/** GET /profile/viewers. */
+/** GET /profile/viewers: who opened your profile. StdPayload entries (`userId`), whatever the Swagger DTO says. */
 export interface ViewersResult {
-  viewers: ProfileViewer[]
+  viewers: UserSummary[]
 }
 
+/** GET /profile/visited: the profiles you opened, most recent visit first (StdPayload entries). */
+export interface VisitedResult {
+  visited: UserSummary[]
+}
+
+/** GET /profile/blocks: the people you blocked (StdPayload entries). */
+export interface BlocksResult {
+  blocks: UserSummary[]
+}
 
 /**
  * Normalised form of the Nest error body `{ message: string | string[], error, statusCode }`.
@@ -247,70 +249,126 @@ export interface ApiError {
   messages: string[]
 }
 
-// ---------------------------------------------------------------- social (mocked)
+// ---------------------------------------------------------------- connections, likes, chat
 
-/** A profile as shown on a swipe card: the real profile shape plus what the backend lacks. */
-export interface Card extends Profile {
-  age: number
-  city: string
-  distanceKm: number
-  /** 0-100. */
-  fame: number
-  online: boolean
-  /** ISO date, null when online. */
-  lastSeen: string | null
-  /** They already liked the viewer: liking back is a match. */
-  likedYou: boolean
-  /** Interest names shared with the viewer. */
-  commonTags: string[]
+/** Someone in a list or a socket event (the backend's StdPayload). */
+export interface UserSummary {
+  userId: string
+  username: string
+  profilePictureUrl: string | null
 }
 
-export type SwipeAction = 'like' | 'pass' | 'superlike'
-
-export interface SwipePayload {
-  targetId: string
-  action: SwipeAction
-}
-export interface SwipeResult {
-  match: Match | null
-}
-export interface RewindResult {
-  /** The card whose swipe was undone, null when there was nothing to undo. */
-  restored: Card | null
+/** GET /profile/matches: the people you are connected to (mutual like). */
+export interface ConnectionsResult {
+  matches: UserSummary[]
 }
 
+/**
+ * GET /profile/likes: people who liked you and whom you have not liked back. Each entry is a
+ * StdPayload (`userId`), whatever the Swagger DTO (`likerId`) says.
+ */
+export interface LikersResult {
+  likes: UserSummary[]
+}
+
+export type MessageStatus = 'sent' | 'delivered' | 'read'
+
+/** One message as GET /chat/:chatId and the `message` socket event carry it. */
+export interface ChatMessage {
+  messageId: string
+  content: string
+  /** Epoch milliseconds. */
+  timestamp: number
+  /** The sender. */
+  userId: string
+  username: string
+  status: MessageStatus
+  profilePictureUrl: string | null
+}
+
+/** GET /chat/:chatId: oldest first. */
+export interface ChatHistoryResult {
+  messages: ChatMessage[]
+}
+
+/** One conversation of GET /chat (only chats that have at least one message). */
+export interface ChatListItem {
+  chatId: string
+  /** The other participant. */
+  userId: string
+  username: string
+  profilePictureUrl: string | null
+  lastMessage: string
+  /** Epoch milliseconds of the last message. */
+  timestamp: number
+  lastSenderId: string
+}
+
+/** GET /chat: newest activity first. */
+export interface ChatListResult {
+  chats: ChatListItem[]
+}
+
+/** POST /chat/message. Only to someone you are connected to (403 otherwise). */
+export interface SendMessagePayload {
+  toUserId: string
+  content: string
+}
+export interface SendMessageResult {
+  /** The recipient had a live socket. */
+  delivered: boolean
+}
+
+/** POST /chat/:chatId/seen. */
+export interface ChatSeenResult {
+  seen: boolean
+}
+
+/** A message as the chat screen draws it. */
 export interface Message {
   id: string
-  matchId: string
   senderId: string
   text: string
-  sentAt: string
+  /** Epoch milliseconds. */
+  sentAt: number
+  status: MessageStatus
 }
 
-export interface Match {
-  id: string
-  profile: Card
-  matchedAt: string
-  lastMessage: Message | null
-  /** Messages from the other person the viewer has not opened yet. */
+/** A connection with its conversation, as the matches list and the chat screen show it. */
+export interface Match extends UserSummary {
+  /** null until the first message: the backend only lists chats that have one. */
+  chatId: string | null
+  lastMessage: { text: string; sentAt: number; senderId: string } | null
+  /**
+   * Messages from them that arrived over the socket since the conversation was last opened in this
+   * tab. The backend keeps no unread count, so it starts at 0 on every load.
+   */
   unread: number
 }
 
-export interface SendMessagePayload {
-  matchId: string
-  text: string
-}
-export interface BlockPayload {
-  userId: string
-  reason?: string
-}
-export interface OkResult {
-  ok: true
+/**
+ * What a calendar notification tells of: socket `event-invite`, `event-accept`, `event-decline`,
+ * `event-cancel`. An invite reaches the invitee, an accept or a decline the inviter, a cancel the side
+ * that did not cancel.
+ */
+export type CalendarAction = 'invite' | 'accept' | 'decline' | 'cancel'
+
+/** A date planned with a connection, as its notifications carry it. */
+export interface CalendarEventSummary {
+  id: string
+  title: string
+  /** Epoch milliseconds; null when the payload's `startTime` is not a date. */
+  startsAt: number | null
 }
 
-/** Pushed by the realtime channel (mocked today; the real socket carries no events yet). */
+/** Pushed over the gateway's socket.io connection (`/notification` namespace). */
 export type RealtimeEvent =
-  | { type: 'message'; matchId: string; message: Message }
-  | { type: 'typing'; matchId: string; userId: string }
-  | { type: 'match'; match: Match }
-  | { type: 'like'; from: Card }
+  | { type: 'message'; from: UserSummary; message: Message }
+  | { type: 'match'; person: UserSummary }
+  | { type: 'unmatch'; person: UserSummary }
+  | { type: 'like'; person: UserSummary }
+  | { type: 'view'; person: UserSummary }
+  /** `userId` read the chat: your messages there are now read. */
+  | { type: 'seen'; chatId: string; userId: string }
+  /** `person` invited you to `event`, or accepted, declined or cancelled it. */
+  | { type: 'calendar'; action: CalendarAction; person: UserSummary; event: CalendarEventSummary }

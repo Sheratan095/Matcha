@@ -110,15 +110,6 @@
   color: var(--c-ink);
 }
 
-.typing {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: var(--fs-label);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--c-matcha-deep);
-}
-
 .quiet {
   display: flex;
   flex-direction: column;

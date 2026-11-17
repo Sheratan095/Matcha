@@ -206,6 +206,23 @@ export function nodeStatus$(name: HttpNodeName): Observable<NodeStatus> {
   return started().tracker.status$(name)
 }
 
+/** When the value an HTTP node holds arrived (`Date.now()`); null unless its status is `success`. Internal. */
+export function getLoadedAt(name: HttpNodeName): number | null {
+  return started().tracker.loadedAt(name)
+}
+
+/**
+ * Request ids grow with time: `getRequestId(node) > mark`, with `mark = getLastRequestId()` taken at
+ * some moment, means the node has a request that started after that moment. Internal (realtime).
+ */
+export function getRequestId(name: HttpNodeName): number {
+  return started().tracker.requestId(name)
+}
+
+export function getLastRequestId(): number {
+  return started().tracker.lastRequestId()
+}
+
 /** The status subject of an HTTP node. Internal (hooks). */
 export function statusSource(name: HttpNodeName): StatusSource {
   return started().tracker.source(name)

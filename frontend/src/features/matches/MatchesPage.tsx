@@ -1,12 +1,11 @@
 /**
- * `/matches`: new matches nobody has written to yet (a strip of big portraits), then the
- * conversations, most recent first. Tapping either opens `/chat/:matchId`.
+ * `/matches`: your connections nobody has written to yet (a strip of big portraits), then the
+ * conversations, most recent first. Tapping either opens `/chat/:userId`.
  */
-import { useEffect, useId } from 'react'
+import { useId } from 'react'
 import { Link } from 'react-router-dom'
 import type { Match } from '@/api/types'
-import { firstNameOf, mainPicture } from '@/features/chat/people'
-import { useNow, useTypingMatches } from '@/features/chat/hooks'
+import { useNow } from '@/features/chat/hooks'
 import { pad2, shortAgo } from '@/features/chat/time'
 import {
   Avatar,
@@ -25,28 +24,32 @@ import {
   Skeleton,
   TicketHeader,
 } from '@/ui'
-import { refresh, useNodeStatus, useNodeValue } from '@/wb'
+import { actions, REVISIT_MS, useLoad, useNodeStatus, useNodeValue } from '@/wb'
 import s from './MatchesPage.module.css'
 
-/** Last activity: the last message, else the match itself. */
+/** Time of the last message; 0 without one. */
 function activityAt(match: Match): number {
-  return Date.parse(match.lastMessage?.sentAt ?? match.matchedAt)
+  return match.lastMessage?.sentAt ?? 0
+}
+
+function reload(): void {
+  void actions.refreshMatches()
 }
 
 export default function MatchesPage() {
   const matches = useNodeValue('matches')
-  const status = useNodeStatus('matches')
+  const status = useNodeStatus('connections')
   const unread = useNodeValue('unreadCount') ?? 0
   const now = useNow(30_000)
-  const typing = useTypingMatches()
 
-  // Coming back to the list: pick up what changed meanwhile (no flash, the list stays on screen).
-  useEffect(() => {
-    void refresh('matches')
-  }, [])
+  // Both lists load at sign-in and realtime keeps them current: coming back to the page refetches
+  // them (in place, no flash) only when they are getting old.
+  useLoad('connections', { maxAgeMs: REVISIT_MS })
+  useLoad('chatList', { maxAgeMs: REVISIT_MS })
 
   const list = Array.isArray(matches) ? matches : null
-  const fresh = list ? list.filter((match) => !match.lastMessage).sort((a, b) => activityAt(b) - activityAt(a)) : []
+  // the backend's order for the new ones (it has no match date), newest message first for the rest
+  const fresh = list ? list.filter((match) => !match.lastMessage) : []
   const talking = list ? list.filter((match) => match.lastMessage).sort((a, b) => activityAt(b) - activityAt(a)) : []
 
   const kicker = list ? (
@@ -67,7 +70,7 @@ export default function MatchesPage() {
         ) : (
           <>
             <NewMatches matches={fresh} />
-            <Conversations matches={talking} unread={unread} now={now} typing={typing} hasNew={fresh.length > 0} />
+            <Conversations matches={talking} unread={unread} now={now} hasNew={fresh.length > 0} />
           </>
         )
       ) : status.status === 'error' ? (
@@ -75,7 +78,7 @@ export default function MatchesPage() {
           tone="error"
           title="Your matches did not load"
           action={
-            <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={() => void refresh('matches')}>
+            <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={reload}>
               Try again
             </Button>
           }
@@ -101,12 +104,12 @@ function NewMatches({ matches }: { matches: Match[] }) {
       <TicketHeader label={matches.length > 0 ? 'New matches · say hi first' : 'New matches · none waiting'} meta={pad2(matches.length)} />
       <ul className={s.strip}>
         {matches.map((match, index) => {
-          const name = firstNameOf(match.profile)
+          const name = match.username
           return (
-            <li key={match.id} className={s.stripItem}>
-              <Link to={`/chat/${match.id}`} className={s.fresh} style={{ rotate: `${index % 2 === 0 ? -2 : 2}deg` }}>
+            <li key={match.userId} className={s.stripItem}>
+              <Link to={`/chat/${match.userId}`} className={s.fresh} style={{ rotate: `${index % 2 === 0 ? -2 : 2}deg` }}>
                 <span className={s.freshFace}>
-                  <Avatar src={mainPicture(match.profile)} name={name} size="xl" online={match.profile.online} shadow decorative />
+                  <Avatar src={match.profilePictureUrl} name={name} size="xl" shadow decorative />
                   <span className={s.freshBadge} aria-hidden="true">
                     <Badge tone="yolk" rotate={-8}>
                       New
@@ -138,11 +141,10 @@ interface ConversationsProps {
   matches: Match[]
   unread: number
   now: number
-  typing: ReadonlySet<string>
   hasNew: boolean
 }
 
-function Conversations({ matches, unread, now, typing, hasNew }: ConversationsProps) {
+function Conversations({ matches, unread, now, hasNew }: ConversationsProps) {
   const headingId = useId()
   return (
     <section className={s.section} aria-labelledby={headingId}>
@@ -160,31 +162,23 @@ function Conversations({ matches, unread, now, typing, hasNew }: ConversationsPr
       ) : (
         <ul className={s.rows}>
           {matches.map((match) => {
-            const name = firstNameOf(match.profile)
+            const name = match.username
             const last = match.lastMessage
-            const mine = last != null && last.senderId !== match.profile.userId
-            const isTyping = typing.has(match.id)
-            const subtitle = isTyping ? (
-              <span className={s.typing}>Typing…</span>
-            ) : last ? (
+            const mine = last != null && last.senderId !== match.userId
+            const subtitle = last ? (
               <>
                 {mine ? <span className={s.you}>You: </span> : null}
                 {last.text}
               </>
             ) : null
             return (
-              <li key={match.id}>
+              <li key={match.userId}>
                 <ListRow
-                  to={`/chat/${match.id}`}
-                  leading={<Avatar src={mainPicture(match.profile)} name={name} size="md" online={match.profile.online} decorative />}
-                  title={
-                    <>
-                      {name}
-                      {match.profile.online ? <span className="sr-only">, online</span> : null}
-                    </>
-                  }
+                  to={`/chat/${match.userId}`}
+                  leading={<Avatar src={match.profilePictureUrl} name={name} size="md" decorative />}
+                  title={name}
                   subtitle={subtitle}
-                  meta={last ? <time dateTime={last.sentAt}>{shortAgo(last.sentAt, now)}</time> : null}
+                  meta={last ? <time dateTime={new Date(last.sentAt).toISOString()}>{shortAgo(last.sentAt, now)}</time> : null}
                   unread={match.unread > 0}
                   trailing={
                     match.unread > 0 ? (

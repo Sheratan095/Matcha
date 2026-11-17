@@ -1,8 +1,9 @@
 /**
  * /discover: the swipe deck, its filters, the match moment and the profile sheet.
  *
- * Data: `visibleDeck` (GET /profile/discover, sorted in the browser) + `useNodeStatus('discoverDeck')`
- * (loading vs failure), `useFilters()`, `myProfile` (your side of the match moment). Flows:
+ * Data: `visibleDeck` (GET /profile/discover, sorted in the browser; the deck loads the first time this
+ * page asks for it) + `useNodeStatus('discoverDeck')` (loading vs failure), `useFilters()`, `myProfile`
+ * (your side of the match moment). Flows:
  * `actions.swipe / rewind / setFilters / reloadDeck`. Opening a card loads the full profile
  * (GET /profile/:userId, which records a visit). Ephemeral view state (drag, flights, sheets) stays here.
  */
@@ -12,7 +13,7 @@ import type { DeckAction, DeckCard } from '@/api/types'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import { cardName, deckPreviewProfile, displayName, mainPicture } from '@/features/profile/format'
 import { ActionButton, CountBadge, IconSliders, MatchMoment, toast } from '@/ui'
-import { actions, toApiError, useFilters, useNodeStatus, useNodeValue, type DiscoverFilters } from '@/wb'
+import { actions, toApiError, useFilters, useLoad, useNodeStatus, useNodeValue, type DiscoverFilters } from '@/wb'
 import { Deck, type DeckHandle, type SwipeRecord } from './Deck'
 import { DeckEmpty, DeckError, DeckSkeleton } from './DeckStates'
 import { canWiden, changedFilters, scopeText, SORT_LABEL, WIDEST } from './filterRules'
@@ -67,6 +68,8 @@ function FilterTicket({ filters, onOpen }: { filters: DiscoverFilters; onOpen: (
 
 export default function DiscoverPage() {
   const navigate = useNavigate()
+  // Loaded once; afterwards swipes, filters and "reload" keep it current.
+  useLoad('discoverDeck')
   const deck = useNodeValue('visibleDeck')
   const deckStatus = useNodeStatus('discoverDeck')
   const filters = useFilters()
@@ -156,7 +159,7 @@ export default function DiscoverPage() {
   }, [announce])
 
   const onOpen = useCallback(
-    (card: DeckCard) => setSheet({ userId: card.userId, source: 'api', preview: deckPreviewProfile(card) }),
+    (card: DeckCard) => setSheet({ userId: card.userId, preview: deckPreviewProfile(card) }),
     [],
   )
 
@@ -299,7 +302,7 @@ export default function DiscoverPage() {
           }}
           onMessage={() => {
             setMatches([])
-            navigate('/matches')
+            navigate(`/chat/${shownMatch.userId}`)
           }}
         />
       ) : null}

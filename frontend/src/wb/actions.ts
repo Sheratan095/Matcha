@@ -13,11 +13,12 @@
  */
 import { apiError, LOCAL_ERROR, toApiError } from '@/api/http'
 import {
+  GENDERS,
   MAX_PICTURE_BYTES,
   MAX_USER_PICTURES,
   PICTURE_MIME_TYPES,
-  type BlockPayload,
-  type Card,
+  SEXUAL_PREFERENCES,
+  type ChatMessage,
   type DeckAction,
   type DeckCard,
   type LoginPayload,
@@ -32,11 +33,11 @@ import {
   type RegisterPayload,
   type RegisterResult,
   type ResetPasswordPayload,
-  type SwipeResult,
   type VerifyEmailResult,
 } from '@/api/types'
 import { API_URL } from '@/config'
-import { awaitLoad, nextNonce, refresh, reload, run } from './commands'
+import { awaitLoad, awaitPending, refresh, reload, run } from './commands'
+import { closeGates, markStale } from './demand'
 import {
   currentFilters,
   DEFAULT_DISCOVER_FILTERS,
@@ -46,8 +47,17 @@ import {
   type DiscoverFilters,
 } from './filters'
 import type { AuthStatus } from './functions'
-import { currentSearch, EMPTY_SEARCH, hasSearchCriteria, normaliseQuery, searchProblem, writeSearch, type SearchCriteria } from './search'
-import { firstTimeForStore, getNodeValue, node$, onStoreStop, setNode, writeNode } from './store'
+import {
+  currentSearch,
+  EMPTY_SEARCH,
+  hasSearchCriteria,
+  normaliseQuery,
+  pickKnown,
+  searchProblem,
+  writeSearch,
+  type SearchCriteria,
+} from './search'
+import { firstTimeForStore, getNodeStatus, getNodeValue, isStoreLive, node$, onStoreStop, setNode, writeNode } from './store'
 
 export const MAX_MESSAGE_LENGTH = 1000
 
@@ -91,23 +101,113 @@ const MAX_SWIPE_HISTORY = 50
 /** Deck swipes whose request has not answered yet: their cards stay hidden, whatever reloads. */
 const swipesInFlight = new Set<string>()
 
-function closeChat(): void {
-  setNode('activeMatchId', null)
+/** Bumped by every open and close of a conversation: an `openChat` that was overtaken stops there. */
+let chatTicket = 0
+
+/**
+ * Forgets the `?after=` cursor of the last thread, without fetching: the cursor is written while no
+ * conversation is open (a write of `chatAfter` fetches the open one).
+ */
+function resetChatCursor(): void {
+  if (getNodeValue('chatAfter') == null) return
+  if (getNodeValue('activeChatId') != null) setNode('activeChatId', null)
+  writeNode('chatAfter', null)
 }
 
-function closeProfile(): void {
-  setNode('socialProfileId', null)
+function closeChat(): void {
+  chatTicket += 1
+  setNode('activeChatId', null)
+  setNode('activeChatUserId', null)
+  resetChatCursor()
+}
+
+/** Bumped by every open of a profile: it cancels a close scheduled before it. */
+let profileTicket = 0
+
+function closeProfileNow(): void {
+  profileTicket += 1
   setNode('apiProfileId', null)
+}
+
+/**
+ * Closes the open profile once the current task is over, unless a profile opens meanwhile: a sheet
+ * that StrictMode closes and reopens at once, or that moves on to another person, keeps its request
+ * (the conversation does the same in src/features/chat/ChatPage.tsx).
+ */
+function closeProfile(): void {
+  profileTicket += 1
+  const ticket = profileTicket
+  setTimeout(() => {
+    if (ticket === profileTicket && isStoreLive()) setNode('apiProfileId', null)
+  }, 0)
 }
 
 /** Selection state belongs to one signed-in user: clear it when the user changes or signs out. */
 function resetSessionState(): void {
   closeChat()
-  closeProfile()
+  closeProfileNow()
+  closeGates()
+  setNode('unreadByUser', {})
   writeSearch(EMPTY_SEARCH)
   setNode('swipedIds', [])
   swipeHistory.length = 0
   writeFilters({ ...DEFAULT_DISCOVER_FILTERS, tags: [] })
+}
+
+// ---------------------------------------------------------------- own connection changes
+
+type ConnectionEvent = 'match' | 'unmatch'
+
+interface OwnChange {
+  /** The backend's push about it arrived while the request was on its way. */
+  echoed: boolean
+}
+
+/**
+ * Connection changes this client has in flight, by `event:userId`. The backend pushes `match` /
+ * `unmatch` to BOTH people, the one acting included, before it answers the request: realtime hands
+ * such an echo to `claimEcho` instead of refreshing the connection lists, because the action refreshes
+ * them itself once its request settles (one refresh, not two).
+ */
+const ownChanges = new Map<string, OwnChange[]>()
+
+function beginOwnChange(event: ConnectionEvent, userId: string): OwnChange & { end(): void } {
+  const key = `${event}:${userId}`
+  const change: OwnChange = { echoed: false }
+  ownChanges.set(key, [...(ownChanges.get(key) ?? []), change])
+  return {
+    get echoed() {
+      return change.echoed
+    },
+    end() {
+      const left = (ownChanges.get(key) ?? []).filter((entry) => entry !== change)
+      if (left.length > 0) ownChanges.set(key, left)
+      else ownChanges.delete(key)
+    },
+  }
+}
+
+/**
+ * For realtime: true when a `match` / `unmatch` about `userId` is the echo of a change this client has
+ * in flight. The caller then leaves the refreshes to that action.
+ */
+export function claimEcho(event: ConnectionEvent, userId: string): boolean {
+  const change = ownChanges.get(`${event}:${userId}`)?.find((entry) => !entry.echoed)
+  if (!change) return false
+  change.echoed = true
+  return true
+}
+
+/** Whether `userId` is among the connections; true when they are not loaded (refresh rather than miss it). */
+function isConnection(userId: string): boolean {
+  const connections = getNodeValue('connections')
+  return connections ? connections.matches.some((person) => person.userId === userId) : true
+}
+
+/** Whether `userId` is in "likes you"; true when it is not loaded. */
+function likesMe(userId: string): boolean {
+  const likes = getNodeValue('likesReceived')
+  return likes ? likes.likes.some((person) => person.userId === userId) : true
 }
 
 function profileUpdateBody(changes: ProfileUpdatePayload): ProfileUpdatePayload {
@@ -144,6 +244,39 @@ function watchSession(): void {
   onStoreStop(() => users.unsubscribe())
 }
 
+/** Messages of both lists, one per id (the newer copy wins: its status may have changed), oldest first. */
+function mergeMessages(held: readonly ChatMessage[], fresh: readonly ChatMessage[]): ChatMessage[] {
+  const byId = new Map(held.map((message) => [message.messageId, message]))
+  for (const message of fresh) byId.set(message.messageId, message)
+  return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp)
+}
+
+/**
+ * Installed by `bootSession`, once per store: `chatThread` is the open conversation, whole. An answer
+ * to `?after=` (`chatAfter` set) is merged into it; a whole history replaces it; another conversation
+ * (or none) starts it again from nothing.
+ */
+function watchChat(): void {
+  if (!firstTimeForStore('chat-watch')) return
+  const answers = node$('chatHistory').subscribe((history) => {
+    if (!history || !Array.isArray(history.messages)) return
+    const held = getNodeValue('chatThread')?.messages
+    const delta = getNodeValue('chatAfter') != null
+    writeNode('chatThread', { messages: delta && held ? mergeMessages(held, history.messages) : history.messages })
+  })
+  let open: string | null = null
+  const chats = node$('activeChatId').subscribe((chatId) => {
+    const next = chatId ?? null
+    if (next === open) return
+    open = next
+    if (getNodeValue('chatThread') != null) writeNode('chatThread', null)
+  })
+  onStoreStop(() => {
+    answers.unsubscribe()
+    chats.unsubscribe()
+  })
+}
+
 // ---------------------------------------------------------------- session
 
 /**
@@ -152,6 +285,7 @@ function watchSession(): void {
  */
 async function bootSession(): Promise<AuthStatus> {
   watchSession()
+  watchChat()
   await probeSession()
   return getNodeValue('authStatus') ?? 'anonymous'
 }
@@ -279,15 +413,27 @@ async function setMainPicture(pictureId: string): Promise<PicturesResult> {
   return result
 }
 
-/** Opens a real user's profile (`GET /profile/{id}`; records a profile view). Resolves with it. */
+/**
+ * Opens a real user's profile (`GET /profile/{id}`; records a profile view). Resolves with it. Asked
+ * again for the profile that is loading (a sheet StrictMode re-mounted), it waits for that request
+ * instead of sending (and recording) another.
+ */
 async function showApiProfile(userId: string): Promise<OtherProfile> {
   pathId(userId, 'user id')
+  profileTicket += 1
+  const same = getNodeValue('apiProfileId') === userId
   const loaded = getNodeValue('apiProfile')
-  if (getNodeValue('apiProfileId') === userId && loaded?.userId === userId) return loaded
-  const outcome = await awaitLoad('apiProfile', () => setNode('apiProfileId', userId))
+  if (same && loaded?.userId === userId) return loaded
+  const outcome =
+    same && getNodeStatus('apiProfile').status === 'loading'
+      ? await awaitPending('apiProfile')
+      : await awaitLoad('apiProfile', () => setNode('apiProfileId', userId))
   if (outcome.error) throw outcome.error
   const profile = getNodeValue('apiProfile')
   if (!profile) throw apiError(0, 'The profile could not be loaded.', LOCAL_ERROR.NOT_SENT)
+  if (profile.userId !== userId) throw apiError(0, 'Another profile was opened meanwhile.', LOCAL_ERROR.DROPPED)
+  // the visit is recorded: the visit history is out of date (refetched when it is shown next)
+  markStale('visitedProfiles')
   return profile
 }
 
@@ -316,10 +462,30 @@ export interface SwipeOutcome {
   matched: boolean
 }
 
-async function sendSwipe(userId: string, action: DeckAction): Promise<SwipeOutcome> {
-  if (action === 'like') return { matched: (await run('like', userId))?.matched === true }
-  await run('pass', userId)
-  return { matched: false }
+/**
+ * A like or a pass. Whether a like made a match: what the answer says; when it says nothing (the
+ * backend answers an empty body), the `match` it pushed to us while the like was on its way; without
+ * that either (no socket), whether they had liked us first (`theyLikeMe`), which is what makes a match.
+ */
+async function sendSwipe(userId: string, action: DeckAction, theyLikeMe: boolean): Promise<SwipeOutcome> {
+  if (action === 'pass') {
+    await run('pass', userId)
+    return { matched: false }
+  }
+  const change = beginOwnChange('match', userId)
+  try {
+    const answer = await run('like', userId)
+    const said = typeof answer?.matched === 'boolean' ? answer.matched : null
+    return { matched: said ?? (change.echoed || theyLikeMe) }
+  } finally {
+    change.end()
+  }
+}
+
+/** A like made a match: the lists that show connections reload, and they leave "likes you". */
+function onMatched(): void {
+  refreshConnections()
+  void refresh('likesReceived')
 }
 
 /**
@@ -334,7 +500,7 @@ async function swipe(card: DeckCard, action: DeckAction): Promise<SwipeOutcome> 
   swipesInFlight.add(userId)
   let outcome: SwipeOutcome
   try {
-    outcome = await sendSwipe(userId, action)
+    outcome = await sendSwipe(userId, action, card.likesYou === true)
   } catch (error) {
     unhideFromDeck(userId)
     throw error
@@ -343,7 +509,7 @@ async function swipe(card: DeckCard, action: DeckAction): Promise<SwipeOutcome> 
   }
   swipeHistory.push({ card, action, matched: outcome.matched })
   if (swipeHistory.length > MAX_SWIPE_HISTORY) swipeHistory.shift()
-  if (outcome.matched) void refresh('matchesMap')
+  if (outcome.matched) onMatched()
   if (swipesInFlight.size === 0 && getNodeValue('visibleDeck')?.length === 0) await reload('discoverDeck')
   return outcome
 }
@@ -387,65 +553,110 @@ async function reloadDeck(): Promise<void> {
   if (error) throw error
 }
 
-/** Likes or passes on someone from their opened profile: the deck's requests, without its bookkeeping. */
-async function likeUser(userId: string, action: DeckAction): Promise<SwipeOutcome> {
-  const outcome = await sendSwipe(pathId(userId, 'user id'), action)
-  hideFromDeck(userId)
-  if (outcome.matched) void refresh('matchesMap')
-  return outcome
+/** A connection was made or broken: the lists that show connections reload (in the background). */
+function refreshConnections(): void {
+  void refresh('connections')
+  void refresh('chatList')
+  void refresh('matchesMap')
 }
 
-/** Takes a like back (`DELETE /profile/{userId}/like`): disconnects a match, the chat closes. */
+/** Someone left your connections: their conversation closes if it is open, their unread count goes. */
+function forgetConnection(userId: string): void {
+  if (getNodeValue('activeChatUserId') === userId) closeChat()
+  clearUnread(userId)
+  refreshConnections()
+}
+
+/**
+ * A like or pass from an opened profile: the deck's requests, without its bookkeeping. `likes` is the
+ * reload of "likes you" it starts (liking back or passing on someone who liked you takes them off it).
+ */
+async function swipeUser(userId: string, action: DeckAction): Promise<{ outcome: SwipeOutcome; likes: Promise<void> }> {
+  const id = pathId(userId, 'user id')
+  const wasLikingMe = likesMe(id)
+  const outcome = await sendSwipe(id, action, wasLikingMe && getNodeValue('likesReceived') != null)
+  hideFromDeck(id)
+  if (outcome.matched) refreshConnections()
+  return { outcome, likes: outcome.matched || wasLikingMe ? refresh('likesReceived') : Promise.resolve() }
+}
+
+/** Likes or passes on someone from their opened profile. */
+async function likeUser(userId: string, action: DeckAction): Promise<SwipeOutcome> {
+  return (await swipeUser(userId, action)).outcome
+}
+
+/**
+ * Takes a like back (`DELETE /profile/{userId}/like`). Between connected users it disconnects them:
+ * the backend deletes the chat, an open conversation with them closes, and they are back in "likes
+ * you" (their like stays).
+ */
 async function unlikeUser(userId: string): Promise<void> {
-  await run('unlike', pathId(userId, 'user id'))
-  void refresh('matchesMap')
+  const id = pathId(userId, 'user id')
+  const change = beginOwnChange('unmatch', id)
+  try {
+    await run('unlike', id)
+  } finally {
+    change.end()
+  }
+  if (change.echoed || isConnection(id)) {
+    forgetConnection(id)
+    void refresh('likesReceived')
+  }
   for (let i = swipeHistory.length - 1; i >= 0; i--) {
-    if (swipeHistory[i].card.userId === userId) swipeHistory.splice(i, 1)
+    if (swipeHistory[i].card.userId === id) swipeHistory.splice(i, 1)
   }
 }
 
-/** Blocks a real user (`POST /profile/{userId}/block`): they leave the deck and every list. */
+/** Blocks a user (`POST /profile/{userId}/block`): mutual, ends a connection, they leave every list. */
 async function blockUser(userId: string): Promise<void> {
-  await run('blockUser', pathId(userId, 'user id'))
-  hideFromDeck(userId)
-  void refresh('matchesMap')
+  const id = pathId(userId, 'user id')
+  const change = beginOwnChange('unmatch', id)
+  const lists = { connected: isConnection(id), likesMe: likesMe(id) }
+  try {
+    await run('blockUser', id)
+  } finally {
+    change.end()
+  }
+  hideFromDeck(id)
+  if (change.echoed || lists.connected) forgetConnection(id)
+  if (lists.likesMe) void refresh('likesReceived')
+  void refresh('blockedUsers')
   // the backend leaves blocked people out of search results
-  if (getNodeValue('searchActive') != null) void refresh('searchResults')
+  if (getNodeValue('searchResults')?.some((card) => card.userId === id)) void refresh('searchResults')
 }
 
-/** Reports a real user as a fake account (`POST /profile/{userId}/report`). Idempotent. */
+/**
+ * Lifts a block (`DELETE /profile/{userId}/block`); resolves once `blockedUsers` no longer has them.
+ * They can show up again in the deck and the search; a former connection is not restored.
+ */
+async function unblockUser(userId: string): Promise<void> {
+  const id = pathId(userId, 'user id')
+  await run('unblockUser', id)
+  unhideFromDeck(id)
+  await refresh('blockedUsers')
+}
+
+/** Reports a user as a fake account (`POST /profile/{userId}/report`). Idempotent. */
 async function reportUser(userId: string): Promise<void> {
   await run('reportUser', pathId(userId, 'user id'))
 }
 
 /**
- * Answers a like received on the activity page (mocked social service, `POST /swipes`). Resolves
- * once `likesReceived` (and, on a match, `matches`) reloaded.
+ * Answers someone who liked you (activity page): a like back connects you. Resolves once
+ * `likesReceived` has reloaded without them.
  */
-async function answerLike(card: Card, action: DeckAction): Promise<SwipeResult> {
-  const result = await run('answerLike', { targetId: card.userId, action })
-  await Promise.all([refresh('likesReceived'), result.match ? refresh('matches') : Promise.resolve()])
-  return result
-}
-
-/** Opens a mock person's card (`GET /profiles/{id}`). Resolves with it. */
-async function showSocialProfile(userId: string): Promise<Card> {
-  pathId(userId, 'user id')
-  const loaded = getNodeValue('socialProfile')
-  if (getNodeValue('socialProfileId') === userId && loaded?.userId === userId) return loaded
-  const outcome = await awaitLoad('socialProfile', () => setNode('socialProfileId', userId))
-  if (outcome.error) throw outcome.error
-  const card = getNodeValue('socialProfile')
-  if (!card) throw apiError(0, 'The profile could not be loaded.', LOCAL_ERROR.NOT_SENT)
-  return card
+async function answerLike(userId: string, action: DeckAction): Promise<SwipeOutcome> {
+  const { outcome, likes } = await swipeUser(userId, action)
+  await likes
+  return outcome
 }
 
 // ---------------------------------------------------------------- search
 
 /**
  * Changes some search criteria (`GET /profile/search`): the name (`q`, a case-insensitive substring
- * of the username, first name, last name or "first last", 50 characters at most) and the deck's
- * filters, each null for "no limit". One request however many criteria changed; a sort-only change
+ * of the username, first name, last name or "first last", 50 characters at most), the deck's
+ * filters, each null for "no limit", and genders / preferences (any of them; empty for any). One request however many criteria changed; a sort-only change
  * sends nothing (`visibleSearch` sorts in the browser); the same criteria again refetch in place (a
  * retry). Resolves with the results once `searchResults` holds them. Rejects with the backend's error
  * (403 without a location) or INVALID when nothing would be sent or a value is out of range.
@@ -461,6 +672,8 @@ async function search(changes: Partial<SearchCriteria>): Promise<DeckCard[]> {
     distance: pick('distance'),
     fameMin: pick('fameMin'),
     tags: changes.tags !== undefined ? normaliseTags(changes.tags) : current.tags,
+    genders: changes.genders !== undefined ? pickKnown(changes.genders, GENDERS) : current.genders,
+    preferences: changes.preferences !== undefined ? pickKnown(changes.preferences, SEXUAL_PREFERENCES) : current.preferences,
     sort: pick('sort'),
   }
   const problem = searchProblem(next)
@@ -477,59 +690,135 @@ function clearSearch(): void {
 
 // ---------------------------------------------------------------- matches and chat
 
+/** The chat id of the conversation with `userId`, from the chat list; null before its first message. */
+function chatIdOf(userId: string): string | null {
+  return getNodeValue('chatList')?.chats.find((chat) => chat.userId === userId)?.chatId ?? null
+}
+
+function clearUnread(userId: string): void {
+  const unread = getNodeValue('unreadByUser') ?? {}
+  if (!unread[userId]) return
+  const next = { ...unread }
+  delete next[userId]
+  setNode('unreadByUser', next)
+}
+
+/** Another message from `userId` arrived while their conversation was not open. */
+export function countUnread(userId: string): void {
+  const unread = getNodeValue('unreadByUser') ?? {}
+  setNode('unreadByUser', { ...unread, [userId]: (unread[userId] ?? 0) + 1 })
+}
+
 /**
- * Opens a conversation: loads `chatMessages` (which marks them read), then reloads `matches` so the
- * unread counts are right. Calling it for the open conversation refetches it in place.
+ * Marks the other person's messages in the chat read (`POST /chat/{chatId}/seen`); they
+ * are told over the socket. Best effort: a failure is only logged (not when the store stopped first).
  */
-async function openChat(matchId: string): Promise<Message[]> {
-  pathId(matchId, 'match id')
-  const write =
-    getNodeValue('activeMatchId') === matchId
-      ? () => writeNode('chatRefresh', nextNonce())
-      : () => setNode('activeMatchId', matchId)
-  const outcome = await awaitLoad('chatMessages', write)
+export function markChatSeen(chatId: string): void {
+  run('chatSeen', chatId).catch((error: unknown) => {
+    if (toApiError(error).code !== LOCAL_ERROR.NOT_SENT) console.warn('Could not mark the conversation read', error)
+  })
+}
+
+/**
+ * How far back a delta reaches before the newest message held. A message is stamped when it is
+ * inserted but seen once committed, so one stamped just before the newest held one may not have been
+ * visible yet; the overlap fetches it anyway (the merge drops the copies).
+ */
+const DELTA_OVERLAP_MS = 2000
+
+/**
+ * The open thread's fetch for what it is missing: `?after=` its newest message when it is loaded, the
+ * whole history otherwise. Writing the cursor is what sends the request.
+ */
+function fetchNewer(): void {
+  const messages = getNodeValue('chatThread')?.messages
+  const newest = messages && messages.length > 0 ? messages[messages.length - 1].timestamp : null
+  writeNode('chatAfter', newest === null ? null : Math.max(0, newest - DELTA_OVERLAP_MS))
+}
+
+/** Opens conversation `chatId` with `userId` from its whole history (sends the request). */
+function showChat(chatId: string, userId: string): void {
+  resetChatCursor()
+  setNode('activeChatId', chatId)
+  setNode('activeChatUserId', userId)
+}
+
+/**
+ * Brings the conversation with `userId` up to date if it is the open one: only the messages it does
+ * not have yet (`?after=`); its chat id may have just appeared (first message), then it loads whole.
+ * Resolves with that chat id, or null when it is not open or still has no message.
+ */
+export async function reloadOpenChat(userId: string): Promise<string | null> {
+  if (getNodeValue('activeChatUserId') !== userId) return null
+  const chatId = chatIdOf(userId)
+  if (!chatId) return null
+  const write = getNodeValue('activeChatId') === chatId ? fetchNewer : () => showChat(chatId, userId)
+  const { error } = await awaitLoad('chatHistory', write)
+  if (error) throw error
+  return chatId
+}
+
+/**
+ * The other person read conversation `chatId` (`chat-seen`): if it is the open one, my messages in it
+ * turn read, as the backend marked them. No request.
+ */
+export function markThreadRead(chatId: string): void {
+  if (getNodeValue('activeChatId') !== chatId) return
+  const me = getNodeValue('sessionUserId')
+  const thread = getNodeValue('chatThread')
+  if (!me || !thread || !thread.messages.some((message) => message.userId === me && message.status !== 'read')) return
+  writeNode('chatThread', {
+    messages: thread.messages.map((message) => (message.userId === me ? { ...message, status: 'read' as const } : message)),
+  })
+}
+
+/** Reloads the connections and their conversations; resolves once both lists are in. */
+async function refreshMatches(): Promise<void> {
+  await Promise.all([refresh('connections'), refresh('chatList')])
+}
+
+/**
+ * Opens the conversation with a connection (`userId`): finds its chat id in a fresh chat list, loads
+ * the whole history (`chatMessages`) and marks it read. A connection nobody has written to yet has no
+ * chat: it opens empty. Calling it for the open conversation refetches it whole, in place. Rejects with
+ * DROPPED when another conversation opened, or this one closed, meanwhile.
+ */
+async function openChat(userId: string): Promise<Message[]> {
+  pathId(userId, 'user id')
+  chatTicket += 1
+  const ticket = chatTicket
+  await refresh('chatList')
+  if (ticket !== chatTicket) throw apiError(0, 'The conversation was closed.', LOCAL_ERROR.DROPPED)
+  clearUnread(userId)
+  const chatId = chatIdOf(userId)
+  if (!chatId) {
+    setNode('activeChatId', null)
+    setNode('activeChatUserId', userId)
+    return []
+  }
+  pathId(chatId, 'chat id')
+  const open = getNodeValue('activeChatUserId') === userId && getNodeValue('activeChatId') === chatId
+  // the whole history: a write of the cursor refetches the open one in place
+  const outcome = await awaitLoad('chatHistory', () => (open ? writeNode('chatAfter', null) : showChat(chatId, userId)))
   if (outcome.error) throw outcome.error
-  await refresh('matches')
+  // overtaken while it loaded: what the thread shows now is another conversation's
+  if (ticket !== chatTicket) throw apiError(0, 'The conversation was closed.', LOCAL_ERROR.DROPPED)
+  markChatSeen(chatId)
   return getNodeValue('chatMessages') ?? []
 }
 
-/** Sends a message (1-1000 characters); resolves once the open conversation and `matches` show it. */
-async function sendMessage(matchId: string, text: string): Promise<Message> {
-  const body = text.trim()
-  if (!body) invalid('The message is empty.')
-  if (body.length > MAX_MESSAGE_LENGTH) invalid(`A message is ${MAX_MESSAGE_LENGTH} characters at most.`)
-  const message = await run('sendMessage', { matchId, text: body })
-  if (getNodeValue('activeMatchId') === matchId) await refresh('chatMessages')
-  await refresh('matches')
-  return message
-}
-
-async function unmatch(matchId: string): Promise<void> {
-  await run('unmatch', pathId(matchId, 'match id'))
-  if (getNodeValue('activeMatchId') === matchId) closeChat()
-  await refresh('matches')
-}
-
-/** Blocks a person: removes the match, hides them everywhere. */
-async function block(userId: string, reason?: string): Promise<void> {
-  const payload: BlockPayload = { userId }
-  if (reason?.trim()) payload.reason = reason.trim()
-  await run('block', payload)
-  hideFromDeck(userId)
-  const activeId = getNodeValue('activeMatchId')
-  if (activeId && getNodeValue('matches')?.some((match) => match.id === activeId && match.profile.userId === userId)) {
-    closeChat()
-  }
-  if (getNodeValue('socialProfileId') === userId) setNode('socialProfileId', null)
-  await Promise.all([refresh('matches'), refresh('likesReceived')])
-}
-
-/** Restores the viewer's mocked matches, chat and likes (`POST /__mock/social/reset`) and reloads them. */
-async function resetDemoData(): Promise<void> {
-  await run('demoReset')
-  closeChat()
-  closeProfile()
-  await Promise.all([refresh('matches'), refresh('likesReceived')])
+/**
+ * Sends a message (1-1000 characters) to a connection; resolves once the chat list and, when it is
+ * the open conversation, its thread show it.
+ */
+async function sendMessage(userId: string, text: string): Promise<void> {
+  pathId(userId, 'user id')
+  const content = text.trim()
+  if (!content) invalid('The message is empty.')
+  if (content.length > MAX_MESSAGE_LENGTH) invalid(`A message is ${MAX_MESSAGE_LENGTH} characters at most.`)
+  await run('chatSend', { toUserId: userId, content })
+  await refresh('chatList')
+  await reloadOpenChat(userId)
 }
 
 export const actions = {
@@ -555,18 +844,16 @@ export const actions = {
   likeUser,
   unlikeUser,
   blockUser,
+  unblockUser,
   reportUser,
   search,
   clearSearch,
   answerLike,
-  showSocialProfile,
   closeProfile,
+  refreshMatches,
   openChat,
   closeChat,
   sendMessage,
-  unmatch,
-  block,
-  resetDemoData,
 } as const
 
 export type Actions = typeof actions

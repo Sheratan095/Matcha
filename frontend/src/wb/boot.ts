@@ -1,7 +1,7 @@
 /** Pieces of the boot sequence that belong to the state layer (used by `src/main.tsx`). */
 import { installHttp } from '@/api/http'
 import { refresh, run } from './commands'
-import { getNodeValue, isStoreLive, isStoreStarted, registry } from './store'
+import { isStoreLive, registry } from './store'
 
 /**
  * Installs the axios plumbing of `src/api/http.ts` wired to the graph: a 401 is renewed through the
@@ -16,9 +16,4 @@ export function installStoreHttp(): () => void {
     },
     supersedeKey: (method, url) => registry.match(method, url),
   })
-}
-
-/** The signed-in user for the mock backend's social service (it cannot read HttpOnly cookies). */
-export function getViewerId(): string | null {
-  return isStoreStarted() ? (getNodeValue('sessionUserId') ?? null) : null
 }

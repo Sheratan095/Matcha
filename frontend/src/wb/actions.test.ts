@@ -2,13 +2,13 @@ import { Subject } from 'rxjs'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LOCAL_ERROR } from '@/api/http'
 import type { RealtimeEvent } from '@/api/types'
-import { API_URL, SOCIAL_URL } from '@/config'
-import { actions } from './actions'
-import { refresh } from './commands'
+import { API_URL } from '@/config'
+import { actions, reloadOpenChat } from './actions'
+import { load, REVISIT_MS } from './demand'
 import { DEFAULT_DISCOVER_FILTERS } from './filters'
 import { realtime$, startRealtime } from './realtime'
 import { getNodeStatus, getNodeValue, setNode } from './store'
-import { card, deckCard, incoming, ME } from './testing/fakeBackend'
+import { connect, deckCard, incoming, ME, person } from './testing/fakeBackend'
 import { nestError, reply } from './testing/fakeServer'
 import { flush, startTestStore, type TestStore } from './testing/harness'
 
@@ -58,13 +58,15 @@ describe('session', () => {
   it('logout resets the authenticated reads and the per-user selection state', async () => {
     await signIn()
     await actions.setFilters({ ageMax: 60, tags: ['art'] })
-    setNode('activeMatchId', 'm-x')
+    setNode('activeChatUserId', 'ann')
+    setNode('unreadByUser', { ann: 2 })
     setNode('swipedIds', ['bea'])
     await actions.logout()
     expect(getNodeValue('sessionUserId')).toBeNull()
     expect(getNodeValue('myProfile')).toBeNull()
     expect(getNodeValue('discoverDeck')).toBeNull()
-    expect(getNodeValue('activeMatchId')).toBeNull()
+    expect(getNodeValue('activeChatUserId')).toBeNull()
+    expect(getNodeValue('unreadByUser')).toEqual({})
     expect(getNodeValue('swipedIds')).toEqual([])
     expect(getNodeValue('filterAgeMax')).toBe(DEFAULT_DISCOVER_FILTERS.ageMax)
     expect(getNodeValue('filterTags')).toBeNull()
@@ -155,8 +157,30 @@ describe('discover', () => {
   const DISCOVER = `${API_URL}/profile/discover`
   const ids = () => getNodeValue('visibleDeck')?.map((card) => card.userId)
 
-  it('setFilters sends the backend filters with one deck request; the sort is applied locally', async () => {
+  /** Signs in and opens /discover: the deck loads on demand. */
+  async function openDeck(): Promise<void> {
     await signIn()
+    await load('discoverDeck')
+  }
+
+  it('the deck waits for /discover: nothing is sent for it at sign-in, one request when it is asked for', async () => {
+    await signIn()
+    expect(server().sent('GET', DISCOVER)).toHaveLength(0)
+    expect(getNodeValue('visibleDeck')).toBeNull()
+    // a profile change elsewhere does not fetch a deck nobody asked for
+    await actions.updateProfile({ gender: 'female' })
+    expect(server().sent('GET', DISCOVER)).toHaveLength(0)
+    // StrictMode mounts the page twice: the second ask joins the first load
+    await Promise.all([load('discoverDeck'), load('discoverDeck')])
+    expect(server().sent('GET', DISCOVER)).toHaveLength(1)
+    expect(ids()).toEqual(['ann', 'bea', 'cid'])
+    // coming back to the page: the deck is kept (swipes, filters and "reload" refetch it)
+    await load('discoverDeck')
+    expect(server().sent('GET', DISCOVER)).toHaveLength(1)
+  })
+
+  it('setFilters sends the backend filters with one deck request; the sort is applied locally', async () => {
+    await openDeck()
     const before = server().sent('GET', DISCOVER).length
     await actions.setFilters({ ageMin: 21, ageMax: 30, fameMin: 40, sort: 'fame', tags: ['#Art', 'music'] })
     const sent = server().sent('GET', DISCOVER)
@@ -168,7 +192,7 @@ describe('discover', () => {
   })
 
   it('changing only the sort reorders the deck without a request', async () => {
-    await signIn()
+    await openDeck()
     store.backend.state.deck[1].fameRating = 90
     store.backend.state.deck[2].age = 20
     await actions.reloadDeck()
@@ -183,24 +207,27 @@ describe('discover', () => {
   })
 
   it('a like that completes a match says so, and the card leaves visibleDeck', async () => {
-    await signIn()
+    await openDeck()
     const ann = getNodeValue('visibleDeck')?.find((card) => card.userId === 'ann')
     expect(ann).toBeDefined()
     const result = await actions.swipe(ann!, 'like')
     expect(result.matched).toBe(true)
     expect(server().sent('POST', `${API_URL}/profile/ann/like`)).toHaveLength(1)
     expect(getNodeValue('visibleDeck')?.some((card) => card.userId === 'ann')).toBe(false)
+    // the new connection shows up in the matches
+    await flush(30)
+    expect(getNodeValue('matches')?.map((match) => match.userId)).toEqual(['ann'])
   })
 
   it('a pass posts to /pass and is not a match', async () => {
-    await signIn()
+    await openDeck()
     const bea = getNodeValue('visibleDeck')!.find((card) => card.userId === 'bea')!
     expect(await actions.swipe(bea, 'pass')).toEqual({ matched: false })
     expect(server().sent('POST', `${API_URL}/profile/bea/pass`)).toHaveLength(1)
   })
 
   it('a failed swipe puts the card back', async () => {
-    await signIn()
+    await openDeck()
     server().on('POST', `${API_URL}/profile/:id/pass`, () => nestError(500, 'down', 'Internal Server Error'))
     const bea = getNodeValue('visibleDeck')!.find((card) => card.userId === 'bea')!
     const pending = actions.swipe(bea, 'pass')
@@ -210,7 +237,7 @@ describe('discover', () => {
   })
 
   it('rewind brings a pass back on top, and takes a like back with DELETE', async () => {
-    await signIn()
+    await openDeck()
     const [, bea, cid] = getNodeValue('visibleDeck')!
     await actions.swipe(bea, 'pass')
     await actions.swipe(cid, 'like')
@@ -225,14 +252,14 @@ describe('discover', () => {
   })
 
   it('a like that made a match is not rewound', async () => {
-    await signIn()
+    await openDeck()
     await actions.swipe(getNodeValue('visibleDeck')![0], 'like')
     expect(await actions.rewind()).toEqual({ restored: null, matched: true })
     expect(server().sent('DELETE', `${API_URL}/profile/ann/like`)).toHaveLength(0)
   })
 
   it('asks for more once the last card is swiped, but the passes of this session stay hidden until reloadDeck', async () => {
-    await signIn()
+    await openDeck()
     const before = server().sent('GET', DISCOVER).length
     for (const card of [...getNodeValue('visibleDeck')!]) await actions.swipe(card, 'pass')
     expect(server().sent('GET', DISCOVER).length).toBe(before + 1)
@@ -245,7 +272,7 @@ describe('discover', () => {
   })
 
   it('reloads once, after the last swipe in flight, and never shows a card whose like is still on its way', async () => {
-    await signIn()
+    await openDeck()
     let release: () => void = () => undefined
     const gate = new Promise<void>((resolve) => (release = resolve))
     server().on('POST', `${API_URL}/profile/:id/like`, async ({ route }) => {
@@ -270,7 +297,7 @@ describe('discover', () => {
   })
 
   it('can like the same person again after a rewind (the same payload is sent again)', async () => {
-    await signIn()
+    await openDeck()
     const bea = getNodeValue('visibleDeck')!.find((card) => card.userId === 'bea')!
     await actions.swipe(bea, 'like')
     await actions.rewind()
@@ -279,72 +306,371 @@ describe('discover', () => {
     expect(ids()?.includes('bea')).toBe(false)
   })
 
-  it('tagCatalogue lists the interest names in use', async () => {
-    await signIn()
+  it('tagCatalogue lists the interest names in use, once a picker asks for them', async () => {
+    await openDeck()
+    expect(getNodeValue('tagCatalogue')).toBeNull()
+    expect(server().sent('GET', `${API_URL}/profile/interests`)).toHaveLength(0)
+    await load('interestCatalogue')
     expect(getNodeValue('tagCatalogue')).toEqual(['art', 'music'])
   })
 })
 
-describe('matches and chat', () => {
-  async function matched(): Promise<void> {
+describe('likes received', () => {
+  it('lists who liked you; liking back connects you and takes them off the list', async () => {
     await signIn()
-    await actions.answerLike(card('ann', { likedYou: true }), 'like')
+    await flush(30)
+    expect(getNodeValue('likesReceived')?.likes.map((liker) => liker.userId)).toEqual(['ann'])
+    const likesBefore = server().sent('GET', `${API_URL}/profile/likes`).length
+    await expect(actions.answerLike('ann', 'like')).resolves.toEqual({ matched: true })
+    expect(getNodeValue('likesReceived')?.likes).toEqual([])
+    await flush(30)
+    expect(getNodeValue('matches')?.map((match) => match.userId)).toEqual(['ann'])
+    // one reload of the list, not one for the like and another for the answer
+    expect(server().sent('GET', `${API_URL}/profile/likes`).length - likesBefore).toBe(1)
+  })
+
+  it('passing on them takes them off the list without connecting', async () => {
+    await signIn()
+    await flush(30)
+    await expect(actions.answerLike('ann', 'pass')).resolves.toEqual({ matched: false })
+    expect(server().sent('POST', `${API_URL}/profile/ann/pass`)).toHaveLength(1)
+    expect(getNodeValue('likesReceived')?.likes).toEqual([])
+  })
+})
+
+describe('own connection changes and their echo', () => {
+  const MATCHES = `${API_URL}/profile/matches`
+  const CHATS = `${API_URL}/chat`
+
+  /** Signed in, with realtime fed by the returned subject. */
+  async function live(): Promise<{ source: Subject<RealtimeEvent>; stop: () => void }> {
+    await signIn()
+    await flush(30)
+    const source = new Subject<RealtimeEvent>()
+    return { source, stop: startRealtime({ events$: source, socket: false }) }
   }
 
-  it('openChat loads the conversation and then the unread counts; sendMessage shows the message', async () => {
-    await matched()
-    incoming(store.backend, 'm-ann', 'hi')
-    await refresh('matches')
-    expect(getNodeValue('unreadCount')).toBe(1)
-    await expect(actions.openChat('m-ann')).resolves.toHaveLength(1)
-    expect(getNodeValue('activeMatchId')).toBe('m-ann')
-    expect(getNodeValue('unreadCount')).toBe(0)
+  it('a like that makes a match refreshes the connections once, though the liker gets `match` too', async () => {
+    const { source, stop } = await live()
+    // the real backend pushes `match` to both people before it answers, and answers an empty body
+    server().on('POST', `${API_URL}/profile/:id/like`, ({ route }) => {
+      connect(store.backend, route.id)
+      source.next({ type: 'match', person: person(route.id) })
+      return reply(200, '')
+    })
+    const before = { matches: server().sent('GET', MATCHES).length, chats: server().sent('GET', CHATS).length }
+    // the echo tells of the match the answer does not carry
+    await expect(actions.likeUser('ann', 'like')).resolves.toEqual({ matched: true })
+    await flush(40)
+    expect(server().sent('GET', MATCHES).length - before.matches).toBe(1)
+    expect(server().sent('GET', CHATS).length - before.chats).toBe(1)
+    expect(getNodeValue('matches')?.map((match) => match.userId)).toEqual(['ann'])
+    stop()
+  })
 
-    const sent = await actions.sendMessage('m-ann', '  hello there  ')
-    expect(sent.text).toBe('hello there')
-    expect(getNodeValue('chatMessages')?.map((message) => message.text)).toEqual(['hi', 'hello there'])
-    expect(getNodeValue('matches')?.[0].lastMessage?.text).toBe('hello there')
-    await expect(actions.sendMessage('m-ann', '   ')).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+  it('a `match` that is not the echo of a change made here still refreshes', async () => {
+    const { source, stop } = await live()
+    const before = server().sent('GET', MATCHES).length
+    connect(store.backend, 'bea')
+    source.next({ type: 'match', person: person('bea') })
+    await flush(40)
+    expect(server().sent('GET', MATCHES).length - before).toBe(1)
+    expect(getNodeValue('matches')?.map((match) => match.userId)).toEqual(['bea'])
+    stop()
+  })
+
+  it('unmatching refreshes the connections once, though the unliker gets `unmatch` too', async () => {
+    connect(store.backend, 'ann')
+    const { source, stop } = await live()
+    server().on('DELETE', `${API_URL}/profile/:id/like`, ({ route }) => {
+      store.backend.state.connections = []
+      source.next({ type: 'unmatch', person: person(route.id) })
+      return reply(200, '')
+    })
+    const before = server().sent('GET', MATCHES).length
+    await actions.unlikeUser('ann')
+    await flush(40)
+    expect(server().sent('GET', MATCHES).length - before).toBe(1)
+    expect(getNodeValue('matches')).toEqual([])
+    stop()
+  })
+
+  it('a `match` replayed at sign-in, while the first loads are on their way, sends nothing more', async () => {
+    // what happened while we were offline: ann connected with us
+    connect(store.backend, 'ann')
+    const source = new Subject<RealtimeEvent>()
+    const stop = startRealtime({ events$: source, socket: false })
+    await actions.login({ username: 'testuser', password: '1234' })
+    // the backend replays it as soon as the socket connects: the sign-in reads are still loading
+    source.next({ type: 'match', person: person('ann') })
+    await flush(60)
+    expect(server().sent('GET', MATCHES)).toHaveLength(1)
+    expect(server().sent('GET', CHATS)).toHaveLength(1)
+    expect(server().sent('GET', `${API_URL}/profile/likes`)).toHaveLength(1)
+    expect(getNodeValue('matches')?.map((match) => match.userId)).toEqual(['ann'])
+    stop()
+  })
+
+  it('a replay of changes already overtaken costs at most one reload per list', async () => {
+    await signIn()
+    await flush(30)
+    await load('myViewers')
+    const VIEWERS = `${API_URL}/profile/viewers`
+    const before = { viewers: server().sent('GET', VIEWERS).length, matches: server().sent('GET', MATCHES).length }
+    // queued while we were offline: three visits, and bea connected then left again
+    const source = new Subject<RealtimeEvent>()
+    const stop = startRealtime({ events$: source, socket: false })
+    for (const who of ['ann', 'bea', 'cid']) source.next({ type: 'view', person: person(who) })
+    source.next({ type: 'match', person: person('bea') })
+    await flush(5)
+    source.next({ type: 'unmatch', person: person('bea') })
+    source.next({ type: 'view', person: person('dan') })
+    await flush(60)
+    expect(server().sent('GET', VIEWERS).length - before.viewers).toBe(1)
+    expect(server().sent('GET', MATCHES).length - before.matches).toBe(1)
+    stop()
+  })
+
+  it('being liked back (`profile-like` then `match`) reloads each list once', async () => {
+    const { source, stop } = await live()
+    const before = { matches: server().sent('GET', MATCHES).length, likes: server().sent('GET', `${API_URL}/profile/likes`).length }
+    connect(store.backend, 'cid')
+    source.next({ type: 'like', person: person('cid') })
+    source.next({ type: 'match', person: person('cid') })
+    await flush(60)
+    expect(server().sent('GET', MATCHES).length - before.matches).toBe(1)
+    expect(server().sent('GET', `${API_URL}/profile/likes`).length - before.likes).toBe(1)
+    expect(getNodeValue('matches')?.map((match) => match.userId)).toEqual(['cid'])
+    stop()
+  })
+
+  it('without the socket, a like on someone who liked you first is a match though the answer is empty', async () => {
+    await signIn()
+    await flush(30)
+    // the real backend's empty answer; ann had liked us, so liking her connects us
+    server().on('POST', `${API_URL}/profile/:id/like`, ({ route }) => {
+      if (route.id === 'ann') connect(store.backend, 'ann')
+      return reply(200, '')
+    })
+    const before = server().sent('GET', MATCHES).length
+    // ann is in "likes you"
+    await expect(actions.likeUser('ann', 'like')).resolves.toEqual({ matched: true })
+    // bea is not: liking her makes no match
+    await expect(actions.likeUser('bea', 'like')).resolves.toEqual({ matched: false })
+    await flush(30)
+    expect(server().sent('GET', MATCHES).length - before).toBe(1)
+    expect(getNodeValue('matches')?.map((match) => match.userId)).toContain('ann')
+  })
+
+  it('blocking someone who is not a connection leaves the connection lists alone', async () => {
+    await signIn()
+    await flush(30)
+    const before = { matches: server().sent('GET', MATCHES).length, likes: server().sent('GET', `${API_URL}/profile/likes`).length }
+    await actions.blockUser('bea')
+    await flush(30)
+    expect(server().sent('GET', MATCHES).length).toBe(before.matches)
+    expect(server().sent('GET', `${API_URL}/profile/likes`).length).toBe(before.likes)
+  })
+})
+
+describe('profiles, visits and blocks', () => {
+  it('a sheet StrictMode closes and reopens at once sends one GET /profile/{id}; a real close drops it', async () => {
+    await signIn()
+    await flush(30)
+    const first = actions.showApiProfile('bea')
+    actions.closeProfile()
+    const second = actions.showApiProfile('bea')
+    await expect(first).resolves.toMatchObject({ userId: 'bea' })
+    await expect(second).resolves.toMatchObject({ userId: 'bea' })
+    await flush(10)
+    expect(server().sent('GET', `${API_URL}/profile/bea`)).toHaveLength(1)
+    expect(getNodeValue('apiProfileId')).toBe('bea')
+    actions.closeProfile()
+    await flush(10)
+    expect(getNodeValue('apiProfileId')).toBeNull()
+    expect(getNodeValue('apiProfile')).toBeNull()
+  })
+
+  it('the visit history loads on demand and is refetched after a profile was opened', async () => {
+    await signIn()
+    await flush(30)
+    const VISITED = `${API_URL}/profile/visited`
+    expect(server().sent('GET', VISITED)).toHaveLength(0)
+    await load('visitedProfiles', REVISIT_MS)
+    expect(getNodeValue('visitedProfiles')).toEqual({ visited: [] })
+    // young: a second visit of the tab sends nothing
+    await load('visitedProfiles', REVISIT_MS)
+    expect(server().sent('GET', VISITED)).toHaveLength(1)
+    // opening a profile records a visit: the list is stale, whatever its age
+    await actions.showApiProfile('cid')
+    await load('visitedProfiles', REVISIT_MS)
+    expect(server().sent('GET', VISITED)).toHaveLength(2)
+    expect(getNodeValue('visitedProfiles')?.visited.map((entry) => entry.userId)).toEqual(['cid'])
+  })
+
+  it('blocked people are listed on demand; unblocking takes them off, a block while it is shown adds them', async () => {
+    await signIn()
+    await flush(30)
+    const BLOCKS = `${API_URL}/profile/blocks`
+    await actions.blockUser('bea')
+    // nobody asked for the list yet
+    expect(server().sent('GET', BLOCKS)).toHaveLength(0)
+    await load('blockedUsers')
+    expect(getNodeValue('blockedUsers')?.blocks.map((entry) => entry.userId)).toEqual(['bea'])
+    await actions.unblockUser('bea')
+    expect(server().sent('DELETE', `${API_URL}/profile/bea/block`)).toHaveLength(1)
+    expect(getNodeValue('blockedUsers')).toEqual({ blocks: [] })
+    await actions.blockUser('cid')
+    await flush(30)
+    expect(getNodeValue('blockedUsers')?.blocks.map((entry) => entry.userId)).toEqual(['cid'])
+    await expect(actions.unblockUser('../x')).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+  })
+})
+
+describe('matches and chat', () => {
+  async function connected(): Promise<void> {
+    connect(store.backend, 'ann')
+    await signIn()
+    await flush(30)
+  }
+
+  it('a connection without a message opens empty, without asking for a history', async () => {
+    await connected()
+    expect(getNodeValue('matches')).toEqual([
+      { userId: 'ann', username: 'ann', profilePictureUrl: 'http://img.test/ann.webp', chatId: null, lastMessage: null, unread: 0 },
+    ])
+    await expect(actions.openChat('ann')).resolves.toEqual([])
+    expect(getNodeValue('activeChatUserId')).toBe('ann')
+    expect(getNodeValue('activeChatId')).toBeNull()
+    expect(server().requests.some((request) => request.url.startsWith(`${API_URL}/chat/`))).toBe(false)
+  })
+
+  it('the first message gives the conversation its chat id and its thread', async () => {
+    await connected()
+    await actions.openChat('ann')
+    await actions.sendMessage('ann', '  hello there  ')
+    expect(server().sent('POST', `${API_URL}/chat/message`)[0].body).toEqual({ toUserId: 'ann', content: 'hello there' })
+    const chatId = store.backend.state.chats.get('ann')?.chatId
+    expect(getNodeValue('activeChatId')).toBe(chatId)
+    expect(getNodeValue('chatMessages')?.map((message) => [message.senderId, message.text])).toEqual([[ME, 'hello there']])
+    expect(getNodeValue('matches')?.[0]).toMatchObject({ chatId, lastMessage: { text: 'hello there', senderId: ME } })
+    await expect(actions.sendMessage('ann', '   ')).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+  })
+
+  it('openChat loads the history and marks it read', async () => {
+    await connected()
+    const chatId = store.backend.state.chats.get('ann')!.chatId
+    incoming(store.backend, 'ann', 'hi')
+    await expect(actions.openChat('ann')).resolves.toMatchObject([{ senderId: 'ann', text: 'hi', status: 'sent' }])
+    await flush(30)
+    expect(server().sent('POST', `${API_URL}/chat/${chatId}/seen`)).toHaveLength(1)
 
     actions.closeChat()
     expect(getNodeValue('chatMessages')).toBeNull()
   })
 
-  it('realtime events are republished and refresh the open chat and the matches', async () => {
-    await matched()
-    await actions.openChat('m-ann')
+  it('a message from someone whose chat is closed counts as unread until it is opened', async () => {
+    await connected()
     const source = new Subject<RealtimeEvent>()
     const stop = startRealtime({ events$: source, socket: false })
     const seen: RealtimeEvent[] = []
     const subscription = realtime$.subscribe((event) => seen.push(event))
 
-    const message = incoming(store.backend, 'm-ann', 'ping')
-    source.next({ type: 'message', matchId: 'm-ann', message })
+    const message = incoming(store.backend, 'ann', 'ping')
+    const event: RealtimeEvent = {
+      type: 'message',
+      from: person('ann'),
+      message: { id: message.messageId, senderId: 'ann', text: 'ping', sentAt: message.timestamp, status: 'sent' },
+    }
+    source.next(event)
+    expect(getNodeValue('unreadCount')).toBe(1)
     await flush(40)
-    expect(seen).toEqual([{ type: 'message', matchId: 'm-ann', message }])
-    expect(getNodeValue('chatMessages')?.map((entry) => entry.text)).toEqual(['ping'])
+    expect(seen).toEqual([event])
     expect(getNodeValue('matches')?.[0].lastMessage?.text).toBe('ping')
+
+    await actions.openChat('ann')
     expect(getNodeValue('unreadCount')).toBe(0)
     subscription.unsubscribe()
     stop()
   })
 
-  it('unmatch closes the open conversation and refreshes the matches', async () => {
-    await matched()
-    await actions.openChat('m-ann')
-    server().on('DELETE', `${SOCIAL_URL}/matches/:id`, ({ route }) => {
-      store.backend.state.matches = store.backend.state.matches.filter((match) => match.id !== route.id)
-      return { ok: true }
+  it('a message for the open conversation reloads its thread and marks it read', async () => {
+    await connected()
+    incoming(store.backend, 'ann', 'hi')
+    await actions.openChat('ann')
+    const chatId = store.backend.state.chats.get('ann')!.chatId
+    const source = new Subject<RealtimeEvent>()
+    const stop = startRealtime({ events$: source, socket: false })
+
+    const message = incoming(store.backend, 'ann', 'again')
+    source.next({
+      type: 'message',
+      from: person('ann'),
+      message: { id: message.messageId, senderId: 'ann', text: 'again', sentAt: message.timestamp, status: 'sent' },
     })
-    await actions.unmatch('m-ann')
-    expect(getNodeValue('activeMatchId')).toBeNull()
+    await flush(40)
+    expect(getNodeValue('chatMessages')?.map((entry) => entry.text)).toEqual(['hi', 'again'])
+    expect(getNodeValue('unreadCount')).toBe(0)
+    expect(server().sent('POST', `${API_URL}/chat/${chatId}/seen`).length).toBeGreaterThanOrEqual(2)
+    stop()
+  })
+
+  it('an open thread is fetched whole once, then only what is new (?after=), merged in', async () => {
+    await connected()
+    const hi = incoming(store.backend, 'ann', 'hi')
+    await actions.openChat('ann')
+    const chatId = store.backend.state.chats.get('ann')!.chatId
+    const history = () => server().sent('GET', `${API_URL}/chat/${chatId}`).map((request) => request.params)
+    expect(history()).toEqual([{}])
+
+    incoming(store.backend, 'ann', 'again')
+    await expect(reloadOpenChat('ann')).resolves.toBe(chatId)
+    // from a little before the newest message held: the overlap is merged away
+    expect(history()).toEqual([{}, { after: hi.timestamp - 2000 }])
+    expect(getNodeValue('chatMessages')?.map((entry) => entry.text)).toEqual(['hi', 'again'])
+
+    await actions.sendMessage('ann', 'and me')
+    expect(history().at(-1)).toHaveProperty('after')
+    expect(getNodeValue('chatMessages')?.map((entry) => entry.text)).toEqual(['hi', 'again', 'and me'])
+
+    // opening it again (or another one) starts from the whole history
+    await actions.openChat('ann')
+    expect(history().at(-1)).toEqual({})
+    expect(getNodeValue('chatMessages')?.map((entry) => entry.text)).toEqual(['hi', 'again', 'and me'])
+  })
+
+  it('chat-seen turns my messages in the open thread read, without a request', async () => {
+    await connected()
+    await actions.openChat('ann')
+    await actions.sendMessage('ann', 'hello')
+    const chatId = getNodeValue('activeChatId')!
+    const source = new Subject<RealtimeEvent>()
+    const stop = startRealtime({ events$: source, socket: false })
+    const before = server().requests.length
+    source.next({ type: 'seen', chatId, userId: 'ann' })
+    expect(getNodeValue('chatMessages')?.map((entry) => [entry.text, entry.status])).toEqual([['hello', 'read']])
+    await flush(30)
+    expect(server().requests.length).toBe(before)
+    stop()
+  })
+
+  it('unmatching takes the like back, closes the open conversation and refreshes the matches', async () => {
+    await connected()
+    await actions.openChat('ann')
+    await actions.unlikeUser('ann')
+    expect(server().sent('DELETE', `${API_URL}/profile/ann/like`)).toHaveLength(1)
+    expect(getNodeValue('activeChatUserId')).toBeNull()
+    await flush(30)
     expect(getNodeValue('matches')).toEqual([])
   })
 
-  it('resetDemoData posts the reset and reloads the mocked social nodes', async () => {
-    await matched()
-    await actions.resetDemoData()
-    expect(server().sent('POST', `${SOCIAL_URL}/reset`)).toHaveLength(1)
+  it('blocking a connection closes the open conversation and refreshes the matches', async () => {
+    await connected()
+    await actions.openChat('ann')
+    await actions.blockUser('ann')
+    expect(server().sent('POST', `${API_URL}/profile/ann/block`)).toHaveLength(1)
+    expect(getNodeValue('activeChatUserId')).toBeNull()
+    await flush(30)
     expect(getNodeValue('matches')).toEqual([])
   })
 })
@@ -404,6 +730,20 @@ describe('search', () => {
     // a null limit is not sent
     await actions.search({ fameMin: null, tags: [] })
     expect(sent()[2].params).toEqual({ q: 'ci', minAge: 30, maxAge: 60, maxDistanceKm: 50 })
+  })
+
+  it('sends genders and preferences as comma lists in a fixed order, unknown values dropped', async () => {
+    await ready()
+    await actions.search({ genders: ['other', 'female', 'female'], preferences: ['both'] })
+    expect(sent()).toHaveLength(1)
+    expect(sent()[0].params).toEqual({ genders: 'female,other', preferences: 'both' })
+    // the same people in another order: the same criteria, refetched in place
+    await actions.search({ genders: ['female', 'other', 'nope' as 'other'] })
+    expect(sent()[1].params).toEqual({ genders: 'female,other', preferences: 'both' })
+    // none of either: not sent
+    await actions.search({ q: 'a', genders: [], preferences: [] })
+    expect(sent()[2].params).toEqual({ q: 'a' })
+    expect(getNodeValue('searchGenders')).toBeNull()
   })
 
   it('a sort-only change reorders visibleSearch in the browser without a request', async () => {

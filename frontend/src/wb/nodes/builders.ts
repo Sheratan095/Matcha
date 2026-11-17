@@ -8,7 +8,7 @@ import type { DepDef, HttpMethod, LoadingActionDef, NodeDef } from '../types'
 
 // ---------------------------------------------------------------- specs
 
-export type ServiceName = 'api' | 'social'
+export type ServiceName = 'api'
 
 interface Spec<Type extends LoadingActionDef['type']> {
   dep: DepDef[]
@@ -70,9 +70,31 @@ export function pathVariable(nodeName: string, parameterName: string): DepDef {
   return { nodeName, parameterName, isOptional: false, onUpdate: true, type: 'PATH_VARIABLE' }
 }
 
-/** Sent as `?parameterName=value`; axios drops it when the value is null. */
-export function queryParameter(nodeName: string, parameterName: string, options: { optional?: boolean } = {}): DepDef {
-  return { nodeName, parameterName, isOptional: options.optional ?? false, onUpdate: true, type: 'REQUEST_PARAMETER' }
+/**
+ * Sent as `?parameterName=value`; axios drops it when the value is null. `inPlace`: a new value
+ * refetches without flashing the node to `null` first.
+ */
+export function queryParameter(
+  nodeName: string,
+  parameterName: string,
+  options: { optional?: boolean; inPlace?: boolean } = {},
+): DepDef {
+  return {
+    nodeName,
+    parameterName,
+    isOptional: options.optional ?? false,
+    onUpdate: !options.inPlace,
+    type: 'REQUEST_PARAMETER',
+  }
+}
+
+/**
+ * The gate of a read that loads on demand (`LAZY_GATES` in ./index.ts): required, so nothing is sent
+ * until a screen asks for the read (`load` / `useLoad`, src/wb/demand.ts), and without `onUpdate`, so
+ * closing the gate keeps the value. Not a request parameter.
+ */
+export function demand(nodeName: string): DepDef {
+  return { nodeName, parameterName: 'wanted', isOptional: false, onUpdate: false }
 }
 
 /**

@@ -46,7 +46,7 @@ describe('typed surface', () => {
       // @ts-expect-error command payloads go through run()
       setNode('loginPayload', null)
       // @ts-expect-error refresh nonces go through refresh()
-      setNode('matchesRefresh', 1)
+      setNode('connectionsRefresh', 1)
       // @ts-expect-error wrong value type for the node
       setNode('filterDistance', 'far')
       // @ts-expect-error logout takes no payload

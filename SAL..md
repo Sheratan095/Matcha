@@ -6,6 +6,8 @@ su frontend, l'indirizzo non veniva trovato.
 Anche se l'avesse trovato non avrebbe funzionato dato che il backend accetta solo richieste provenienti dall'ip del frontend.
 Ora vite ha il proxy, quindi ogni chiamata che parte dal brower con /api/ passa dal frontend e viene effettuata da quest'ultimo.
 
+grz
+
 ``` js    
 proxy: {
 	// Browser calls /api/... on :4000, Vite forwards to the gateway on :8000.
@@ -27,8 +29,9 @@ BACKEND_URL=http://localhost:3000
 
 ### TO DO FRONTEND
 
-- sta cosa dei mockup degli utenti finti è strafiga ma levala, se vogliamo la facciamo fare a claudio che però faccia
+- [x] sta cosa dei mockup degli utenti finti è strafiga ma levala, se vogliamo la facciamo fare a claudio che però faccia
 	le cose con le api sennò i match non tornano
+
 
 - Mancano le traduzioni
 
@@ -44,6 +47,7 @@ BACKEND_URL=http://localhost:3000
 - anche la pagina activity fa due richieste http per MyLikes
   
 - notifiche di errore troppo lunghe rompono la ui, praticamente sforando in larghezza e la pagina diventa "scorribbile" orizzontalmente
+
 
 - Login
   - OAuh2 callback non funziona testando dal telefono, probabilmente c'è problema con gli indirizzi ip come il problema iniziale (Parliamone insieme)

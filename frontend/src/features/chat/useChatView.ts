@@ -1,48 +1,6 @@
-/** The behaviour of an open conversation: who is typing, and keeping the thread pinned to the bottom. */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { realtime$ } from '@/wb'
-import { prefersReducedMotion, TYPING_TIMEOUT_MS } from './hooks'
-
-/** How long a message announced by realtime may take to show up in the thread before we stop waiting. */
-const ARRIVAL_GRACE_MS = 5_000
-
-/**
- * True while the partner is typing in this conversation: from their `typing` event until their
- * message is in the thread (`presentIds`), or until the timeout when no message follows.
- */
-export function usePartnerTyping(matchId: string, partnerId: string | null, presentIds: readonly string[]): boolean {
-  const [typing, setTyping] = useState(false)
-  const [arriving, setArriving] = useState<readonly string[]>([])
-
-  useEffect(() => {
-    let timer = 0
-    const subscription = realtime$.subscribe((event) => {
-      if (event.type === 'typing' && event.matchId === matchId) {
-        window.clearTimeout(timer)
-        setTyping(true)
-        timer = window.setTimeout(() => setTyping(false), TYPING_TIMEOUT_MS)
-      } else if (event.type === 'message' && event.matchId === matchId) {
-        if (partnerId && event.message.senderId !== partnerId) return
-        window.clearTimeout(timer)
-        setTyping(false)
-        setArriving((ids) => [...ids, event.message.id])
-      }
-    })
-    return () => {
-      subscription.unsubscribe()
-      window.clearTimeout(timer)
-    }
-  }, [matchId, partnerId])
-
-  const waiting = arriving.some((id) => !presentIds.includes(id))
-  useEffect(() => {
-    if (arriving.length === 0) return
-    const timer = window.setTimeout(() => setArriving([]), waiting ? ARRIVAL_GRACE_MS : 0)
-    return () => window.clearTimeout(timer)
-  }, [arriving, waiting])
-
-  return typing || waiting
-}
+/** The behaviour of an open conversation: keeping the thread pinned to the bottom. */
+import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { prefersReducedMotion } from './hooks'
 
 /** Within this many px of the end counts as "at the bottom". */
 const BOTTOM_SLACK = 72
@@ -64,7 +22,7 @@ export interface StickToBottom {
 
 /**
  * Keeps the scrolling ancestor of `contentRef` at the bottom while the reader is there: new
- * messages, the typing indicator, late font loads and the on-screen keyboard do not leave them
+ * messages, late font loads and the on-screen keyboard do not leave them
  * looking at old messages. Once they scroll up, nothing moves under them.
  */
 export function useStickToBottom(contentRef: RefObject<HTMLElement | null>): StickToBottom {

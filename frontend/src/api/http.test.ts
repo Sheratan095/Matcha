@@ -12,7 +12,7 @@ import {
 } from './http'
 
 const API = 'http://gateway.test'
-const SOCIAL = '/__mock/social'
+const ELSEWHERE = 'http://elsewhere.test'
 
 let server: FakeServer
 let uninstallAdapter: () => void
@@ -146,9 +146,9 @@ describe('401 handling', () => {
   it('does not refresh for services outside the gateway, nor for the refresh call itself', async () => {
     const refreshSession = vi.fn(async () => undefined)
     install({ refreshSession })
-    server.on('GET', `${SOCIAL}/matches`, () => nestError(401, 'No viewer', 'Unauthorized'))
+    server.on('GET', `${ELSEWHERE}/matches`, () => nestError(401, 'No viewer', 'Unauthorized'))
     server.on('POST', `${API}/auth/refresh`, () => nestError(401, 'odd', 'Unauthorized'))
-    await expect(axios.get(`${SOCIAL}/matches`)).rejects.toBeInstanceOf(AxiosError)
+    await expect(axios.get(`${ELSEWHERE}/matches`)).rejects.toBeInstanceOf(AxiosError)
     await expect(axios.post(`${API}/auth/refresh`)).rejects.toBeInstanceOf(AxiosError)
     expect(refreshSession).not.toHaveBeenCalled()
   })

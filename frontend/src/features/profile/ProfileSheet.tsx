@@ -1,18 +1,17 @@
 /**
- * The shared profile sheet (deck, matches, chat, activity). A bottom sheet on phones, a dialog from
- * 640px (kit `Modal`).
+ * The shared profile sheet (deck, search, map, matches, chat, activity). A bottom sheet on phones, a
+ * dialog from 640px (kit `Modal`).
  *
- * - `source: 'social'` loads `socialProfile` (`actions.showSocialProfile`): a full card.
- * - `source: 'api'` loads `apiProfile` (`actions.showApiProfile`): a real user, with age, distance,
- *   fame, presence and the like relation; shared interests are worked out against your own profile.
- *   Opening a real profile records a profile view on the backend. Without an `actions` slot the sheet
- *   offers like / unlike itself, and its menu reports a fake account or blocks (subject IV.5).
+ * - It loads `apiProfile` (`actions.showApiProfile`): age, distance, fame, presence and the like
+ *   relation; shared interests are worked out against your own profile. Opening a profile records a
+ *   profile view on the backend. Without an `actions` slot the sheet offers like / unlike itself, and
+ *   its menu reports a fake account or blocks (subject IV.5).
  * - `preview` shows at once while the full profile loads.
  * - Closing calls `onClose` and `actions.closeProfile()` (also when the caller sets `target` to null).
  */
 import { useEffect, useId, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ApiError, Card, OtherProfile, Profile, ProfileRelation } from '@/api/types'
+import type { ApiError, OtherProfile, Profile, ProfileRelation } from '@/api/types'
 import {
   Badge,
   Button,
@@ -39,19 +38,15 @@ import {
   ActionButton,
 } from '@/ui'
 import { actions, LOCAL_ERROR, toApiError, useNodeStatus, useNodeValue } from '@/wb'
-import { displayName, distanceText, identityText, isCard, lastSeenText, orderedPictures, serialOf } from './format'
+import { displayName, distanceText, identityText, lastSeenText, orderedPictures, serialOf } from './format'
 import { PhotoCarousel } from './PhotoCarousel'
 import s from './ProfileSheet.module.css'
 
-/**
- * Which profile to show. `social` people come from the (mocked) social service,
- * `api` people are real users fetched from the profile service by id.
- */
+/** Which profile to show. */
 export interface ProfileTarget {
   userId: string
-  source: 'social' | 'api'
-  /** Already-loaded data to show immediately while the full profile loads. */
-  preview?: Card | OtherProfile
+  /** Already-known data to show immediately while the full profile loads. */
+  preview?: OtherProfile
 }
 
 export interface ProfileSheetProps {
@@ -59,8 +54,8 @@ export interface ProfileSheetProps {
   target: ProfileTarget | null
   onClose: () => void
   /**
-   * Controls rendered at the bottom of the sheet (like / pass / message...). For a real profile
-   * (`source: 'api'`) the sheet shows its own like / unlike button when this is not given.
+   * Controls rendered at the bottom of the sheet (like / pass / message...). Without them the sheet
+   * shows its own like / unlike button.
    */
   actions?: ReactNode
   /** Called once the person has been blocked (the sheet then closes itself through `onClose`). */
@@ -71,13 +66,9 @@ export interface ProfileSheetProps {
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-function keyOf(target: ProfileTarget | null): string | null {
-  return target ? `${target.source}|${target.userId}` : null
-}
-
 export default function ProfileSheet({ target, onClose, actions: slot, onBlocked, hideMenu }: ProfileSheetProps) {
   const open = target !== null
-  const key = keyOf(target)
+  const key = target?.userId ?? null
 
   // The last target and data stay on screen while the sheet animates out.
   const [lastTarget, setLastTarget] = useState<ProfileTarget | null>(target)
@@ -97,24 +88,19 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
   const [blockError, setBlockError] = useState<ApiError | null>(null)
   const [liking, setLiking] = useState(false)
 
-  const social = useNodeValue('socialProfile')
   const api = useNodeValue('apiProfile')
-  const socialStatus = useNodeStatus('socialProfile')
-  const apiStatus = useNodeStatus('apiProfile')
+  const status = useNodeStatus('apiProfile')
   const me = useNodeValue('myProfile')
   const aboutId = useId()
   const interestsId = useId()
 
   useEffect(() => {
     if (!key) return
-    const at = key.indexOf('|')
-    const source = key.slice(0, at)
-    const userId = key.slice(at + 1)
     let live = true
-    const load: Promise<unknown> = source === 'social' ? actions.showSocialProfile(userId) : actions.showApiProfile(userId)
-    load.catch((error: unknown) => {
+    actions.showApiProfile(key).catch((error: unknown) => {
       const apiError = toApiError(error)
-      // DROPPED: the sheet closed (or StrictMode re-ran the effect) while it loaded
+      // DROPPED: the sheet closed, or moved on to someone else, while it loaded (a StrictMode re-run
+      // joins the request already on its way instead)
       if (live && apiError.code !== LOCAL_ERROR.DROPPED) setFailure({ key, error: apiError })
     })
     return () => {
@@ -124,35 +110,21 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
   }, [key, retry])
 
   // ---------------------------------------------------------------- what to show
-  const loaded: Card | OtherProfile | null = !shown
-    ? null
-    : shown.source === 'social'
-      ? social?.userId === shown.userId
-        ? social
-        : null
-      : api?.userId === shown.userId
-        ? api
-        : null
+  const loaded: OtherProfile | null = shown && api?.userId === shown.userId ? api : null
   const preview = shown?.preview?.userId === shown?.userId ? shown?.preview : undefined
   // Memoized on purpose: the spread builds a NEW object, and `merged !== kept` below sets state
   // during render. A fresh object on every render would make that check true forever
   // ("Too many re-renders") as soon as the full profile arrives on top of a preview.
-  const merged: Card | OtherProfile | null = useMemo(
-    () =>
-      loaded
-        ? preview && !isCard(loaded)
-          ? ({ ...preview, ...loaded } as Card | OtherProfile)
-          : loaded
-        : (preview ?? null),
+  const merged: OtherProfile | null = useMemo(
+    () => (loaded ? (preview ? { ...preview, ...loaded } : loaded) : (preview ?? null)),
     [loaded, preview],
   )
 
-  const [kept, setKept] = useState<Card | OtherProfile | null>(merged)
+  const [kept, setKept] = useState<OtherProfile | null>(merged)
   if (open && merged && merged !== kept) setKept(merged)
   const data = open ? merged : kept
 
   // the action's rejection says it failed; the node status only fills in a missing message
-  const status = shown?.source === 'api' ? apiStatus : socialStatus
   const failed = open && !loaded && failure?.key === key
   const failureMessage = (failure?.key === key ? failure.error.message : status.error?.message) ?? 'The profile could not be loaded.'
   const loading = open && !loaded && !failed
@@ -164,8 +136,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
 
   const name = data ? displayName(data) : 'Profile'
   const isMe = !!data && !!me && data.userId === me.userId
-  const real = shown?.source === 'api'
-  const baseRelation = data && !isCard(data) ? (data.relation ?? null) : null
+  const baseRelation = data?.relation ?? null
   const relation = data && relationOverride?.userId === data.userId ? relationOverride.relation : baseRelation
 
   const confirmBlock = async () => {
@@ -174,8 +145,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
     setBlocking(true)
     setBlockError(null)
     try {
-      if (real) await actions.blockUser(userId)
-      else await actions.block(userId)
+      await actions.blockUser(userId)
       setConfirming(false)
       toast.show({ tone: 'ink', title: `${name} is blocked`, message: 'You will not see each other again.' })
       onBlocked?.(userId)
@@ -222,7 +192,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
 
   const footer =
     slot ??
-    (real && relation && !isMe && data ? (
+    (relation && !isMe && data ? (
       <div className={s.relationActions}>
         <ActionButton
           kind={relation.liked ? 'pass' : 'like'}
@@ -239,15 +209,11 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
     ) : undefined)
 
   const menuItems = [
-    ...(real
-      ? [
-          {
-            label: 'Report as fake account',
-            icon: <IconFlag size={18} />,
-            onSelect: () => void report(),
-          },
-        ]
-      : []),
+    {
+      label: 'Report as fake account',
+      icon: <IconFlag size={18} />,
+      onSelect: () => void report(),
+    },
     {
       label: `Block ${name}`,
       icon: <IconBlock size={18} />,
@@ -339,7 +305,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
 }
 
 interface ProfileBodyProps {
-  data: Card | OtherProfile
+  data: OtherProfile
   relation: ProfileRelation | null
   me: Profile | null
   loading: boolean
@@ -350,44 +316,30 @@ interface ProfileBodyProps {
   interestsId: string
 }
 
-/** What the sheet prints about someone, from a mocked card or a real profile. */
-function factsOf(data: Card | OtherProfile, relation: ProfileRelation | null) {
-  if (isCard(data)) {
-    return {
-      age: data.age,
-      distanceKm: data.distanceKm as number | null,
-      fame: data.fame,
-      online: data.online as boolean | null,
-      lastSeen: data.lastSeen,
-      city: data.city as string | null,
-      likesYou: data.likedYou,
-      matched: false,
-    }
-  }
+/** What the sheet prints about someone. */
+function factsOf(data: OtherProfile, relation: ProfileRelation | null) {
   return {
     age: data.age ?? null,
     distanceKm: data.distanceKm ?? null,
     fame: data.fameRating ?? null,
     online: data.isOnline ?? null,
     lastSeen: data.lastSeen ?? null,
-    city: null as string | null,
     likesYou: relation?.likesYou === true,
     matched: relation?.matched === true,
   }
 }
 
 function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, aboutId, interestsId }: ProfileBodyProps) {
-  const card = isCard(data) ? data : null
   const facts = factsOf(data, relation)
   const name = displayName(data)
   const interests = data.interests.map((tag) => tag.name)
   const mine = new Set((me?.interests ?? []).map((tag) => tag.name))
-  const common = card ? card.commonTags : me && me.userId !== data.userId ? interests.filter((tag) => mine.has(tag)) : []
-  const ordered = [...common.filter((tag) => interests.includes(tag)), ...interests.filter((tag) => !common.includes(tag))]
+  const common = me && me.userId !== data.userId ? interests.filter((tag) => mine.has(tag)) : []
+  const ordered = [...common, ...interests.filter((tag) => !common.includes(tag))]
   const identity = identityText(data)
   const seen = facts.online === false ? (lastSeenText(facts.lastSeen) ?? 'Offline') : null
   const bio = data.biography?.trim()
-  const username = !card ? data.username : undefined
+  const username = data.username
 
   return (
     <article className={s.profile} aria-busy={loading || undefined}>
@@ -415,7 +367,7 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
           {facts.distanceKm != null ? (
             <span className={s.where}>
               <IconPin size={14} strokeWidth={3} />
-              {distanceText(facts.distanceKm)} away{facts.city ? ` · ${facts.city}` : ''}
+              {distanceText(facts.distanceKm)} away
             </span>
           ) : null}
         </div>

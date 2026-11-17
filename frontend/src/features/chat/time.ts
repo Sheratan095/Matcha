@@ -67,24 +67,16 @@ export function shortAgo(value: string | number | Date, now: number): string {
   return shortDate(date, now)
 }
 
-/** Longer relative phrase: "just now", "12 min ago", "3 h ago", "yesterday", "on 12 Mar". */
-export function agoPhrase(value: string | number | Date, now: number): string {
+/** A date ahead: "Today, 20:00", "Tomorrow, 20:00", "Sat 21 Nov, 20:00", "9 Jan 2027, 20:00" (not this year). */
+export function upcomingLabel(value: string | number | Date, now: number): string {
   const date = toDate(value)
-  const elapsed = Math.max(0, now - date.getTime())
-  if (elapsed < MINUTE) return 'just now'
-  if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)} min ago`
-  const days = daysBetween(date, now)
-  if (days === 0) return `${Math.floor(elapsed / HOUR)} h ago`
-  if (days === 1) return 'yesterday'
-  if (days < 7) return `${days} days ago`
-  return `on ${shortDate(date, now)}`
-}
-
-/** The presence line under a name. */
-export function presenceLabel(online: boolean, lastSeen: string | null, now: number): string {
-  if (online) return 'Online now'
-  if (!lastSeen) return 'Offline'
-  return `Last seen ${agoPhrase(lastSeen, now)}`
+  const ahead = daysBetween(now, date.getTime())
+  let day: string
+  if (ahead === 0) day = 'Today'
+  else if (ahead === 1) day = 'Tomorrow'
+  else if (date.getFullYear() === new Date(now).getFullYear()) day = `${weekdayShort.format(date)} ${dayMonth.format(date)}`
+  else day = dayMonthYear.format(date)
+  return `${day}, ${clock.format(date)}`
 }
 
 /** Zero-padded count for print-style numerals: 3 -> "03". */

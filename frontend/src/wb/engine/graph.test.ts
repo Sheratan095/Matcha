@@ -328,7 +328,7 @@ describe('request building (mirrors http-service.js)', () => {
   it('rewrites the target to https only when the service is secure', () => {
     expect(serviceBase({ target: 'http://a.test', secure: true, authorization: null })).toBe('https://a.test')
     expect(serviceBase({ target: 'a.test', secure: true, authorization: null })).toBe('https://a.test')
-    expect(serviceBase({ target: '/__mock', secure: true, authorization: null })).toBe('/__mock')
+    expect(serviceBase({ target: '/api', secure: true, authorization: null })).toBe('/api')
     expect(serviceBase({ target: 'http://a.test', secure: false, authorization: null })).toBe('http://a.test')
   })
 })

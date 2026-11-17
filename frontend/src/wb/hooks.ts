@@ -3,11 +3,12 @@
  * StrictMode and concurrent rendering: the snapshot is the node's current value (stable until the node
  * emits again), and `subscribe` is cached per node so React never resubscribes needlessly.
  */
-import { useCallback, useMemo, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { skip, type Observable } from 'rxjs'
+import { load } from './demand'
 import { filtersFrom, type DiscoverFilters } from './filters'
 import { searchCriteriaFrom, type SearchCriteria } from './search'
-import type { HttpNodeName, NodeName, NodeValue, NodeValues, WritableNodeName } from './nodes'
+import type { HttpNodeName, NodeName, NodeValue, NodeValues, RefreshableNodeName, WritableNodeName } from './nodes'
 import type { NodeStatus } from './status'
 import { nodeSubject, setNode, statusSource } from './store'
 
@@ -63,6 +64,23 @@ export function useNodeStatus(name: HttpNodeName): NodeStatus {
   return useReadable(statusSource(name))
 }
 
+export interface UseLoadOptions {
+  /** Refetch on mount when the value is older than this (ms). Default: never (load once). */
+  maxAgeMs?: number
+  /** false: not needed yet (e.g. a closed sheet, another tab). Default true. */
+  enabled?: boolean
+}
+
+/**
+ * This screen shows `name`: loads it when it mounts (or becomes `enabled`) if it is not there yet, or
+ * older than `maxAgeMs` (src/wb/demand.ts). Sends nothing while a load is on its way.
+ */
+export function useLoad(name: RefreshableNodeName, { maxAgeMs, enabled = true }: UseLoadOptions = {}): void {
+  useEffect(() => {
+    if (enabled) void load(name, maxAgeMs)
+  }, [name, maxAgeMs, enabled])
+}
+
 /** The discover filters as one object (stable until one of them changes). Write with `actions.setFilters`. */
 export function useFilters(): DiscoverFilters {
   const ageMin = useNodeValue('filterAgeMin')
@@ -85,9 +103,11 @@ export function useSearchCriteria(): SearchCriteria {
   const distance = useNodeValue('searchDistance')
   const fameMin = useNodeValue('searchFameMin')
   const tags = useNodeValue('searchTags')
+  const genders = useNodeValue('searchGenders')
+  const preferences = useNodeValue('searchPreferences')
   const sort = useNodeValue('searchSort')
   return useMemo(
-    () => searchCriteriaFrom({ q, ageMin, ageMax, distance, fameMin, tags, sort }),
-    [q, ageMin, ageMax, distance, fameMin, tags, sort],
+    () => searchCriteriaFrom({ q, ageMin, ageMax, distance, fameMin, tags, genders, preferences, sort }),
+    [q, ageMin, ageMax, distance, fameMin, tags, genders, preferences, sort],
   )
 }

@@ -1,9 +1,10 @@
-import { useNodeStatus, useNodeValue } from '@/wb'
+import { useLoad, useNodeStatus, useNodeValue } from '@/wb'
 
 const NONE: readonly string[] = []
 
-/** Suggestions for the interests editor, and a hint that says when they are missing. */
+/** Suggestions for the interests editor (loaded the first time an editor shows), and a hint that says when they are missing. */
 export function useTagCatalogue(): { tags: readonly string[]; hint: string } {
+  useLoad('interestCatalogue')
   const tags = useNodeValue('tagCatalogue')
   const status = useNodeStatus('interestCatalogue')
   if (tags && tags.length > 0) return { tags, hint: 'Type and press Enter, or tap a suggestion.' }

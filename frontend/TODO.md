@@ -21,46 +21,50 @@
 - [ ] remove the manual verification code entering now verification and psw reset works only with link
 
 ### IV.2 User profile
-- [ ] "Who liked me": Activity > Likes still reads the mock (`likesReceived`, GET social /likes) -> GET /profile/likes
-- [ ] "Profiles I visited" (visit history): no screen yet -> GET /profile/visited
+- [x] "Who liked me": Activity > Likes reads GET /profile/likes (username + picture only: the sheet loads the rest)
+- [x] "Profiles I visited" (visit history): Activity > You visited reads GET /profile/visited (on demand; refetched after you open a profile)
 - [ ] Date of birth editable in Me (GitHub sign-ups have none, and the age shown everywhere depends on it): PATCH /profile accepts `dateOfBirth`, the frontend payload does not send it
 - [ ] `profileComplete` (src/wb/functions.ts) checks less than the backend's `profile_is_complete` (last name, date of birth, profile picture are missing): align them, or onboarding lets through a profile the backend rejects
 - [x] Remove `createMissingProfile` / `profileCreate` (POST /profile): that route no longer exists (only /internal/create, blocked by the gateway), so the "heal" path always failed
 
 ### IV.4 Research
 - [x] Search from the shell's top bar (src/features/search): name (`q`) plus the deck's filters (age range, distance, min fame, tags = ALL of them, sort in the browser) -> GET /profile/search; a result opens the profile sheet
-- [ ] Search by gender / preference (`genders`, `preferences`) and a fame / distance range (`maxFame`, `minDistanceKm`): accepted by GET /profile/search, no control yet
+- [x] Search by gender / preference (`genders`, `preferences`): chips in the search's filter sheet
+- [ ] A fame / distance range in the search (`maxFame`, `minDistanceKm`): accepted by GET /profile/search, no control yet
 
 ### IV.5 Profile view
-- [ ] Blocked users list + unblock in Me: GET /profile/blocks, DELETE /profile/:id/block
-- [ ] Block from chat / matches still goes to the mock (POST social /blocks) -> POST /profile/:id/block
-- [ ] Unmatch from chat still goes to the mock (DELETE social /matches/:id) -> DELETE /profile/:id/like
+- [x] Blocked users list + unblock in Me > Account: GET /profile/blocks, DELETE /profile/:id/block
+- [x] Block from chat / matches: POST /profile/:id/block (the reason picker is gone: the route takes none)
+- [x] Unmatch from chat: DELETE /profile/:id/like
 
 ### IV.6 Chat (real time, <= 10 s)
-- [ ] Matches page: GET /profile/matches instead of GET social /matches
-- [ ] Conversation list: GET /notification/chat
-- [ ] History: GET /notification/chat/:chatId (`?after=` for the messages since the last one)
-- [ ] Send: POST /notification/chat/message `{ toUserId, content }`
-- [ ] Mark read: POST /notification/chat/:chatId/seen
-- [ ] Live messages: socket events `message`, `chat-seen`
-- [ ] "New message" visible from any page: unread badge on the Matches tab from real data
-- [ ] After a real match, "Message" in the match moment should open the real conversation (today it goes to /matches)
+- [x] Matches page: GET /profile/matches, joined with GET /chat for the last message
+- [x] Conversation list: GET /chat
+- [x] History: GET /chat/:chatId, whole on open, then only the new messages (`?after=`) on each message sent or received
+- [x] Send: POST /chat/message `{ toUserId, content }`
+- [x] Mark read: POST /chat/:chatId/seen (on open, and on each message received in the open chat)
+- [x] Live messages: socket events `message`, `chat-seen`
+- [ ] "New message" visible from any page: the Matches tab badge counts messages received over the socket since the page loaded; it starts at 0 on every load (backend gap below)
+- [x] After a real match, "Message" in the match moment opens the conversation (`/chat/:userId`)
 
 ### IV.7 Notifications (real time, <= 10 s)
-- [ ] Listen on the socket (src/wb/realtime.ts only keeps it open for the online count today): `profile-like`, `profile-view`, `message`, `match`, `unmatch` (+ `event-invite`, `event-accept`, `event-decline`, `event-cancel` for the calendar)
-- [ ] Unread notifications visible from any page (bell + count in the shell); a list of the last notifications
-- [ ] Refresh the affected nodes on each event (likes, viewers, matches, matchesMap, chat)
-- [ ] Remove `mockEvents$` and the typing indicator (the backend has no `typing` event) or ask for one
+- [x] Listen on the socket (src/wb/realtime.ts): `profile-like`, `profile-view`, `message`, `match`, `unmatch`, `chat-seen`
+- [x] Calendar events on the socket: `event-invite`, `event-accept`, `event-decline`, `event-cancel` -> a toast each (who, the date's title and start, "Open chat"); they refresh nothing, since no screen shows the calendar yet
+- [ ] Unread notifications visible from any page (bell + count in the shell); a list of the last notifications (toasts only today)
+- [x] Refresh the affected nodes on each event (likes, viewers, connections, chat list, open chat, matchesMap)
+- [x] Remove `mockEvents$` and the typing indicator (the backend has no `typing` event)
 
 ### General
-- [ ] Remove src/mock and the `social` service once the items above are done (and `resetDemoData`, "Reset demo" in Me)
+- [x] Remove src/mock and the `social` service (and `resetDemoData`, "Reset demo" in Me)
+- [x] Realtime never connected behind the Vite proxy (SAL: "problemi con i ws"): `io('/api/notification')` made `/api/notification` the namespace and connected to `/socket.io`, which Vite does not forward (it answered its index.html). The socket now connects to namespace `/notification` on path `/api/socket.io` (`socketTarget` in src/wb/realtime.ts)
+- [x] Unnecessary / duplicate requests (SAL 12/11): only what the shell shows loads at sign-in (profile, matches, chat list, likes); the deck, interests, viewers, visits, blocks and the map load when a screen asks (`useLoad`), StrictMode no longer doubles them, an opened profile is fetched (and the visit recorded) once, the `match` / `unmatch` echo of your own action no longer refreshes the lists a second time, GET /notification/online is no longer called (nothing showed it)
 - [ ] No unhandled error in the console with the real backend (every page, logged in and out)
 - [ ] Check every page on Firefox and Chrome, and on a phone width
 
 ## Bonus 
 - [x] Interactive map of users (/map)
 - [x] GitHub OAuth
-- [ ] Calendar: plan dates with a match (title, description, place as coordinates, date and time): GET /profile/calendar, POST /profile/calendar/event, POST .../:eventId/accept | decline | cancel, socket `event-*`
+- [ ] Calendar: plan dates with a match (title, description, place as coordinates, date and time): GET /profile/calendar, POST /profile/calendar/event, POST .../:eventId/accept | decline | cancel (the socket `event-*` toasts are done; accepting or declining an invite needs this screen)
 - [ ] Photo gallery: drag-and-drop upload, crop / rotate / filters
 - [ ] Second OAuth provider
 - [ ] Video / audio chat
@@ -70,41 +74,23 @@
 ### Backend endpoints the frontend does not call yet
 | Endpoint | For |
 |---|---|
-| GET /profile/likes | who liked me (IV.2) |
-| GET /profile/visited | my visit history (IV.2) |
-| GET /profile/matches | connections list (IV.6) |
-| GET /profile/search | search (IV.4): `q`, `minAge`, `maxAge`, `maxDistanceKm`, `minFame`, `tags` sent from the top bar; `genders`, `preferences`, `maxFame`, `minDistanceKm` still unused |
-| GET /profile/blocks, DELETE /profile/:id/block | blocked list, unblock |
-| GET /notification/chat | conversation list |
-| GET /notification/chat/:chatId | conversation history |
-| POST /notification/chat/message | send a message |
-| POST /notification/chat/:chatId/seen | mark a conversation read |
+| GET /profile/search | search (IV.4): `maxFame`, `minDistanceKm` still unused (everything else is sent) |
 | GET /profile/calendar, POST /profile/calendar/event, POST /profile/calendar/event/:eventId/accept, /decline, /cancel | calendar (bonus) |
-| socket.io events (see NotificationTypes.ts) | live notifications and chat |
-
-### Frontend calls that go to the mock (to replace)
-| Today (social mock) | Real endpoint |
-|---|---|
-| GET /likes | GET /profile/likes |
-| GET /matches | GET /profile/matches (+ GET /notification/chat for the last message) |
-| GET /matches/:matchId/messages | GET /notification/chat/:chatId |
-| POST /messages | POST /notification/chat/message |
-| DELETE /matches/:matchId | DELETE /profile/:id/like |
-| POST /blocks | POST /profile/:id/block |
-| POST /swipes (answering a like on Activity) | POST /profile/:id/like or /pass |
-| GET /profiles/:userId | GET /profile/:userId |
-| POST /reset | none (demo only: remove) |
+| GET /notification/online | a global count of open sockets: nothing shows it, so it is not called |
 
 ### Frontend calls that are broken
 - [x] POST /profile (`profileCreate`, `actions.createMissingProfile`): no such route any more -> removed
 
 ### Backend gaps (missing or incomplete for the screens above)
-- [ ] GET /profile/matches carries no `chatId`, and GET /notification/chat only lists chats that already have a message (INNER JOIN LATERAL on messages): a new match has no chat id to open its history with -> add `chatId` to the matches list (the chat row exists from the match)
-- [ ] POST /notification/chat/message answers only `{ delivered }`: return the stored message (messageId, chatId, timestamp, status) so the sender can show it without refetching
-- [ ] GET /notification/chat has no unread count (comment in ChatListItem.ts): needed for the badge "new message from any page"
+- [ ] GET /profile/matches carries no `chatId`, and GET /chat only lists chats that already have a message (INNER JOIN LATERAL on messages): a new match has no chat id to open its history with -> add `chatId` to the matches list (the chat row exists from the match)
+- [ ] POST /chat/message answers only `{ delivered }`: return the stored message (messageId, chatId, timestamp, status) so the sender can show it without refetching
+- [ ] GET /chat has no unread count (comment in ChatListItem.ts): needed for the badge "new message from any page"
 - [ ] Calendar: no endpoint to EDIT an event (title, description, location as coordinates, date and time); only create / accept / decline / cancel
 - [ ] No notifications list / mark-read endpoint: pending notifications are only replayed on reconnect, so the unread count must be kept by the client (or add GET /notification/notifications + POST .../read)
 - [ ] GET /profile/viewers and GET /profile/likes carry no date (when did they view / like)
+- [ ] Swagger is wrong for GET /profile/viewers and GET /profile/likes: their DTOs say `viewerId` / `likerId`, the wire sends `userId` (StdPayload); the frontend follows the wire
 - [ ] No `typing` socket event (the chat UI has a typing indicator)
 - Note: an unlike between connected users sends `unmatch` to both (`profile-unlike` is unused): the frontend must listen on `unmatch` for IV.7 "a connected user unlikes them"
-- [ ] Untested here (no Docker): POST /profile/:id/like now returns `{ liked, matched }`; build the profile service once and try it
+- [ ] POST /profile/:id/like answers an EMPTY body: the controller discards what the service returns, and the service returns only `{ liked: true }` (`nowMatched` is computed but not sent). The frontend expects `{ liked, matched }`; meanwhile it takes the `match` the backend pushes to the liker (before answering) as the match, or, without the socket, whether the person had liked you first.
+- [ ] The profile service logs "My likes requested" for GET /profile/viewers too (copy-paste in `getProfileViewers`, app.service.ts): in the logs a visitors load looks like a second likes load
+- [ ] GET /auth/validate only reads the access cookie (15 min) and never the refresh token (7 days): reloading the app after 15 idle minutes looks signed out, though the session could be refreshed. Fix in /auth/validate (try the refresh token) or have the frontend try POST /auth/refresh once at boot when the probe says invalid.

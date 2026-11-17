@@ -1,15 +1,16 @@
 /**
  * The state layer's public surface (docs/ARCHITECTURE.md §4.6). Screens import from `@/wb` only.
  *
- * - Hooks: `useNodeValue`, `useNode`, `useNodeStatus`, `useFilters`.
- * - Imperative: `getNodeValue`, `setNode`, `node$`, `getNodeStatus`, `nodeStatus$`, `refresh`, `run`.
+ * - Hooks: `useNodeValue`, `useNode`, `useNodeStatus`, `useLoad`, `useFilters`.
+ * - Imperative: `getNodeValue`, `setNode`, `node$`, `getNodeStatus`, `nodeStatus$`, `load`, `refresh`, `run`.
  * - `actions`: the flows screens call.
  * - `realtime$`.
- * - Boot (main.tsx only): `installStoreHttp`, `startStore`, `getViewerId`, `startRealtime`.
+ * - Boot (main.tsx only): `installStoreHttp`, `startStore`, `startRealtime`.
  */
 export { actions, MAX_MESSAGE_LENGTH, type Actions, type RewindOutcome, type SwipeOutcome } from './actions'
-export { getViewerId, installStoreHttp } from './boot'
+export { installStoreHttp } from './boot'
 export { refresh, run, type RunArgs } from './commands'
+export { load, REVISIT_MS } from './demand'
 export {
   DEFAULT_DISCOVER_FILTERS,
   DISCOVER_SORTS,
@@ -19,7 +20,7 @@ export {
   type DiscoverFilters,
 } from './filters'
 export type { AuthStatus } from './functions'
-export { useFilters, useNode, useNodeStatus, useNodeValue, useSearchCriteria } from './hooks'
+export { useFilters, useLoad, useNode, useNodeStatus, useNodeValue, useSearchCriteria, type UseLoadOptions } from './hooks'
 export {
   DEFAULT_FILTERS,
   type CommandName,
@@ -27,6 +28,7 @@ export {
   type CommandResult,
   type Commands,
   type HttpNodeName,
+  type LazyNodeName,
   type NodeName,
   type NodeValue,
   type NodeValues,

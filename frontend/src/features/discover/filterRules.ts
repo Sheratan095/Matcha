@@ -1,6 +1,16 @@
 /** Ranges, labels and comparisons for the deck filters (the controls' limits, within the backend's). */
-import type { DiscoverSort } from '@/api/types'
+import type { DiscoverSort, Gender, SexualPreference } from '@/api/types'
 import { DEFAULT_DISCOVER_FILTERS, FILTER_LIMITS, type DiscoverFilters } from '@/wb'
+
+/** What the filter sheet edits: the deck's filters, plus who people are for the search (empty: anyone). */
+export interface SheetFilters extends DiscoverFilters {
+  genders?: Gender[]
+  preferences?: SexualPreference[]
+}
+
+function sameSet(a: readonly string[] = [], b: readonly string[] = []): boolean {
+  return a.length === b.length && a.every((item) => b.includes(item))
+}
 
 export const AGE_RANGE = { min: FILTER_LIMITS.age.min, max: 80 } as const
 export const DISTANCE_RANGE = { min: 5, max: FILTER_LIMITS.distance.max, step: 5 } as const
@@ -24,15 +34,16 @@ export const WIDEST: DiscoverFilters = {
   tags: [],
 }
 
-export function sameFilters(a: DiscoverFilters, b: DiscoverFilters): boolean {
+export function sameFilters(a: SheetFilters, b: SheetFilters): boolean {
   return (
     a.ageMin === b.ageMin &&
     a.ageMax === b.ageMax &&
     a.distance === b.distance &&
     a.fameMin === b.fameMin &&
     a.sort === b.sort &&
-    a.tags.length === b.tags.length &&
-    a.tags.every((tag) => b.tags.includes(tag))
+    sameSet(a.tags, b.tags) &&
+    sameSet(a.genders, b.genders) &&
+    sameSet(a.preferences, b.preferences)
   )
 }
 

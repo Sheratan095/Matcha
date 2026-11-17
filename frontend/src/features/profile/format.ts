@@ -1,5 +1,5 @@
 /** Small, pure helpers shared by the deck and the profile sheet. */
-import type { Card, DeckCard, Gender, OtherProfile, Profile, SexualPreference, UserPicture } from '@/api/types'
+import type { DeckCard, Gender, OtherProfile, Profile, ProfileRelation, SexualPreference, UserPicture, UserSummary } from '@/api/types'
 
 /** The profile picture, else the first one, else null. */
 export function mainPicture(profile: Pick<Profile, 'pictures'> | null | undefined): UserPicture | null {
@@ -24,9 +24,26 @@ export function cardName(card: Pick<DeckCard, 'firstName' | 'username'>): string
   return card.firstName?.trim() || card.username
 }
 
-/** True for a mocked social card (city, common tags...), not a real profile. */
-export function isCard(profile: Profile | Card): profile is Card {
-  return 'commonTags' in profile && Array.isArray((profile as Card).commonTags)
+/**
+ * What a list entry already tells about someone (username, picture), shaped as a profile: shown at
+ * once while `GET /profile/{userId}` loads the rest. Without a known relation, the sheet waits for the
+ * full profile before offering to like.
+ */
+export function summaryPreviewProfile(person: UserSummary, relation?: ProfileRelation): OtherProfile {
+  return {
+    userId: person.userId,
+    username: person.username,
+    firstName: null,
+    lastName: null,
+    gender: null,
+    sexualPreference: null,
+    biography: null,
+    interests: [],
+    pictures: person.profilePictureUrl ? [{ id: `preview-${person.userId}`, url: person.profilePictureUrl, isProfile: true }] : [],
+    createdAt: '',
+    updatedAt: '',
+    relation,
+  }
 }
 
 /**
@@ -35,21 +52,11 @@ export function isCard(profile: Profile | Card): profile is Card {
  */
 export function deckPreviewProfile(card: DeckCard): OtherProfile {
   return {
-    userId: card.userId,
-    username: card.username,
+    ...summaryPreviewProfile(card, { liked: false, likesYou: card.likesYou === true, matched: false }),
     firstName: card.firstName,
-    lastName: null,
-    gender: null,
-    sexualPreference: null,
-    biography: null,
-    interests: [],
-    pictures: card.profilePictureUrl ? [{ id: `preview-${card.userId}`, url: card.profilePictureUrl, isProfile: true }] : [],
-    createdAt: '',
-    updatedAt: '',
     age: card.age,
     fameRating: card.fameRating,
     distanceKm: card.distanceKm,
-    relation: { liked: false, likesYou: card.likesYou === true, matched: false },
   }
 }
 
@@ -95,10 +102,4 @@ export function identityText(profile: Pick<Profile, 'gender' | 'sexualPreference
   const parts = [profile.gender ? GENDER[profile.gender] : null, profile.sexualPreference ? INTO[profile.sexualPreference] : null]
   const text = parts.filter(Boolean).join(' · ')
   return text || null
-}
-
-/** "Alice, 27" / "Alice". */
-export function nameAndAge(profile: Profile | Card): string {
-  const name = displayName(profile)
-  return typeof profile.age === 'number' ? `${name}, ${profile.age}` : name
 }

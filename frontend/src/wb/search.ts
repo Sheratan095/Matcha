@@ -1,10 +1,17 @@
 /**
- * Search criteria: the name substring plus the deck's filters, each nullable (null = not sent = no
- * limit). Every request parameter is a selection node gated by `searchActive` (src/wb/nodes/search.ts):
+ * Search criteria: the name substring, the deck's filters and who people are (genders, preferences),
+ * each nullable or empty (= not sent = no limit). Every request parameter is a selection node gated by `searchActive` (src/wb/nodes/search.ts):
  * `writeSearch` closes the gate, writes what changed and opens it again, so a change of several
  * criteria is one request, and dropping every criterion ends the search.
  */
-import { MAX_SEARCH_QUERY_LENGTH, type DiscoverSort } from '@/api/types'
+import {
+  GENDERS,
+  MAX_SEARCH_QUERY_LENGTH,
+  SEXUAL_PREFERENCES,
+  type DiscoverSort,
+  type Gender,
+  type SexualPreference,
+} from '@/api/types'
 import { nextNonce } from './commands'
 import { DISCOVER_SORTS, FILTER_LIMITS, normaliseTags, parseTags } from './filters'
 import type { NodeName } from './nodes'
@@ -21,6 +28,10 @@ export interface SearchCriteria {
   fameMin: number | null
   /** Interest names a candidate must ALL carry (lowercase, without '#'); empty for any. */
   tags: string[]
+  /** The candidate's gender is any of these; empty for any. */
+  genders: Gender[]
+  /** The candidate's sexual preference is any of these (an unset one counts as 'both'); empty for any. */
+  preferences: SexualPreference[]
   /** Applied in the browser by `visibleSearch`: not a request parameter. */
   sort: DiscoverSort
 }
@@ -32,6 +43,8 @@ export const EMPTY_SEARCH: Readonly<SearchCriteria> = Object.freeze({
   distance: null,
   fameMin: null,
   tags: [],
+  genders: [],
+  preferences: [],
   sort: 'best' as DiscoverSort,
 })
 
@@ -43,8 +56,23 @@ export function hasSearchCriteria(criteria: SearchCriteria): boolean {
     criteria.ageMax !== null ||
     criteria.distance !== null ||
     criteria.fameMin !== null ||
-    criteria.tags.length > 0
+    criteria.tags.length > 0 ||
+    criteria.genders.length > 0 ||
+    criteria.preferences.length > 0
   )
+}
+
+/**
+ * The known values among `values`, without duplicates, in the canonical order of `known` (so the
+ * same choice always makes the same query value, and comparing two choices is comparing two lists).
+ */
+export function pickKnown<T extends string>(values: readonly string[], known: readonly T[]): T[] {
+  return known.filter((value) => values.includes(value))
+}
+
+/** A comma-separated query value -> its known entries. */
+function parseList<T extends string>(value: string | null | undefined, known: readonly T[]): T[] {
+  return value ? pickKnown(value.split(',').map((item) => item.trim().toLowerCase()), known) : []
 }
 
 export function searchCriteriaFrom(values: {
@@ -54,6 +82,8 @@ export function searchCriteriaFrom(values: {
   distance: number | null | undefined
   fameMin: number | null | undefined
   tags: string | null | undefined
+  genders: string | null | undefined
+  preferences: string | null | undefined
   sort: DiscoverSort | null | undefined
 }): SearchCriteria {
   return {
@@ -63,6 +93,8 @@ export function searchCriteriaFrom(values: {
     distance: values.distance ?? null,
     fameMin: values.fameMin ?? null,
     tags: parseTags(values.tags),
+    genders: parseList(values.genders, GENDERS),
+    preferences: parseList(values.preferences, SEXUAL_PREFERENCES),
     sort: values.sort ?? EMPTY_SEARCH.sort,
   }
 }
@@ -75,6 +107,8 @@ export function currentSearch(): SearchCriteria {
     distance: getNodeValue('searchDistance'),
     fameMin: getNodeValue('searchFameMin'),
     tags: getNodeValue('searchTags'),
+    genders: getNodeValue('searchGenders'),
+    preferences: getNodeValue('searchPreferences'),
     sort: getNodeValue('searchSort'),
   })
 }
@@ -98,16 +132,27 @@ export function searchProblem(criteria: SearchCriteria): string | null {
   if (ageMin !== null && ageMax !== null && ageMin > ageMax) return 'The minimum age cannot be above the maximum age.'
   if (distance !== null && (distance < km.min || distance > km.max)) return `The distance must be between ${km.min} and ${km.max} km.`
   if (fameMin !== null && (fameMin < fame.min || fameMin > fame.max)) return `The fame rating goes from ${fame.min} to ${fame.max}.`
+  if (criteria.genders.some((gender) => !GENDERS.includes(gender))) return 'Unknown gender.'
+  if (criteria.preferences.some((preference) => !SEXUAL_PREFERENCES.includes(preference))) return 'Unknown preference.'
   if (!DISCOVER_SORTS.includes(sort)) return `Unknown sort "${sort}".`
   if (!hasSearchCriteria(criteria)) return 'Type a name or pick a filter.'
   return null
 }
 
-function tagsValue(tags: readonly string[]): string | null {
-  return tags.length > 0 ? tags.join(',') : null
+/** A list as one comma-separated query value; null (not sent) when empty. */
+function listValue(list: readonly string[]): string | null {
+  return list.length > 0 ? list.join(',') : null
 }
 
-type ParameterNode = 'searchQuery' | 'searchAgeMin' | 'searchAgeMax' | 'searchDistance' | 'searchFameMin' | 'searchTags'
+type ParameterNode =
+  | 'searchQuery'
+  | 'searchAgeMin'
+  | 'searchAgeMax'
+  | 'searchDistance'
+  | 'searchFameMin'
+  | 'searchTags'
+  | 'searchGenders'
+  | 'searchPreferences'
 
 /**
  * Makes the nodes describe `next`, with at most one request: the sort is written at once (no
@@ -125,8 +170,12 @@ export function writeSearch(next: SearchCriteria): boolean {
   if (next.ageMax !== current.ageMax) writes.push(['searchAgeMax', next.ageMax])
   if (next.distance !== current.distance) writes.push(['searchDistance', next.distance])
   if (next.fameMin !== current.fameMin) writes.push(['searchFameMin', next.fameMin])
-  const tags = tagsValue(normaliseTags(next.tags))
-  if (tags !== tagsValue(current.tags)) writes.push(['searchTags', tags])
+  const tags = listValue(normaliseTags(next.tags))
+  if (tags !== listValue(current.tags)) writes.push(['searchTags', tags])
+  const genders = listValue(pickKnown(next.genders, GENDERS))
+  if (genders !== listValue(current.genders)) writes.push(['searchGenders', genders])
+  const preferences = listValue(pickKnown(next.preferences, SEXUAL_PREFERENCES))
+  if (preferences !== listValue(current.preferences)) writes.push(['searchPreferences', preferences])
 
   const active = getNodeValue('searchActive') != null
   if (!hasSearchCriteria(next)) {

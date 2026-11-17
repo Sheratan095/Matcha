@@ -7,8 +7,8 @@ const ME = 'me'
 const THEM = 'them'
 const NOW = new Date(2026, 9, 3, 18, 0).getTime()
 
-function message(id: string, senderId: string, minutesAgo: number, text = id): Message {
-  return { id, matchId: 'm1', senderId, text, sentAt: new Date(NOW - minutesAgo * 60_000).toISOString() }
+function message(id: string, senderId: string, minutesAgo: number, text = id, status: Message['status'] = 'sent'): Message {
+  return { id, senderId, text, sentAt: NOW - minutesAgo * 60_000, status }
 }
 
 function bubbles(items: ReturnType<typeof buildTimeline>['items']): MessageItem[] {
@@ -40,8 +40,13 @@ describe('buildTimeline', () => {
     ])
   })
 
-  it('marks my messages read once they answered, sent otherwise', () => {
-    const { items } = buildTimeline([message('a', ME, 10), message('b', THEM, 9), message('c', ME, 8)], [], THEM, NOW)
+  it('marks my messages read once the server says so, sent otherwise (delivered included)', () => {
+    const { items } = buildTimeline(
+      [message('a', ME, 10, 'a', 'read'), message('b', THEM, 9), message('c', ME, 8, 'c', 'delivered')],
+      [],
+      THEM,
+      NOW,
+    )
     expect(bubbles(items).map((item) => [item.key, item.status])).toEqual([
       ['a', 'read'],
       ['b', undefined],
@@ -93,18 +98,15 @@ describe('buildTimeline', () => {
 
 describe('icebreakersFor', () => {
   it('starts from shared interests, then theirs, then generic lines', () => {
-    const lines = icebreakersFor({
-      commonTags: ['board-games'],
-      interests: [
-        { id: '1', name: 'board-games' },
-        { id: '2', name: 'jazz' },
-      ],
-      city: 'Lyon',
-    })
+    const lines = icebreakersFor({ commonTags: ['board-games'], interests: ['board-games', 'jazz'] })
     expect(lines).toHaveLength(3)
     expect(lines[0]).toMatchObject({ tag: 'board-games' })
     expect(lines[0].text).toContain('board games')
     expect(lines[1]).toMatchObject({ tag: 'jazz' })
     expect(lines[2].tag).toBeNull()
+  })
+
+  it('falls back to generic lines when nothing about them is known', () => {
+    expect(icebreakersFor().map((line) => line.tag)).toEqual([null, null, null])
   })
 })

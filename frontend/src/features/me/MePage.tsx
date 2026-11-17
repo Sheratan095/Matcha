@@ -136,7 +136,7 @@ function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError
       </div>
 
       <ProfileSheet
-        target={previewing ? { userId: profile.userId, source: 'api' } : null}
+        target={previewing ? { userId: profile.userId } : null}
         onClose={() => setPreviewing(false)}
         hideMenu
       />

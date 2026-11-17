@@ -1,3 +1,12 @@
+/* ------------------------------------------------------------ blocked people */
+.blocked {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* ------------------------------------------------------------ about this build */
 .specs {
   display: grid;

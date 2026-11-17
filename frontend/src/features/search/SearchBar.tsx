@@ -1,6 +1,7 @@
 /**
  * The top bar's search: people by name, as you type, narrowed by the deck's filters (age range,
- * distance, minimum fame, interests, sort) edited in the deck's own filter sheet (`GET /profile/search`).
+ * distance, minimum fame, interests, sort) and by gender and preference, edited in the deck's own
+ * filter sheet (`GET /profile/search`).
  * The results drop down under the top bar, which anchors them; picking one opens the shared profile
  * sheet (that records a profile view, as opening a deck card does). Shown to a complete profile only:
  * the backend answers 403 to anyone without a location.
@@ -14,6 +15,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { MAX_SEARCH_QUERY_LENGTH, type ApiError, type DeckCard } from '@/api/types'
 import { FilterSheet } from '@/features/discover/FilterSheet'
+import type { SheetFilters } from '@/features/discover/filterRules'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import { cardName, deckPreviewProfile, distanceText } from '@/features/profile/format'
 import { Avatar, Button, CountBadge, cx, IconPin, IconSearch, IconSliders, IconX, Spinner } from '@/ui'
@@ -25,7 +27,6 @@ import {
   useNodeStatus,
   useNodeValue,
   useSearchCriteria,
-  type DiscoverFilters,
 } from '@/wb'
 import { activeFilterCount, filterSummary, formatDistance, formatFame, fromSheetFilters, OPEN_FILTERS, toSheetFilters } from './searchFilters'
 import s from './SearchBar.module.css'
@@ -110,7 +111,7 @@ export function SearchBar() {
   }
 
   /** From the filter sheet: the new filters with the name in the box. A rejection shows in the sheet. */
-  const applyFilters = async (filters: DiscoverFilters) => {
+  const applyFilters = async (filters: SheetFilters) => {
     const next = fromSheetFilters(filters)
     if (!q && activeFilterCount({ ...next, q: null }) === 0) {
       actions.clearSearch()
@@ -211,7 +212,7 @@ export function SearchBar() {
 
   const pick = (card: DeckCard) => {
     setOpen(false)
-    setSheet({ userId: card.userId, source: 'api', preview: deckPreviewProfile(card) })
+    setSheet({ userId: card.userId, preview: deckPreviewProfile(card) })
   }
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -398,6 +399,7 @@ export function SearchBar() {
         filters={toSheetFilters(criteria)}
         apply={applyFilters}
         defaults={OPEN_FILTERS}
+        people
         title="Search filters"
         kicker="Narrow the search"
         tagsHint="People who have all of these."
