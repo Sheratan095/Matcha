@@ -1169,7 +1169,7 @@ export class DbService implements OnModuleInit
 		// Cancelled events are hidden from both sides. Declined ones only from the invitee:
 		// the inviter still sees them, so they know the invite was turned down.
 		const result = await this.pool.query(
-			`SELECT id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status
+			`SELECT id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status, created_at
 			 FROM calendar_events
 			 WHERE status <> 'cancelled'
 			   AND (inviter_id = $1 OR (invitee_id = $1 AND status <> 'declined'))
@@ -1192,7 +1192,7 @@ export class DbService implements OnModuleInit
 			 SELECT c.id, $1, $2, $3, $4, $5, $6, $7, $8, $9
 			 FROM chats c
 			 WHERE c.user_a = LEAST($1::uuid, $2::uuid) AND c.user_b = GREATEST($1::uuid, $2::uuid)
-			 RETURNING id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status`,
+			 RETURNING id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status, created_at`,
 			[event.inviterId, event.inviteeId, event.title, event.description,
 			 event.startTime, event.endTime,
 			 event.latitude, event.longitude, event.status]
@@ -1221,7 +1221,7 @@ export class DbService implements OnModuleInit
 				 OR ($3::varchar = 'cancelled' AND status <> 'cancelled'
 					 AND (inviter_id = $2 OR (invitee_id = $2 AND status = 'accepted')))
 			   )
-			 RETURNING id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status`,
+			 RETURNING id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status, created_at`,
 			[eventId, userId, newStatus]
 		);
 
@@ -1229,6 +1229,23 @@ export class DbService implements OnModuleInit
 			return (null);
 
 		return (CalendarEvent.fromDbRow(result.rows[0]));
+	}
+
+	// The accepted events whose start falls in (after, until]: what the start watcher announces on
+	// one tick. A pending invite nobody answered before its start is not a date, so it is left out.
+	async getEventsStartingBetween(after: Date, until: Date): Promise<CalendarEvent[]>
+	{
+		const result = await this.pool.query(
+			`SELECT id AS event_id, inviter_id, invitee_id, title, description, start_time, end_time, latitude, longitude, status, created_at
+			 FROM calendar_events
+			 WHERE status = 'accepted'
+			   AND start_time > $1
+			   AND start_time <= $2
+			 ORDER BY start_time ASC`,
+			[after, until]
+		);
+
+		return (result.rows.map(row => CalendarEvent.fromDbRow(row)));
 	}
 }
 

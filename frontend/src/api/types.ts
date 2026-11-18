@@ -346,12 +346,95 @@ export interface Match extends UserSummary {
   unread: number
 }
 
+// ---------------------------------------------------------------- calendar
+
+export const MAX_EVENT_TITLE_LENGTH = 100
+export const MAX_EVENT_DESCRIPTION_LENGTH = 500
+
+/**
+ * Where a date stands. `pending` until the invitee answers (`accepted` / `declined`); either side can
+ * call it off (`cancelled`): the inviter at any time, the invitee once they accepted. Nothing changes
+ * once it has started.
+ */
+export type CalendarStatus = 'pending' | 'accepted' | 'declined' | 'cancelled'
+
+/** One date of GET /profile/calendar and POST /profile/calendar/event (the backend's CalendarEvent). */
+export interface CalendarEvent {
+  eventId: string
+  /** Who sent the invite. */
+  inviterId: string
+  inviteeId: string
+  title: string
+  description: string | null
+  /** ISO 8601. */
+  startTime: string
+  endTime: string
+  status: CalendarStatus
+  /** Decimal degrees, full precision; both null when no place was set. */
+  latitude: number | null
+  longitude: number | null
+  /** ISO 8601: when the invite was sent. Left out by a backend older than the chat's date notes. */
+  createdAt?: string | null
+}
+
+/**
+ * GET /profile/calendar: earliest first, past ones included. Cancelled dates are never listed;
+ * declined ones only to the inviter (so they learn the answer).
+ */
+export interface CalendarResult {
+  events: CalendarEvent[]
+}
+
+/**
+ * POST /profile/calendar/event: only with a connection (403 otherwise), starting in the future and
+ * ending after it starts (400). Times carry an offset; latitude and longitude go together.
+ */
+export interface CreateEventPayload {
+  inviteeId: string
+  title: string
+  description?: string
+  startTime: string
+  endTime: string
+  latitude?: number
+  longitude?: number
+}
+
+/** POST /profile/calendar/event/:eventId/accept | decline | cancel. 404 when not allowed. */
+export interface EventAnswerResult {
+  success: boolean
+}
+
+/** A pinned spot (decimal degrees). */
+export interface Coordinates {
+  latitude: number
+  longitude: number
+}
+
+/** A date as the calendar draws it: the event, its times parsed, and the other person. */
+export interface PlannedDate {
+  id: string
+  title: string
+  description: string | null
+  /** Epoch milliseconds. */
+  startsAt: number
+  endsAt: number
+  /** Epoch milliseconds the invite was sent; null when the backend did not say. */
+  plannedAt: number | null
+  status: CalendarStatus
+  /** The signed-in user sent the invite. */
+  mine: boolean
+  /** The other side, from the connections (an empty username while they are not listed there). */
+  person: UserSummary
+  place: Coordinates | null
+}
+
 /**
  * What a calendar notification tells of: socket `event-invite`, `event-accept`, `event-decline`,
- * `event-cancel`. An invite reaches the invitee, an accept or a decline the inviter, a cancel the side
- * that did not cancel.
+ * `event-cancel`, `event-start`. An invite reaches the invitee, an accept or a decline the inviter, a
+ * cancel the side that did not cancel; the start of an accepted date reaches both sides (live only:
+ * the backend does not queue it), each told about the other.
  */
-export type CalendarAction = 'invite' | 'accept' | 'decline' | 'cancel'
+export type CalendarAction = 'invite' | 'accept' | 'decline' | 'cancel' | 'start'
 
 /** A date planned with a connection, as its notifications carry it. */
 export interface CalendarEventSummary {
@@ -370,5 +453,5 @@ export type RealtimeEvent =
   | { type: 'view'; person: UserSummary }
   /** `userId` read the chat: your messages there are now read. */
   | { type: 'seen'; chatId: string; userId: string }
-  /** `person` invited you to `event`, or accepted, declined or cancelled it. */
+  /** `person` invited you to `event`, or accepted, declined or cancelled it; or your date with them started. */
   | { type: 'calendar'; action: CalendarAction; person: UserSummary; event: CalendarEventSummary }

@@ -9,6 +9,7 @@
  * - synchronous and pure; every input may be `null` (reset / failed) or `undefined` (never loaded).
  */
 import type {
+  CalendarResult,
   ChatHistoryResult,
   ChatListResult,
   ConnectionsResult,
@@ -18,6 +19,7 @@ import type {
   Match,
   Message,
   OwnProfile,
+  PlannedDate,
   SessionCheck,
 } from '@/api/types'
 import type { FunctionDef } from './types'
@@ -148,6 +150,51 @@ export function chatMessages(history: ChatHistoryResult | null | undefined): Mes
   }))
 }
 
+/**
+ * The calendar as it is drawn: each event's times parsed and its other person found among the
+ * connections (dates only exist between connected people; one not listed yet gets an empty username),
+ * earliest first. An event whose times do not parse is left out. null while the calendar or the
+ * signed-in user is not known.
+ */
+export function dates(
+  calendar: CalendarResult | null | undefined,
+  connections: ConnectionsResult | null | undefined,
+  me: string | null | undefined,
+): PlannedDate[] | null {
+  if (!calendar || !Array.isArray(calendar.events) || !me) return null
+  const people = new Map((Array.isArray(connections?.matches) ? connections.matches : []).map((person) => [person.userId, person]))
+  const planned: PlannedDate[] = []
+  for (const event of calendar.events) {
+    const startsAt = Date.parse(event.startTime)
+    const endsAt = Date.parse(event.endTime)
+    if (Number.isNaN(startsAt) || Number.isNaN(endsAt)) continue
+    const mine = event.inviterId === me
+    const otherId = mine ? event.inviteeId : event.inviterId
+    const known = people.get(otherId)
+    const createdAt = typeof event.createdAt === 'string' ? Date.parse(event.createdAt) : Number.NaN
+    planned.push({
+      id: event.eventId,
+      title: event.title,
+      description: event.description?.trim() ? event.description : null,
+      startsAt,
+      endsAt,
+      plannedAt: Number.isNaN(createdAt) ? null : createdAt,
+      status: event.status,
+      mine,
+      person: {
+        userId: otherId,
+        username: known?.username ?? '',
+        profilePictureUrl: known?.profilePictureUrl ?? null,
+      },
+      place:
+        typeof event.latitude === 'number' && typeof event.longitude === 'number'
+          ? { latitude: event.latitude, longitude: event.longitude }
+          : null,
+    })
+  }
+  return planned.sort((a, b) => a.startsAt - b.startsAt)
+}
+
 export const FUNCTIONS: FunctionDef[] = [
   { name: 'sessionUserId', implementation: sessionUserId },
   { name: 'authStatus', implementation: authStatus },
@@ -158,4 +205,5 @@ export const FUNCTIONS: FunctionDef[] = [
   { name: 'matches', implementation: matches },
   { name: 'unreadCount', implementation: unreadCount },
   { name: 'chatMessages', implementation: chatMessages },
+  { name: 'dates', implementation: dates },
 ]

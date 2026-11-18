@@ -240,6 +240,29 @@ export class AppService
 		return ({ delivered });
 	}
 
+	// Both sides are told, each about the other. Ephemeral (store = false): a "your date has started"
+	// replayed hours later on reconnect would be stale, and the client shows a started date on its own.
+	async notifyEventStart(inviteeId: string, inviterId: string, eventId: string, title: string, startTime: string)
+	{
+		const about = async (userId: string): Promise<EventPayload> =>
+		({
+			userId:            userId,
+			username:          await this.dbService.getUsernameById(userId),
+			profilePictureUrl: await this.dbService.getProfilePictureUrl(userId),
+
+			eventId:           eventId,
+			title:             title,
+			startTime:         startTime,
+		});
+
+		const toInviter = await this.wsGateway.sendToUser(inviterId, NotificationType.EVENT_START, await about(inviteeId), false);
+		const toInvitee = await this.wsGateway.sendToUser(inviteeId, NotificationType.EVENT_START, await about(inviterId), false);
+
+		this.logger.log('notifyEventStart: sent EVENT_START notification for event ' + eventId + ' to users ' + inviterId + ' and ' + inviteeId);
+
+		return ({ delivered: toInviter || toInvitee });
+	}
+
 	async sendPrivateMessage(senderId: string, recipientId: string, content: string) : Promise<boolean>
 	{
 		if (senderId === recipientId)

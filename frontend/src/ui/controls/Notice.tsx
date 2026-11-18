@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { cx } from '../cx'
-import { IconCheck, IconInfo, IconWarning, IconX } from '../icons'
+import { IconCheck, IconRegMark, IconWarning, IconX } from '../icons'
 import type { Tone } from '../tones'
 import s from './Notice.module.css'
 
@@ -9,7 +9,7 @@ export type NoticeTone = 'error' | 'success' | 'info' | 'warning'
 const LOOK: Record<NoticeTone, { tone: Tone; icon: ReactNode; kicker: string }> = {
   error: { tone: 'strawberry', icon: <IconWarning size={20} strokeWidth={2.75} />, kicker: 'Misprint' },
   success: { tone: 'matcha', icon: <IconCheck size={20} strokeWidth={3.5} />, kicker: 'Good to go' },
-  info: { tone: 'blue', icon: <IconInfo size={20} strokeWidth={2.75} />, kicker: 'Note' },
+  info: { tone: 'blue', icon: <IconRegMark size={20} strokeWidth={2.75} />, kicker: 'Note' },
   warning: { tone: 'yolk', icon: <IconWarning size={20} strokeWidth={2.75} />, kicker: 'Heads up' },
 }
 

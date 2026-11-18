@@ -1,5 +1,5 @@
 import { Subject } from 'rxjs'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LOCAL_ERROR } from '@/api/http'
 import type { RealtimeEvent } from '@/api/types'
 import { API_URL } from '@/config'
@@ -8,7 +8,7 @@ import { load, REVISIT_MS } from './demand'
 import { DEFAULT_DISCOVER_FILTERS } from './filters'
 import { realtime$, startRealtime } from './realtime'
 import { getNodeStatus, getNodeValue, setNode } from './store'
-import { connect, deckCard, incoming, ME, person } from './testing/fakeBackend'
+import { connect, deckCard, incoming, invitedBy, ME, person } from './testing/fakeBackend'
 import { nestError, reply } from './testing/fakeServer'
 import { flush, startTestStore, type TestStore } from './testing/harness'
 
@@ -790,5 +790,192 @@ describe('search', () => {
     await actions.blockUser('ann')
     await flush(30)
     expect(sent()).toHaveLength(2)
+  })
+})
+
+describe('calendar', () => {
+  const CALENDAR = `${API_URL}/profile/calendar`
+  const CREATE = `${API_URL}/profile/calendar/event`
+  const HOUR = 60 * 60 * 1000
+  const calendarLoads = () => server().sent('GET', CALENDAR).length
+
+  /** A plan with ann (a connection) tomorrow evening. */
+  const plan = (patch: Partial<Parameters<typeof actions.planDate>[0]> = {}) => {
+    const startsAt = Date.now() + 24 * HOUR
+    return { inviteeId: 'ann', title: 'Drinks', startsAt, endsAt: startsAt + 2 * HOUR, ...patch }
+  }
+
+  it('loads at sign-in, each date with its other person and whose invite it is', async () => {
+    connect(store.backend, 'bea')
+    const invite = invitedBy(store.backend, 'ann', { description: '  ', latitude: 41.9, longitude: 12.5 })
+    await signIn()
+    expect(calendarLoads()).toBe(1)
+    expect(getNodeValue('dates')).toEqual([
+      {
+        id: invite.eventId,
+        title: 'Drinks',
+        description: null,
+        startsAt: Date.parse(invite.startTime),
+        endsAt: Date.parse(invite.endTime),
+        plannedAt: Date.parse(invite.createdAt ?? ''),
+        status: 'pending',
+        mine: false,
+        person: person('ann'),
+        place: { latitude: 41.9, longitude: 12.5 },
+      },
+    ])
+  })
+
+  it('a date without its creation time (an older backend) has no plannedAt', async () => {
+    invitedBy(store.backend, 'ann', { createdAt: undefined })
+    await signIn()
+    expect(getNodeValue('dates')?.[0].plannedAt).toBeNull()
+  })
+
+  it('planDate refuses what the backend would, without a request', async () => {
+    connect(store.backend, 'ann')
+    await signIn()
+    const refused = [
+      plan({ title: '   ' }),
+      plan({ title: 'x'.repeat(101) }),
+      plan({ description: 'x'.repeat(501) }),
+      plan({ startsAt: Date.now() - HOUR, endsAt: Date.now() + HOUR }),
+      plan({ endsAt: Date.now() + 23 * HOUR }),
+      plan({ startsAt: Number.NaN }),
+      plan({ place: { latitude: 91, longitude: 0 } }),
+      plan({ inviteeId: '../x' }),
+    ]
+    for (const attempt of refused) await expect(actions.planDate(attempt)).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    expect(server().sent('POST', CREATE)).toHaveLength(0)
+  })
+
+  it('planDate sends the times in UTC with their offset and resolves once the date is listed', async () => {
+    connect(store.backend, 'ann')
+    await signIn()
+    const startsAt = new Date(Date.now() + 48 * HOUR)
+    const event = await actions.planDate({
+      inviteeId: 'ann',
+      title: '  Drinks   by the river ',
+      description: ' Bring a jacket ',
+      startsAt,
+      endsAt: startsAt.getTime() + 2 * HOUR,
+      place: { latitude: 41.9, longitude: 12.5 },
+    })
+    expect(server().sent('POST', CREATE)[0].body).toEqual({
+      inviteeId: 'ann',
+      title: 'Drinks by the river',
+      description: 'Bring a jacket',
+      startTime: startsAt.toISOString(),
+      endTime: new Date(startsAt.getTime() + 2 * HOUR).toISOString(),
+      latitude: 41.9,
+      longitude: 12.5,
+    })
+    expect(startsAt.toISOString()).toMatch(/Z$/)
+    expect(getNodeValue('dates')).toMatchObject([{ id: event.eventId, mine: true, status: 'pending', person: person('ann') }])
+  })
+
+  it('planDate sends no description or place when there is none, and rejects with the 403 for a stranger', async () => {
+    connect(store.backend, 'ann')
+    await signIn()
+    await actions.planDate(plan({ description: '  ', place: null }))
+    expect(server().sent('POST', CREATE)[0].body).not.toHaveProperty('description')
+    expect(server().sent('POST', CREATE)[0].body).not.toHaveProperty('latitude')
+    await expect(actions.planDate(plan({ inviteeId: 'cid' }))).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('the invitee accepts or declines; a declined invite leaves their calendar', async () => {
+    const first = invitedBy(store.backend, 'ann')
+    const second = invitedBy(store.backend, 'bea')
+    await signIn()
+    await actions.answerDate(first.eventId, 'accept')
+    expect(server().sent('POST', `${CREATE}/${first.eventId}/accept`)).toHaveLength(1)
+    await actions.answerDate(second.eventId, 'decline')
+    expect(server().sent('POST', `${CREATE}/${second.eventId}/decline`)).toHaveLength(1)
+    expect(getNodeValue('dates')?.map((date) => [date.id, date.status])).toEqual([[first.eventId, 'accepted']])
+    // accepted, it can be called off; it is gone for both
+    await actions.answerDate(first.eventId, 'cancel')
+    expect(getNodeValue('dates')).toEqual([])
+  })
+
+  it('answerDate rejects with the backend error when the move is not yours, and refuses unsafe ids', async () => {
+    const invite = invitedBy(store.backend, 'ann')
+    await signIn()
+    // a pending invite is declined, not cancelled, by the invitee
+    await expect(actions.answerDate(invite.eventId, 'cancel')).rejects.toMatchObject({ status: 404 })
+    await expect(actions.answerDate('../x', 'accept')).rejects.toMatchObject({ code: LOCAL_ERROR.INVALID })
+    expect(getNodeValue('dates')?.[0].status).toBe('pending')
+  })
+
+  it('a calendar notification reloads the calendar once, and nothing when it already shows it', async () => {
+    await signIn()
+    const source = new Subject<RealtimeEvent>()
+    const stop = startRealtime({ events$: source, socket: false })
+    // past the replay window that follows a connection: these events are live
+    const realNow = Date.now.bind(Date)
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => realNow() + 5000)
+    try {
+      const before = calendarLoads()
+      const invite = invitedBy(store.backend, 'ann')
+      const told = (action: 'invite' | 'cancel') =>
+        source.next({ type: 'calendar', action, person: person('ann'), event: { id: invite.eventId, title: 'Drinks', startsAt: null } })
+      told('invite')
+      await flush(40)
+      expect(calendarLoads() - before).toBe(1)
+      expect(getNodeValue('dates')?.map((date) => date.id)).toEqual([invite.eventId])
+      // the same invite again (a replay): it is listed already
+      told('invite')
+      await flush(40)
+      expect(calendarLoads() - before).toBe(1)
+      // ann calls it off
+      store.backend.state.events = []
+      told('cancel')
+      await flush(40)
+      expect(calendarLoads() - before).toBe(2)
+      expect(getNodeValue('dates')).toEqual([])
+    } finally {
+      clock.mockRestore()
+      stop()
+    }
+  })
+
+  it('breaking a connection takes its dates away: an unmatch reloads the calendar, a match does not', async () => {
+    invitedBy(store.backend, 'ann')
+    await signIn()
+    const source = new Subject<RealtimeEvent>()
+    const stop = startRealtime({ events$: source, socket: false })
+    const before = calendarLoads()
+    connect(store.backend, 'bea')
+    source.next({ type: 'match', person: person('bea') })
+    await flush(40)
+    expect(calendarLoads()).toBe(before)
+    store.backend.state.connections = store.backend.state.connections.filter((entry) => entry.userId !== 'ann')
+    store.backend.state.events = []
+    source.next({ type: 'unmatch', person: person('ann') })
+    await flush(40)
+    expect(calendarLoads() - before).toBe(1)
+    expect(getNodeValue('dates')).toEqual([])
+    stop()
+  })
+
+  it('unmatching someone you have dates with reloads the calendar; someone without dates leaves it alone', async () => {
+    invitedBy(store.backend, 'ann')
+    connect(store.backend, 'bea')
+    await signIn()
+    const before = calendarLoads()
+    await actions.unlikeUser('bea')
+    await flush(30)
+    expect(calendarLoads()).toBe(before)
+    await actions.unlikeUser('ann')
+    await flush(30)
+    expect(calendarLoads() - before).toBe(1)
+    expect(getNodeValue('dates')).toEqual([])
+  })
+
+  it('a sign-out empties the calendar', async () => {
+    invitedBy(store.backend, 'ann')
+    await signIn()
+    await actions.logout()
+    expect(getNodeValue('calendar')).toBeNull()
+    expect(getNodeValue('dates')).toBeNull()
   })
 })

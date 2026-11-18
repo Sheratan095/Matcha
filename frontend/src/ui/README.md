@@ -331,7 +331,7 @@ focus restored, `aria-modal`, exit animation. Props: `open`, `onClose`, `title` 
 ## Chat
 
 **`ChatThread`**: the column of messages (`role="log"`). Props: `children`, `label`, `className`. Put it inside
-`Screen` (which scrolls); scroll to the bottom yourself on new messages.
+a `Pane` or a `Screen` (which scroll); scroll to the bottom yourself on new messages.
 
 **`ChatBubble`**: Props: `side` `'mine'|'theirs'`, `children`, `time` (preformatted), `status`
 `'sending'|'sent'|'read'|'failed'` (mine only), `position` `'single'|'first'|'middle'|'last'` (runs from one side),
@@ -346,17 +346,22 @@ focus restored, `aria-modal`, exit animation. Props: `open`, `onClose`, `title` 
 
 **`AppShell`**: the signed-in frame. Phones: sticky top bar (wordmark + `actions`), content, sticky bottom tab bar.
 From 960px of its own width: side rail (wordmark, tabs, colour bar), the content as a phone-sized sheet on a cutting
-mat with crop marks, and `poster` lettering in the margin. Props: `tabs: {to, label, icon, badge?, end?}[]`,
+mat with crop marks, and `poster` lettering in the margin. Props: `tabs: {to, label, icon, badge?, end?, active?}[]`
+(`active` lights a tab on a route outside its own path),
 `children`, `actions`, `search` (a search bar between the wordmark and the actions; the top bar is positioned, so a
 drop-down inside the bar can span the column, and on phones under 480px the wordmark hides while the bar carries
 `data-search-expanded`), `banner` (strip above everything, e.g. a back link), `poster` (margin word, e.g.
-the section name), `homeTo` ("/discover"), `hideTabBar`, `flush` (no side padding, for the deck). Use it in
-`AppLayout` with `<Outlet />` as children.
-`<AppShell tabs={[{ to: '/discover', label: 'Discover', icon: <IconCards /> }, { to: '/matches', label: 'Matches', icon: <IconChat />, badge: unread }]} poster="discover"><Outlet /></AppShell>`
+the section name), `homeTo` ("/discover"), `hideTabBar`, `hideTopBar` (phones only: wide screens keep the top bar),
+`flush` (no side padding, for the deck), `fit` (the shell is exactly the viewport and the content, a `Pane`,
+scrolls inside it: the chat). Use it in `AppLayout` with `<Outlet />` as children.
+`<AppShell tabs={[{ to: '/discover', label: 'Discover', icon: <IconRegMark /> }, { to: '/matches', label: 'Matches', icon: <IconChat />, badge: unread }]} poster="discover"><Outlet /></AppShell>`
 
-**`Screen`**: full-height screen outside the shell (the chat): fixed header, scrolling middle, fixed footer, same
-sheet-on-mat look on wide screens. Props: `header`, `footer`, `children`, `poster`, `banner`, `className`.
-`<Screen header={<PageHeader size="compact" back="/matches" title={name} />} footer={<ChatComposer … />}><ChatThread>…</ChatThread></Screen>`
+**`Pane`**: a page inside a `fit` AppShell (the chat): fixed header, scrolling middle, fixed footer, with the rail
+and the top bar still beside it on wide screens. Props: `header`, `footer`, `children`, `className`.
+`<Pane header={<PageHeader size="compact" back="/matches" title={name} />} footer={<ChatComposer … />}><ChatThread>…</ChatThread></Pane>`
+
+**`Screen`**: the same, as a full-height screen outside the shell (onboarding), with the sheet-on-mat look on wide
+screens. Props: `header`, `footer`, `children`, `poster`, `banner`, `className`.
 
 **`PageHeader`**: Props: `title`, `kicker`, `back` (route string or handler), `backLabel`, `actions`, `size`
 `'lg'|'md'|'compact'`, `print` (Headline treatment, default riso), `children` (under the title: Tabs, a lead), `className`.
@@ -383,11 +388,16 @@ Props: `title`, `kicker` ("Admit one"), `intro`, `children` (the form fields and
 `IconArrowRight`, `IconChevronLeft`, `IconChevronRight`, `IconChevronDown`, `IconChevronUp`, `IconMore`, `IconCheck`,
 `IconEye`, `IconEyeOff`, `IconBolt`, `IconPin`, `IconLogout`, `IconMail`, `IconLock`, `IconGithub`, `IconTrash`,
 `IconPlus`, `IconMinus`, `IconInfo`, `IconWarning`, `IconSearch`, `IconBell`, `IconShield`, `IconBlock`, `IconPencil`,
-`IconFlame`, `IconImage`, `IconClock`, `IconRefresh`, `IconCup`, `IconGlobe`, `IconFlag`, `IconExternal`,
-`IconSparkle`, `IconTicket`, `IconCards`. `ICONS` maps short names (`heart`, `x`, …) to components; types `IconProps`,
-`IconComponent`, `IconName`. Filled icons with a hole (settings, camera, pin, mail, lock, send, ticket) paint the hole
-with `var(--icon-hole)` (default card stock): set it to the background colour when that is not paper.
-`<IconHeart filled size={20} />`
+`IconFlame`, `IconImage`, `IconClock`, `IconCalendar`, `IconRefresh`, `IconCup`, `IconGlobe`, `IconFlag`, `IconExternal`,
+`IconSparkle`, `IconTicket`, `IconCards`, `IconRegMark`. `ICONS` maps short names (`heart`, `x`, …) to components;
+types `IconProps`, `IconComponent`, `IconName`. Filled icons with a hole (settings, camera, pin, mail, lock, send,
+ticket) paint the hole with `var(--icon-hole)` (default card stock): set it to the background colour when that is not
+paper (`IconCalendar` filled paints its header rule the same way). `<IconHeart filled size={20} />`
+
+`IconRegMark` is a registration mark: ring, crosshair and dot in `currentColor`. Its `filled` version is the colour
+cross, the one icon that is not a single colour: the four quadrants print blue, strawberry, yolk and ink-2 (override
+any of them with `--reg-c`, `--reg-m`, `--reg-y`, `--reg-k`). The app uses the empty version for "info" (the profile
+card's button, info notices, blue toasts) and as the Discover symbol (tab, "go to Discover" links).
 
 ## Helpers
 

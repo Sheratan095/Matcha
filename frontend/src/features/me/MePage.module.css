@@ -14,6 +14,9 @@
 .panel {
   outline-offset: 4px;
   border-radius: var(--r-md);
+  /* A tab switch snaps here (the URL hash names the panel). The margin leaves room for the tab strip
+     above it: the kit's 46px tabs inside the house outline, plus the gap. */
+  scroll-margin-top: calc(46px + 2 * var(--bw) + var(--s-5));
 }
 
 .photosIntro {

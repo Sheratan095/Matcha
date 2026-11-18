@@ -1,7 +1,7 @@
 /** The top of a conversation: who you are connected with, and, while it is empty, a few ways to start. */
 import { useId } from 'react'
 import type { Match } from '@/api/types'
-import { Headline, IconArrowRight, Label, PhotoFrame, Serial, Stamp } from '@/ui'
+import { Button, Headline, IconArrowRight, IconCalendar, Label, PhotoFrame, Serial, Stamp } from '@/ui'
 import { icebreakersFor } from './icebreakers'
 import { pad2 } from './time'
 import s from './ChatPage.module.css'
@@ -12,6 +12,8 @@ export interface MatchIntroProps {
   /** The conversation has no message yet: show the icebreakers. */
   empty: boolean
   onIcebreaker: (text: string) => void
+  /** Offered under the icebreakers: skip the small talk and invite them. */
+  onPlanDate?: () => void
 }
 
 /** A serial for the match ticket, stable per person. */
@@ -21,7 +23,7 @@ function ticketNumber(id: string): number {
   return hash % 1_000_000
 }
 
-export function MatchIntro({ match, me, empty, onIcebreaker }: MatchIntroProps) {
+export function MatchIntro({ match, me, empty, onIcebreaker, onPlanDate }: MatchIntroProps) {
   const headingId = useId()
   const name = match.username
 
@@ -78,6 +80,12 @@ export function MatchIntro({ match, me, empty, onIcebreaker }: MatchIntroProps) 
           ))}
         </ul>
       </div>
+
+      {onPlanDate ? (
+        <Button variant="paper" icon={<IconCalendar size={18} />} onClick={onPlanDate} className={s.introPlan}>
+          Or plan a date
+        </Button>
+      ) : null}
     </section>
   )
 }

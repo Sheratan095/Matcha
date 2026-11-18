@@ -391,6 +391,15 @@ Success **200**: `{ "message": "Profile created", "userId": "<uuid>" }`. Errors:
 
 A normal frontend never needs this. It is the only way to give a GitHub-created user a profile row today (bug 9.3). It is an unauthenticated write and will presumably be closed off.
 
+#### Calendar — Auth: yes (all five)
+
+Dates between connected people (`012_calendar.sql`): each event hangs off the pair's chat, so an unmatch or a block deletes it.
+
+- **GET `/profile/calendar`** → `{ "events": CalendarEvent[] }`, earliest first, past ones included. Never the cancelled ones; the declined ones only for the inviter. `CalendarEvent` = `{ eventId, inviterId, inviteeId, title, description | null, startTime, endTime (ISO 8601), status: "pending" | "accepted" | "declined" | "cancelled", latitude | null, longitude | null, createdAt (ISO 8601, when the invite was sent) }`.
+- **POST `/profile/calendar/event`** body `{ inviteeId: uuid, title: 1-100 (one line), description?: ≤ 500, startTime, endTime (ISO 8601 with a mandatory offset, `Z` or `±hh:mm`), latitude?, longitude? (both or neither) }` → the stored `CalendarEvent` (`pending`), and `event-invite` to the invitee. 400 for yourself, a start in the past, an end not after the start, a lone coordinate; 403 unless you are connected; rate-limited at the gateway (20 an hour per user).
+- **POST `/profile/calendar/event/:eventId/accept`** \| **`/decline`** \| **`/cancel`** → `{ "success": true }`, and `event-accept` / `event-decline` to the inviter or `event-cancel` to the other side. Accept and decline: the invitee, from `pending`. Cancel: the inviter at any time, the invitee once accepted. Anything else is a 404; once the event has started, a 400.
+- No request: when an **accepted** event starts, both sides get `event-start` (the same `EventPayload`, each one about the other side). The profile service polls for it every 30 s (`apps/profile/src/calendar/eventStartWatcher.ts`), so it lands up to 30 s after the start. It is live only: not queued for someone offline, and a start that fell while the profile service was down is not announced.
+
 #### GET `/profile/health` — returns text `OK`.
 
 #### Pictures — see section 4 for the three picture endpoints.

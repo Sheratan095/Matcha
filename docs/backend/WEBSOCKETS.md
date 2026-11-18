@@ -101,10 +101,23 @@ interface IChatReadPayload {
 | `unmatch`                       | `POST /notify/profile-unlike`                  | `StdPayload` (the other user) | **both** users          | yes                |
 | `message`                       | `POST /chat/message`                           | `MessagePayload`     | message recipient               | yes                |
 | `chat-seen`                     | `GET /chat/:chatId` (opening a chat)           | `ChatReadPayload`    | the other participant           | **no** (ephemeral) |
+| `event-invite`                  | `POST /notify/event-invite`                    | `EventPayload` (inviter) | invitee                     | yes                |
+| `event-accept`                  | `POST /notify/event-accept`                    | `EventPayload` (invitee) | inviter                     | yes                |
+| `event-decline`                 | `POST /notify/event-decline`                   | `EventPayload` (invitee) | inviter                     | yes                |
+| `event-cancel`                  | `POST /notify/event-cancel` (`actorId` in the body) | `EventPayload` (who cancelled) | the side that did not cancel | yes          |
+| `event-start`                   | `POST /notify/event-start`                     | `EventPayload` (the other side) | **both** sides of an accepted event | **no** (ephemeral) |
 
 > `match` and `unmatch` are emitted to **both** participants, each receiving the *other* user in the
 > payload. `match` is a side effect of `POST /notify/profile-like` when the like completes a mutual
 > pair (`matched: true`); it is not a standalone endpoint.
+
+> Calendar events carry `EventPayload` (`packages/shared-types/src/wsPayloads/EventPayload.ts`): the
+> `StdPayload` of the person who acted (or, for `event-start`, the other side) plus `eventId`, `title`
+> and `startTime` (ISO 8601). The profile service sends invite / accept / decline / cancel as the
+> change is saved. Nothing else in the backend runs on a clock, so `event-start` comes from a poller in
+> the profile service (`apps/profile/src/calendar/eventStartWatcher.ts`): every 30 s it announces the
+> accepted events whose start passed since its previous pass. It is ephemeral: a date that started
+> while the recipient was offline, or while the profile service was down, is not announced late.
 
 ### Message status lifecycle
 

@@ -180,6 +180,18 @@ export class AppController
 		return ( await this.appService.notifyEventCancel(req.inviteeId, req.inviterId, req.actorId, req.eventId, req.title, req.startTime));
 	}
 
+	@Post('internal/notify/event-start')
+	@HttpCode(HttpStatus.OK)
+	@ApiOperation({ summary: 'Notify an event start - INTERNAL 🔒', description: "Pushes a 'event-start' notification to BOTH sides of an accepted event when it starts, each one told about the other. Live only: not queued for an offline user." })
+	@ApiBody({ type: EventNotifyDto })
+	@ApiResponse({ status: 200, type: EventNotifyResponseDto, description: 'Delivered to at least one live socket, or not (nothing is queued)' })
+	@ApiResponse({ status: 400, type: ErrorDto, description: 'Validation failed: missing or invalid fields' })
+	@ApiResponse({ status: 500, type: ErrorDto, description: 'Internal server error' })
+	async notifyEventStart(@Body() req: EventNotifyDto)
+	{
+		return ( await this.appService.notifyEventStart(req.inviteeId, req.inviterId, req.eventId, req.title, req.startTime));
+	}
+
 	@Post('chat/message')
 	@HttpCode(HttpStatus.OK)
 	@ApiOperation({ summary: 'Send a private message', description: "Send a private message to the specified user." })

@@ -12,6 +12,7 @@ export const DiscoverPage = lazy(() => import('@/features/discover/DiscoverPage'
 export const MatchesPage = lazy(() => import('@/features/matches/MatchesPage'))
 export const ChatPage = lazy(() => import('@/features/chat/ChatPage'))
 export const ActivityPage = lazy(() => import('@/features/activity/ActivityPage'))
+export const CalendarPage = lazy(() => import('@/features/calendar/CalendarPage'))
 export const MapPage = lazy(() => import('@/features/map/MapPage'))
 export const MePage = lazy(() => import('@/features/me/MePage'))
 export const StyleguidePage = lazy(() => import('@/ui/styleguide/StyleguidePage'))

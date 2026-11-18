@@ -103,6 +103,8 @@ export interface ShellTab {
   badge?: number
   /** Match the route exactly (NavLink `end`). */
   end?: boolean
+  /** Show the tab as current on a route outside its own path (a conversation under Matches). */
+  active?: boolean
 }
 
 export interface AppShellProps {
@@ -124,8 +126,34 @@ export interface AppShellProps {
   homeTo?: string
   /** Hide the bottom tab bar on phones (full-screen flows). */
   hideTabBar?: boolean
+  /** Hide the top bar on phones, for a page with its own header (a conversation). Wide screens keep it. */
+  hideTopBar?: boolean
   /** Remove the column's side padding (edge-to-edge content like the deck). */
   flush?: boolean
+  /**
+   * Fit the viewport: the shell stops growing with its content and the page scrolls inside it.
+   * The content is then a `Pane` (fixed header, scrolling middle, fixed footer).
+   */
+  fit?: boolean
+}
+
+/**
+ * A tab's link: current (lit, and `aria-current="page"`) on its own path, or wherever the tab says it is
+ * (`active`, a conversation under Matches), where NavLink alone would light it without announcing it.
+ */
+function TabLink({ tab, className, children }: { tab: ShellTab; className: string; children: ReactNode }) {
+  if (tab.active) {
+    return (
+      <Link to={tab.to} className={cx(className, s.active)} aria-current="page">
+        {children}
+      </Link>
+    )
+  }
+  return (
+    <NavLink to={tab.to} end={tab.end} className={({ isActive }) => cx(className, isActive && s.active)}>
+      {children}
+    </NavLink>
+  )
 }
 
 /**
@@ -142,11 +170,13 @@ export function AppShell({
   poster,
   homeTo = '/discover',
   hideTabBar,
+  hideTopBar,
   flush,
+  fit,
 }: AppShellProps) {
   return (
     <div className={s.shellRoot}>
-      <div className={cx(s.shell, hideTabBar && s.noTabs)}>
+      <div className={cx(s.shell, hideTabBar && s.noTabs, hideTopBar && s.noTop, fit && s.fit)}>
         <a href="#main" className={s.skip}>
           Skip to content
         </a>
@@ -158,11 +188,11 @@ export function AppShell({
           </Link>
           <nav className={s.railNav} aria-label="Sections">
             {tabs.map((t) => (
-              <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => cx(s.railLink, isActive && s.active)}>
+              <TabLink key={t.to} tab={t} className={s.railLink}>
                 <span className={s.railIcon}>{t.icon}</span>
                 <span className={s.railLabel}>{t.label}</span>
                 <CountBadge count={t.badge ?? 0} label="new" className={s.railBadge} />
-              </NavLink>
+              </TabLink>
             ))}
           </nav>
           <div className={s.railFoot} aria-hidden="true">
@@ -188,17 +218,42 @@ export function AppShell({
         {!hideTabBar ? (
           <nav className={s.tabbar} aria-label="Sections">
             {tabs.map((t) => (
-              <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => cx(s.tab, isActive && s.active)}>
+              <TabLink key={t.to} tab={t} className={s.tab}>
                 <span className={s.tabIcon}>
                   {t.icon}
                   <CountBadge count={t.badge ?? 0} label="new" className={s.tabBadge} />
                 </span>
                 <span className={s.tabLabel}>{t.label}</span>
-              </NavLink>
+              </TabLink>
             ))}
           </nav>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------ Pane
+
+export interface PaneProps {
+  /** Pinned at the top (usually a compact PageHeader). */
+  header?: ReactNode
+  /** Pinned at the bottom (a ChatComposer, a sticky action bar). */
+  footer?: ReactNode
+  children: ReactNode
+  className?: string
+}
+
+/**
+ * A page inside a `fit` AppShell (the chat): fixed header, scrolling middle, fixed footer, so the
+ * rail and the top bar stay on screen beside it.
+ */
+export function Pane({ header, footer, children, className }: PaneProps) {
+  return (
+    <div className={cx(s.screen, s.pane, className)}>
+      {header ? <div className={s.screenHead}>{header}</div> : null}
+      <div className={s.screenBody}>{children}</div>
+      {footer ? <div className={s.screenFoot}>{footer}</div> : null}
     </div>
   )
 }
@@ -218,7 +273,7 @@ export interface ScreenProps {
 }
 
 /**
- * A full-height screen outside the tabbed shell (the chat): fixed header, scrolling middle,
+ * A full-height screen outside the tabbed shell (onboarding): fixed header, scrolling middle,
  * fixed footer. Same phone-sheet-on-mat composition on wide screens.
  */
 export function Screen({ header, footer, children, poster, banner, className }: ScreenProps) {

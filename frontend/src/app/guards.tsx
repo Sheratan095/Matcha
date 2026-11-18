@@ -71,15 +71,14 @@ export function RequireAuth() {
 
 /**
  * Requires a complete profile (gender, preference, biography, one interest); otherwise /onboarding.
- * `fullPage` for routes outside the shell (the chat), whose loading and error states fill the page.
  */
-export function RequireCompleteProfile({ fullPage = false }: { fullPage?: boolean }) {
+export function RequireCompleteProfile() {
   const complete = useNodeValue('profileComplete')
   const profile = useNodeStatus('myProfile')
   if (complete === true) return <Outlet />
   if (complete === false) return <Navigate to="/onboarding" replace />
-  if (profile.status === 'error') return <ProfileTrouble error={profile.error} fullPage={fullPage} />
-  return fullPage ? <PageLoader caption="Fetching your profile" /> : <Loader fill>Fetching your profile</Loader>
+  if (profile.status === 'error') return <ProfileTrouble error={profile.error} />
+  return <Loader fill>Fetching your profile</Loader>
 }
 
 /** `/`: the landing page for visitors; members go to the app (or onboarding while incomplete). */

@@ -1,7 +1,7 @@
 /** "Likes you": everyone who liked the viewer and is waiting for an answer, as pinned polaroids. */
 import type { CSSProperties } from 'react'
 import type { UserSummary } from '@/api/types'
-import { Button, ButtonLink, EmptyState, IconCards, IconHeart, IconRefresh, Notice, PhotoFrame, Skeleton, TicketHeader } from '@/ui'
+import { Button, ButtonLink, EmptyState, IconHeart, IconRefresh, IconRegMark, Notice, PhotoFrame, Skeleton, TicketHeader } from '@/ui'
 import type { NodeStatus } from '@/wb'
 import s from './ActivityPage.module.css'
 
@@ -45,7 +45,7 @@ export function LikesPanel({ likes, status, onOpen, onRetry }: LikesPanelProps) 
         stampTone="strawberry"
         title="Nobody in the queue yet"
         action={
-          <ButtonLink to="/discover" icon={<IconCards size={20} />}>
+          <ButtonLink to="/discover" icon={<IconRegMark size={20} />}>
             Keep swiping
           </ButtonLink>
         }

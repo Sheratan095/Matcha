@@ -1,0 +1,188 @@
+/* ------------------------------------------------------------ the invite: a small ticket in the thread */
+.planned {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  align-self: center;
+  width: min(100%, 22rem);
+  margin: var(--s-2) 0 var(--s-4);
+}
+
+.kicker,
+.started {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--c-ink-2);
+}
+.kicker strong,
+.started strong {
+  color: var(--c-ink);
+  overflow-wrap: anywhere;
+}
+.kickerTime {
+  color: var(--c-ink-3);
+}
+
+.ticket {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  overflow: hidden;
+  border: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-2);
+}
+.planned[data-over] .ticket {
+  box-shadow: none;
+}
+
+.stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--s-3) var(--s-1);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  text-align: center;
+}
+.stubSmall {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.stubDay {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 2.25rem;
+  line-height: 0.9;
+}
+
+/* the tear line between the stub and the ticket */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-3);
+  border-left: var(--bw) dashed var(--c-ink);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+}
+.badge {
+  margin-left: auto;
+}
+
+.title {
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: var(--fs-d5);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.description {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--c-ink-2);
+}
+
+.planned[data-over] .title,
+.planned[data-over] .description {
+  color: var(--c-ink-3);
+}
+
+.place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+  align-self: flex-start;
+  min-height: var(--touch);
+  color: var(--c-ink);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+.placeText {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.placeOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-blue);
+  font-weight: 800;
+  font-size: var(--fs-sm);
+}
+@media (hover: hover) {
+  .place:hover .placeOpen {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+}
+
+/* ------------------------------------------------------------ the start of an accepted date */
+/* runs as text, so a long title wraps like a sentence */
+.started {
+  display: block;
+  align-self: center;
+  max-width: 100%;
+  margin: var(--s-2) 0 var(--s-4);
+  padding: 6px 14px;
+  border: var(--line-thin);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-hi);
+}
+.started[data-on] {
+  background: var(--c-strawberry-tint);
+}
+.started .kickerTime {
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.startedDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  border-radius: 50%;
+  background: var(--c-ink-3);
+}
+.started[data-on] .startedDot {
+  background: var(--c-strawberry);
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 60%);
+}

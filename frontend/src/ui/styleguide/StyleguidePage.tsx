@@ -27,12 +27,12 @@ import {
   ICONS,
   IconArrowRight,
   IconBlock,
-  IconCards,
   IconChat,
   IconCup,
   IconFlag,
   IconHeart,
   IconMail,
+  IconRegMark,
   IconSearch,
   IconSettings,
   IconSliders,
@@ -433,7 +433,7 @@ function Guide() {
             id="icons"
             n={4}
             title="Icons"
-            intro="Drawn for the kit on a 24 grid: 2.5 stroke, round joins, currentColor. Most closed shapes have a filled variant for active states."
+            intro="Drawn for the kit on a 24 grid: 2.5 stroke, round joins, currentColor. Most closed shapes have a filled variant for active states. The registration mark is the exception: filled, its quadrants print in the kit's inks."
           >
             <div className={s.icons}>
               {Object.entries(ICONS).map(([name, Icon]) => (
@@ -628,7 +628,7 @@ function Guide() {
                       Next
                     </Button>
                   </Row>
-                  <ButtonLink to="/discover" variant="ink" size="sm" icon={<IconCards size={18} />}>
+                  <ButtonLink to="/discover" variant="ink" size="sm" icon={<IconRegMark size={18} />}>
                     ButtonLink
                   </ButtonLink>
                 </Stack>

@@ -45,6 +45,13 @@ export function wrapLongitude(longitude: number): number {
   return wrapped === -180 && longitude > 0 ? 180 : wrapped
 }
 
+/** '41.905° N, 12.543° E' (the picker's caption, a date's place). */
+export function coordinatesLabel(spot: Spot): string {
+  const lat = `${Math.abs(spot.latitude).toFixed(3)}° ${spot.latitude >= 0 ? 'N' : 'S'}`
+  const lon = `${Math.abs(spot.longitude).toFixed(3)}° ${spot.longitude >= 0 ? 'E' : 'W'}`
+  return `${lat}, ${lon}`
+}
+
 /** Great-circle distance in km. */
 export function distanceKm(a: Spot, b: Spot): number {
   const rad = Math.PI / 180

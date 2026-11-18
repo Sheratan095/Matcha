@@ -3,7 +3,7 @@
  * your profile (`GET /profile/viewers`), or "You visited", the profiles you opened (`GET /profile/visited`).
  */
 import type { ReactNode } from 'react'
-import { Barcode, Button, ButtonLink, EmptyState, IconCards, IconEye, IconPencil, IconRefresh, Notice, Skeleton, TicketHeader } from '@/ui'
+import { Barcode, Button, ButtonLink, EmptyState, IconEye, IconPencil, IconRefresh, IconRegMark, Notice, Skeleton, TicketHeader } from '@/ui'
 import type { UserSummary } from '@/api/types'
 import type { NodeStatus } from '@/wb'
 import { pad2 } from '@/features/chat/time'
@@ -47,7 +47,7 @@ const COPY: Record<
     emptyTitle: 'You have not opened a profile yet',
     emptyText: 'Open a card on the deck, a search result or a face on the map: every profile you open lands here.',
     emptyAction: (
-      <ButtonLink to="/discover" variant="paper" icon={<IconCards size={18} />}>
+      <ButtonLink to="/discover" variant="paper" icon={<IconRegMark size={18} />}>
         Go to the deck
       </ButtonLink>
     ),

@@ -125,8 +125,8 @@ anything under `src/wb` stops the store and reloads the page (never two stores).
     `nodes/builders.ts`, the map in `LAZY_GATES`). Nothing is sent for it at sign-in, refreshes and
     realtime events send nothing while the gate is closed, and the first `load(name)` opens it for the
     rest of the session (4.4). Sign-out closes every gate. Only what the shell itself shows loads at
-    sign-in: `myProfile` (guards, avatar), `connections` + `chatList` (Matches badge), `likesReceived`
-    (Activity badge).
+    sign-in: `myProfile` (guards, avatar), `connections` + `chatList` (Matches badge), `calendar`
+    (Calendar badge: invites waiting for an answer), `likesReceived` (Activity badge).
 - Custom functions receive dependency values **in `dep` order** (never rely on parameter names: the
   engine falls back to order, and minifiers rename parameters). They declare exactly one parameter per
   dependency (more makes the engine append a snapshot). Their inputs are **optional** dependencies
@@ -276,9 +276,21 @@ and so gives its id, only once it holds a message.
 
 Unmatch and block reuse the discover commands (`unlike`, `blockUser`).
 
+**Calendar** (`nodes/calendar.ts`)
+
+Dates only exist between connected people: the backend hangs each one off the pair's chat, so an
+unmatch or a block deletes them.
+
+| Node | Kind | Depends on | Value |
+|---|---|---|---|
+| `calendar` | GET api `/profile/calendar` | `sessionUserId`, `calendarRefresh` (opt) | `CalendarResult`: your dates, earliest first, past ones included; never the cancelled ones, the declined ones only for the inviter |
+| `dates` | F | `calendar` (opt), `connections` (opt), `sessionUserId` (opt) | `PlannedDate[]`: each date with its times parsed (`plannedAt` from `createdAt`, `null` when the backend leaves it out), `mine` (you sent the invite) and the other person from `connections` (an empty username while they are not listed); `null` while no calendar |
+| `eventCreate` | Payload + POST api `/profile/calendar/event` | payload | `CalendarEvent` (pending); 403 unless connected, 400 for a start in the past or an end before the start |
+| `eventAccept` / `eventDecline` / `eventCancel` | Payload (event id) + POST api `/profile/calendar/event/{eventId}/accept` \| `/decline` \| `/cancel` | payload (PATH_VARIABLE) | `EventAnswerResult`; 404 when the move is not yours (only the invitee answers a pending invite; the inviter cancels at any time, the invitee once accepted), 400 once it has started |
+
 Refreshable in place (`refresh(name)` → nonce): `sessionCheck` (`sessionProbe`), `myProfile`,
 `myViewers`, `visitedProfiles`, `blockedUsers`, `likesReceived`, `matchesMap`, `discoverDeck`,
-`interestCatalogue`, `searchResults`, `connections`, `chatList` (`REFRESH_TRIGGERS`). The open thread
+`interestCatalogue`, `searchResults`, `connections`, `chatList`, `calendar` (`REFRESH_TRIGGERS`). The open thread
 is refetched by writing `chatAfter` (whole: `openChat`; only what is new: `reloadOpenChat`). On demand
 (`LAZY_GATES`, 4.2): `discoverDeck`, `interestCatalogue`, `myViewers`, `visitedProfiles`,
 `blockedUsers`, `matchesMap`. Writable by screens (`setNode`, `useNode`): the filters, `swipedIds`, the
@@ -322,7 +334,7 @@ is `NodeValues[N] | null | undefined`.
   | `reloadDeck(): Promise<void>` | the deck reloaded; this session's passes come back |
   | `search(partialCriteria): Promise<DeckCard[]>`, `clearSearch(): void` | `searchResults` holds the answer to `GET /profile/search` for the merged criteria (name + the deck's filters, `null` = no limit, + genders / preferences, empty = any): one request however many changed, none for a sort-only change (`visibleSearch` sorts in the browser), a refetch in place for the same criteria; `INVALID` when nothing would be sent or a value is out of range. `clearSearch` drops every criterion, resets the results and drops a request still on its way |
   | `likeUser(userId, action)`, `reportUser(userId)` | the request succeeded (from an opened profile); a match reloads the connection lists in the background, "likes you" reloads when they were in it |
-  | `unlikeUser(userId)`, `blockUser(userId)`: `Promise<void>` | the request succeeded; with a connection: an open conversation with them is closed, their unread count dropped, the connection lists reload in the background (this is also unmatch / block from the chat); a block also reloads `blockedUsers` (when shown) and the lists they were in |
+  | `unlikeUser(userId)`, `blockUser(userId)`: `Promise<void>` | the request succeeded; with a connection: an open conversation with them is closed, their unread count dropped, the connection lists reload in the background (this is also unmatch / block from the chat), and so does the calendar when it held dates with them; a block also reloads `blockedUsers` (when shown) and the lists they were in |
   | `unblockUser(userId): Promise<void>` | `DELETE /profile/{userId}/block` succeeded and `blockedUsers` no longer has them; they may show up again in the deck |
   | `answerLike(userId, action): Promise<SwipeOutcome>` | answering someone who liked you (activity page): `likesReceived` reloaded without them (one request) |
 
@@ -335,18 +347,24 @@ is `NodeValues[N] | null | undefined`.
   | `refreshMatches(): Promise<void>` | `connections` and `chatList` reloaded |
   | `openChat(userId): Promise<Message[]>`, `closeChat(): void` | a fresh chat list gave the chat id, the whole history is in `chatMessages` (or `[]` before the first message) and is marked read; `DROPPED` when another conversation opened (or this one closed) meanwhile |
   | `sendMessage(userId, text): Promise<void>` | the chat list and, when open, the thread show it (1–1000 chars; the first message gives the chat its id); the thread fetches only what is new (`?after=` its newest message minus 2 s, merged by id) |
+  | `planDate({ inviteeId, title, description?, startsAt, endsAt, place? }): Promise<CalendarEvent>` | `calendar` / `dates` list the new invite (times sent in UTC with their `Z`; a blank description and no place send nothing); INVALID without a request for a blank or overlong title (100), an overlong description (500), a start in the past, an end before the start, a place off the globe; the backend's 403 for someone you are not connected to. The invitee gets `event-invite` |
+  | `answerDate(eventId, 'accept' \| 'decline' \| 'cancel'): Promise<void>` | `calendar` reflects it (a cancelled date leaves it, so does a declined one for the invitee); the backend's 404 / 400 when the move is not allowed (see the Calendar table). The other side gets `event-accept` / `event-decline` / `event-cancel` |
 
 - `realtime$` — `Observable<RealtimeEvent>` for toasts. `startRealtime()` keeps the gateway's socket.io
   connection (namespace `/notification`, websocket only) open while signed in (which also counts the
   user as online). Its address comes from `API_URL` (`socketTarget`): an origin connects there on
   `/socket.io`; a path prefix such as the Vite proxy's `/api` goes on the socket's `path`
   (`/api/socket.io`, which the proxy forwards as `/socket.io`), never into the namespace. It turns its events (`message`, `match`, `unmatch`, `profile-like`, `profile-view`,
-  `chat-seen`, and the calendar's `event-invite`, `event-accept`, `event-decline`, `event-cancel`, which
-  become one `calendar` event with its `action`; payloads checked) into `RealtimeEvent`s and reacts to
-  them (a calendar event only shows a toast: no node holds the calendar): a message reloads the chat list
+  `chat-seen`, and the calendar's `event-invite`, `event-accept`, `event-decline`, `event-cancel`,
+  `event-start`, which become one `calendar` event with its `action`; payloads checked) into
+  `RealtimeEvent`s and reacts to
+  them: a message reloads the chat list
   and, when its conversation is open, fetches the thread's new messages (marked read), otherwise it
   counts in `unreadByUser`; a match or an unmatch reloads the connections, the chat list, the map and the
-  likes (unless it is the echo of this client's own change, above); a like the likes; a view the viewers;
+  likes (unless it is the echo of this client's own change, above), and an unmatch the calendar when it
+  held dates with them; a like the likes; a view the viewers; a calendar event the calendar, unless it
+  already shows it (the invite listed, the status it tells of, a cancelled date gone; a start changes
+  nothing, so it never reloads);
   `chat-seen` turns the open thread's ticks read with no request. Each event carries a mark (the last
   request id when its change had already been made: at its arrival, or at the connection for the events
   received in the 3 s after it, which are the backend's replay of what happened while we were offline).
@@ -370,13 +388,14 @@ adapter swapped for a fake server:
 src/wb/testing/
   fakeServer.ts    route handlers (`:param` segments, later routes win), recorded requests, Nest-shaped errors
   fakeBackend.ts   a small stateful gateway: session, profile, deck, likes, connections, chats (`?after=`),
-                   blocks, visits (GET /profile/{id} records one)
+                   blocks, visits (GET /profile/{id} records one), the calendar (the backend's
+                   transition rules; a disconnect deletes the pair's dates)
   harness.ts       startTestStore() / flush()
 ```
 
 `connect(backend, userId)` makes a connection (with its empty chat, as the backend creates it on a
-match) and `incoming(backend, userId, text)` stores a message from them; realtime events are injected
-with `startRealtime({ events$, socket: false })`.
+match), `incoming(backend, userId, text)` stores a message from them and `invitedBy(backend, userId)` an
+invite from them (tomorrow); realtime events are injected with `startRealtime({ events$, socket: false })`.
 
 ## 6. Routes
 
@@ -387,7 +406,8 @@ with `startRealtime({ events$, socket: false })`.
 | `/verify-email?token=`, `/reset-password?token=` | targets of the links in emails | any |
 | `/onboarding` | complete the profile | signed in, profile incomplete |
 | `/discover` | swipe deck | signed in + complete profile |
-| `/matches`, `/chat/:userId` | connections and the conversation with one | signed in + complete profile |
+| `/matches`, `/chat/:userId` | connections and the conversation with one; the dates planned with them sit in its thread (drawn from the calendar: the invite where it was sent, answered or called off there, and the start of an accepted one), and its header books a new one | signed in + complete profile |
+| `/calendar` | dates with your connections: invites to answer, what is ahead, what is over; plan one (also from a conversation) | signed in + complete profile |
 | `/activity` | likes received, profile viewers | signed in + complete profile |
 | `/me` | own profile, pictures, settings | signed in |
 | `/styleguide` | design system showcase | any |

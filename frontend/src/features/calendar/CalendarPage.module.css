@@ -1,0 +1,232 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  min-width: 0;
+}
+
+.page > :first-child {
+  margin-bottom: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+/* ------------------------------------------------------------ one date: a ticket with a stub */
+.ticket {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  overflow: hidden;
+  border: var(--line);
+  border-radius: var(--r-lg);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-2);
+}
+.ticket[data-over] {
+  box-shadow: none;
+}
+
+.stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--s-3) var(--s-1);
+  background: var(--tone-bg);
+  color: var(--tone-fg);
+  text-align: center;
+}
+.stubWeekday,
+.stubMonth {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.stubDay {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: 2.75rem;
+  line-height: 0.9;
+}
+
+/* the tear line between the stub and the ticket */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  border-left: var(--bw) dashed var(--c-ink);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-3);
+}
+.badge {
+  margin-left: auto;
+}
+
+.title {
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-narrow);
+  font-size: var(--fs-d5);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  align-self: flex-start;
+  max-width: 100%;
+  min-height: var(--touch);
+  color: var(--c-ink);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+.personText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+@media (hover: hover) {
+  .person:hover .personText {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+}
+
+.description {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: var(--c-ink-2);
+}
+
+.place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+  align-self: flex-start;
+  min-height: var(--touch);
+  color: var(--c-ink);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+.placeText {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.placeOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--c-blue);
+  font-weight: 800;
+  font-size: var(--fs-sm);
+}
+@media (hover: hover) {
+  .place:hover .placeOpen {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+}
+
+.ticket[data-over] .title,
+.ticket[data-over] .description {
+  color: var(--c-ink-3);
+}
+
+/* ------------------------------------------------------------ nothing ahead */
+.quiet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-5) var(--s-4);
+  border: var(--bw) dashed var(--c-ink);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+.quietTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: var(--wd-condensed);
+  font-size: var(--fs-d4);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+.quietText {
+  font-size: var(--fs-sm);
+  color: var(--c-ink-2);
+}
+
+/* ------------------------------------------------------------ nothing at all */
+.empty {
+  position: relative;
+  overflow: hidden;
+  padding-bottom: var(--s-16);
+  border: var(--line);
+  border-radius: var(--r-xl);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-3);
+}
+.empty > :not(.emptyWord) {
+  position: relative;
+}
+.emptyWord {
+  position: absolute;
+  right: -0.04em;
+  bottom: -0.34em;
+  line-height: 0.8;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/* ------------------------------------------------------------ loading */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.skeletonTicket {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+.skeletonLines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--s-2);
+}

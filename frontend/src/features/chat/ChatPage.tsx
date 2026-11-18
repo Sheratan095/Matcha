@@ -1,13 +1,19 @@
 /**
- * `/chat/:userId`: the conversation with a connection, full screen (no app shell).
+ * `/chat/:userId`: the conversation with a connection, a `Pane` in the app shell (the rail stays
+ * beside it on wide screens, the tab bar under it on phones).
  *
  * Opens the conversation on enter (`actions.openChat`, which also marks it read) and closes it on
  * leave. New messages arrive through realtime refreshes of `chatMessages`; messages typed here are
  * drawn at once (sending / failed with retry) and handed over to the server copy without redrawing.
+ * The dates planned with them sit in the thread, drawn from the calendar (`DateNotes`): the invite
+ * where it was sent, answered or called off from there, and the start of an accepted one. The
+ * calendar button in the header (or the empty conversation's) books a new one.
  */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import type { ApiError, Match, Message } from '@/api/types'
+import type { ApiError, Match, Message, PlannedDate } from '@/api/types'
+import { CallOffDialog } from '@/features/calendar/CallOffDialog'
+import { PlanDateSheet } from '@/features/calendar/PlanDateSheet'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import {
   Avatar,
@@ -19,6 +25,8 @@ import {
   DayDivider,
   EmptyState,
   IconBlock,
+  IconCalendar,
+  IconButton,
   IconChevronDown,
   IconRefresh,
   IconTrash,
@@ -26,16 +34,27 @@ import {
   Menu,
   Notice,
   PageHeader,
-  Screen,
+  Pane,
   Skeleton,
   toast,
 } from '@/ui'
-import { actions, getNodeValue, LOCAL_ERROR, MAX_MESSAGE_LENGTH, toApiError, useNodeStatus, useNodeValue } from '@/wb'
+import {
+  actions,
+  getNodeValue,
+  LOCAL_ERROR,
+  MAX_MESSAGE_LENGTH,
+  REVISIT_MS,
+  toApiError,
+  useLoad,
+  useNodeStatus,
+  useNodeValue,
+} from '@/wb'
+import { DatePlanned, DateStarted } from './DateNotes'
 import { useNow } from './hooks'
 import { LeaveDialog, type LeaveKind } from './LeaveDialog'
 import { MatchIntro } from './MatchIntro'
 import { firstNameOf, mainPicture } from './people'
-import { buildTimeline, type PendingMessage } from './timeline'
+import { buildTimeline, dateNotes, type PendingMessage } from './timeline'
 import { useStickToBottom } from './useChatView'
 import s from './ChatPage.module.css'
 
@@ -89,6 +108,9 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
   const chatStatus = useNodeStatus('chatHistory')
   const myProfile = useNodeValue('myProfile')
   const myId = useNodeValue('sessionUserId')
+  const dates = useNodeValue('dates')
+  // Loaded at sign-in and kept current by realtime: refetched here only once it is getting old.
+  useLoad('calendar', { maxAgeMs: REVISIT_MS })
 
   // ------------------------------------------------------------ open / close
   const [attempt, setAttempt] = useState(0)
@@ -149,7 +171,15 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
   const [pending, setPending] = useState<PendingMessage[]>([])
   const [keyFor, setKeyFor] = useState<ReadonlyMap<string, string>>(() => new Map())
 
-  const timeline = buildTimeline(messages ?? [], pending, partnerId, now, keyFor)
+  // The dates with them, and where each one shows in the thread.
+  const ours = useMemo(
+    () => (Array.isArray(dates) ? dates.filter((date) => date.person.userId === partnerId) : []),
+    [dates, partnerId],
+  )
+  const dateById = useMemo(() => new Map(ours.map((date) => [date.id, date])), [ours])
+  const notes = useMemo(() => dateNotes(ours, now), [ours, now])
+
+  const timeline = buildTimeline(messages ?? [], pending, partnerId, now, keyFor, notes)
 
   const deliver = useCallback(
     (localId: string, text: string, known: ReadonlySet<string>) => {
@@ -243,6 +273,8 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
   // ------------------------------------------------------------ profile sheet, unmatch, block
   const [profileOpen, setProfileOpen] = useState(false)
   const profileTarget: ProfileTarget | null = profileOpen && match ? { userId: match.userId } : null
+  const [planning, setPlanning] = useState(false)
+  const [callingOff, setCallingOff] = useState<PlannedDate | null>(null)
 
   const [leaveKind, setLeaveKind] = useState<LeaveKind | null>(null)
   const [leaveBusy, setLeaveBusy] = useState(false)
@@ -310,14 +342,20 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
       }
       actions={
         match && !notFound ? (
-          <Menu
-            label="Conversation options"
-            items={[
-              { label: 'View profile', icon: <IconUser size={20} />, onSelect: () => setProfileOpen(true) },
-              { label: 'Unmatch', icon: <IconTrash size={20} />, tone: 'danger', onSelect: () => askLeave('unmatch') },
-              { label: 'Block', icon: <IconBlock size={20} />, tone: 'danger', onSelect: () => askLeave('block') },
-            ]}
-          />
+          <>
+            <IconButton label="Plan a date" onClick={() => setPlanning(true)} disabled={frozen != null}>
+              <IconCalendar size={20} />
+            </IconButton>
+            <Menu
+              label="Conversation options"
+              items={[
+                { label: 'View profile', icon: <IconUser size={20} />, onSelect: () => setProfileOpen(true) },
+                { label: 'Plan a date', icon: <IconCalendar size={20} />, onSelect: () => setPlanning(true), disabled: frozen != null },
+                { label: 'Unmatch', icon: <IconTrash size={20} />, tone: 'danger', onSelect: () => askLeave('unmatch') },
+                { label: 'Block', icon: <IconBlock size={20} />, tone: 'danger', onSelect: () => askLeave('block') },
+              ]}
+            />
+          </>
         ) : null
       }
     />
@@ -325,7 +363,7 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
 
   if (notFound) {
     return (
-      <Screen header={header} poster="Chat">
+      <Pane header={header}>
         <div className={s.notFound}>
           <EmptyState
             stamp="Gone cold"
@@ -340,7 +378,7 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
             The match may have ended, or the link is not quite right. Your other conversations are where you left them.
           </EmptyState>
         </div>
-      </Screen>
+      </Pane>
     )
   }
 
@@ -359,20 +397,29 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
   )
 
   const ready = match != null && messages != null
-  const empty = ready && timeline.items.length === 0
+  // a date planned before anyone wrote still leaves the icebreakers up
+  const empty = ready && !timeline.items.some((item) => item.kind === 'message')
   const showJump = !pinned && unseen > 0
 
   return (
-    <Screen header={header} footer={footer} poster={match ? name : 'Chat'}>
+    <Pane header={header} footer={footer}>
       <div ref={contentRef} className={s.content}>
         {ready ? (
           <>
             <div className={s.conversation}>
-              <MatchIntro match={match} me={me} empty={empty} onIcebreaker={insertIcebreaker} />
+              <MatchIntro
+                match={match}
+                me={me}
+                empty={empty}
+                onIcebreaker={insertIcebreaker}
+                onPlanDate={frozen ? undefined : () => setPlanning(true)}
+              />
               <ChatThread label={`Conversation with ${name}`}>
                 {timeline.items.map((item) =>
                   item.kind === 'day' ? (
                     <DayDivider key={item.key}>{item.label}</DayDivider>
+                  ) : item.kind === 'note' ? (
+                    <DateNoteItem key={item.key} date={dateById.get(item.dateId)} note={item.note} now={now} onCallOff={setCallingOff} />
                   ) : (
                     <Fragment key={item.key}>
                       <ChatBubble side={item.side} position={item.position} time={item.time} status={item.status}>
@@ -451,8 +498,22 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
         onConfirm={confirmLeave}
       />
       <ProfileSheet target={profileTarget} onClose={() => setProfileOpen(false)} onBlocked={onBlocked} />
-    </Screen>
+      <PlanDateSheet open={planning && match != null} onClose={() => setPlanning(false)} invitee={match} />
+      <CallOffDialog date={callingOff} onClose={() => setCallingOff(null)} />
+    </Pane>
   )
+}
+
+interface DateNoteItemProps {
+  date: PlannedDate | undefined
+  note: 'planned' | 'started'
+  now: number
+  onCallOff: (date: PlannedDate) => void
+}
+
+function DateNoteItem({ date, note, now, onCallOff }: DateNoteItemProps) {
+  if (!date) return null
+  return note === 'planned' ? <DatePlanned date={date} now={now} onCallOff={onCallOff} /> : <DateStarted date={date} now={now} />
 }
 
 function FailedActions({ error, onRetry, onDiscard }: { error: string | null; onRetry: () => void; onDiscard: () => void }) {

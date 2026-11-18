@@ -42,7 +42,7 @@ BACKEND_URL=http://localhost:3000
 - Durante la registrazione, quando ti chiede le preferenze fa delle call strane che falliscono (vedi console)
 
 - Mappa
-  - La mappa non renderizza le foto
+  - La mappa non renderizza le foto 
  
 - anche la pagina activity fa due richieste http per MyLikes
   

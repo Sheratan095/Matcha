@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { cx } from '../cx'
-import { IconBell, IconCheck, IconHeart, IconInfo, IconWarning, IconX } from '../icons'
+import { IconBell, IconCheck, IconHeart, IconRegMark, IconWarning, IconX } from '../icons'
 import { toast } from './toast'
 import type { ToastItem, ToastTone } from './toast'
 import s from './Toaster.module.css'
@@ -12,7 +12,7 @@ const ICON: Record<ToastTone, ReactNode> = {
   matcha: <IconCheck size={22} strokeWidth={3.5} />,
   strawberry: <IconWarning size={22} strokeWidth={2.75} />,
   yolk: <IconHeart size={22} filled />,
-  blue: <IconInfo size={22} strokeWidth={2.75} />,
+  blue: <IconRegMark size={22} strokeWidth={2.75} />,
 }
 
 function ToastView({ item, index }: { item: ToastItem; index: number }) {

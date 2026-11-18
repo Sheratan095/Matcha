@@ -28,7 +28,9 @@ export default function ActivityPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const tab = tabFrom(params.get('tab'))
-  const setTab = (value: TabValue) => setParams(value === 'likes' ? {} : { tab: value }, { replace: true })
+  // A tab switch is a navigation: preventScrollReset keeps <ScrollRestoration /> from jumping to the top.
+  const setTab = (value: TabValue) =>
+    setParams(value === 'likes' ? {} : { tab: value }, { replace: true, preventScrollReset: true })
 
   // Realtime keeps likes and visitors current: a visit refetches them only once they are getting old.
   useLoad('likesReceived', { maxAgeMs: REVISIT_MS })

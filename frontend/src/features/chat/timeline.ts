@@ -1,8 +1,9 @@
 /**
- * Turns the server messages of a conversation, plus the messages being sent from this screen, into
- * what the thread draws: day dividers and bubbles grouped in runs.
+ * Turns the server messages of a conversation, plus the messages being sent from this screen and the
+ * notes about the dates planned with the partner, into what the thread draws: day dividers, bubbles
+ * grouped in runs, and the notes in between.
  */
-import type { Message } from '@/api/types'
+import type { Message, PlannedDate } from '@/api/types'
 import { clockTime, dayKey, dayLabel } from './time'
 
 /** A message typed on this screen that the server has not confirmed (sending) or refused (failed). */
@@ -40,10 +41,42 @@ export interface MessageItem {
   pendingId?: string
 }
 
-export type TimelineItem = DayItem | MessageItem
+/**
+ * A line of the conversation that nobody typed, drawn from the calendar: a date was planned (the
+ * invite, with its answer), or an accepted date began.
+ */
+export interface DateNote {
+  kind: 'planned' | 'started'
+  dateId: string
+  at: number
+}
+
+export interface NoteItem {
+  kind: 'note'
+  key: string
+  note: DateNote['kind']
+  dateId: string
+  at: number
+}
+
+export type TimelineItem = DayItem | MessageItem | NoteItem
 
 /** Two messages from the same side further apart than this start a new run. */
 export const RUN_GAP_MS = 5 * 60_000
+
+/**
+ * The notes of the dates planned with the partner, oldest first: each one where its invite was sent
+ * (at `now` when the backend did not say, i.e. at the end), and, once an accepted one has begun, where
+ * it began.
+ */
+export function dateNotes(dates: readonly PlannedDate[], now: number): DateNote[] {
+  const notes: DateNote[] = []
+  for (const date of dates) {
+    notes.push({ kind: 'planned', dateId: date.id, at: date.plannedAt ?? Math.min(now, date.startsAt) })
+    if (date.status === 'accepted' && date.startsAt <= now) notes.push({ kind: 'started', dateId: date.id, at: date.startsAt })
+  }
+  return notes.sort((a, b) => a.at - b.at)
+}
 
 interface Entry {
   key: string
@@ -69,6 +102,8 @@ export function buildTimeline(
   now: number,
   /** Keys given to confirmed messages that started on this screen. */
   keyFor: ReadonlyMap<string, string> = new Map(),
+  /** Oldest first (`dateNotes`); placed among the messages by time, those being sent included. */
+  notes: readonly DateNote[] = [],
 ): Timeline {
   const claimed = new Map<string, string>()
   const delivered = new Set<string>()
@@ -87,18 +122,25 @@ export function buildTimeline(
     }
   }
 
-  const entries: Entry[] = messages.map((message) => {
+  const entries: Array<Entry | DateNote> = []
+  let next = 0
+  for (const message of messages) {
+    // a note goes after the messages of its very moment
+    while (next < notes.length && notes[next].at < message.sentAt) entries.push(notes[next++])
     const mine = message.senderId !== partnerId
-    return {
+    entries.push({
       key: claimed.get(message.id) ?? keyFor.get(message.id) ?? message.id,
       side: mine ? 'mine' : 'theirs',
       text: message.text,
       at: message.sentAt,
       status: mine ? (message.status === 'read' ? 'read' : 'sent') : undefined,
-    }
-  })
+    })
+  }
+  // What is being sent goes after the server messages, still with the notes kept in time order around
+  // it: a date that began after a failed message comes after it, as it will once the message is in.
   for (const item of pending) {
     if (delivered.has(item.localId)) continue
+    while (next < notes.length && notes[next].at < item.createdAt) entries.push(notes[next++])
     entries.push({
       key: item.localId,
       side: 'mine',
@@ -108,9 +150,12 @@ export function buildTimeline(
       pendingId: item.localId,
     })
   }
+  entries.push(...notes.slice(next))
 
   const items: TimelineItem[] = []
   let day: string | null = null
+  /** The latest time drawn so far: the dividers only move forward. */
+  let latest = Number.NEGATIVE_INFINITY
   let run: MessageItem[] = []
   const closeRun = () => {
     if (run.length === 1) run[0].position = 'single'
@@ -124,10 +169,19 @@ export function buildTimeline(
 
   for (const entry of entries) {
     const key = dayKey(entry.at)
-    if (key !== day) {
+    // A message still being sent from an earlier day (it failed yesterday) stays under the last
+    // divider: going back a day would print that day twice, under one key.
+    if (key !== day && entry.at >= latest) {
       closeRun()
       day = key
       items.push({ kind: 'day', key: `day-${key}`, label: dayLabel(entry.at, now) })
+    }
+    latest = Math.max(latest, entry.at)
+    if (!('side' in entry)) {
+      // a note ends the run before it
+      closeRun()
+      items.push({ kind: 'note', key: `date-${entry.dateId}-${entry.kind}`, note: entry.kind, dateId: entry.dateId, at: entry.at })
+      continue
     }
     const previous = run[run.length - 1]
     if (previous && (previous.side !== entry.side || entry.at - previous.at > RUN_GAP_MS)) closeRun()

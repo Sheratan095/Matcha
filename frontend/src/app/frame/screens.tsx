@@ -107,7 +107,7 @@ export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
 }
 
 /** `myProfile` failed: the pages behind RequireCompleteProfile need it. */
-export function ProfileTrouble({ error, fullPage }: { error: ApiError | null; fullPage?: boolean }) {
+export function ProfileTrouble({ error }: { error: ApiError | null }) {
   const [busy, setBusy] = useState(false)
   // refresh() never rejects: a new failure lands on the node's status, i.e. back in `error`.
   const retry = () => {
@@ -115,7 +115,7 @@ export function ProfileTrouble({ error, fullPage }: { error: ApiError | null; fu
     void refresh('myProfile').finally(() => setBusy(false))
   }
   const banner = error ? bannerFor(error) : null
-  const content = (
+  return (
     <div className={s.trouble}>
       <title>Profile unavailable · Matcha</title>
       <EmptyState
@@ -137,13 +137,6 @@ export function ProfileTrouble({ error, fullPage }: { error: ApiError | null; fu
         )}
       </EmptyState>
     </div>
-  )
-  return fullPage ? (
-    <main id="main" className={s.page}>
-      {content}
-    </main>
-  ) : (
-    content
   )
 }
 

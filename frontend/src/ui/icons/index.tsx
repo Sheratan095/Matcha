@@ -3,6 +3,7 @@ import type { ReactNode, SVGProps } from 'react'
 /**
  * Matcha icon set. Drawn on a 24 grid with a 2.5 stroke, round caps and joins, in currentColor.
  * `filled` paints the closed shapes solid (the stroke stays, so the weight matches).
+ * One exception: filled `IconRegMark` prints its quadrants in the kit's inks, not in currentColor.
  */
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   /** Pixel size of the square icon. Default 24. */
@@ -290,6 +291,15 @@ export const IconClock = make('IconClock', () => (
   </>
 ))
 
+export const IconCalendar = make('IconCalendar', (filled) => (
+  <>
+    <rect x="3.25" y="5" width="17.5" height="15.75" rx="2.5" fill={f(filled)} />
+    <path d="M3.25 10h17.5" stroke={filled ? 'var(--icon-hole, var(--c-paper-hi))' : undefined} />
+    <path d="M8 2.75v4.5M16 2.75v4.5" />
+    {filled ? null : <circle cx="8.5" cy="15" r="1.25" fill="currentColor" stroke="none" />}
+  </>
+))
+
 export const IconRefresh = make('IconRefresh', () => (
   <>
     <path d="M20 12a8 8 0 0 1-14.25 5M4 12a8 8 0 0 1 14.25-5" />
@@ -350,6 +360,37 @@ export const IconCards = make('IconCards', (filled) => (
   </>
 ))
 
+/**
+ * The four process quadrants (cyan, magenta, yellow, black positions) of a disc of radius `r` around (12, 12),
+ * in the kit's drums: blue top-left, strawberry top-right, yolk bottom-left, ink-2 bottom-right. Each one can
+ * be swapped from CSS: `--reg-c`, `--reg-m`, `--reg-y`, `--reg-k`.
+ */
+function regQuadrants(r: number): ReactNode {
+  const arc = `A${r} ${r} 0 0 0`
+  return (
+    <>
+      <path d={`M12 12V${12 - r}${arc} ${12 - r} 12z`} fill="var(--reg-c, var(--c-blue))" stroke="none" />
+      <path d={`M12 12H${12 + r}${arc} 12 ${12 - r}z`} fill="var(--reg-m, var(--c-strawberry))" stroke="none" />
+      <path d={`M12 12H${12 - r}${arc} 12 ${12 + r}z`} fill="var(--reg-y, var(--c-yolk))" stroke="none" />
+      <path d={`M12 12V${12 + r}${arc} ${12 + r} 12z`} fill="var(--reg-k, var(--c-ink-2))" stroke="none" />
+    </>
+  )
+}
+
+/**
+ * A registration mark: ring, crosshair and centre dot in currentColor (`public/emptycross.svg`). `filled` is
+ * the colour version (`public/stylizedcross.svg`): the four process quadrants print blue, strawberry, yolk
+ * and ink-2. The app uses it, empty, for "info" and for Discover.
+ */
+export const IconRegMark = make('IconRegMark', (filled) => (
+  <>
+    {filled && regQuadrants(7)}
+    <circle cx="12" cy="12" r="7" />
+    <path d="M2 12h20M12 2v20" />
+    <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+  </>
+))
+
 /** Every icon by name, for the styleguide and for data-driven use. */
 export const ICONS = {
   heart: IconHeart,
@@ -392,6 +433,7 @@ export const ICONS = {
   flame: IconFlame,
   image: IconImage,
   clock: IconClock,
+  calendar: IconCalendar,
   refresh: IconRefresh,
   cup: IconCup,
   globe: IconGlobe,
@@ -400,6 +442,7 @@ export const ICONS = {
   sparkle: IconSparkle,
   ticket: IconTicket,
   cards: IconCards,
+  regMark: IconRegMark,
 } as const satisfies Record<string, IconComponent>
 
 export type IconName = keyof typeof ICONS

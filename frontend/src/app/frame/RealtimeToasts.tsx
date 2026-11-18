@@ -1,7 +1,7 @@
 /**
  * Global toasts from `realtime$`: a new connection, a message for a conversation that is not open,
- * someone liking you, and a date invited to, accepted, declined or cancelled. Each links to the right
- * place. Renders nothing itself (the Toaster does).
+ * someone liking you, someone viewing your profile, and a date invited to, accepted, declined,
+ * cancelled or starting. Each links to the right place. Renders nothing itself (the Toaster does).
  */
 import { useEffect } from 'react'
 import type { CalendarAction, CalendarEventSummary, UserSummary } from '@/api/types'
@@ -18,11 +18,21 @@ function excerpt(text: string): string {
   return flat.length > 90 ? `${flat.slice(0, 88)}…` : flat
 }
 
-const CALENDAR: Record<CalendarAction, { tone: ToastTone; title: (name: string) => string }> = {
-  invite: { tone: 'blue', title: (name) => `${name} invited you on a date` },
-  accept: { tone: 'matcha', title: (name) => `${name} accepted your date` },
-  decline: { tone: 'ink', title: (name) => `${name} declined your date` },
-  cancel: { tone: 'ink', title: (name) => `${name} cancelled the date` },
+interface CalendarToast {
+  tone: ToastTone
+  title: (name: string) => string
+  action: string
+  /** The conversation with them (where an invite is answered too), rather than the calendar. */
+  inChat: boolean
+  duration?: number
+}
+
+const CALENDAR: Record<CalendarAction, CalendarToast> = {
+  invite: { tone: 'blue', title: (name) => `${name} invited you on a date`, action: 'Answer', inChat: true, duration: 7000 },
+  accept: { tone: 'matcha', title: (name) => `${name} accepted your date`, action: 'See dates', inChat: false },
+  decline: { tone: 'ink', title: (name) => `${name} declined your date`, action: 'See dates', inChat: false },
+  cancel: { tone: 'ink', title: (name) => `${name} cancelled the date`, action: 'See dates', inChat: false },
+  start: { tone: 'strawberry', title: (name) => `Your date with ${name} is starting`, action: 'Open chat', inChat: true, duration: 7000 },
 }
 
 /** "Drinks by the river · Sat 21 Nov, 20:00", either half alone when the other is missing. */
@@ -89,22 +99,38 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
           })
           break
         }
+        case 'view': {
+          const name = nameOf(event.person)
+          // Its own id: a visit never replaces their like or match toast; a second visit replaces the first.
+          toast.show({
+            id: `view-${event.person.userId}`,
+            tone: 'blue',
+            title: `${name} viewed your profile`,
+            message: 'Someone is curious about you.',
+            icon: avatarOf(event.person),
+            action: { label: 'See visitors', onClick: () => navigate('/activity?tab=views') },
+          })
+          break
+        }
         case 'calendar': {
-          const { tone, title } = CALENDAR[event.action]
-          // One toast per date: a later answer about it replaces the earlier one.
+          const { tone, title, action, inChat, duration } = CALENDAR[event.action]
+          const chat = `/chat/${event.person.userId}`
+          const to = inChat ? chat : '/calendar'
+          // One toast per date: a later answer about it replaces the earlier one. In the conversation
+          // already, the date is on screen: no button to go there.
+          const here = currentPath().replace(/\/+$/, '') === to
           toast.show({
             id: `date-${event.event.id}`,
             tone,
             title: title(nameOf(event.person)),
             message: dateLine(event.event),
             icon: avatarOf(event.person),
-            duration: event.action === 'invite' ? 7000 : undefined,
-            action: { label: 'Open chat', onClick: () => navigate(`/chat/${event.person.userId}`) },
+            duration,
+            action: here ? undefined : { label: action, onClick: () => navigate(to) },
           })
           break
         }
         case 'unmatch':
-        case 'view':
         case 'seen':
           break
       }

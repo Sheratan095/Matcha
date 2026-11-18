@@ -1,0 +1,30 @@
+.with {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: var(--fs-body);
+}
+
+/* phones: the day on its own row, the two times side by side under it */
+.when {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-3);
+}
+.day {
+  grid-column: 1 / -1;
+}
+
+/* the sheet portals to <body> (no container): the viewport decides */
+@media (min-width: 480px) {
+  .when {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .day {
+    grid-column: auto;
+  }
+}
+
+.summary {
+  margin-top: calc(var(--s-2) * -1);
+}

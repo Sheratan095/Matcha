@@ -14,11 +14,17 @@
 import { apiError, LOCAL_ERROR, toApiError } from '@/api/http'
 import {
   GENDERS,
+  MAX_EVENT_DESCRIPTION_LENGTH,
+  MAX_EVENT_TITLE_LENGTH,
   MAX_PICTURE_BYTES,
   MAX_USER_PICTURES,
   PICTURE_MIME_TYPES,
   SEXUAL_PREFERENCES,
+  type CalendarAction,
+  type CalendarEvent,
   type ChatMessage,
+  type Coordinates,
+  type CreateEventPayload,
   type DeckAction,
   type DeckCard,
   type LoginPayload,
@@ -560,11 +566,23 @@ function refreshConnections(): void {
   void refresh('matchesMap')
 }
 
-/** Someone left your connections: their conversation closes if it is open, their unread count goes. */
+/**
+ * Whether `calendar` (the loaded one by default) holds a date with `userId`; true when it is not loaded
+ * (refresh rather than miss it).
+ */
+export function hasDatesWith(userId: string, calendar = getNodeValue('calendar')): boolean {
+  return calendar ? calendar.events.some((event) => event.inviterId === userId || event.inviteeId === userId) : true
+}
+
+/**
+ * Someone left your connections: their conversation closes if it is open, their unread count goes, and
+ * the dates with them are gone (the backend deletes them with the match).
+ */
 function forgetConnection(userId: string): void {
   if (getNodeValue('activeChatUserId') === userId) closeChat()
   clearUnread(userId)
   refreshConnections()
+  if (hasDatesWith(userId)) void refresh('calendar')
 }
 
 /**
@@ -821,6 +839,92 @@ async function sendMessage(userId: string, text: string): Promise<void> {
   await reloadOpenChat(userId)
 }
 
+// ---------------------------------------------------------------- calendar
+
+/** A date to propose to a connection. */
+export interface DatePlan {
+  /** The connection invited. */
+  inviteeId: string
+  /** One line, 1-100 characters once trimmed. */
+  title: string
+  /** Up to 500 characters; blank sends none. */
+  description?: string
+  /** Epoch milliseconds or a Date; in the future. */
+  startsAt: number | Date
+  /** After `startsAt`. */
+  endsAt: number | Date
+  /** Where to meet; null or absent for no place. */
+  place?: Coordinates | null
+}
+
+function timeOf(value: number | Date): number {
+  return value instanceof Date ? value.getTime() : value
+}
+
+/** The request body for `plan`, or INVALID (nothing is sent) when the backend would refuse it. */
+function eventBody(plan: DatePlan): CreateEventPayload {
+  if (typeof plan.inviteeId !== 'string' || !URL_SAFE.test(plan.inviteeId)) invalid('Pick who the date is with.')
+  const title = (plan.title ?? '').replace(/\s+/g, ' ').trim()
+  if (!title) invalid('Give the date a title.')
+  if (title.length > MAX_EVENT_TITLE_LENGTH) invalid(`A title is ${MAX_EVENT_TITLE_LENGTH} characters at most.`)
+  const description = (plan.description ?? '').trim()
+  if (description.length > MAX_EVENT_DESCRIPTION_LENGTH) {
+    invalid(`A description is ${MAX_EVENT_DESCRIPTION_LENGTH} characters at most.`)
+  }
+  const startsAt = timeOf(plan.startsAt)
+  const endsAt = timeOf(plan.endsAt)
+  if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) invalid('Pick a day and a time.')
+  if (startsAt <= Date.now()) invalid('A date cannot start in the past.')
+  if (endsAt <= startsAt) invalid('A date has to end after it starts.')
+  const body: CreateEventPayload = {
+    inviteeId: plan.inviteeId,
+    title,
+    // UTC with its 'Z': the backend wants an explicit offset
+    startTime: new Date(startsAt).toISOString(),
+    endTime: new Date(endsAt).toISOString(),
+  }
+  if (description) body.description = description
+  if (plan.place) {
+    const { latitude, longitude } = plan.place
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) invalid('Latitude must be between -90 and 90')
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) invalid('Longitude must be between -180 and 180')
+    body.latitude = latitude
+    body.longitude = longitude
+  }
+  return body
+}
+
+/**
+ * Invites a connection on a date (`POST /profile/calendar/event`); they are told over the socket.
+ * Rejects INVALID without a request for what the backend would refuse (no title, an overlong text,
+ * a start in the past, an end before the start, a place off the globe), and with the backend's 403
+ * when they are not a connection. Resolves with the stored event once `calendar` (and `dates`) have it.
+ */
+async function planDate(plan: DatePlan): Promise<CalendarEvent> {
+  const event = await run('eventCreate', eventBody(plan))
+  await refresh('calendar')
+  return event
+}
+
+/** How one side answers a date: the invitee accepts or declines it, either side cancels it. */
+export type DateAnswer = Extract<CalendarAction, 'accept' | 'decline' | 'cancel'>
+
+const ANSWER_COMMAND = { accept: 'eventAccept', decline: 'eventDecline', cancel: 'eventCancel' } as const
+
+/**
+ * Answers a date (`POST /profile/calendar/event/{eventId}/accept | decline | cancel`); the other side is
+ * told over the socket. The backend answers 404 when the move is not yours to make (an invite only the
+ * invitee answers, a pending invite is declined rather than cancelled) and 400 once the date has
+ * started. Resolves once `calendar` reflects it (a cancelled date leaves it, so does a declined one for
+ * the invitee).
+ */
+async function answerDate(eventId: string, answer: DateAnswer): Promise<void> {
+  const command = ANSWER_COMMAND[answer]
+  if (!command) invalid('Unknown answer.')
+  await run(command, pathId(eventId, 'date id'))
+  await refresh('calendar')
+}
+
 export const actions = {
   bootSession,
   login,
@@ -854,6 +958,8 @@ export const actions = {
   openChat,
   closeChat,
   sendMessage,
+  planDate,
+  answerDate,
 } as const
 
 export type Actions = typeof actions

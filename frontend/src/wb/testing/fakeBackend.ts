@@ -2,7 +2,7 @@
  * Test-only: a small stateful backend behind the fake adapter, enough for the flows the actions run.
  * It answers the gateway's routes with the shapes the real services send.
  */
-import type { ChatMessage, DeckCard, OwnProfile, Profile, UserSummary } from '@/api/types'
+import type { CalendarEvent, CalendarStatus, ChatMessage, CreateEventPayload, DeckCard, OwnProfile, Profile, UserSummary } from '@/api/types'
 import { API_URL } from '@/config'
 import { FakeServer, nestError, reply } from './fakeServer'
 
@@ -69,6 +69,8 @@ export interface FakeBackend {
     blocked: UserSummary[]
     /** GET /profile/visited, most recent first: GET /profile/{id} records a visit. */
     visited: UserSummary[]
+    /** Every calendar event, cancelled ones included (GET /profile/calendar filters them). */
+    events: CalendarEvent[]
   }
 }
 
@@ -85,15 +87,37 @@ export function createFakeBackend(): FakeBackend {
     chats: new Map(),
     blocked: [],
     visited: [],
+    events: [],
   }
   const unauthorized = () => nestError(401, 'Missing or invalid access token', 'Unauthorized')
   let counter = 0
 
+  // Like the backend: the pair's events hang off their chat and go with it.
   const disconnect = (userId: string) => {
     state.connections = state.connections.filter((entry) => entry.userId !== userId)
     state.chats.delete(userId)
+    state.events = state.events.filter((event) => event.inviterId !== userId && event.inviteeId !== userId)
   }
   const chatById = (chatId: string) => [...state.chats.values()].find((chat) => chat.chatId === chatId)
+
+  /**
+   * accept / decline: the invitee, from pending. cancel: never twice; the inviter always, the invitee
+   * once accepted. Anything else is a 404, as the backend's UPDATE ... WHERE makes it.
+   */
+  const moveEvent = (eventId: string, status: Exclude<CalendarStatus, 'pending'>) => {
+    if (!state.session) return unauthorized()
+    const event = state.events.find((candidate) => candidate.eventId === eventId)
+    const me = state.session
+    const allowed =
+      event !== undefined &&
+      (status === 'cancelled'
+        ? event.status !== 'cancelled' && (event.inviterId === me || (event.inviteeId === me && event.status === 'accepted'))
+        : event.inviteeId === me && event.status === 'pending')
+    if (!event || !allowed) return nestError(404, `Event not found or it can't be ${status} by you`, 'Not Found')
+    if (Date.parse(event.startTime) <= Date.now()) return nestError(400, 'An event that has already started cannot be modified', 'Bad Request')
+    event.status = status
+    return { success: true }
+  }
 
   server
     // First, so every more specific /profile/... route (registered after it) wins over it.
@@ -275,6 +299,45 @@ export function createFakeBackend(): FakeBackend {
       })
       return { delivered: false }
     })
+    // Cancelled events for nobody, declined ones only for the inviter; earliest first.
+    .on('GET', `${API_URL}/profile/calendar`, () => {
+      if (!state.session) return unauthorized()
+      const me = state.session
+      const events = state.events
+        .filter((event) => event.status !== 'cancelled')
+        .filter((event) => event.inviterId === me || (event.inviteeId === me && event.status !== 'declined'))
+        .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))
+        .map((event) => ({ ...event }))
+      return { events }
+    })
+    .on('POST', `${API_URL}/profile/calendar/event`, ({ body }) => {
+      if (!state.session) return unauthorized()
+      const plan = body as CreateEventPayload
+      if (plan.inviteeId === state.session) return nestError(400, 'You cannot add an event for yourself', 'Bad Request')
+      if (!state.chats.has(plan.inviteeId)) return nestError(403, 'You can only add events for your matches', 'Forbidden')
+      if (Date.parse(plan.startTime) <= Date.now()) return nestError(400, 'An event cannot start in the past', 'Bad Request')
+      if (Date.parse(plan.startTime) >= Date.parse(plan.endTime)) {
+        return nestError(400, 'Event start time must be before its end time', 'Bad Request')
+      }
+      const event: CalendarEvent = {
+        eventId: `00000000-0000-4000-9000-${String(++counter).padStart(12, '0')}`,
+        inviterId: state.session,
+        inviteeId: plan.inviteeId,
+        title: plan.title,
+        description: plan.description ?? null,
+        startTime: new Date(plan.startTime).toISOString(),
+        endTime: new Date(plan.endTime).toISOString(),
+        status: 'pending',
+        latitude: plan.latitude ?? null,
+        longitude: plan.longitude ?? null,
+        createdAt: new Date().toISOString(),
+      }
+      state.events.push(event)
+      return { ...event }
+    })
+    .on('POST', `${API_URL}/profile/calendar/event/:id/accept`, ({ route }) => moveEvent(route.id, 'accepted'))
+    .on('POST', `${API_URL}/profile/calendar/event/:id/decline`, ({ route }) => moveEvent(route.id, 'declined'))
+    .on('POST', `${API_URL}/profile/calendar/event/:id/cancel`, ({ route }) => moveEvent(route.id, 'cancelled'))
     .on('POST', `${API_URL}/chat/:id/seen`, ({ route }) => {
       if (!state.session) return unauthorized()
       const chat = chatById(route.id)
@@ -297,6 +360,31 @@ export function connect(backend: FakeBackend, userId: string): FakeChat {
     state.chats.set(userId, chat)
   }
   return chat
+}
+
+let invites = 0
+
+/** `userId`, connected with ME, invites ME on a date tomorrow; returns the stored event. */
+export function invitedBy(backend: FakeBackend, userId: string, patch: Partial<CalendarEvent> = {}): CalendarEvent {
+  connect(backend, userId)
+  invites += 1
+  const start = Date.now() + 24 * 60 * 60 * 1000
+  const event: CalendarEvent = {
+    eventId: `00000000-0000-4000-a000-${String(invites).padStart(12, '0')}`,
+    inviterId: userId,
+    inviteeId: ME,
+    title: 'Drinks',
+    description: null,
+    startTime: new Date(start).toISOString(),
+    endTime: new Date(start + 2 * 60 * 60 * 1000).toISOString(),
+    status: 'pending',
+    latitude: null,
+    longitude: null,
+    createdAt: new Date().toISOString(),
+    ...patch,
+  }
+  backend.state.events.push(event)
+  return event
 }
 
 let inbound = 0

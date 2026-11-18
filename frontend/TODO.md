@@ -1,7 +1,7 @@
 - [x] remove wavebinder dependencies
 - [x] remove support without backend
 - [ ] Automatic(test) card creation needs to be handled in a more customizable approach. ex(asset usage)
-- [ ] design needs heavy adjustement on mobile side (5 tabs in the bottom bar since /map: check the labels fit on narrow phones)
+- [ ] design needs heavy adjustement on mobile side (6 tabs in the bottom bar since /calendar: about 58px a tab on a 360px phone; "Calendar" and "Activity" are the longest labels, check they fit)
 - [x] User map shared among friends (leaflet implementation): /map, GET /profile/matches/map
 - [ ] design document draft
 - [x] location fetching at runtime (useAutoLocation + "Locate me precisely" on /map)
@@ -49,7 +49,8 @@
 
 ### IV.7 Notifications (real time, <= 10 s)
 - [x] Listen on the socket (src/wb/realtime.ts): `profile-like`, `profile-view`, `message`, `match`, `unmatch`, `chat-seen`
-- [x] Calendar events on the socket: `event-invite`, `event-accept`, `event-decline`, `event-cancel` -> a toast each (who, the date's title and start, "Open chat"); they refresh nothing, since no screen shows the calendar yet
+- [x] Calendar events on the socket: `event-invite`, `event-accept`, `event-decline`, `event-cancel` -> a toast each (who, the date's title and start, a link to /calendar) and a reload of the calendar unless it already shows the change
+- [x] Profile views on the socket: `profile-view` -> a toast ("<name> viewed your profile", "See visitors" -> Activity > Viewers), besides the reload of the viewers
 - [ ] Unread notifications visible from any page (bell + count in the shell); a list of the last notifications (toasts only today)
 - [x] Refresh the affected nodes on each event (likes, viewers, connections, chat list, open chat, matchesMap)
 - [x] Remove `mockEvents$` and the typing indicator (the backend has no `typing` event)
@@ -64,7 +65,7 @@
 ## Bonus 
 - [x] Interactive map of users (/map)
 - [x] GitHub OAuth
-- [ ] Calendar: plan dates with a match (title, description, place as coordinates, date and time): GET /profile/calendar, POST /profile/calendar/event, POST .../:eventId/accept | decline | cancel (the socket `event-*` toasts are done; accepting or declining an invite needs this screen)
+- [x] Calendar (/calendar, its own tab with a badge for the invites waiting): plan dates with a match (title, description, place as coordinates, date and time; also from a conversation's menu), answer an invite, call a date off: GET /profile/calendar, POST /profile/calendar/event, POST .../:eventId/accept | decline | cancel
 - [ ] Photo gallery: drag-and-drop upload, crop / rotate / filters
 - [ ] Second OAuth provider
 - [ ] Video / audio chat
@@ -75,7 +76,6 @@
 | Endpoint | For |
 |---|---|
 | GET /profile/search | search (IV.4): `maxFame`, `minDistanceKm` still unused (everything else is sent) |
-| GET /profile/calendar, POST /profile/calendar/event, POST /profile/calendar/event/:eventId/accept, /decline, /cancel | calendar (bonus) |
 | GET /notification/online | a global count of open sockets: nothing shows it, so it is not called |
 
 ### Frontend calls that are broken

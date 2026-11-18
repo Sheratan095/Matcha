@@ -105,7 +105,7 @@ export { ChatBubble, TypingIndicator, DayDivider, ChatComposer, ChatThread } fro
 export type { ChatBubbleProps, ChatComposerProps } from './chat/Chat'
 
 // layout
-export { AppShell, Screen, PageHeader, Stack, Row } from './layout/Shell'
-export type { AppShellProps, ShellTab, ScreenProps, PageHeaderProps, StackProps, RowProps } from './layout/Shell'
+export { AppShell, Pane, Screen, PageHeader, Stack, Row } from './layout/Shell'
+export type { AppShellProps, ShellTab, PaneProps, ScreenProps, PageHeaderProps, StackProps, RowProps } from './layout/Shell'
 export { AuthLayout, Poster } from './layout/Auth'
 export type { AuthLayoutProps, PosterProps } from './layout/Auth'

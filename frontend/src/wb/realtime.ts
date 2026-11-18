@@ -9,7 +9,9 @@
  *   as unread; a match or an unmatch reloads the connections (unless it is the echo of this client's
  *   own like / unlike / block, which refreshes them itself), a like the likes, a view the viewers;
  *   `chat-seen` turns the open thread's ticks read without a request; the calendar's `event-invite`,
- *   `event-accept`, `event-decline`, `event-cancel` refresh nothing (no node holds the calendar).
+ *   `event-accept`, `event-decline`, `event-cancel` reload the calendar, and so does an unmatch with
+ *   someone you had dates with (the backend deletes them with the match); `event-start` (an accepted
+ *   date began) changes nothing stored, so it is only republished.
  * A list that already shows the change (after the load on its way, if any) is not reloaded, so the
  * events the backend replays at connection, or two events about one change, cost no extra request.
  * A read that loads on demand and was never asked for (e.g. the viewers) is not fetched by an event.
@@ -19,9 +21,9 @@
  */
 import { Subject, type Observable, type Subscription } from 'rxjs'
 import type { Socket } from 'socket.io-client'
-import type { CalendarAction, ChatMessage, MessageStatus, RealtimeEvent, UserSummary } from '@/api/types'
+import type { CalendarAction, CalendarResult, ChatMessage, MessageStatus, RealtimeEvent, UserSummary } from '@/api/types'
 import { API_URL } from '@/config'
-import { claimEcho, countUnread, markChatSeen, markThreadRead, reloadOpenChat } from './actions'
+import { claimEcho, countUnread, hasDatesWith, markChatSeen, markThreadRead, reloadOpenChat } from './actions'
 import { awaitPending, refresh } from './commands'
 import type { NodeValue, RefreshableNodeName } from './nodes'
 import { getLastRequestId, getNodeStatus, getNodeValue, getRequestId, isStoreLive, node$, onStoreStop } from './store'
@@ -122,6 +124,7 @@ const DECODERS: Record<string, (payload: unknown) => RealtimeEvent | null> = {
   'event-accept': calendarEvent('accept'),
   'event-decline': calendarEvent('decline'),
   'event-cancel': calendarEvent('cancel'),
+  'event-start': calendarEvent('start'),
 }
 
 /**
@@ -181,6 +184,28 @@ function onConnectionChange(userId: string, connected: boolean, mark: number): v
   void refreshUnlessShown('matchesMap', mark, (value) => has(value.matches, userId) === connected)
   // connected people are not in "likes you"; one who left it no longer likes us
   void refreshUnlessShown('likesReceived', mark, (value) => !has(value.likes, userId))
+  // a broken connection takes its dates with it (a new one has none yet)
+  void refreshUnlessShown('calendar', mark, (value) => connected || !hasDatesWith(userId, value))
+}
+
+/** The calendar already shows what a calendar notification tells of. */
+function calendarShows(calendar: CalendarResult, action: CalendarAction, eventId: string): boolean {
+  const listed = calendar.events.find((event) => event.eventId === eventId)
+  switch (action) {
+    case 'invite':
+      return listed !== undefined
+    case 'accept':
+      return listed?.status === 'accepted'
+    // the inviter is told, and the inviter still lists a declined date
+    case 'decline':
+      return listed?.status === 'declined'
+    // nobody lists a cancelled date
+    case 'cancel':
+      return listed === undefined
+    // a start changes nothing stored: there is nothing to reload
+    case 'start':
+      return true
+  }
 }
 
 /** `mark`: the last request id when the change the event tells of had already been made. */
@@ -207,9 +232,11 @@ function react(event: RealtimeEvent, mark: number): void {
     case 'seen':
       markThreadRead(event.chatId)
       break
-    case 'calendar':
-      // no node holds the calendar (GET /profile/calendar is not read yet): a toast only
+    case 'calendar': {
+      const { action, event: date } = event
+      void refreshUnlessShown('calendar', mark, (value) => calendarShows(value, action, date.id))
       break
+    }
   }
 }
 

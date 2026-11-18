@@ -5,6 +5,7 @@
  */
 import type { HttpSpec, SelectionSpec } from './builders'
 import { toNodeDefs } from './builders'
+import { calendarNodes, type CalendarCommands, type CalendarNodes } from './calendar'
 import { discoverNodes, type DiscoverCommands, type DiscoverNodes } from './discover'
 import { profileNodes, type ProfileCommands, type ProfileNodes } from './profile'
 import { searchNodes, type SearchNodes } from './search'
@@ -14,19 +15,20 @@ import { matchesNodes, type ChatCommands, type MatchesNodes } from './matches'
 export { DEFAULT_FILTERS } from './discover'
 
 /** Every node of the graph and the type of its value once loaded (a node may also be `null` or `undefined`). */
-export interface NodeValues extends SessionNodes, ProfileNodes, DiscoverNodes, SearchNodes, MatchesNodes {}
+export interface NodeValues extends SessionNodes, ProfileNodes, DiscoverNodes, SearchNodes, MatchesNodes, CalendarNodes {}
 export type NodeName = keyof NodeValues
 
 /** What a node can hold: its value, `null` (loading / reset / failed) or `undefined` (never loaded). */
 export type NodeValue<Name extends NodeName> = NodeValues[Name] | null | undefined
 
 /** Every mutation: `run(name, payload)` writes `<name>Payload` and settles with `<name>Result`'s request. */
-export interface Commands extends SessionCommands, ProfileCommands, DiscoverCommands, ChatCommands {}
+export interface Commands extends SessionCommands, ProfileCommands, DiscoverCommands, ChatCommands, CalendarCommands {}
 export type CommandName = keyof Commands
 export type CommandPayload<Name extends CommandName> = Commands[Name]['payload']
 export type CommandResult<Name extends CommandName> = Commands[Name]['result']
 
-const specs = { ...sessionNodes, ...profileNodes, ...discoverNodes, ...searchNodes, ...matchesNodes }
+// The calendar comes last: its `dates` reads the connections and the session.
+const specs = { ...sessionNodes, ...profileNodes, ...discoverNodes, ...searchNodes, ...matchesNodes, ...calendarNodes }
 type Specs = typeof specs
 type NamesOf<Kind> = { [Name in keyof Specs]: Specs[Name] extends Kind ? Name : never }[keyof Specs]
 
@@ -51,6 +53,7 @@ export const REFRESH_TRIGGERS = {
   searchResults: 'searchRefresh',
   connections: 'connectionsRefresh',
   chatList: 'chatListRefresh',
+  calendar: 'calendarRefresh',
 } as const satisfies Partial<Record<HttpNodeName, NamesOf<SelectionSpec>>>
 export type RefreshableNodeName = keyof typeof REFRESH_TRIGGERS
 

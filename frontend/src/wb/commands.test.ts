@@ -47,9 +47,10 @@ describe('the graph at rest', () => {
         'GET /auth/validate',
         // the guards and the avatar
         'GET /profile',
-        // the Matches and Activity badges
+        // the Matches, Calendar and Activity badges
         'GET /profile/matches',
         'GET /chat',
+        'GET /profile/calendar',
         'GET /profile/likes',
       ].sort(),
     )

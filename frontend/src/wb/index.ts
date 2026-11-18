@@ -7,7 +7,15 @@
  * - `realtime$`.
  * - Boot (main.tsx only): `installStoreHttp`, `startStore`, `startRealtime`.
  */
-export { actions, MAX_MESSAGE_LENGTH, type Actions, type RewindOutcome, type SwipeOutcome } from './actions'
+export {
+  actions,
+  MAX_MESSAGE_LENGTH,
+  type Actions,
+  type DateAnswer,
+  type DatePlan,
+  type RewindOutcome,
+  type SwipeOutcome,
+} from './actions'
 export { installStoreHttp } from './boot'
 export { refresh, run, type RunArgs } from './commands'
 export { load, REVISIT_MS } from './demand'

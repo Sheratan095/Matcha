@@ -16,6 +16,7 @@ export enum NotificationType
 	EVENT_ACCEPT = 'event-accept', // Sent when a user accepts a calendar event
 	EVENT_DECLINE = 'event-decline', // Sent when a user declines a calendar event
 	EVENT_CANCEL = 'event-cancel', // Sent when a user cancels a calendar event
+	EVENT_START = 'event-start', // Sent to both sides when an accepted calendar event starts (live only, not queued)
 }
 
 // Payloads for the remaining types are declared as their producing features land.

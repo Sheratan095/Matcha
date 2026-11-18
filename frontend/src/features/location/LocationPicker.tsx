@@ -8,7 +8,7 @@ import L from 'leaflet'
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { MAP_TILES_URL } from '@/config'
 import { Button, FieldError, IconPin, IconSearch, Notice, Spinner, TextField } from '@/ui'
-import { deviceSpot, networkSpot, placeName, searchPlaces, wrapLongitude, type Place, type PlacedSpot, type Spot, type SpotSource } from './geo'
+import { coordinatesLabel, deviceSpot, networkSpot, placeName, searchPlaces, wrapLongitude, type Place, type PlacedSpot, type Spot, type SpotSource } from './geo'
 import s from './LocationPicker.module.css'
 
 export interface LocationPickerProps {
@@ -17,6 +17,8 @@ export interface LocationPickerProps {
   onChange: (spot: PlacedSpot) => void
   /** With no pin yet, place one from the connection right away (no permission prompt). */
   locateWhenEmpty?: boolean
+  /** Where the map opens while there is no pin (e.g. the user's area); the whole world without it. */
+  center?: Spot | null
   error?: string
 }
 
@@ -35,18 +37,21 @@ type Note = 'denied' | 'device-failed' | 'lost' | 'search-empty' | 'search-faile
 
 const PIN = L.divIcon({ className: s.pin, html: '<span></span>', iconSize: [32, 40], iconAnchor: [16, 36] })
 
-function coordinates(spot: Spot): string {
-  const lat = `${Math.abs(spot.latitude).toFixed(3)}° ${spot.latitude >= 0 ? 'N' : 'S'}`
-  const lon = `${Math.abs(spot.longitude).toFixed(3)}° ${spot.longitude >= 0 ? 'E' : 'W'}`
-  return `${lat}, ${lon}`
-}
-
 function keyOf(spot: Spot): string {
   return `${spot.latitude.toFixed(4)},${spot.longitude.toFixed(4)}`
 }
 
-export function LocationPicker({ value, onChange, locateWhenEmpty, error }: LocationPickerProps) {
+export function LocationPicker({ value, onChange, locateWhenEmpty, center, error }: LocationPickerProps) {
   const errorId = useId()
+  /**
+   * Read once, when the map is created: the pin it opens with (a spot picked on the map has no zoom of
+   * its own), else `center`, else the world. A later change does not move the view.
+   */
+  const [start] = useState(() => {
+    if (value) return { at: L.latLng(value.latitude, value.longitude), zoom: ZOOM[value.source] ?? 13 }
+    if (center) return { at: L.latLng(center.latitude, center.longitude), zoom: 12 }
+    return { at: L.latLng(30, 10), zoom: 2 }
+  })
   const mapBox = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
@@ -82,7 +87,7 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, error }: Loca
   useEffect(() => {
     const box = mapBox.current
     if (!box) return
-    const map = L.map(box, { scrollWheelZoom: false, worldCopyJump: true, minZoom: 2 }).setView([30, 10], 2)
+    const map = L.map(box, { scrollWheelZoom: false, worldCopyJump: true, minZoom: 2 }).setView(start.at, start.zoom)
     L.tileLayer(MAP_TILES_URL, {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -98,7 +103,7 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, error }: Loca
       mapRef.current = null
       markerRef.current = null
     }
-  }, [move])
+  }, [move, start])
 
   // The pin follows `value`; a spot that did not come from the map itself brings the view to it.
   useEffect(() => {
@@ -212,7 +217,7 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, error }: Loca
         <div className={s.placeText}>
           {value ? (
             <>
-              <span className={s.placeName}>{name ? `Near ${name}` : coordinates(value)}</span>
+              <span className={s.placeName}>{name ? `Near ${name}` : coordinatesLabel(value)}</span>
               <span className={s.precision}>{PRECISION[value.source]}</span>
             </>
           ) : busy === 'network' ? (

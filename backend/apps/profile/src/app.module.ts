@@ -5,6 +5,7 @@ import { DbModule } from './db/db.module';
 import { env } from "@repo/config";
 import { HttpModule } from '@nestjs/axios';
 import { StorageModule } from './storage/storage.module';
+import { EventStartWatcher } from './calendar/eventStartWatcher';
 
 @Module({
 	imports: [
@@ -17,6 +18,6 @@ import { StorageModule } from './storage/storage.module';
 		StorageModule,
 	],
 	controllers: [AppController],
-	providers: [AppService],
+	providers: [AppService, EventStartWatcher],
 })
 export class AppModule {}

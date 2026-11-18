@@ -15,10 +15,10 @@ import {
   Button,
   ButtonLink,
   EmptyState,
-  IconCards,
   IconGlobe,
   IconPin,
   IconRefresh,
+  IconRegMark,
   ListRow,
   Notice,
   PageHeader,
@@ -172,7 +172,7 @@ export default function MapPage() {
           stampTone="blue"
           title="No connections on the map"
           action={
-            <ButtonLink to="/discover" icon={<IconCards size={18} />}>
+            <ButtonLink to="/discover" icon={<IconRegMark size={18} />}>
               Go discover
             </ButtonLink>
           }

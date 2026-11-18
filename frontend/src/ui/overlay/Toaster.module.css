@@ -101,7 +101,11 @@
   line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;
-  padding-top: 0.06em;
+  /* room for accents and emoji above and below the tight line box, which overflow would cut */
+  padding-block: 0.06em;
+  /* a long unbroken name or word wraps, and nothing spills out of the ticket */
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .message {
@@ -109,6 +113,8 @@
   font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--c-ink-2);
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .action {

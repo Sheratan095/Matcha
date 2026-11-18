@@ -17,10 +17,10 @@ import {
   EmptyState,
   FormError,
   IconBell,
-  IconCards,
   IconChat,
   IconGithub,
   IconHeart,
+  IconRegMark,
   IconSliders,
   IconUser,
   ListRow,
@@ -66,7 +66,7 @@ function BackStrip() {
 }
 
 const TABS: ShellTab[] = [
-  { to: '/discover', label: 'Discover', icon: <IconCards size={24} /> },
+  { to: '/discover', label: 'Discover', icon: <IconRegMark size={24} /> },
   { to: '/matches', label: 'Matches', icon: <IconChat size={24} />, badge: 3 },
   { to: '/activity', label: 'Activity', icon: <IconHeart size={24} />, badge: 12 },
   { to: '/me', label: 'Me', icon: <IconUser size={24} /> },
@@ -150,7 +150,7 @@ function ActivityDemo() {
         stamp="Nobody yet"
         title="Quiet on the press"
         action={
-          <Button variant="ink" icon={<IconCards size={20} />}>
+          <Button variant="ink" icon={<IconRegMark size={20} />}>
             Back to the deck
           </Button>
         }

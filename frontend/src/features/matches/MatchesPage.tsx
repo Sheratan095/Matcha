@@ -14,9 +14,9 @@ import {
   ButtonLink,
   CountBadge,
   EmptyState,
-  IconCards,
   IconPlus,
   IconRefresh,
+  IconRegMark,
   ListRow,
   Notice,
   PageHeader,
@@ -208,7 +208,7 @@ function NoMatches() {
         stampTone="strawberry"
         title="No matches yet"
         action={
-          <ButtonLink to="/discover" size="lg" icon={<IconCards size={22} />}>
+          <ButtonLink to="/discover" size="lg" icon={<IconRegMark size={22} />}>
             Go to Discover
           </ButtonLink>
         }

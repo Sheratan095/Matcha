@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { cx } from '../cx'
-import { IconInfo, IconPin } from '../icons'
+import { IconPin, IconRegMark } from '../icons'
 import { Stamp, Sticker } from '../lettering/Stamp'
 import { Serial } from '../print/Print'
 import { Chip } from './Chip'
@@ -148,7 +148,7 @@ export function ProfileCard({
           </h3>
           {onInfo ? (
             <button type="button" className={s.info} aria-label={`Open ${name}'s profile`} onClick={onInfo}>
-              <IconInfo size={22} strokeWidth={3} />
+              <IconRegMark size={22} strokeWidth={3} />
             </button>
           ) : null}
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import type { ApiError, OwnProfile } from '@/api/types'
 import { MAX_USER_PICTURES } from '@/api/types'
 import ProfileSheet from '@/features/profile/ProfileSheet'
@@ -18,6 +18,8 @@ import s from './MePage.module.css'
 type Tab = 'photos' | 'details' | 'account'
 
 const TAB_IDS = 'me'
+/** The id of a tab's panel (the kit's `TabPanel` id): the anchor a switch to that tab snaps to. */
+const panelId = (tab: Tab) => `${TAB_IDS}-panel-${tab}`
 const pad = (n: number) => String(n).padStart(2, '0')
 
 function tabFrom(value: string | null): Tab {
@@ -31,37 +33,44 @@ const FIX_TARGET: Record<CheckKey, { tab: Tab; id: string }> = {
   biography: { tab: 'details', id: SECTION_IDS.biography },
   interests: { tab: 'details', id: SECTION_IDS.interests },
   location: { tab: 'details', id: SECTION_IDS.location },
-  photo: { tab: 'photos', id: 'me-photos' },
+  photo: { tab: 'photos', id: panelId('photos') },
 }
 
 function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError: ApiError | null }) {
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const tab = tabFrom(params.get('tab'))
   const [previewing, setPreviewing] = useState(false)
   const complete = useNodeValue('profileComplete') === true
 
-  const setTab = (next: Tab) => setParams(next === 'photos' ? {} : { tab: next }, { replace: true })
+  /**
+   * Opens a tab at an anchor, as a `#section` link does: the hash names the part to show, and the app's
+   * <ScrollRestoration /> snaps it into view once the tab has rendered.
+   */
+  const open = (next: Tab, anchor: string) =>
+    navigate({ search: next === 'photos' ? '' : `?tab=${next}`, hash: anchor }, { replace: true })
 
-  /** A section to bring into view once its tab has rendered (the router commits tab changes later). */
-  const jumpRef = useRef<string | null>(null)
-  const [jumpTick, setJumpTick] = useState(0)
+  /** A switch snaps to the revealed panel; the panel's scroll margin keeps the tab strip in view above it. */
+  const setTab = (next: Tab) => open(next, panelId(next))
+
+  /** A section whose first control takes the keyboard once the navigation has rendered it. */
+  const focusRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const id = jumpRef.current
+    const id = focusRef.current
+    focusRef.current = null
     if (!id) return
-    const target = document.getElementById(id)
-    if (!target) return // the tab is not rendered yet: this runs again when it is
-    jumpRef.current = null
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
-    target.querySelector<HTMLElement>('input:not(:disabled), textarea, button:not(:disabled)')?.focus({ preventScroll: true })
-  }, [jumpTick, tab])
+    document
+      .getElementById(id)
+      ?.querySelector<HTMLElement>('input:not(:disabled), textarea, button:not(:disabled)')
+      ?.focus({ preventScroll: true })
+  }, [location.key])
 
-  /** Opens a tab, then brings a section into view and puts the keyboard in its first control. */
+  /** Opens a tab at one of its sections and puts the keyboard in the section's first control. */
   const goTo = (next: Tab, id: string) => {
-    jumpRef.current = id
-    setTab(next)
-    setJumpTick((n) => n + 1)
+    focusRef.current = id
+    open(next, id)
   }
 
   return (

@@ -157,6 +157,8 @@
   display: grid;
   place-items: center;
   width: 56px;
+  /* six sections on a narrow phone leave less than 56px a tab */
+  max-width: 100%;
   height: 34px;
   border: var(--bw) solid transparent;
   border-radius: var(--r-pill);
@@ -232,6 +234,53 @@
   padding: var(--s-3) var(--gutter) calc(var(--s-3) + var(--safe-b));
   border-top: var(--line);
   background: var(--c-paper);
+}
+
+/* ------------------------------------------------------------ fit: the shell is the viewport, a Pane scrolls inside */
+.fit {
+  height: 100vh;
+  height: 100dvh;
+}
+.fit .shellStage {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+.fit .sheet {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.fit .topbar,
+.fit .tabbar {
+  flex: none;
+}
+.fit .main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+.pane {
+  flex: 1;
+  height: auto;
+}
+
+@container (max-width: 959px) {
+  .noTop .topbar {
+    display: none;
+  }
+  /* under the top bar or over the tab bar, a pane leaves the safe areas to them */
+  .shell:not(.noTop) .pane .screenHead {
+    padding-top: var(--s-2);
+  }
+  .shell:not(.noTabs) .pane .screenFoot {
+    padding-bottom: var(--s-3);
+  }
 }
 
 /* ------------------------------------------------------------ wide screens */
@@ -433,6 +482,27 @@
   }
   .screenFoot {
     padding-bottom: var(--s-4);
+  }
+
+  /* fit: the rail and the stage share the last row, which is what the viewport has left */
+  .fit {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .fit .rail,
+  .fit .shellStage {
+    grid-row: 2;
+  }
+  .fit .rail {
+    height: auto;
+  }
+  .fit .shellStage {
+    flex-direction: row;
+    min-height: 0;
+  }
+  .fit .sheet {
+    /* stretched by the stage to the height that is left */
+    flex: none;
+    min-height: 0;
   }
 }
 

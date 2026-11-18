@@ -46,6 +46,9 @@ export class CalendarEventDto
 
 	@ApiProperty({ example: 12.542861, nullable: true, description: 'Longitude in decimal degrees, at full precision; null if no location set' })
 	longitude: number | null;
+
+	@ApiProperty({ example: '2024-05-28T18:30:00Z', description: 'When the invite was sent, ISO 8601' })
+	createdAt: string;
 }
 
 export class GetCalendarResponseDto

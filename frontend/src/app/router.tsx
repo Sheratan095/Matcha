@@ -1,6 +1,6 @@
 /**
- * Routes (docs/ARCHITECTURE.md §6). Every page is a lazy chunk. `/chat/:userId` sits outside the
- * AppShell (its page renders a full-screen `Screen`), but behind the same guards.
+ * Routes (docs/ARCHITECTURE.md §6). Every page is a lazy chunk. `/chat/:userId` sits in the AppShell
+ * like the sections (the shell fits the viewport for it, see AppLayout).
  */
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import AppLayout from './AppLayout'
@@ -8,6 +8,7 @@ import { RootLayout, RouteError } from './frame/screens'
 import { AnonymousOnly, HomeGate, RequireAuth, RequireCompleteProfile } from './guards'
 import {
   ActivityPage,
+  CalendarPage,
   ChatPage,
   DiscoverPage,
   ForgotPasswordPage,
@@ -57,15 +58,13 @@ export const router = createBrowserRouter([
                 children: [
                   { path: '/discover', element: <DiscoverPage /> },
                   { path: '/matches', element: <MatchesPage /> },
+                  { path: '/calendar', element: <CalendarPage /> },
                   { path: '/activity', element: <ActivityPage /> },
                   { path: '/map', element: <MapPage /> },
+                  { path: '/chat/:userId', element: <ChatPage /> },
                 ],
               },
             ],
-          },
-          {
-            element: <RequireCompleteProfile fullPage />,
-            children: [{ path: '/chat/:userId', element: <ChatPage /> }],
           },
         ],
       },

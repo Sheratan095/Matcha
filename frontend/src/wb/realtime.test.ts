@@ -11,6 +11,7 @@ describe('decodeSocketEvent: calendar notifications', () => {
     ['event-accept', 'accept'],
     ['event-decline', 'decline'],
     ['event-cancel', 'cancel'],
+    ['event-start', 'start'],
   ] as const)('%s becomes a calendar %s', (name, action) => {
     expect(decodeSocketEvent(name, payload)).toEqual({
       type: 'calendar',
@@ -32,6 +33,14 @@ describe('decodeSocketEvent: calendar notifications', () => {
   it('ignores an event name it does not listen to', () => {
     expect(decodeSocketEvent('event-edit', payload)).toBeUndefined()
     expect(decodeSocketEvent('toString', payload)).toBeUndefined()
+  })
+})
+
+describe('decodeSocketEvent: profile views', () => {
+  it('profile-view becomes a view by the person in the payload', () => {
+    const ann = { userId: 'ann', username: 'ann', profilePictureUrl: null }
+    expect(decodeSocketEvent('profile-view', ann)).toEqual({ type: 'view', person: ann })
+    expect(decodeSocketEvent('profile-view', { username: 'ann' })).toBeNull()
   })
 })
 

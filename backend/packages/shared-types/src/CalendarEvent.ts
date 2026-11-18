@@ -15,6 +15,8 @@ export interface ICalendarEvent
 
 	latitude: number | null;   // latitude in decimal degrees, at full precision; null if no location set
 	longitude: number | null;  // longitude in decimal degrees, at full precision; null if no location set
+
+	createdAt: string | null;  // ISO 8601, when the invite was sent; null until the row is stored
 }
 
 export class CalendarEvent implements ICalendarEvent
@@ -29,6 +31,7 @@ export class CalendarEvent implements ICalendarEvent
 	status: string;
 	latitude: number | null;
 	longitude: number | null;
+	createdAt: string | null;
 
 	constructor(data: ICalendarEvent)
 	{
@@ -42,6 +45,7 @@ export class CalendarEvent implements ICalendarEvent
 		this.status      = data.status;
 		this.latitude    = data.latitude;
 		this.longitude   = data.longitude;
+		this.createdAt   = data.createdAt;
 	}
 
 	static fromDbRow(row: any): CalendarEvent
@@ -57,6 +61,7 @@ export class CalendarEvent implements ICalendarEvent
 			status:      row.status,
 			latitude:    row.latitude,
 			longitude:   row.longitude,
+			createdAt:   row.created_at ?? null,
 		}));
 	}
 
@@ -73,6 +78,7 @@ export class CalendarEvent implements ICalendarEvent
 			status:      'pending', // Default status when creating a new event
 			latitude:    dto.latitude ?? null,  // ?? not ||: 0 is a valid coordinate (equator / Greenwich)
 			longitude:   dto.longitude ?? null,
+			createdAt:   null, // set by the database
 		}));
 	}
 }
