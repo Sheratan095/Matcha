@@ -20,6 +20,20 @@
   border: var(--line);
 }
 
+/*
+ * The photograph is a forward surface, but an <img> cannot take a background, so its grain is a layer
+ * over the picture. The picture sits at z-index -1 and the grain at 0, so the grain covers the picture
+ * and nothing else: overlay content (stamps, stickers, chips) paints above it and carries its own.
+ */
+.frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--tex-grain-soft);
+  pointer-events: none;
+}
+
 .sh-0 {
   box-shadow: none;
 }
@@ -54,6 +68,7 @@
 
 .img {
   position: absolute;
+  z-index: -1;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -71,22 +86,32 @@
   mix-blend-mode: multiply;
 }
 
-/* halftone: a 45° dot screen knocked out of the image in the field colour */
+/*
+ * halftone: the pure-CSS CMYK screen (--fx-halftone-*, after leanrada.com/notes/pure-css-halftone).
+ * .screen wraps the picture: the filter blurs and thresholds it while ::after screens a dot grid over it.
+ * It bleeds 4px past the frame so the blur's faded edge falls under the frame's overflow, and it is
+ * multiplied onto the frame so the white of the print becomes the paper stock. `tone` does not apply:
+ * process inks need paper, and on a colour field they go muddy.
+ */
+.halftone {
+  background: var(--c-paper-hi);
+}
 .screen {
   position: absolute;
-  inset: 0;
-  color: var(--photo-tone);
-  background-image: var(--tex-halftone), var(--tex-halftone);
-  background-size: 7px 7px;
-  background-position:
-    0 0,
-    3.5px 3.5px;
-  mix-blend-mode: screen;
-  opacity: 0.55;
-  pointer-events: none;
+  z-index: -1;
+  inset: -4px;
+  filter: var(--fx-halftone);
+  mix-blend-mode: multiply;
 }
-.halftone .img {
-  filter: grayscale(1) contrast(1.5) brightness(1.05);
+.screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--fx-halftone-screen-cmyk);
+  background-size: var(--fx-halftone-size);
+  background-blend-mode: multiply;
+  mix-blend-mode: screen;
+  pointer-events: none;
 }
 
 /* ------------------------------------------------------------ avatar */
@@ -128,6 +153,7 @@
   border: var(--line);
   border-radius: 50%;
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
 }
 .av-xs .avFace,

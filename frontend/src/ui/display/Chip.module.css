@@ -9,6 +9,7 @@
   border: var(--line-thin);
   border-radius: var(--r-pill);
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   font-family: var(--font-mono);
   font-weight: 700;
@@ -65,7 +66,7 @@
   box-shadow: 0 0 0 var(--c-ink);
 }
 .selected {
-  background: var(--c-matcha);
+  background-color: var(--c-matcha);
   color: var(--c-ink);
   translate: 1px 1px;
   box-shadow: 1px 1px 0 var(--c-ink);
@@ -113,6 +114,7 @@
   border: var(--line-thin);
   border-radius: var(--r-xs);
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   font-family: var(--font-mono);
   font-weight: 700;
@@ -134,6 +136,7 @@
   border: var(--line-thin);
   border-radius: var(--r-pill);
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   box-shadow: 1.5px 1.5px 0 var(--c-ink);
   font-family: var(--font-mono);

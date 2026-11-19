@@ -90,12 +90,13 @@
   border: var(--bw) dashed var(--c-ink);
   border-radius: 50%;
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   transition: background-color var(--dur-fast) linear;
 }
 @media (hover: hover) {
   .more:hover .moreFace {
-    background: var(--c-matcha);
+    background-color: var(--c-matcha);
     border-style: solid;
   }
 }
@@ -141,6 +142,7 @@
   border: var(--line);
   border-radius: var(--r-xl);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-3);
 }
 .empty > :not(.emptyWord) {

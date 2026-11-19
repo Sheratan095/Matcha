@@ -20,6 +20,7 @@
   border: var(--line);
   border-radius: var(--r-sm);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: 3px 3px 0 var(--c-ink);
   transition:
@@ -32,7 +33,7 @@
   box-shadow: 0 0 0 var(--c-ink);
 }
 .triggerOpen {
-  background: var(--c-yolk);
+  background-color: var(--c-yolk);
 }
 .triggerGhost {
   border-color: transparent;
@@ -41,7 +42,8 @@
 }
 .triggerGhost.triggerOpen {
   translate: none;
-  background: var(--c-yolk);
+  background-color: var(--c-yolk);
+  background-image: var(--tex-grain-soft);
   border-color: var(--c-ink);
 }
 
@@ -54,6 +56,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-3);
   animation: menu-in var(--dur-fast) var(--ease-out) both;
 }
@@ -120,6 +123,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: 3px 3px 0 var(--c-ink);
   text-align: left;
@@ -129,10 +133,10 @@
 }
 @media (hover: hover) {
   .action:hover:not(:disabled) {
-    background: var(--c-matcha-tint);
+    background-color: var(--c-matcha-tint);
   }
   .action.danger:hover:not(:disabled) {
-    background: var(--c-strawberry-tint);
+    background-color: var(--c-strawberry-tint);
   }
 }
 .action:active:not(:disabled) {

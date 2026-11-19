@@ -147,6 +147,7 @@
   border: var(--line-thin);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: 2px 2px 0 var(--c-ink);
   overflow: hidden;
 }
@@ -174,6 +175,7 @@
 }
 @media (hover: hover) {
   .result:hover {
-    background: var(--c-yolk-tint);
+    background-color: var(--c-yolk-tint);
+    background-image: var(--tex-grain-soft);
   }
 }

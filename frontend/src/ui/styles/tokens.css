@@ -142,11 +142,20 @@
   --z-nav: 50;
   --z-overlay: 200;
   --z-toast: 300;
-  --z-grain: 1000;
 
   /* ---------------------------------------------------------------- textures */
-  /* paper grain: fine dark specks, tiled. Painted over everything by body::after. */
-  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .08 0 0 0 0 .05 0 0 0 .9 -.34'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /*
+   * Grain is paint, not an overlay: it is a background-image of the surface it belongs to, so it can
+   * never be printed twice over the same thing. Two tiles, two tiers:
+   *   --tex-grain       the ground: the page (html), the cutting mat, the sheet, the rail. Fine dark specks.
+   *   --tex-grain-soft  forward surfaces (cards, buttons, bars, panels, photos...): half the strength, a
+   *                     little rounder, so lettering and photographs stay clean.
+   * Both are 240px tiles of warm-ink specks (alpha only, no opacity needed); nothing sets background-size.
+   * Rules: see "Textures" in ui/README.md. A surface sets its own fill and then `background-image:` one of
+   * these; state rules change `background-color`, never the `background` shorthand (it would wipe the grain).
+   */
+  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .08 0 0 0 0 .05 0 0 0 .45 -.17'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --tex-grain-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.80' numOctaves='1' seed='50' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .08 0 0 0 0 .05 0 0 0 .3 -.11'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   /* ink wear: an alpha mask with small voids, for stamps and heavy lettering */
   --tex-wear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -11 0 0 0 7.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
   /* pattern fills: use with background-size var(--tex-*-size); they paint in currentColor */
@@ -170,7 +179,8 @@
   /* ---------------------------------------------------------------- photo filters */
   /*
    * Halftone photo screen in pure CSS, after leanrada.com/notes/pure-css-halftone.
-   * AVAILABLE, NOT APPLIED: no component uses it yet; only the styleguide does (.halftone* in Styleguide.module.css).
+   * Used by PhotoFrame treatment="halftone" (colour screen, .screen in Photo.module.css); the styleguide also
+   * shows the ink and colour variants bare (.halftone* in Styleguide.module.css).
    * Put an <img> in a wrapper and screen a dot grid over it:
    *   .wrap          { position: relative; filter: var(--fx-halftone-mono); }
    *   .wrap::after   { content: ''; position: absolute; inset: 0; mix-blend-mode: screen;

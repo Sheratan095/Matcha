@@ -59,11 +59,13 @@
 
 .mine .bubble {
   background: var(--c-matcha);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: 3px 3px 0 var(--c-ink);
 }
 .theirs .bubble {
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: -3px 3px 0 var(--c-ink);
 }
@@ -103,7 +105,7 @@
 }
 .failed {
   border-style: dashed;
-  background: var(--c-strawberry-tint) !important;
+  background-color: var(--c-strawberry-tint) !important;
   box-shadow: 3px 3px 0 var(--c-strawberry) !important;
 }
 
@@ -189,6 +191,7 @@
   border: var(--line);
   border-radius: 24px;
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: inset 3px 3px 0 rgb(21 19 15 / 9%);
   transition:
     translate var(--dur-press) var(--ease-press),
@@ -242,6 +245,7 @@
   border: var(--line);
   border-radius: 50%;
   background: var(--c-matcha);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: 3px 3px 0 var(--c-ink);
   --icon-hole: var(--c-matcha);
@@ -255,7 +259,7 @@
   box-shadow: none;
 }
 .send:disabled {
-  background: var(--c-paper-lo);
+  background-color: var(--c-paper-lo);
   --icon-hole: var(--c-paper-lo);
   color: var(--c-ink-3);
   border-style: dashed;

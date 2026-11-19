@@ -8,22 +8,29 @@
   border: var(--line);
   border-radius: var(--card-r);
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
 }
 
+/* --perf-shadow tells a Perforation's notches how far the shadow reaches (the offset of --sh-N) */
 .sh-0 {
+  --perf-shadow: 0px;
   box-shadow: none;
 }
 .sh-1 {
+  --perf-shadow: 2px;
   box-shadow: var(--sh-1);
 }
 .sh-2 {
+  --perf-shadow: 4px;
   box-shadow: var(--sh-2);
 }
 .sh-3 {
+  --perf-shadow: 6px;
   box-shadow: var(--sh-3);
 }
 .sh-4 {
+  --perf-shadow: 10px;
   box-shadow: var(--sh-4);
 }
 
@@ -64,6 +71,7 @@
 }
 
 .dashed {
+  --perf-shadow: 0px;
   border-style: dashed;
   box-shadow: none;
   background: transparent;

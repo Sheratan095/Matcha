@@ -195,9 +195,20 @@ export async function placeName(spot: Spot, signal?: AbortSignal): Promise<strin
   }
 }
 
-/** Places matching a free-text query, best first (5 at most). Rejects when the geocoder is unreachable. */
+const MAX_RESULTS = 5
+/** Two results with the same name this close are one place listed twice (see `searchPlaces`). */
+const SAME_PLACE_KM = 25
+
+/**
+ * Places matching a free-text query, best first (5 at most). Rejects when the geocoder is unreachable.
+ *
+ * OpenStreetMap often holds one city as several objects with the same name and centres a few km apart
+ * (Paris is both a commune and a département): Nominatim returns each, and the list would show the
+ * city twice, one a little offset. The best-ranked of such repeats is kept. More than 5 are asked for,
+ * so the list is not left short once the repeats are gone.
+ */
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<Place[]> {
-  const raw = await nominatim('search', { q: query.trim(), limit: '5' }, signal)
+  const raw = await nominatim('search', { q: query.trim(), limit: '10' }, signal)
   if (!Array.isArray(raw)) return []
   const places: Place[] = []
   for (const item of raw) {
@@ -205,7 +216,12 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
     const record = item as Record<string, unknown>
     const spot = { latitude: toNumber(record.lat), longitude: toNumber(record.lon) }
     const label = typeof record.display_name === 'string' ? record.display_name : placeLabel(record)
-    if (isSpot(spot) && label) places.push({ ...spot, label })
+    if (!isSpot(spot) || !label) continue
+    const name = label.trim().toLowerCase()
+    const repeat = places.some((place) => place.label.trim().toLowerCase() === name && distanceKm(place, spot) <= SAME_PLACE_KM)
+    if (repeat) continue
+    places.push({ ...spot, label })
+    if (places.length === MAX_RESULTS) break
   }
   return places
 }

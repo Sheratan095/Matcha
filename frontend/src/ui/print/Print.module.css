@@ -70,22 +70,49 @@
   content: '';
   position: absolute;
   top: 50%;
+}
+
+/* each notch is centred on the card's outer edge; the half that pokes outside is clipped away */
+.notches::before {
+  left: calc(-11px - var(--bw));
   width: 22px;
   height: 22px;
   translate: 0 -50%;
   border: var(--line);
   border-radius: 50%;
   background: var(--perf-notch);
-}
-
-/* each notch is centred on the card's outer edge; the half that pokes outside is clipped away */
-.notches::before {
-  left: calc(-11px - var(--bw));
   clip-path: inset(-4px -4px -4px 50%);
 }
+
+/*
+ * The right-hand notch sits where the card's hard shadow is (it falls down and to the right), and a
+ * box-shadow ignores the bite, so the shadow wall would run straight past it. The hole is carried on
+ * through the shadow as a tunnel as wide as the hole, so its edges continue the hole's outline (a shifted
+ * copy of the bite would leave a small ledge of shadow beside it).
+ * --perf-shadow is the card's shadow offset (set by Card and the auth ticket); 0 means no shadow.
+ */
 .notches::after {
-  right: calc(-11px - var(--bw));
-  clip-path: inset(-4px 50% -4px -4px);
+  --notch-r: 11px;
+  --notch-hole: calc(var(--notch-r) - var(--bw));
+  right: calc(-1 * var(--bw) - var(--perf-shadow, 0px));
+  width: calc(var(--notch-r) + var(--perf-shadow, 0px));
+  height: calc(var(--notch-r) * 2);
+  translate: 0 -50%;
+  background-image:
+    linear-gradient(var(--perf-notch), var(--perf-notch)),
+    radial-gradient(
+      circle at 100% 50%,
+      var(--perf-notch) var(--notch-hole),
+      var(--c-line) var(--notch-hole) var(--notch-r),
+      transparent calc(var(--notch-r) + 0.6px)
+    );
+  background-repeat: no-repeat;
+  background-size:
+    var(--perf-shadow, 0px) calc(var(--notch-hole) * 2),
+    var(--notch-r) 100%;
+  background-position:
+    100% 50%,
+    0 0;
 }
 
 /* ------------------------------------------------------------ serial */

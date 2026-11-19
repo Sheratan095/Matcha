@@ -15,7 +15,8 @@
 }
 @media (hover: hover) {
   .who:hover {
-    background: var(--c-paper-hi);
+    background-color: var(--c-paper-hi);
+    background-image: var(--tex-grain-soft);
   }
 }
 .who:focus-visible {
@@ -162,6 +163,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: var(--sh-2);
   text-align: left;
@@ -172,7 +174,7 @@
 }
 @media (hover: hover) {
   .breaker:hover {
-    background: var(--c-matcha-tint);
+    background-color: var(--c-matcha-tint);
   }
 }
 .breaker:active {
@@ -214,6 +216,7 @@
   border: var(--line-thin);
   border-radius: 50%;
   background: var(--c-matcha);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
 }
 

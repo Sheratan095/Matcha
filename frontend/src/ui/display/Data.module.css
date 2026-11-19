@@ -59,6 +59,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-2);
   overflow: hidden;
 }
@@ -156,6 +157,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-2);
   overflow: hidden;
 }
@@ -184,7 +186,8 @@
 }
 @media (hover: hover) {
   .tab:not(.tabActive):hover {
-    background: var(--c-matcha-tint);
+    background-color: var(--c-matcha-tint);
+    background-image: var(--tex-grain-soft);
   }
 }
 .tab:focus-visible {
@@ -362,6 +365,7 @@
   border: var(--line);
   border-radius: var(--r-lg);
   background: var(--c-yolk);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-2);
   rotate: -4deg;
 }

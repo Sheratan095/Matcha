@@ -116,6 +116,15 @@
   box-shadow: 4px 4px 0 var(--c-matcha), 4px 4px 0 var(--bw) var(--c-ink);
 }
 
+/* the picture's grain (an <img> takes no background): over the photo, under the number, MAIN and buttons */
+.filled::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--tex-grain-soft);
+  pointer-events: none;
+}
+
 .img {
   width: 100%;
   height: 100%;
@@ -129,6 +138,7 @@
   padding: 3px 10px 2px;
   border: var(--line-thin);
   background: var(--c-matcha);
+  background-image: var(--tex-grain-soft);
   font-family: var(--font-display);
   font-weight: 900;
   font-stretch: var(--wd-wide);
@@ -156,6 +166,7 @@
   border: var(--line-thin);
   border-radius: 50%;
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: 2px 2px 0 var(--c-ink);
   transition:
@@ -173,11 +184,11 @@
   box-shadow: none;
 }
 .actMain {
-  background: var(--c-yolk);
+  background-color: var(--c-yolk);
 }
 @media (hover: hover) {
   .actRemove:hover:not(:disabled) {
-    background: var(--c-strawberry);
+    background-color: var(--c-strawberry);
   }
 }
 .act:disabled {

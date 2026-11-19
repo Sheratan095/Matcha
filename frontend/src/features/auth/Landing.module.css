@@ -8,6 +8,7 @@
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--c-paper);
+  background-image: var(--tex-grain);
 }
 
 /* ------------------------------------------------------------ masthead */
@@ -20,6 +21,7 @@
   gap: var(--s-3);
   padding: calc(var(--safe-t) + var(--s-3)) var(--gutter) var(--s-3);
   background: var(--c-paper);
+  background-image: var(--tex-grain);
   border-bottom: var(--line);
   /* the second hairline of a newspaper masthead */
   box-shadow: 0 4px 0 -2.5px var(--c-ink);
@@ -80,6 +82,7 @@
   row-gap: var(--s-5);
   padding: var(--s-5) var(--gutter) 0;
   background: var(--c-matcha);
+  background-image: var(--tex-grain);
   color: var(--c-ink);
   border-bottom: var(--line);
 }
@@ -94,6 +97,7 @@
   border: var(--line);
   border-radius: 50%;
   background: var(--c-yolk);
+  background-image: var(--tex-grain-soft);
   overflow: hidden;
 }
 
@@ -208,6 +212,7 @@
   border: var(--line);
   border-radius: var(--r-lg);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-4);
 }
 
@@ -256,6 +261,7 @@
   border: var(--line);
   border-radius: var(--r-lg);
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   box-shadow: var(--sh-3);
 }
@@ -310,6 +316,7 @@
   border: var(--line);
   border-radius: 50%;
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   --icon-hole: var(--c-paper-hi);
 }
@@ -337,6 +344,7 @@
   padding: var(--s-5) var(--gutter) calc(var(--s-5) + var(--safe-b));
   border-top: var(--line);
   background: var(--c-paper-lo);
+  background-image: var(--tex-grain);
 }
 .colophonLink {
   font-family: var(--font-mono);

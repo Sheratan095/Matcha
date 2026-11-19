@@ -63,6 +63,7 @@
   border: var(--line-thin);
   border-radius: var(--r-pill);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: var(--fs-micro);

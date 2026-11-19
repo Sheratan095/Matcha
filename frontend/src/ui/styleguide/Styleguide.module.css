@@ -290,12 +290,26 @@
   color: var(--c-ink-3);
 }
 
+/* the two grains, never stacked: the ground carries the stronger one, the card on it paints its own softer one */
 .stock {
-  display: grid;
-  place-items: center;
-  height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-height: 120px;
+  padding: var(--s-3);
   border: var(--line);
   border-radius: var(--r-md);
+  background-color: var(--c-paper);
+  background-image: var(--tex-grain);
+}
+.stockCard {
+  padding: var(--s-3);
+  border: var(--line);
+  border-radius: var(--r-sm);
+  background-color: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
+  box-shadow: var(--sh-2);
 }
 
 /* ------------------------------------------------------------ type */
@@ -520,7 +534,7 @@
   aspect-ratio: 1;
 }
 
-/* halftone photo: specimens of the --fx-halftone-* tokens. Nothing outside the styleguide uses these yet. */
+/* halftone photo: bare specimens of the --fx-halftone-* tokens. PhotoFrame treatment="halftone" wraps the colour one (Photo.module.css). */
 .halftones {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));

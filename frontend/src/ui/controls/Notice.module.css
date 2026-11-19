@@ -4,6 +4,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--tone-tint);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: var(--sh-2);
   overflow: hidden;
@@ -16,6 +17,7 @@
   width: 44px;
   padding-top: 13px;
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   border-right: var(--line);
 }

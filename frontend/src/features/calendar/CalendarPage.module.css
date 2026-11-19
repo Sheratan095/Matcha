@@ -30,6 +30,7 @@
   border: var(--line);
   border-radius: var(--r-lg);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-2);
 }
 .ticket[data-over] {
@@ -44,6 +45,7 @@
   gap: 2px;
   padding: var(--s-3) var(--s-1);
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   text-align: center;
 }
@@ -199,6 +201,7 @@
   border: var(--line);
   border-radius: var(--r-xl);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-3);
 }
 .empty > :not(.emptyWord) {

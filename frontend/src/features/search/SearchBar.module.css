@@ -23,6 +23,7 @@
   border: var(--line);
   border-radius: var(--r-pill);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: inset 2px 2px 0 rgb(21 19 15 / 9%);
   transition:
     translate var(--dur-press) var(--ease-press),
@@ -80,7 +81,8 @@
 }
 @media (hover: hover) {
   .clear:hover {
-    background: var(--c-matcha);
+    background-color: var(--c-matcha);
+    background-image: var(--tex-grain-soft);
   }
 }
 .clear:focus-visible {
@@ -108,6 +110,7 @@
   border-top: 0;
   border-radius: 0 0 var(--r-md) var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-3);
   animation: search-drop var(--dur-fast) var(--ease-out) both;
 }
@@ -249,11 +252,13 @@
 }
 @media (hover: hover) {
   .knob:hover {
-    background: var(--c-yolk);
+    background-color: var(--c-yolk);
+    background-image: var(--tex-grain-soft);
   }
 }
 .knob[data-active] {
-  background: var(--c-matcha);
+  background-color: var(--c-matcha);
+  background-image: var(--tex-grain-soft);
 }
 .knob:focus-visible {
   outline-offset: -3px;

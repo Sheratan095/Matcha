@@ -72,6 +72,7 @@
 
 .solid {
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   border: max(3px, 0.085em) solid var(--c-ink);
   box-shadow: max(3px, 0.1em) max(3px, 0.1em) 0 var(--c-ink);
@@ -143,6 +144,7 @@
 
 .sh-circle {
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   border: var(--line);
   border-radius: 50%;
   box-shadow: var(--sh-2);
@@ -162,6 +164,7 @@
 .sh-tag {
   padding: 6px 14px 5px;
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   border: var(--line);
   box-shadow: var(--sh-1);
 }

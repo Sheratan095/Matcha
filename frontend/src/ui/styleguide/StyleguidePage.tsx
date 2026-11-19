@@ -283,9 +283,12 @@ function Guide() {
               ))}
             </div>
             <div className={s.grid3}>
-              <Spec label="Paper grain" note="body::after">
-                <div className={s.stock} style={{ background: 'var(--c-paper)' }}>
-                  <Label>Paper</Label>
+              <Spec label="Paper grain" note="ground + forward">
+                <div className={s.stock}>
+                  <Label>Ground · --tex-grain</Label>
+                  <div className={s.stockCard}>
+                    <Label>Forward · --tex-grain-soft</Label>
+                  </div>
                 </div>
               </Spec>
               <Spec label="Tones" note="data-tone">
@@ -645,7 +648,7 @@ function Guide() {
                 ))}
               </div>
             </Spec>
-            <Spec label="Halftone photo" wide note="--fx-halftone-* · available, not applied">
+            <Spec label="Halftone photo" wide note="--fx-halftone-* · PhotoFrame treatment=halftone">
               <Stack gap={4}>
                 <div className={s.halftones}>
                   <figure>
@@ -675,7 +678,7 @@ function Guide() {
                 </div>
                 <Text size="xs" muted>
                   Pure CSS, after leanrada.com/notes/pure-css-halftone. The filter blurs and thresholds the photo while a dot grid is screened
-                  over it; the tokens are in tokens.css and no component uses them yet. Tune the brightness per photo: it sets the threshold.
+                  over it; the tokens are in tokens.css and PhotoFrame treatment="halftone" uses the colour screen (see Photo frames). Tune the brightness per photo: it sets the threshold.
                 </Text>
               </Stack>
             </Spec>
@@ -952,8 +955,8 @@ function Guide() {
                   <Label size="sm">duotone · strawberry</Label>
                 </figure>
                 <figure>
-                  <PhotoFrame src={null} alt="Yuki" seed="u-yuki" treatment="halftone" tone="blue" shadow={2} />
-                  <Label size="sm">halftone · cobalt</Label>
+                  <PhotoFrame src={SAMPLE} alt={SAMPLE_ALT} treatment="halftone" shadow={2} />
+                  <Label size="sm">halftone · cmyk screen</Label>
                 </figure>
               </div>
             </Spec>

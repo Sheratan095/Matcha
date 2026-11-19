@@ -24,14 +24,20 @@
 		ul.tips li { margin: 0 0 8px; padding-left: 4px; color: #3b362d; font-size: 14px; line-height: 1.5; }
 		ul.tips li:last-child { margin-bottom: 0; }
 
+		:root {
+		--tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .08 0 0 0 0 .05 0 0 0 .45 -.17'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  	    --tex-grain-soft: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .08 0 0 0 0 .05 0 0 0 .3 -.11'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+
+		}
+
 		@media (max-width: 600px) {
 			.px    { padding-left: 20px !important; padding-right: 20px !important; }
 			.title { font-size: 26px !important; }
 		}
 	</style>
 </head>
-<body style="margin:0;padding:0;background-color:#f1e7cf;">
-	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1e7cf;">
+<body style="margin:0;padding:0;background-color:#fff4d9; background-image: var(--tex-grain-soft);">
+	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 		<tr>
 			<td align="center" style="padding:40px 16px;">
 				<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
@@ -53,7 +59,7 @@
 
 					<!-- CARD: card stock, ink outline, hard shadow -->
 					<tr>
-						<td style="background-color:#fbf6e6;border:3px solid #15130f;border-right-width:9px;border-bottom-width:9px;border-radius:20px;">
+						<td style="border:3px solid #15130f;border-right-width:9px;border-bottom-width:9px;border-radius:20px;">
 							<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 
 								<!-- Header band: matcha, the brand drum (text on it is always ink) -->

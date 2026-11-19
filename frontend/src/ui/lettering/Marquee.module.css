@@ -11,6 +11,7 @@
   --mq-fs: 1.125rem;
   overflow: hidden;
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   border-block: var(--line);
   font-size: var(--mq-fs);

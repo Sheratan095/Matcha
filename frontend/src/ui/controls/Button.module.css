@@ -18,6 +18,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--tone-fg);
   box-shadow: var(--lift) var(--lift) 0 var(--c-ink);
   font-family: var(--font-display);
@@ -143,7 +144,8 @@
   .ghost:hover:not(:disabled, [aria-disabled='true']) {
     translate: none;
     box-shadow: none;
-    background: var(--c-matcha);
+    background-color: var(--c-matcha);
+    background-image: var(--tex-grain-soft);
     border-color: var(--c-ink);
   }
   .ghost:hover .label {
@@ -152,7 +154,8 @@
 }
 .ghost:active:not(:disabled, [aria-disabled='true']) {
   translate: 1px 1px;
-  background: var(--c-matcha);
+  background-color: var(--c-matcha);
+  background-image: var(--tex-grain-soft);
   border-color: var(--c-ink);
 }
 .ghost:disabled {

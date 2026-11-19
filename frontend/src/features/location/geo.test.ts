@@ -89,6 +89,37 @@ describe('place names', () => {
     )
     expect(await searchPlaces('  Montmartre ')).toEqual([{ latitude: 48.8854619, longitude: 2.3391535, label: 'Montmartre, Paris, France' }])
   })
+
+  it('lists a city once when the geocoder returns it as several objects', async () => {
+    const paris = 'Paris, Ile-de-France, Metropolitan France, France'
+    const fetchMock = vi.fn(async () =>
+      Response.json([
+        { lat: '48.8588897', lon: '2.3200410', display_name: paris },
+        { lat: '48.8534951', lon: '2.3483915', display_name: paris },
+        { lat: '48.8588897', lon: '2.3200410', display_name: paris },
+        { lat: '33.6617962', lon: '-95.5555130', display_name: 'Paris, Lamar County, Texas, United States' },
+        // same name, but far away: a different place that happens to share it
+        { lat: '36.3020023', lon: '-88.3267020', display_name: paris },
+      ]),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const found = await searchPlaces('Paris')
+    expect(found.map((place) => [place.label, place.latitude])).toEqual([
+      [paris, 48.8588897],
+      ['Paris, Lamar County, Texas, United States', 33.6617962],
+      [paris, 36.3020023],
+    ])
+    // asks for more than it shows, so dropping the repeats does not leave the list short
+    expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain('limit=10')
+  })
+
+  it('shows at most five places', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(Array.from({ length: 9 }, (_, index) => ({ lat: String(10 + index), lon: '2', display_name: `Town ${index}` })))),
+    )
+    expect(await searchPlaces('Town')).toHaveLength(5)
+  })
 })
 
 describe('location mode', () => {

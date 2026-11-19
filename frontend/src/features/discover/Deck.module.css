@@ -161,7 +161,7 @@
     padding: 0 4px;
     border: var(--line-thin);
     border-radius: var(--r-xs);
-    background: var(--c-paper-hi);
+    background-color: var(--c-paper-hi);
     box-shadow: var(--sh-1);
     font-family: var(--font-mono);
     font-size: var(--fs-micro);

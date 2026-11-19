@@ -38,9 +38,24 @@ Mono). Running text: `Text` (Archivo, normal width). Never set long sentences in
 (two colour plates multiplied) and `outline` (paper letters, ink keyline) are for one hero word per screen.
 `worn` is for stamps and big decorative words, not for anything that must be read quickly.
 
-**Textures.** Grain is global (printed over everything by `body::after`); never add another. Patterns (`Pattern`,
-`Halftone`) go inside a positioned, `overflow: hidden` box, behind content, at 15–40% opacity, and are always
-decorative. At most one halftone and one pattern per view. Stickers and stamps sit at an angle (±4–14°).
+**Textures.** Grain is paint, not an overlay: it is a `background-image` of the surface it belongs to, so the same
+spot is never grained twice. There are two tiers. The *ground* (the page `html`, the cutting mat, the sheet, the rail,
+full-width page bands) carries `--tex-grain`. A *forward* surface (anything with a keyline that sits in front of the
+ground: cards, buttons, chips, inputs, bars, panels, menus, toasts, chat bubbles, photo frames) carries the softer
+`--tex-grain-soft`. To make a new surface forward, set its fill and then `background-image: var(--tex-grain-soft)`
+(a flat colour field with no grain is the exception, not the rule). Four rules keep it single:
+1. Never add a fixed or absolutely positioned grain overlay (and no `opacity` tricks): a surface paints its own grain,
+   and an opaque surface covers whatever grain is beneath it. The one exception is a photo, because an `<img>` takes no
+   background: `PhotoFrame` and `PhotoTile` use `::before`, under their overlay content.
+2. A state rule (hover, checked, invalid, selected) changes `background-color`, never the `background` shorthand: the
+   shorthand resets the image and the grain would blink out. A state that fills a patch inside a grained surface (a hover
+   plate, a knob) sets `background-image` again, otherwise the patch reads as a flat hole.
+3. A transparent surface (`background: transparent`, the ghost button, the dashed card) has no grain of its own; it shows
+   its parent's. Do not give it one.
+4. Hatching (`--tex-hatch`, disabled controls) replaces the grain on purpose: a disabled surface goes flat.
+Dark fields (ink, tin green, cobalt) show almost no grain: the specks are warm ink. Patterns (`Pattern`, `Halftone`) go
+inside a positioned, `overflow: hidden` box, behind content, at 15–40% opacity, and are always decorative. At most one
+halftone and one pattern per view. Stickers and stamps sit at an angle (±4–14°).
 
 **Motion.** Physical and brief: press (90ms), thunk (280ms overshoot), sheet (320ms). Use the `--ease-*` and
 `--dur-*` tokens. Everything already respects `prefers-reduced-motion` (the global rule collapses animations to
@@ -76,9 +91,9 @@ font weights below 700 for anything uppercase.
 | Type scale | `--fs-mega` ≈72–116px · `--fs-d1` ≈52–80 · `--fs-d2` ≈40–54 · `--fs-d3` 32 · `--fs-d4` 24 · `--fs-d5` 19 · `--fs-lead` 18 · `--fs-body` 16 · `--fs-sm` 14 · `--fs-xs` 13 · `--fs-label` 12 · `--fs-micro` 11 |
 | Motion | `--ease-press`, `--ease-thunk`, `--ease-out`, `--dur-press` 90ms, `--dur-fast` 140ms, `--dur-thunk` 280ms, `--dur-sheet` 320ms |
 | Layout | `--col` 30rem (phone column), `--topbar-h` 60, `--tabbar-h` 68, `--rail-w` 240, `--touch` 44, `--safe-t`, `--safe-b` |
-| Layers | `--z-raised`, `--z-nav` 50, `--z-overlay` 200, `--z-toast` 300, `--z-grain` 1000 |
-| Textures | `--tex-grain`, `--tex-wear` (mask), `--tex-dots`/`-size`, `--tex-halftone`/`-size`, `--tex-stripes`, `--tex-hatch`, `--tex-grid`/`-size`, `--tex-checks`/`-size` (paint in `currentColor`) |
-| Photo filters | `--fx-halftone` (colour), `--fx-halftone-mono` (ink), `--fx-halftone-size`, `--fx-halftone-screen`, `--fx-halftone-screen-cmyk`. Available, not applied by any component yet: see "Halftone photo" below |
+| Layers | `--z-raised`, `--z-nav` 50, `--z-overlay` 200, `--z-toast` 300 |
+| Textures | `--tex-grain` (ground), `--tex-grain-soft` (forward surfaces), `--tex-wear` (mask), `--tex-dots`/`-size`, `--tex-halftone`/`-size`, `--tex-stripes`, `--tex-hatch`, `--tex-grid`/`-size`, `--tex-checks`/`-size` (paint in `currentColor`) |
+| Photo filters | `--fx-halftone` (colour), `--fx-halftone-mono` (ink), `--fx-halftone-size`, `--fx-halftone-screen`, `--fx-halftone-screen-cmyk`. The colour screen is applied by `PhotoFrame treatment="halftone"`, the ink one is not: see "Halftone photo" below |
 
 **Tones.** Many components take `tone: Tone` = `'ink' | 'paper' | 'kraft' | 'matcha' | 'deep' | 'strawberry' | 'yolk' | 'blue'`.
 Any element with `data-tone="…"` gets `--tone-bg`, `--tone-fg` (AA text on it), `--tone-text` (the hue as text on
@@ -160,13 +175,13 @@ Props: `size` (14), `gap` (6), `tone`, `className`. `<div style={{ position: 're
 `public/emptycross.svg` (the default), `public/stylizedcross.svg` (the colour one, `IconRegMark filled`) and
 `public/cymkcross.svg` (cyan, magenta, yellow, black: a reference, not used in the UI); the styleguide shows all three.
 
-**Halftone photo** (tokens only, no component yet): a pure-CSS screen after leanrada.com/notes/pure-css-halftone. Wrap
+**Halftone photo** (`PhotoFrame treatment="halftone"` is the colour screen on paper; the ink screen is tokens only): a pure-CSS screen after leanrada.com/notes/pure-css-halftone. Wrap
 the `<img>`, give the wrapper `position: relative; filter: var(--fx-halftone-mono)` (colour: `--fx-halftone`), and screen
 a dot grid over it with `::after { content: ''; position: absolute; inset: 0; mix-blend-mode: screen; background-image:
 var(--fx-halftone-screen); background-size: var(--fx-halftone-size) }` (colour: `--fx-halftone-screen-cmyk` plus
 `background-blend-mode: multiply`). Keep the keyline and `overflow: hidden` on a parent, because the blur fades the
 wrapper's own edge. Grid, dot radius and offsets are one 20px set. The recipe is not robust: tune `brightness()` per
-photo. The styleguide's `.halftone*` classes are the working example.
+photo (the poster fallback has little tonal range, so it comes out sparse). The styleguide's `.halftone*` classes are the bare example.
 
 **Comic caption** (styleguide specimen only, not exported): a square narration box, `--c-yolk` plate, `--line`, `--sh-2`,
 condensed uppercase Archivo 800, no radius and no tail. One short line, overhanging the corner of the art it describes.
@@ -274,8 +289,8 @@ tappable chips filtered by what is typed. Props: `value: string[]` (no '#'), `on
 `shape` `'circle'|'tile'`, `shadow`, `decorative` (hide from AT when the name is printed next to it), `className`, `style`.
 
 **`PhotoFrame`**: outlined photo with a poster fallback and print treatments. Props: `src`, `alt` (required),
-`ratio` (default "3 / 4"; "auto" to size from the parent), `treatment` `'none'|'duotone'|'halftone'`, `tone` (duotone
-field, matcha), `seed` (fallback artwork; pass the user id), `framed` (default true), `shadow` 0–4, `radius`
+`ratio` (default "3 / 4"; "auto" to size from the parent), `treatment` `'none'|'duotone'|'halftone'` (halftone is the
+CMYK dot screen on paper, 20px pitch, for large frames), `tone` (duotone field, matcha; not used by halftone), `seed` (fallback artwork; pass the user id), `framed` (default true), `shadow` 0–4, `radius`
 `'none'|'sm'|'md'|'lg'|'xl'`, `tilt`, `loading`, `children` (overlay; the frame is `position: relative`), `className`, `style`.
 
 **`PosterFigure`**: placeholder portrait (flat two-plate poster bust, 3:4, palette and haircut from `seed`).

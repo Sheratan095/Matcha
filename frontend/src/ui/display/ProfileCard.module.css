@@ -7,6 +7,7 @@
   border: var(--line);
   border-radius: var(--r-xl);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-3);
   overflow: hidden;
   user-select: none;
@@ -117,6 +118,7 @@
   gap: 8px;
   padding: 10px 14px 14px;
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
 }
 
 .strip {
@@ -205,6 +207,7 @@
   border: var(--line);
   border-radius: 50%;
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-1);
   transition:
     translate var(--dur-press) var(--ease-press),
@@ -212,7 +215,7 @@
 }
 @media (hover: hover) {
   .info:hover {
-    background: var(--c-blue-tint);
+    background-color: var(--c-blue-tint);
   }
 }
 .info:active {

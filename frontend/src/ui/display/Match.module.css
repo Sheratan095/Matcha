@@ -74,6 +74,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
 }
 .left {

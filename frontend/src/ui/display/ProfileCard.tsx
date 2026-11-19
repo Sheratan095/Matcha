@@ -148,7 +148,7 @@ export function ProfileCard({
           </h3>
           {onInfo ? (
             <button type="button" className={s.info} aria-label={`Open ${name}'s profile`} onClick={onInfo}>
-              <IconRegMark size={22} strokeWidth={3} />
+              <IconRegMark size={22} strokeWidth={3} filled />
             </button>
           ) : null}
         </div>

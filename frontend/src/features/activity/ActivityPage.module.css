@@ -32,6 +32,7 @@
   border: var(--line);
   border-radius: var(--r-lg);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: var(--sh-2);
   text-align: left;
@@ -55,7 +56,7 @@
 }
 @media (hover: hover) {
   .scoreTab:not(.scoreActive):hover {
-    background: var(--c-matcha-tint);
+    background-color: var(--c-matcha-tint);
   }
 }
 .scoreTab:not(.scoreActive):active {
@@ -143,6 +144,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: var(--sh-2);
   text-align: left;
@@ -269,6 +271,7 @@
 
 .stub {
   --notch: 11px;
+  --shadow-reach: 4px; /* the offset of --sh-2 below */
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -277,6 +280,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: var(--sh-2);
   text-align: left;
@@ -287,7 +291,7 @@
 }
 @media (hover: hover) {
   .stub:hover {
-    background: var(--c-blue-tint);
+    background-color: var(--c-blue-tint);
   }
 }
 .stub:active {
@@ -340,20 +344,42 @@
   content: '';
   position: absolute;
   left: calc(var(--notch) * -1 - 1px);
-  width: calc(var(--notch) * 2);
-  height: var(--notch);
-  border: var(--line);
-  background: var(--c-paper);
 }
 .stubSide::before {
   top: calc(var(--bw) * -1);
+  width: calc(var(--notch) * 2);
+  height: var(--notch);
+  border: var(--line);
   border-top: 0;
   border-radius: 0 0 var(--notch) var(--notch);
+  background: var(--c-paper);
 }
+/*
+ * The bottom notch bites into the stub's hard shadow (--shadow-reach, the offset of --sh-2), and a
+ * box-shadow ignores the bite, so the shadow would run straight under it. The hole is carried on through
+ * the shadow band as a tunnel as wide as the hole, so its edges continue the hole's outline (a shifted
+ * copy of the bite would leave a small ledge of shadow under one side of it).
+ */
 .stubSide::after {
-  bottom: calc(var(--bw) * -1);
-  border-bottom: 0;
-  border-radius: var(--notch) var(--notch) 0 0;
+  --notch-hole: calc(var(--notch) - var(--bw));
+  bottom: calc(var(--bw) * -1 - var(--shadow-reach));
+  width: calc(var(--notch) * 2);
+  height: calc(var(--notch) + var(--shadow-reach));
+  background-image:
+    linear-gradient(var(--c-paper), var(--c-paper)),
+    radial-gradient(
+      circle at 50% 100%,
+      var(--c-paper) var(--notch-hole),
+      var(--c-line) var(--notch-hole) var(--notch),
+      transparent calc(var(--notch) + 0.6px)
+    );
+  background-repeat: no-repeat;
+  background-size:
+    calc(var(--notch-hole) * 2) var(--shadow-reach),
+    100% var(--notch);
+  background-position:
+    50% 100%,
+    0 0;
 }
 .stubNo {
   font-family: var(--font-display);

@@ -92,7 +92,9 @@ export interface PhotoFrameProps {
   /**
    * none: the photo as it is.
    * duotone: one ink plate over a colour field.
-   * halftone: duotone plus a visible dot screen.
+   * halftone: a pure-CSS CMYK dot screen on paper (the --fx-halftone-* tokens). Needs a source with a
+   * tonal range: flat artwork, and so the PosterFigure fallback, comes out sparse. The 20px dot pitch is
+   * fixed, so use it on large frames. `tone` does not apply.
    */
   treatment?: 'none' | 'duotone' | 'halftone'
   /** The colour field of the duotone. Default matcha. */
@@ -131,6 +133,19 @@ export function PhotoFrame({
 }: PhotoFrameProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const usable = src && failedSrc !== src
+  const picture = usable ? (
+    <img
+      className={s.img}
+      src={src}
+      alt={alt}
+      loading={loading}
+      decoding="async"
+      draggable={false}
+      onError={() => setFailedSrc(src)}
+    />
+  ) : (
+    <PosterFigure seed={seed ?? alt ?? 'matcha'} title={alt || undefined} className={s.img} />
+  )
   return (
     <div
       className={cx(
@@ -138,7 +153,7 @@ export function PhotoFrame({
         framed && s.framed,
         s[`sh-${shadow}`],
         s[`r-${radius}`],
-        treatment !== 'none' && s.duotone,
+        treatment === 'duotone' && s.duotone,
         treatment === 'halftone' && s.halftone,
         className,
       )}
@@ -151,20 +166,7 @@ export function PhotoFrame({
         } as CSSProperties
       }
     >
-      {usable ? (
-        <img
-          className={s.img}
-          src={src}
-          alt={alt}
-          loading={loading}
-          decoding="async"
-          draggable={false}
-          onError={() => setFailedSrc(src)}
-        />
-      ) : (
-        <PosterFigure seed={seed ?? alt ?? 'matcha'} title={alt || undefined} className={s.img} />
-      )}
-      {treatment === 'halftone' ? <span className={s.screen} aria-hidden="true" /> : null}
+      {treatment === 'halftone' ? <div className={s.screen}>{picture}</div> : picture}
       {children}
     </div>
   )

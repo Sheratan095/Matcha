@@ -74,6 +74,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: var(--lift) var(--lift) 0 var(--c-ink);
   text-align: left;
@@ -85,7 +86,7 @@
 
 @media (hover: hover) {
   .ticket:hover {
-    background: var(--c-matcha-tint);
+    background-color: var(--c-matcha-tint);
   }
 }
 
@@ -139,6 +140,7 @@
   border: var(--line);
   border-radius: 0 var(--r-md) var(--r-md) 0;
   background: var(--c-matcha);
+  background-image: var(--tex-grain-soft);
 }
 
 .knobBadge {

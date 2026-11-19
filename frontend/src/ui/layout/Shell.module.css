@@ -81,6 +81,7 @@
   height: calc(var(--topbar-h) + var(--safe-t));
   padding: var(--safe-t) var(--gutter) 0;
   background: var(--c-paper);
+  background-image: var(--tex-grain-soft);
   border-bottom: var(--line);
 }
 
@@ -132,6 +133,7 @@
   height: calc(var(--tabbar-h) + var(--safe-b));
   padding: 0 var(--s-1) var(--safe-b);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   border-top: var(--line);
 }
 
@@ -172,6 +174,7 @@
 }
 .tab.active .tabIcon {
   background: var(--c-matcha);
+  background-image: var(--tex-grain-soft);
   border-color: var(--c-ink);
   box-shadow: 2px 2px 0 var(--c-ink);
 }
@@ -221,6 +224,7 @@
   padding: calc(var(--safe-t) + var(--s-2)) var(--gutter) var(--s-2);
   border-bottom: var(--line);
   background: var(--c-paper);
+  background-image: var(--tex-grain-soft);
 }
 .screenBody {
   flex: 1;
@@ -234,6 +238,7 @@
   padding: var(--s-3) var(--gutter) calc(var(--s-3) + var(--safe-b));
   border-top: var(--line);
   background: var(--c-paper);
+  background-image: var(--tex-grain-soft);
 }
 
 /* ------------------------------------------------------------ fit: the shell is the viewport, a Pane scrolls inside */
@@ -309,6 +314,7 @@
     height: 100dvh;
     padding: var(--s-6) var(--s-5) var(--s-5);
     background: var(--c-paper);
+    background-image: var(--tex-grain);
     border-right: var(--line);
     overflow-y: auto;
   }
@@ -349,6 +355,7 @@
   .railLink:hover {
     border-color: var(--c-ink);
     background: var(--c-paper-hi);
+    background-image: var(--tex-grain-soft);
     box-shadow: var(--lift) var(--lift) 0 var(--c-ink);
     translate: -1px -1px;
   }
@@ -401,11 +408,19 @@
     min-height: 100dvh;
     padding: var(--s-8) var(--s-8) 0;
     background-color: var(--c-paper-lo);
+    /* ground: the grain sits over the ruled grid; each layer has its own size and offset */
     background-image:
+      var(--tex-grain),
       linear-gradient(rgb(21 19 15 / 7%) 1.5px, transparent 1.5px),
       linear-gradient(90deg, rgb(21 19 15 / 7%) 1.5px, transparent 1.5px);
-    background-size: 32px 32px;
-    background-position: -1px -1px;
+    background-size:
+      240px 240px,
+      32px 32px,
+      32px 32px;
+    background-position:
+      0 0,
+      -1px -1px,
+      -1px -1px;
     overflow: hidden;
   }
 
@@ -447,6 +462,7 @@
     flex: none;
     min-height: calc(100dvh - var(--s-8));
     background: var(--c-paper);
+    background-image: var(--tex-grain);
     border: var(--line);
     border-bottom: 0;
     box-shadow: 10px 10px 0 var(--c-ink);
@@ -583,6 +599,7 @@
   border: var(--line);
   border-radius: var(--r-sm);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   box-shadow: 3px 3px 0 var(--c-ink);
   transition:
@@ -595,7 +612,7 @@
 }
 @media (hover: hover) {
   .back:hover {
-    background: var(--c-matcha);
+    background-color: var(--c-matcha);
   }
 }
 .back:active {

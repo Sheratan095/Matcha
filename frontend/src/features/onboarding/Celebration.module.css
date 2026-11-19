@@ -71,6 +71,7 @@
   border: var(--line);
   border-radius: var(--r-md);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: 8px 8px 0 var(--c-ink);
   rotate: -4deg;
   animation: slap-in 460ms var(--ease-thunk) both;

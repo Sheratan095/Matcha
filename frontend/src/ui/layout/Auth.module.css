@@ -6,6 +6,7 @@
   min-height: 100%;
   overflow: hidden;
   background: var(--tone-bg);
+  background-image: var(--tex-grain-soft);
   color: var(--c-ink);
   isolation: isolate;
   container-type: inline-size;
@@ -21,13 +22,14 @@
   border: var(--line);
   border-radius: 50%;
   background: var(--c-yolk);
+  background-image: var(--tex-grain-soft);
   overflow: hidden;
 }
 .poster[data-tone='yolk'] .sun {
-  background: var(--c-strawberry);
+  background-color: var(--c-strawberry);
 }
 .poster[data-tone='blue'] .sun {
-  background: var(--c-yolk);
+  background-color: var(--c-yolk);
 }
 
 .regTL {
@@ -194,6 +196,7 @@
 
 .ticket {
   --card-pad: var(--s-5);
+  --perf-shadow: 6px; /* the reach of --sh-3, so the perforation notch cuts the shadow too */
   position: relative;
   width: 100%;
   max-width: 440px;
@@ -201,6 +204,7 @@
   border: var(--line);
   border-radius: var(--r-lg);
   background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
   box-shadow: var(--sh-3);
 }
 
