@@ -476,6 +476,7 @@ From a browser's point of view the effective lifetimes are the cookie lifetimes 
   - One live refresh token per user: logging in from a second browser invalidates the first browser's refresh token.
   - Two concurrent refresh calls race; the loser gets 403. **Serialise refresh on the client** (single in-flight promise).
 - Suggested client logic: on a 401 from a protected endpoint → one `POST /auth/refresh` → retry once → on 403 treat as logged out. Because the access cookie silently disappears after 15 minutes, expect this on the first call after idle.
+- `GET /auth/validate` never refreshes: with the access cookie gone it answers `{ valid: false }` even though a live refresh cookie is still in the browser, and an app that boots anonymous sends no protected request that could 401. So the client must call `POST /auth/refresh` **before** its first `GET /auth/validate` (the frontend's `bootSession` does; the 403 for a visitor is expected and ignored), and again when the socket is refused (§ websockets).
 
 ### 3.6 Unverified-email login
 

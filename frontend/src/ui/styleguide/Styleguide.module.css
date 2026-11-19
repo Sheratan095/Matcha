@@ -424,6 +424,58 @@
   overflow: hidden;
 }
 
+/* comic caption: a square narration box on a yolk plate. Specimen only, not exported from @/ui. */
+.caption {
+  display: inline-block;
+  margin: 0;
+  padding: 7px 12px 8px;
+  border: var(--line);
+  border-radius: 0; /* a rectangle: no rounding, no tail */
+  background: var(--c-yolk);
+  color: var(--c-ink);
+  box-shadow: var(--sh-2);
+  font: 800 var(--fs-sm) / 1.15 var(--font-body);
+  font-stretch: var(--wd-narrow);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.captionLg {
+  font-size: var(--fs-lead);
+  padding: 9px 16px 11px;
+}
+.captions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-5);
+}
+
+/* a comic panel: square keyline, halftone art, captions hanging over two corners */
+.comicPanel {
+  position: relative;
+  max-width: 340px;
+  margin: var(--s-3) auto var(--s-3) var(--s-3);
+}
+.comicArt {
+  isolation: isolate;
+  overflow: hidden;
+  border: var(--line);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-3);
+}
+.comicPanel .caption {
+  position: absolute;
+  max-width: 72%;
+}
+.captionTop {
+  top: -12px;
+  left: -12px;
+}
+.captionBottom {
+  right: -12px;
+  bottom: -12px;
+}
+
 /* ------------------------------------------------------------ furniture */
 .patternBox {
   position: relative;
@@ -441,6 +493,86 @@
   padding: 14px 18px;
   background: var(--c-paper-hi);
   border: 1.5px solid rgb(21 19 15 / 25%);
+}
+
+/* registration crosses: the three reference drawings served from public/ */
+.crosses {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: var(--s-4);
+}
+.cross {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-3);
+  border: var(--line-thin);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  text-align: center;
+}
+.cross img {
+  display: block;
+  width: min(96px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+}
+
+/* halftone photo: specimens of the --fx-halftone-* tokens. Nothing outside the styleguide uses these yet. */
+.halftones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: var(--s-5);
+}
+.halftones figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  margin: 0;
+}
+.halftoneFrame {
+  isolation: isolate;
+  overflow: hidden;
+  border: var(--line);
+  border-radius: var(--r-md);
+  background: var(--c-paper-hi);
+  box-shadow: var(--sh-2);
+}
+.halftone {
+  position: relative;
+  /* bleed past the frame: the blur fades the wrapper's own edge, the frame's overflow crops that away */
+  margin: -4px;
+  /* ink on paper: white becomes the frame's stock instead of pure white */
+  mix-blend-mode: multiply;
+}
+.halftone > img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+.halftoneInk {
+  filter: var(--fx-halftone-mono);
+}
+.halftoneCmyk {
+  filter: var(--fx-halftone);
+}
+.halftoneInk::after,
+.halftoneCmyk::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-size: var(--fx-halftone-size);
+  mix-blend-mode: screen;
+}
+.halftoneInk::after {
+  background-image: var(--fx-halftone-screen);
+}
+.halftoneCmyk::after {
+  background-image: var(--fx-halftone-screen-cmyk);
+  background-blend-mode: multiply;
 }
 
 /* ------------------------------------------------------------ forms & display */

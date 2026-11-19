@@ -145,6 +145,35 @@ interface RequestMeta {
 }
 
 let dropGroup: ((key: string) => number) | null = null
+let renewCurrent: (() => Promise<void>) | null = null
+
+/**
+ * Renews the session the way a 401 does (`HttpOptions.refreshSession`): the same single flight, so a call
+ * made while a refresh is on its way waits for it instead of sending another, and one tab at a time.
+ * For whoever learns the access cookie is gone without a request of its own failing: the first probe of a
+ * returning visitor, a socket the gateway turned away. Resolves once the cookies are re-issued; rejects
+ * with the refresh's error (403: no live refresh token, so there is no session to renew), or with
+ * `NOT_SENT` when the HTTP plumbing is not installed or was given no `refreshSession`.
+ */
+export function renewSession(): Promise<void> {
+  return renewCurrent?.() ?? Promise.reject(apiError(0, 'The session cannot be renewed.', LOCAL_ERROR.NOT_SENT))
+}
+
+/** Name of the browser-wide lock that serialises session refreshes (see `underRefreshLock`). */
+const REFRESH_LOCK = 'matcha:session-refresh'
+
+/**
+ * Runs `task` while holding the lock on the session refresh, which every tab of the app shares. The refresh
+ * token rotates, and the tabs share the cookies, so two tabs refreshing at once (a socket event makes each
+ * of them reload, after the access cookie expired) race on the server: the second is refused, or both pass
+ * and the cookies end up not matching the token it keeps. One after the other, the second simply sends the
+ * cookies the first one just received. Without the Web Locks API (old browsers, a page that is not a secure
+ * context) there is no lock, as before.
+ */
+function underRefreshLock<T>(task: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator === 'undefined' ? undefined : navigator.locks
+  return locks ? locks.request(REFRESH_LOCK, task) : Promise.resolve().then(task)
+}
 
 /**
  * Fails every in-flight GET of a supersede group when it settles, whatever the server answered, so
@@ -236,6 +265,21 @@ export function installHttp(options: HttpOptions = {}): () => void {
   function isGuarded(url: string): boolean {
     if (url !== apiUrl && !url.startsWith(`${apiUrl}/`)) return false
     return url.slice(apiUrl.length) !== '/auth/refresh'
+  }
+
+  /**
+   * Refresh tokens rotate and two concurrent refreshes race (the loser gets 403), so everyone who needs a
+   * renewal while one is in flight waits for that same refresh, and other tabs wait their turn.
+   */
+  function renew(): Promise<void> {
+    const refreshSession = options.refreshSession
+    if (!refreshSession) return Promise.reject(apiError(0, 'The session cannot be renewed.', LOCAL_ERROR.NOT_SENT))
+    refreshing ??= underRefreshLock(refreshSession)
+      .then(() => undefined)
+      .finally(() => {
+        refreshing = null
+      })
+    return refreshing
   }
 
   function sessionLost(): void {
@@ -345,22 +389,13 @@ export function installHttp(options: HttpOptions = {}): () => void {
       const unauthorized = axios.isAxiosError(error) && error.response?.status === 401 && isGuarded(meta.url)
       if (!unauthorized) return finish(meta, { ok: false, error })
 
-      const refreshSession = options.refreshSession
-      if (!refreshSession || meta.retried) {
+      if (!options.refreshSession || meta.retried) {
         // No way to renew, or the renewed session was refused as well: either way the session is gone.
         sessionLost()
         return finish(meta, { ok: false, error })
       }
 
-      // Refresh tokens rotate and two concurrent refreshes race (the loser gets 403), so every 401
-      // that arrives while one is in flight waits for that same refresh.
-      refreshing ??= Promise.resolve()
-        .then(refreshSession)
-        .then(() => undefined)
-        .finally(() => {
-          refreshing = null
-        })
-      return refreshing.then(
+      return renew().then(
         () => axios.request({ ...config, matchaRequest: { ...meta, retried: true } } as ConfigWithMeta),
         () => {
           sessionLost()
@@ -385,6 +420,7 @@ export function installHttp(options: HttpOptions = {}): () => void {
     if (uninstallCurrent !== uninstall) return
     uninstallCurrent = null
     if (dropGroup === drop) dropGroup = null
+    if (renewCurrent === renew) renewCurrent = null
     axios.interceptors.request.eject(requestInterceptor)
     axios.interceptors.response.eject(responseInterceptor)
     axios.defaults.withCredentials = previousDefaults.withCredentials
@@ -392,5 +428,6 @@ export function installHttp(options: HttpOptions = {}): () => void {
   }
   uninstallCurrent = uninstall
   dropGroup = drop
+  renewCurrent = renew
   return uninstall
 }

@@ -188,6 +188,12 @@ The engine uses the default axios instance and exposes neither status nor errors
   `/auth/change-email`) triggers one single-flight refresh — the `sessionRefresh` command,
   `POST /auth/refresh` — then one retry with the same request id; if the refresh or the retry fails the
   session is re-probed (throttled to once per 3 s), which makes the user anonymous.
+  The refresh is `renewSession()` (`api/http.ts`), which the 401 path shares with two callers that learn
+  the access cookie is gone without a request of their own failing: `bootSession` (below) and the socket
+  (§4.6). It is one flight (a call made while a refresh is on its way joins it) and one tab at a time (a
+  Web Lock, `matcha:session-refresh`): the refresh token rotates and the tabs share the cookies, so two
+  tabs refreshing together race on the server (the loser is refused, or the cookies end up not matching the
+  stored token). Without the Web Locks API there is no lock.
   `axios.defaults.timeout` is 15 s (60 s for uploads)
   because the gateway can hang when a microservice is down.
 
@@ -318,7 +324,7 @@ is `NodeValues[N] | null | undefined`.
 
   | Action | Resolves when |
   |---|---|
-  | `bootSession(): Promise<AuthStatus>` | the probe answered (installs the session watcher) |
+  | `bootSession(): Promise<AuthStatus>` | the session was renewed (`POST /auth/refresh`, failure ignored) and the probe answered (installs the session watcher). Renewing first: the access cookie lasts 15 minutes and the browser drops it, the refresh cookie 7 days, so a user back after a break would otherwise be probed as a visitor, and nothing else would renew them (only a 401 does). `authStatus` stays `checking` meanwhile, so the guards do not bounce them to /login and back. A visitor costs one refused refresh (403) per page load |
   | `login({ username, password }): Promise<LoginResult>` | re-probed and `sessionUserId` is set (`NO_SESSION` if the browser kept no cookie) |
   | `logout(): Promise<void>` | re-probed; authenticated nodes and selection state are reset |
   | `register(payload): Promise<RegisterResult>` | the account exists (not signed in) |
@@ -372,7 +378,12 @@ is `NodeValues[N] | null | undefined`.
   overtaken changes included), nor when, once the load on its way has landed, it already shows the
   change (`profile-like` + `match` about one person). A read on demand that was never asked for is not
   fetched by an event. Events queued by the backend while the user was offline arrive right
-  after connecting. `events$` injects extra events (tests).
+  after connecting. `events$` injects extra events (tests). The gateway turns away a websocket upgrade
+  without a valid access cookie, so a socket that reconnects after the cookie expired (a long sleep) is
+  refused on every attempt and gives up after 5: on a refused connection (`connect_error`) the session
+  is renewed (`renewSession()`, once per outage) and a socket that had given up is told to connect again.
+  When the renewal is refused with 403 (no live refresh token) the session is probed, which signs the user
+  out and closes the socket.
 - Errors: `isApiError`, `toApiError`, `LOCAL_ERROR` (`NETWORK`, `TIMEOUT`, `NOT_SENT`, `INVALID`,
   `NO_SESSION`, `DROPPED`).
 - Boot (only `src/main.tsx`): `installStoreHttp()`, `startStore()`, await `ready`,

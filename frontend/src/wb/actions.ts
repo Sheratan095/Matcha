@@ -11,7 +11,7 @@
  * - ids that end up in a URL path are checked to be URL-safe, because the engine inserts path values
  *   without encoding them.
  */
-import { apiError, LOCAL_ERROR, toApiError } from '@/api/http'
+import { apiError, LOCAL_ERROR, renewSession, toApiError } from '@/api/http'
 import {
   GENDERS,
   MAX_EVENT_DESCRIPTION_LENGTH,
@@ -292,6 +292,7 @@ function watchChat(): void {
 async function bootSession(): Promise<AuthStatus> {
   watchSession()
   watchChat()
+  await renewSession().catch(() => undefined)
   await probeSession()
   return getNodeValue('authStatus') ?? 'anonymous'
 }

@@ -21,6 +21,7 @@
  */
 import { Subject, type Observable, type Subscription } from 'rxjs'
 import type { Socket } from 'socket.io-client'
+import { renewSession, toApiError } from '@/api/http'
 import type { CalendarAction, CalendarResult, ChatMessage, MessageStatus, RealtimeEvent, UserSummary } from '@/api/types'
 import { API_URL } from '@/config'
 import { claimEcho, countUnread, hasDatesWith, markChatSeen, markThreadRead, reloadOpenChat } from './actions'
@@ -308,18 +309,41 @@ function keepSocket(): Subscription {
         if (mine !== generation) return
         // Websocket only (polling would hit the backend's broken CORS when cross-origin, API_CONTRACT §5.2).
         const target = socketTarget(API_URL, window.location.origin)
-        socket = io(target.url, {
+        const live = io(target.url, {
           path: target.path,
           withCredentials: true,
           transports: ['websocket'],
           reconnectionAttempts: 5,
         })
+        socket = live
         // every (re)connection is followed by the replay of what was queued meanwhile
         let arrival = connectedNow()
-        socket.on('connect', () => {
+        // The gateway turns away a websocket upgrade without a valid access cookie, and that cookie lasts
+        // 15 minutes: a socket that comes back after a long sleep is refused, and after its few attempts
+        // gives up for good. So a refused connection renews the session (no HTTP request of the app is
+        // failing to do it: the socket is all that is left), and the socket is told to try again if it had
+        // given up. Once per outage: when the renewal did not help, the cookie was not the cause.
+        let renewed = false
+        live.on('connect', () => {
           arrival = connectedNow()
+          renewed = false
         })
-        socket.onAny((name: string, payload: unknown) => {
+        live.on('connect_error', () => {
+          if (renewed || mine !== generation) return
+          renewed = true
+          renewSession().then(
+            () => {
+              if (mine === generation && !live.connected && !live.active) live.connect()
+            },
+            (error: unknown) => {
+              // Not renewed: unreachable server (ask again at the next refusal), or 403, no live refresh
+              // token, i.e. the session is over: probe it, so the app notices and signs the user out.
+              renewed = false
+              if (mine === generation && toApiError(error).status === 403) void refresh('sessionCheck')
+            },
+          )
+        })
+        live.onAny((name: string, payload: unknown) => {
           // an event that arrives after sign-out (or for the previous user) is not for us
           if (mine !== generation) return
           const event = decodeSocketEvent(name, payload)

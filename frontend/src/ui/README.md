@@ -78,6 +78,7 @@ font weights below 700 for anything uppercase.
 | Layout | `--col` 30rem (phone column), `--topbar-h` 60, `--tabbar-h` 68, `--rail-w` 240, `--touch` 44, `--safe-t`, `--safe-b` |
 | Layers | `--z-raised`, `--z-nav` 50, `--z-overlay` 200, `--z-toast` 300, `--z-grain` 1000 |
 | Textures | `--tex-grain`, `--tex-wear` (mask), `--tex-dots`/`-size`, `--tex-halftone`/`-size`, `--tex-stripes`, `--tex-hatch`, `--tex-grid`/`-size`, `--tex-checks`/`-size` (paint in `currentColor`) |
+| Photo filters | `--fx-halftone` (colour), `--fx-halftone-mono` (ink), `--fx-halftone-size`, `--fx-halftone-screen`, `--fx-halftone-screen-cmyk`. Available, not applied by any component yet: see "Halftone photo" below |
 
 **Tones.** Many components take `tone: Tone` = `'ink' | 'paper' | 'kraft' | 'matcha' | 'deep' | 'strawberry' | 'yolk' | 'blue'`.
 Any element with `data-tone="…"` gets `--tone-bg`, `--tone-fg` (AA text on it), `--tone-text` (the hue as text on
@@ -155,7 +156,20 @@ through the notches, default page paper), `className`, `style`. `<Perforation no
 **`CropMarks`**: printer's crop marks around the nearest positioned ancestor (which must not clip overflow).
 Props: `size` (14), `gap` (6), `tone`, `className`. `<div style={{ position: 'relative' }}><CropMarks />…</div>`
 
-**`RegMark`**: registration target. Props: `size` (24), `tone`, `className`, `style`.
+**`RegMark`**: registration target. Props: `size` (24), `tone`, `className`, `style`. The reference drawings are
+`public/emptycross.svg` (the default), `public/stylizedcross.svg` (the colour one, `IconRegMark filled`) and
+`public/cymkcross.svg` (cyan, magenta, yellow, black: a reference, not used in the UI); the styleguide shows all three.
+
+**Halftone photo** (tokens only, no component yet): a pure-CSS screen after leanrada.com/notes/pure-css-halftone. Wrap
+the `<img>`, give the wrapper `position: relative; filter: var(--fx-halftone-mono)` (colour: `--fx-halftone`), and screen
+a dot grid over it with `::after { content: ''; position: absolute; inset: 0; mix-blend-mode: screen; background-image:
+var(--fx-halftone-screen); background-size: var(--fx-halftone-size) }` (colour: `--fx-halftone-screen-cmyk` plus
+`background-blend-mode: multiply`). Keep the keyline and `overflow: hidden` on a parent, because the blur fades the
+wrapper's own edge. Grid, dot radius and offsets are one 20px set. The recipe is not robust: tune `brightness()` per
+photo. The styleguide's `.halftone*` classes are the working example.
+
+**Comic caption** (styleguide specimen only, not exported): a square narration box, `--c-yolk` plate, `--line`, `--sh-2`,
+condensed uppercase Archivo 800, no radius and no tail. One short line, overhanging the corner of the art it describes.
 
 **`ColorBar`**: a strip of the six inks, a footer sign-off. Props: `className`.
 

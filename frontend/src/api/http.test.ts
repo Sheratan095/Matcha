@@ -2,10 +2,12 @@ import axios, { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deferred, FakeServer, nestError, reply } from '@/wb/testing/fakeServer'
 import {
+  apiError,
   dropPendingRequests,
   httpEvents$,
   installHttp,
   LOCAL_ERROR,
+  renewSession,
   toApiError,
   type HttpEvent,
   type HttpOptions,
@@ -151,6 +153,83 @@ describe('401 handling', () => {
     await expect(axios.get(`${ELSEWHERE}/matches`)).rejects.toBeInstanceOf(AxiosError)
     await expect(axios.post(`${API}/auth/refresh`)).rejects.toBeInstanceOf(AxiosError)
     expect(refreshSession).not.toHaveBeenCalled()
+  })
+})
+
+describe('renewSession', () => {
+  it('joins the refresh a 401 started instead of sending another', async () => {
+    let session = false
+    const gate = deferred()
+    const refreshSession = vi.fn(async () => {
+      await gate.promise
+      session = true
+    })
+    install({ refreshSession })
+    server.on('GET', `${API}/profile`, () => (session ? { me: true } : nestError(401, 'Missing', 'Unauthorized')))
+
+    const read = axios.get(`${API}/profile`)
+    await vi.waitFor(() => expect(refreshSession).toHaveBeenCalledTimes(1))
+    const renewal = renewSession()
+    gate.resolve()
+
+    await expect(Promise.all([read, renewal])).resolves.toBeDefined()
+    expect(refreshSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('refreshes again for a later call, once the first refresh is over', async () => {
+    const refreshSession = vi.fn(async () => undefined)
+    install({ refreshSession })
+    await renewSession()
+    await renewSession()
+    expect(refreshSession).toHaveBeenCalledTimes(2)
+  })
+
+  it('rejects with NOT_SENT when nothing can renew the session', async () => {
+    await expect(renewSession()).rejects.toMatchObject({ code: LOCAL_ERROR.NOT_SENT }) // not installed
+    install()
+    await expect(renewSession()).rejects.toMatchObject({ code: LOCAL_ERROR.NOT_SENT }) // no refreshSession
+  })
+
+  it('rejects with the refresh error, so a caller can tell a refused refresh from an outage', async () => {
+    const refused = apiError(403, 'Invalid refresh token')
+    install({ refreshSession: () => Promise.reject(refused) })
+    await expect(renewSession()).rejects.toBe(refused)
+  })
+
+  it('is not installed any more once uninstalled', async () => {
+    install({ refreshSession: async () => undefined })
+    uninstallHttp?.()
+    uninstallHttp = null
+    await expect(renewSession()).rejects.toMatchObject({ code: LOCAL_ERROR.NOT_SENT })
+  })
+
+  it('holds the browser-wide lock while it refreshes, so two tabs never refresh together', async () => {
+    let holding = false
+    const names: string[] = []
+    const request = vi.fn(async (name: string, task: () => Promise<unknown>) => {
+      names.push(name)
+      holding = true
+      try {
+        return await task()
+      } finally {
+        holding = false
+      }
+    })
+    Object.defineProperty(navigator, 'locks', { value: { request }, configurable: true })
+    try {
+      let heldWhileRefreshing = false
+      install({
+        refreshSession: async () => {
+          heldWhileRefreshing = holding
+        },
+      })
+      await renewSession()
+      expect(names).toEqual(['matcha:session-refresh'])
+      expect(heldWhileRefreshing).toBe(true)
+      expect(holding).toBe(false)
+    } finally {
+      delete (navigator as { locks?: unknown }).locks
+    }
   })
 })
 

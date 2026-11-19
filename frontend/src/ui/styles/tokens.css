@@ -166,4 +166,27 @@
   --tex-grid-size: 18px 18px;
   --tex-checks: repeating-conic-gradient(currentColor 0 25%, transparent 0 50%);
   --tex-checks-size: 16px 16px;
+
+  /* ---------------------------------------------------------------- photo filters */
+  /*
+   * Halftone photo screen in pure CSS, after leanrada.com/notes/pure-css-halftone.
+   * AVAILABLE, NOT APPLIED: no component uses it yet; only the styleguide does (.halftone* in Styleguide.module.css).
+   * Put an <img> in a wrapper and screen a dot grid over it:
+   *   .wrap          { position: relative; filter: var(--fx-halftone-mono); }
+   *   .wrap::after   { content: ''; position: absolute; inset: 0; mix-blend-mode: screen;
+   *                    background-image: var(--fx-halftone-screen); background-size: var(--fx-halftone-size); }
+   * Colour: use --fx-halftone and --fx-halftone-screen-cmyk, and add `background-blend-mode: multiply` to ::after.
+   * Keep the keyline and overflow on a parent: the blur eats the wrapper's own edge.
+   * The grid, the 10px dot radius and the 5/15px offsets are one set (20px pitch): change them together.
+   * The recipe is not robust: tune the brightness (the threshold) per source image.
+   */
+  --fx-halftone: brightness(0.8) blur(3px) contrast(999); /* colour: each RGB channel is thresholded */
+  /* pure ink dots, no colour contagion. Greyscale squeezes mid-tones towards white, so it takes more ink than the colour one */
+  --fx-halftone-mono: grayscale(1) brightness(0.62) blur(3px) contrast(999);
+  --fx-halftone-size: 20px 20px;
+  /* the screens are literal black / white / process colours on purpose: the blend maths needs the extremes */
+  --fx-halftone-screen: radial-gradient(10px at center, black, white);
+  --fx-halftone-screen-cmyk: radial-gradient(10px at center, black, white),
+    radial-gradient(10px at 5px 5px, cyan, white), radial-gradient(10px at 15px 5px, magenta, white),
+    radial-gradient(10px at 10px 15px, yellow, white);
 }

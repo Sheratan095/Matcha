@@ -82,6 +82,7 @@ import {
   Toaster,
   TypingIndicator,
   Wordmark,
+  cx,
   toast,
 } from '../index'
 import type { Gender, SexualPreference } from '@/api/types'
@@ -160,6 +161,17 @@ const TYPE_SCALE = [
   ['d4', '--fs-d4', 'Profile viewers this week'],
   ['d5', '--fs-d5', 'Settings and privacy'],
 ] as const
+
+/** The reference drawings of the registration cross, served from public/. RegMark / IconRegMark draw the first two. */
+const CROSSES = [
+  ['emptycross.svg', 'The default: RegMark and IconRegMark. Ring, crosshair and dot in ink only.'],
+  ['stylizedcross.svg', 'IconRegMark filled. Quadrants in the kit inks: cobalt, strawberry, yolk, ink 2.'],
+  ['cymkcross.svg', 'The process cross: cyan, magenta, yellow, black. A reference, not used in the UI.'],
+] as const
+
+/** Source for the halftone specimens (public/). Shaded on purpose: halftoning needs a tonal range. */
+const SAMPLE = '/halftone-sample.svg'
+const SAMPLE_ALT = 'Still life: four shaded spheres in matcha, strawberry, yolk and cobalt on a table'
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: 'female', label: 'Woman' },
@@ -538,6 +550,29 @@ function Guide() {
                 </div>
               </Spec>
             </div>
+            <div className={s.grid2}>
+              <Spec label="Comic panel" note="caption boxes hang over the corners">
+                <div className={s.comicPanel}>
+                  <div className={s.comicArt}>
+                    <div className={cx(s.halftone, s.halftoneInk)}>
+                      <img src={SAMPLE} alt="" />
+                    </div>
+                  </div>
+                  <p className={cx(s.caption, s.captionTop)}>Meanwhile, at the tea stall</p>
+                  <p className={cx(s.caption, s.captionBottom)}>Three drums later</p>
+                </div>
+              </Spec>
+              <Spec label="Caption box" note="yolk plate · 3px keyline · --sh-2">
+                <div className={s.captions}>
+                  <p className={s.caption}>Meanwhile, at the tea stall</p>
+                  <p className={cx(s.caption, s.captionLg)}>Steep for three minutes</p>
+                  <Text size="xs" muted>
+                    Comic narration: a square box, yolk plate, ink text in condensed caps. No radius, no tail. Keep it to one short line
+                    and let it overhang the art it describes.
+                  </Text>
+                </div>
+              </Spec>
+            </div>
             <Spec label="Marquee" wide note="Marquee tone · tilt · speed">
               <div className={s.marquees}>
                 <Marquee items={['Fresh matches daily', 'Ceremonial grade', 'Stone-ground']} tone="ink" />
@@ -597,6 +632,53 @@ function Guide() {
                 </Stack>
               </Spec>
             </div>
+            <Spec label="Registration crosses" wide note="public/*.svg">
+              <div className={s.crosses}>
+                {CROSSES.map(([file, note]) => (
+                  <figure key={file} className={s.cross}>
+                    <img src={`/${file}`} alt="" width={96} height={96} />
+                    <Label size="sm">{file}</Label>
+                    <Text size="xs" muted>
+                      {note}
+                    </Text>
+                  </figure>
+                ))}
+              </div>
+            </Spec>
+            <Spec label="Halftone photo" wide note="--fx-halftone-* · available, not applied">
+              <Stack gap={4}>
+                <div className={s.halftones}>
+                  <figure>
+                    <div className={s.halftoneFrame}>
+                      <div className={s.halftone}>
+                        <img src={SAMPLE} alt={SAMPLE_ALT} />
+                      </div>
+                    </div>
+                    <Label size="sm">source · tonal range</Label>
+                  </figure>
+                  <figure>
+                    <div className={s.halftoneFrame}>
+                      <div className={cx(s.halftone, s.halftoneInk)}>
+                        <img src={SAMPLE} alt="" />
+                      </div>
+                    </div>
+                    <Label size="sm">ink screen · fx-halftone-mono</Label>
+                  </figure>
+                  <figure>
+                    <div className={s.halftoneFrame}>
+                      <div className={cx(s.halftone, s.halftoneCmyk)}>
+                        <img src={SAMPLE} alt="" />
+                      </div>
+                    </div>
+                    <Label size="sm">cmyk screen · fx-halftone</Label>
+                  </figure>
+                </div>
+                <Text size="xs" muted>
+                  Pure CSS, after leanrada.com/notes/pure-css-halftone. The filter blurs and thresholds the photo while a dot grid is screened
+                  over it; the tokens are in tokens.css and no component uses them yet. Tune the brightness per photo: it sets the threshold.
+                </Text>
+              </Stack>
+            </Spec>
           </Section>
 
           {/* ------------------------------------------------------------ 7 buttons */}

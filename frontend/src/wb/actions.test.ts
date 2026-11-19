@@ -81,6 +81,7 @@ describe('session', () => {
     // e.g. the access cookie expired and a sign-in elsewhere replaced the refresh token (one per user)
     server().on('POST', `${API_URL}/auth/logout`, () => {
       store.backend.state.session = null
+      store.backend.state.refreshToken = null
       return nestError(401, 'Missing or invalid access token', 'Unauthorized')
     })
     await expect(actions.logout()).resolves.toBeUndefined()

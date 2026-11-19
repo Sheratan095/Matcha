@@ -53,7 +53,10 @@ export interface FakeChat {
 export interface FakeBackend {
   server: FakeServer
   state: {
+    /** Whose ACCESS cookie the browser holds (null once it expired: the browser drops it after 15 minutes). */
     session: string | null
+    /** Whose REFRESH cookie it holds (null when none, or when a sign-in elsewhere replaced it). */
+    refreshToken: string | null
     profile: OwnProfile
     /** GET /profile/discover, best first. */
     deck: DeckCard[]
@@ -78,6 +81,7 @@ export function createFakeBackend(): FakeBackend {
   const server = new FakeServer()
   const state: FakeBackend['state'] = {
     session: null,
+    refreshToken: null,
     profile: { ...profile(ME), latitude: null, longitude: null },
     deck: [deckCard('ann', { likesYou: true }), deckCard('bea'), deckCard('cid')],
     liked: new Set(),
@@ -140,13 +144,20 @@ export function createFakeBackend(): FakeBackend {
       const { username, password } = body as { username: string; password: string }
       if (username !== 'testuser' || password !== '1234') return nestError(403, 'Invalid credentials', 'Forbidden')
       state.session = ME
+      state.refreshToken = ME
       return { message: 'Login successful', userId: ME, isProfileComplete: false }
     })
     .on('POST', `${API_URL}/auth/logout`, () => {
       state.session = null
+      state.refreshToken = null
       return { message: 'Logged out successfully' }
     })
-    .on('POST', `${API_URL}/auth/refresh`, () => nestError(403, 'Invalid refresh token', 'Forbidden'))
+    // Like the backend: a live refresh cookie re-issues both, no cookie (or a replaced one) is a 403.
+    .on('POST', `${API_URL}/auth/refresh`, () => {
+      if (!state.refreshToken) return nestError(403, 'Invalid refresh token', 'Forbidden')
+      state.session = state.refreshToken
+      return { message: 'Tokens refreshed', userId: state.refreshToken }
+    })
     .on('GET', `${API_URL}/profile`, () => (state.session ? state.profile : unauthorized()))
     .on('PATCH', `${API_URL}/profile`, ({ body }) => {
       if (!state.session) return unauthorized()
