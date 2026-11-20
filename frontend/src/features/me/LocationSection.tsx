@@ -11,8 +11,12 @@ import s from './EditSections.module.css'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-/** The own location: the saved spot on a map, a new one saved on demand, and whether it follows the device. */
-export function LocationSection({ profile, number }: { profile: OwnProfile; number: number }) {
+/**
+ * The own location: the saved spot on a map, a new one saved on demand, and whether it follows the device.
+ * On the Me page it is a numbered section; elsewhere (the Map page) leave `number` out. `onSaved` runs
+ * once a new spot is stored.
+ */
+export function LocationSection({ profile, number, onSaved }: { profile: OwnProfile; number?: number; onSaved?: () => void }) {
   const saved = savedSpot(profile)
   const [base, setBase] = useState(saved)
   const [draft, setDraft] = useState<PlacedSpot | null>(saved)
@@ -43,6 +47,7 @@ export function LocationSection({ profile, number }: { profile: OwnProfile; numb
       setLocationMode(profile.userId, next)
       setMode(next)
       setJustSaved(true)
+      onSaved?.()
     } catch (failure) {
       setError(describe(toApiError(failure)))
     } finally {
@@ -51,7 +56,7 @@ export function LocationSection({ profile, number }: { profile: OwnProfile; numb
   }
 
   return (
-    <Card as="section" id={SECTION_IDS.location} aria-labelledby={titleId} label={`Section ${pad(number)}`} meta={state} className={s.section}>
+    <Card as="section" id={SECTION_IDS.location} aria-labelledby={titleId} label={number === undefined ? 'Your spot' : `Section ${pad(number)}`} meta={state} className={s.section}>
       <form onSubmit={onSubmit} noValidate>
         <Stack gap={4}>
           <Stack gap={2}>

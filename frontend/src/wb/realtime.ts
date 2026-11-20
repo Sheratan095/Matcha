@@ -3,7 +3,9 @@
  *
  * While signed in, one socket.io connection to the gateway's `/notification` namespace stays open. It
  * counts the user as online and carries the live events, which are:
- * - republished on `realtime$` for toasts;
+ * - republished on `realtime$` for toasts, and kept by the notification feed (./notifications.ts, shown on
+ *   Activity > Notifications). An `unmatch` that is the echo of the user's own unlike / block is
+ *   published with `own: true`, so neither shows it;
  * - turned into refreshes of the nodes they make stale: a message reloads the chat list and, when its
  *   conversation is open, fetches the thread's new messages (marked read at once), otherwise it counts
  *   as unread; a match or an unmatch reloads the connections (unless it is the echo of this client's
@@ -24,8 +26,9 @@ import type { Socket } from 'socket.io-client'
 import { renewSession, toApiError } from '@/api/http'
 import type { CalendarAction, CalendarResult, ChatMessage, MessageStatus, RealtimeEvent, UserSummary } from '@/api/types'
 import { API_URL } from '@/config'
-import { claimEcho, countUnread, hasDatesWith, markChatSeen, markThreadRead, reloadOpenChat } from './actions'
+import { claimEcho, countUnread, hasDatesWith, isOwnChange, markChatSeen, markThreadRead, reloadOpenChat } from './actions'
 import { awaitPending, refresh } from './commands'
+import { startNotificationFeed } from './notifications'
 import type { NodeValue, RefreshableNodeName } from './nodes'
 import { getLastRequestId, getNodeStatus, getNodeValue, getRequestId, isStoreLive, node$, onStoreStop } from './store'
 
@@ -265,7 +268,12 @@ function connectedNow(): Arrival {
   return { connectedAt: Date.now(), connectionMark: isStoreLive() ? getLastRequestId() : 0 }
 }
 
-function deliver(event: RealtimeEvent, arrival: Arrival): void {
+function deliver(received: RealtimeEvent, arrival: Arrival): void {
+  // The backend pushes an `unmatch` to both sides, the one who unliked or blocked included. Said here,
+  // before anyone sees the event (`react` claims the echo afterwards): a toast or a notification
+  // about your own action would be noise.
+  const event: RealtimeEvent =
+    received.type === 'unmatch' && isOwnChange('unmatch', received.person.userId) ? { ...received, own: true } : received
   events.next(event)
   if (isStoreLive()) react(event, markOf(arrival))
 }
@@ -361,7 +369,8 @@ function keepSocket(): Subscription {
 
 /** Starts the socket and the reactions to its events. Call once the store is ready. Returns the stopper. */
 export function startRealtime(options: RealtimeOptions = {}): () => void {
-  const subscriptions: Subscription[] = []
+  // the notification feed hears every event, whichever page is open
+  const subscriptions: Subscription[] = [startNotificationFeed(realtime$)]
   if (options.events$) {
     // an injected source counts as connected when it is subscribed
     const arrival = connectedNow()

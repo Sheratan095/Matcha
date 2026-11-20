@@ -1,8 +1,9 @@
 /**
- * `/activity`: who likes you (answer them: a like back connects you), who viewed your profile, and the
- * profiles you visited. The tab is in the URL (`?tab=views`, `?tab=visited`) so a notification can link
- * straight to it. Likes load at sign-in (the shell's badge); the visitors load with this page, your
- * visits with their tab.
+ * `/activity`: who likes you (answer them: a like back connects you), who viewed your profile, the
+ * profiles you visited, and the notifications you were sent (src/wb/notifications.ts). The tab is in
+ * the URL (`?tab=views`, `?tab=visited`, `?tab=notifications`) so a notification can link straight to
+ * it. Likes load at sign-in (the shell's badge); the visitors and your visits load with this page, so
+ * every tab shows its count at once.
  */
 import { useId, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -10,17 +11,18 @@ import type { DeckAction, UserSummary } from '@/api/types'
 import { firstNameOf, mainPicture } from '@/features/chat/people'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import { summaryPreviewProfile } from '@/features/profile/format'
-import { ActionButton, IconEye, IconHeart, IconPin, MatchMoment, PageHeader, TabPanel, toast } from '@/ui'
-import { actions, refresh, REVISIT_MS, toApiError, useLoad, useNodeStatus, useNodeValue } from '@/wb'
+import { ActionButton, IconBell, IconEye, IconHeart, IconPin, MatchMoment, PageHeader, TabPanel, toast } from '@/ui'
+import { actions, load, refresh, REVISIT_MS, toApiError, useLoad, useNodeStatus, useNodeValue, useUnreadNotifications } from '@/wb'
 import { LikesPanel } from './LikesPanel'
+import { NotificationsPanel } from './NotificationsPanel'
 import { ScoreTabs } from './ScoreTabs'
 import { ViewersPanel } from './ViewersPanel'
 import s from './ActivityPage.module.css'
 
-type TabValue = 'likes' | 'views' | 'visited'
+type TabValue = 'likes' | 'views' | 'visited' | 'notifications'
 
 function tabFrom(value: string | null): TabValue {
-  return value === 'views' || value === 'visited' ? value : 'likes'
+  return value === 'views' || value === 'visited' || value === 'notifications' ? value : 'likes'
 }
 
 export default function ActivityPage() {
@@ -35,9 +37,12 @@ export default function ActivityPage() {
   // Realtime keeps likes and visitors current: a visit refetches them only once they are getting old.
   useLoad('likesReceived', { maxAgeMs: REVISIT_MS })
   useLoad('myViewers', { maxAgeMs: REVISIT_MS })
-  // No event tells of your own visits: opening a profile marks the list stale instead.
-  useLoad('visitedProfiles', { maxAgeMs: REVISIT_MS, enabled: tab === 'visited' })
+  // No event tells of your own visits: opening a profile marks the list stale instead, so it is asked
+  // for with the page (not with its tab: the tab's count would stay empty until it was opened), and
+  // refetched when a stale one is shown again (here, or when the profile sheet closes: see closeSheet).
+  useLoad('visitedProfiles', { maxAgeMs: REVISIT_MS })
 
+  const unreadNotifications = useUnreadNotifications()
   const likesValue = useNodeValue('likesReceived')
   const likesStatus = useNodeStatus('likesReceived')
   const viewersValue = useNodeValue('myViewers')
@@ -62,6 +67,11 @@ export default function ActivityPage() {
     setTarget(null)
     setAdmirer(null)
     setSwipeError(null)
+    // Opening a profile records a visit, and blocking someone takes them off both lists: whichever of
+    // them the sheet left stale is refetched now, so the lists are right behind it. A list that is
+    // neither stale nor old sends nothing.
+    void load('visitedProfiles', REVISIT_MS)
+    void load('myViewers', REVISIT_MS)
   }
 
   const openAdmirer = (person: UserSummary) => {
@@ -143,6 +153,8 @@ export default function ActivityPage() {
           { value: 'likes', label: 'Likes you', count: likes ? likes.length : null, tone: 'strawberry', icon: <IconHeart size={16} filled /> },
           { value: 'views', label: 'Viewed you', count: viewers ? viewers.length : null, tone: 'blue', icon: <IconEye size={16} strokeWidth={3} /> },
           { value: 'visited', label: 'You visited', count: visited ? visited.length : null, tone: 'yolk', icon: <IconPin size={16} strokeWidth={3} /> },
+          // the numeral is what is new, not the length of the list (kept up to NOTIFICATION_LIMIT)
+          { value: 'notifications', label: 'Notifications', count: unreadNotifications, unit: 'unread', tone: 'matcha', icon: <IconBell size={16} strokeWidth={3} /> },
         ]}
       />
 
@@ -171,6 +183,10 @@ export default function ActivityPage() {
             setTarget({ userId })
           }}
         />
+      </TabPanel>
+
+      <TabPanel idBase={idBase} value="notifications" active={tab === 'notifications'} className={s.panel}>
+        <NotificationsPanel onTab={setTab} />
       </TabPanel>
 
       <ProfileSheet target={target} onClose={closeSheet} actions={sheetActions} />

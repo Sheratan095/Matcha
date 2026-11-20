@@ -1,7 +1,9 @@
 /**
- * Global toasts from `realtime$`: a new connection, a message for a conversation that is not open,
- * someone liking you, someone viewing your profile, and a date invited to, accepted, declined,
- * cancelled or starting. Each links to the right place. Renders nothing itself (the Toaster does).
+ * Global toasts from `realtime$`: a new connection, a connection ended by the other person, a message
+ * for a conversation that is not open, someone liking you, someone viewing your profile, and a date
+ * invited to, accepted, declined, cancelled or starting. Each links to the right place (an ended
+ * connection has nowhere to go). Renders nothing itself (the Toaster does). What the toasts say is also
+ * kept in the Activity > Notifications feed.
  */
 import { useEffect } from 'react'
 import type { CalendarAction, CalendarEventSummary, UserSummary } from '@/api/types'
@@ -130,7 +132,20 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
           })
           break
         }
-        case 'unmatch':
+        case 'unmatch': {
+          // Unliking or blocking someone is echoed to you too: only the other person's doing is news.
+          if (event.own) break
+          // Same id as their like and match toasts: it replaces a "match" that is no longer true.
+          toast.show({
+            id: `person-${event.person.userId}`,
+            tone: 'ink',
+            title: `${nameOf(event.person)} ended the connection`,
+            message: 'You are no longer connected. The conversation and any dates with them are gone.',
+            icon: avatarOf(event.person),
+            duration: 7000,
+          })
+          break
+        }
         case 'seen':
           break
       }

@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RealtimeEvent } from '@/api/types'
 import { toast } from '@/ui'
 import { actions, startRealtime } from '@/wb'
-import { person } from '@/wb/testing/fakeBackend'
+import { connect, person } from '@/wb/testing/fakeBackend'
 import { flush, startTestStore, type TestStore } from '@/wb/testing/harness'
 import { RealtimeToasts } from './RealtimeToasts'
 
@@ -63,6 +63,28 @@ describe('RealtimeToasts', () => {
       source.next({ type: 'view', person: person('ann') })
     })
     expect(toast.getSnapshot().map((item) => item.id)).toEqual(['person-ann', 'view-ann'])
+  })
+
+  it('a connection the other person ended says so, and replaces the toast of their match', () => {
+    act(() => {
+      source.next({ type: 'match', person: person('ann') })
+      source.next({ type: 'unmatch', person: person('ann') })
+    })
+    expect(toast.getSnapshot().map((item) => item.id)).toEqual(['person-ann'])
+    expect(shown('person-ann')).toMatchObject({ tone: 'ink', title: 'ann ended the connection' })
+    // nowhere to go: the conversation and the connection are gone
+    expect(shown('person-ann')?.action).toBeUndefined()
+  })
+
+  it('says nothing of the unmatch you caused yourself (the backend echoes it to you too)', async () => {
+    connect(store.backend, 'bea')
+    let unliking: Promise<void> = Promise.resolve()
+    act(() => {
+      unliking = actions.unlikeUser('bea')
+    })
+    act(() => source.next({ type: 'unmatch', person: person('bea') }))
+    await act(() => unliking)
+    expect(toast.getSnapshot()).toEqual([])
   })
 
   it('a date invite links to the conversation, where it is answered', () => {

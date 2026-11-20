@@ -12,6 +12,8 @@ export interface ScoreTab<V extends string> {
   label: string
   /** null while not loaded. */
   count: number | null
+  /** What the count counts, for screen readers when it is not the whole list ("unread"). */
+  unit?: string
   /** The numeral's misregistered plate. */
   tone: Tone
   icon?: ReactNode
@@ -70,7 +72,9 @@ export function ScoreTabs<V extends string>({ items, value, onChange, label, idB
               {item.icon ? <span className={s.scoreIcon}>{item.icon}</span> : null}
               {item.label}
             </span>
-            <span className="sr-only">{item.count == null ? ', loading' : `, ${item.count}`}</span>
+            <span className="sr-only">
+              {item.count == null ? ', loading' : `, ${item.count}${item.unit ? ` ${item.unit}` : ''}`}
+            </span>
           </button>
         )
       })}

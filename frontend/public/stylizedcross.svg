@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Colour cross: RegMark variant="color", IconRegMark filled. Quadrants in the kit's inks (CMYK positions) -->
+  <!-- Cyan position: blue (token c-blue) -->
+  <path d="M12 12V5.5A6.5 6.5 0 0 0 5.5 12z" fill="#2B48F0"/>
+  <!-- Magenta position: strawberry (token c-strawberry) -->
+  <path d="M12 12H18.5A6.5 6.5 0 0 0 12 5.5z" fill="#FF4F64"/>
+  <!-- Yellow position: yolk (token c-yolk) -->
+  <path d="M12 12H5.5A6.5 6.5 0 0 0 12 18.5z" fill="#FFC531"/>
+  <!-- Black position: ink-2 (token c-ink-2) -->
+  <path d="M12 12V18.5A6.5 6.5 0 0 0 18.5 12z" fill="#3B362D"/>
+  <!-- Registration ring -->
+  <circle cx="12" cy="12" r="6.5" fill="none" stroke="#15130F" stroke-width="1.5"/>
+  <!-- Alignment cross -->
+  <path d="M12 0v24M0 12h24" stroke="#15130F" stroke-width="1.5"/>
+  <!-- Central dot -->
+  <circle cx="12" cy="12" r="2.5" fill="#15130F"/>
+</svg>

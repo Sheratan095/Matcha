@@ -448,7 +448,11 @@ export interface CalendarEventSummary {
 export type RealtimeEvent =
   | { type: 'message'; from: UserSummary; message: Message }
   | { type: 'match'; person: UserSummary }
-  | { type: 'unmatch'; person: UserSummary }
+  /**
+   * `person` ended the connection (unliked or blocked you). The backend pushes it to BOTH sides, so
+   * `own` is set on the echo of this client's own unlike / block: not news to the one who did it.
+   */
+  | { type: 'unmatch'; person: UserSummary; own?: boolean }
   | { type: 'like'; person: UserSummary }
   | { type: 'view'; person: UserSummary }
   /** `userId` read the chat: your messages there are now read. */

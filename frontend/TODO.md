@@ -22,7 +22,7 @@
 
 ### IV.2 User profile
 - [x] "Who liked me": Activity > Likes reads GET /profile/likes (username + picture only: the sheet loads the rest)
-- [x] "Profiles I visited" (visit history): Activity > You visited reads GET /profile/visited (on demand; refetched after you open a profile)
+- [x] "Profiles I visited" (visit history): Activity > You visited reads GET /profile/visited (asked for with the page, so its tab has a count at once; refetched after you open a profile from the page, and after a block)
 - [ ] Date of birth editable in Me (GitHub sign-ups have none, and the age shown everywhere depends on it): PATCH /profile accepts `dateOfBirth`, the frontend payload does not send it
 - [ ] `profileComplete` (src/wb/functions.ts) checks less than the backend's `profile_is_complete` (last name, date of birth, profile picture are missing): align them, or onboarding lets through a profile the backend rejects
 - [x] Remove `createMissingProfile` / `profileCreate` (POST /profile): that route no longer exists (only /internal/create, blocked by the gateway), so the "heal" path always failed
@@ -51,7 +51,9 @@
 - [x] Listen on the socket (src/wb/realtime.ts): `profile-like`, `profile-view`, `message`, `match`, `unmatch`, `chat-seen`
 - [x] Calendar events on the socket: `event-invite`, `event-accept`, `event-decline`, `event-cancel` -> a toast each (who, the date's title and start, a link to /calendar) and a reload of the calendar unless it already shows the change
 - [x] Profile views on the socket: `profile-view` -> a toast ("<name> viewed your profile", "See visitors" -> Activity > Viewers), besides the reload of the viewers
-- [ ] Unread notifications visible from any page (bell + count in the shell); a list of the last notifications (toasts only today)
+- [x] A list of the last notifications: Activity > Notifications (src/wb/notifications.ts: built from the socket events, the last 50 kept per user in this browser, unread count on the tab)
+- [x] "A connected user unlikes them": a toast ("<name> ended the connection"), and an entry in the list; the echo of your own unlike / block is skipped (`own`)
+- [ ] Unread notifications visible from any page: the Activity badge in the shell still counts the pending likes, not the unread notifications (`useUnreadNotifications`)
 - [x] Refresh the affected nodes on each event (likes, viewers, connections, chat list, open chat, matchesMap)
 - [x] Remove `mockEvents$` and the typing indicator (the backend has no `typing` event)
 

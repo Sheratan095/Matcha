@@ -4,7 +4,8 @@
  * - Hooks: `useNodeValue`, `useNode`, `useNodeStatus`, `useLoad`, `useFilters`.
  * - Imperative: `getNodeValue`, `setNode`, `node$`, `getNodeStatus`, `nodeStatus$`, `load`, `refresh`, `run`.
  * - `actions`: the flows screens call.
- * - `realtime$`.
+ * - `realtime$`, and the notification feed it fills: `useNotifications`, `useUnreadNotifications`,
+ *   `getNotifications`, `markAllNotificationsRead`, `clearNotifications`.
  * - Boot (main.tsx only): `installStoreHttp`, `startStore`, `startRealtime`.
  */
 export {
@@ -43,6 +44,16 @@ export {
   type RefreshableNodeName,
   type WritableNodeName,
 } from './nodes'
+export {
+  clearNotifications,
+  getNotifications,
+  markAllNotificationsRead,
+  NOTIFICATION_LIMIT,
+  useNotifications,
+  useUnreadNotifications,
+  type AppNotification,
+  type NotificationKind,
+} from './notifications'
 export { realtime$, startRealtime, type RealtimeOptions } from './realtime'
 export { EMPTY_SEARCH, hasSearchCriteria, type SearchCriteria } from './search'
 export type { NodeStatus, RequestStatus } from './status'

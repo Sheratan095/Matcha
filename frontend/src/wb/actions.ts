@@ -53,6 +53,7 @@ import {
   type DiscoverFilters,
 } from './filters'
 import type { AuthStatus } from './functions'
+import { clearNotifications } from './notifications'
 import {
   currentSearch,
   EMPTY_SEARCH,
@@ -204,6 +205,15 @@ export function claimEcho(event: ConnectionEvent, userId: string): boolean {
   return true
 }
 
+/**
+ * Like `claimEcho`, but only looks: true when a `match` / `unmatch` about `userId` is the echo of a
+ * change this client has in flight, without claiming it. For whoever sees the event before realtime
+ * reacts to it (the toasts and the notification feed, which skip the echo of the user's own unlike).
+ */
+export function isOwnChange(event: ConnectionEvent, userId: string): boolean {
+  return ownChanges.get(`${event}:${userId}`)?.some((entry) => !entry.echoed) ?? false
+}
+
 /** Whether `userId` is among the connections; true when they are not loaded (refresh rather than miss it). */
 function isConnection(userId: string): boolean {
   const connections = getNodeValue('connections')
@@ -323,6 +333,8 @@ async function logout(): Promise<void> {
   } catch (thrown) {
     if (toApiError(thrown).status !== 401) throw thrown
   }
+  // the feed is kept in this browser: signing out takes it away (a session that merely expires keeps it)
+  clearNotifications()
   await probeSession()
 }
 
@@ -639,6 +651,10 @@ async function blockUser(userId: string): Promise<void> {
   hideFromDeck(id)
   if (change.echoed || lists.connected) forgetConnection(id)
   if (lists.likesMe) void refresh('likesReceived')
+  // the backend deletes the views between the two in both directions: they leave "Viewed you" and
+  // "You visited" (refetched when next shown; nothing is sent for a list nobody asked for)
+  markStale('myViewers')
+  markStale('visitedProfiles')
   void refresh('blockedUsers')
   // the backend leaves blocked people out of search results
   if (getNodeValue('searchResults')?.some((card) => card.userId === id)) void refresh('searchResults')

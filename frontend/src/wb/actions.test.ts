@@ -509,6 +509,27 @@ describe('profiles, visits and blocks', () => {
     expect(getNodeValue('visitedProfiles')?.visited.map((entry) => entry.userId)).toEqual(['cid'])
   })
 
+  it('blocking someone takes them off both visit lists: each is refetched when next shown', async () => {
+    await signIn()
+    await flush(30)
+    const VISITED = `${API_URL}/profile/visited`
+    const VIEWERS = `${API_URL}/profile/viewers`
+    await load('visitedProfiles', REVISIT_MS)
+    await load('myViewers', REVISIT_MS)
+    // young and nothing changed: showing them again sends nothing
+    await load('visitedProfiles', REVISIT_MS)
+    await load('myViewers', REVISIT_MS)
+    expect(server().sent('GET', VISITED)).toHaveLength(1)
+    expect(server().sent('GET', VIEWERS)).toHaveLength(1)
+
+    // the backend deletes the views between the two when one blocks the other
+    await actions.blockUser('bea')
+    await load('visitedProfiles', REVISIT_MS)
+    await load('myViewers', REVISIT_MS)
+    expect(server().sent('GET', VISITED)).toHaveLength(2)
+    expect(server().sent('GET', VIEWERS)).toHaveLength(2)
+  })
+
   it('blocked people are listed on demand; unblocking takes them off, a block while it is shown adds them', async () => {
     await signIn()
     await flush(30)

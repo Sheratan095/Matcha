@@ -9,6 +9,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { deviceSpot, savedSpot, type DeviceFailure } from '@/features/location/geo'
 import { setLocationMode } from '@/features/location/mode'
+import { LocationSection } from '@/features/me/LocationSection'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import {
   Avatar,
@@ -208,6 +209,9 @@ export default function MapPage() {
           <p className={s.note}>Positions are rounded to about a kilometre: a face shows a neighbourhood, not an address.</p>
         </section>
       )}
+
+      {/* The same picker as the profile's Location section: pick a spot on a map, by search or from the device. */}
+      {profile ? <LocationSection profile={profile} onSaved={() => mapRef.current?.fitAll()} /> : null}
 
       <ProfileSheet target={target} onClose={closeSheet} onBlocked={() => setSelectedId(null)} />
     </div>

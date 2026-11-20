@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Empty cross, the default: RegMark, IconRegMark. Ink (token c-ink) only -->
+  <!-- Registration ring -->
+  <circle cx="12" cy="12" r="6.5" fill="none" stroke="#15130F" stroke-width="1.5"/>
+  <!-- Alignment cross -->
+  <path d="M12 0v24M0 12h24" stroke="#15130F" stroke-width="1.5"/>
+  <!-- Central dot -->
+  <circle cx="12" cy="12" r="2.5" fill="#15130F"/>
+</svg>

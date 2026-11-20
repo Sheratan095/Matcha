@@ -242,27 +242,6 @@ function BlockedSection() {
   )
 }
 
-// ---------------------------------------------------------------- about this build
-
-function AboutBuild() {
-  return (
-    <Card as="section" tone="ink" aria-labelledby="me-build-title" label="About this build" meta={<Serial value={2026} tone="paper" />}>
-      <Stack gap={4}>
-        <Headline as="h2" id="me-build-title" size="d3" width="condensed" print="riso" ink="paper" offset="matcha">
-          Under the hood
-        </Headline>
-        <dl className={s.specs}>
-          <div>
-            <dt>Account, profile, matches & chat</dt>
-            <dd>Gateway · {API_URL}</dd>
-          </div>
-        </dl>
-        <Barcode value="matcha-gateway" height={28} tone="paper" caption />
-      </Stack>
-    </Card>
-  )
-}
-
 /** The account tab: email, blocked people, session, and what this build runs on. */
 export function AccountSettings() {
   return (
@@ -270,7 +249,6 @@ export function AccountSettings() {
       <EmailSection />
       <BlockedSection />
       <SessionSection />
-      <AboutBuild />
     </Stack>
   )
 }

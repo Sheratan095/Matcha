@@ -64,6 +64,7 @@ src/wb/
   filters.ts        discover filters (one request for several changes)
   actions.ts        the flows screens call
   realtime.ts       the socket, realtime$ and the refreshes its events cause
+  notifications.ts  the notification feed (Activity > Notifications), built from realtime$
   boot.ts           installStoreHttp() for main.tsx
   hooks.ts          React hooks
   testing/          test-only fake adapter / backend / harness
@@ -225,7 +226,7 @@ dependency; F inputs are always optional (4.2).
 | `pictureDelete` | Payload (picture id) + DELETE api `/profile/pictures/{pictureId}` | payload (PATH_VARIABLE) | `PicturesResult` |
 | `pictureMain` | Payload (picture id) + PATCH api `/profile/pictures/{pictureId}/profile` | payload (PATH_VARIABLE) | `PicturesResult` |
 | `myViewers` | GET api `/profile/viewers`, **on demand** | `sessionUserId`, `viewersWanted`, `viewersRefresh` (opt) | `ViewersResult` (Activity, Me) |
-| `visitedProfiles` | GET api `/profile/visited`, **on demand** | `sessionUserId`, `visitedWanted`, `visitedRefresh` (opt) | `VisitedResult`: the profiles you opened, latest first (Activity > You visited) |
+| `visitedProfiles` | GET api `/profile/visited`, **on demand** | `sessionUserId`, `visitedWanted`, `visitedRefresh` (opt) | `VisitedResult`: the profiles you opened, latest first (Activity > You visited). The Activity page asks for it with the page, not with its tab, so the tab has its count at once; no event tells of your own visits, so opening a profile (`showApiProfile`) and blocking someone (`blockUser`, the backend deletes the views in both directions) mark it stale, and the page refetches it when its profile sheet closes |
 | `blockedUsers` | GET api `/profile/blocks`, **on demand** | `sessionUserId`, `blocksWanted`, `blocksRefresh` (opt) | `BlocksResult` (Me > Account) |
 | `unblockUser` | Payload (user id) + DELETE api `/profile/{userId}/block` | payload (PATH_VARIABLE) | empty |
 | `apiProfileId` → `apiProfile` | P → GET api `/profile/{userId}` | `sessionUserId`, id (PATH_VARIABLE) | `Profile` (real user; records a profile view) |
@@ -356,7 +357,10 @@ is `NodeValues[N] | null | undefined`.
   | `planDate({ inviteeId, title, description?, startsAt, endsAt, place? }): Promise<CalendarEvent>` | `calendar` / `dates` list the new invite (times sent in UTC with their `Z`; a blank description and no place send nothing); INVALID without a request for a blank or overlong title (100), an overlong description (500), a start in the past, an end before the start, a place off the globe; the backend's 403 for someone you are not connected to. The invitee gets `event-invite` |
   | `answerDate(eventId, 'accept' \| 'decline' \| 'cancel'): Promise<void>` | `calendar` reflects it (a cancelled date leaves it, so does a declined one for the invitee); the backend's 404 / 400 when the move is not allowed (see the Calendar table). The other side gets `event-accept` / `event-decline` / `event-cancel` |
 
-- `realtime$` — `Observable<RealtimeEvent>` for toasts. `startRealtime()` keeps the gateway's socket.io
+- `realtime$` — `Observable<RealtimeEvent>` for toasts and the notification feed (below). The backend
+  pushes an `unmatch` to both people, the one who unliked or blocked included: when it is the echo of
+  this client's own change (`isOwnChange`, checked before anyone sees the event) it is published with
+  `own: true`, and neither a toast nor the feed shows it. `startRealtime()` keeps the gateway's socket.io
   connection (namespace `/notification`, websocket only) open while signed in (which also counts the
   user as online). Its address comes from `API_URL` (`socketTarget`): an origin connects there on
   `/socket.io`; a path prefix such as the Vite proxy's `/api` goes on the socket's `path`
@@ -384,6 +388,18 @@ is `NodeValues[N] | null | undefined`.
   is renewed (`renewSession()`, once per outage) and a socket that had given up is told to connect again.
   When the renewal is refused with 403 (no live refresh token) the session is probed, which signs the user
   out and closes the socket.
+- The **notification feed** (`src/wb/notifications.ts`, started by `startRealtime`; Activity >
+  Notifications). The backend has no list of notifications (it only replays the ones queued while the
+  user was offline, at connection), so the feed is built from `realtime$`: likes, views, matches,
+  connections ended by the other person, messages (not from the open conversation) and the calendar's
+  events. One entry per thing (`like:<userId>`, `date-accept:<eventId>`...): a newer event about it
+  replaces the older and returns it to the top, unread. The latest 50 are kept per user in
+  localStorage (`matcha.notifications.<userId>`; invalid entries are dropped on load), emptied by
+  `actions.logout` and by "Clear all". `at` is when the client heard of it (payloads carry no time).
+  Unread means not shown on the Notifications tab yet: the tab marks everything read while it is open,
+  and opening a conversation reads its message entry. Exports: `useNotifications`,
+  `useUnreadNotifications`, `getNotifications`, `markAllNotificationsRead`, `clearNotifications`.
+  The shell's Activity badge still counts the pending likes, not the unread notifications.
 - Errors: `isApiError`, `toApiError`, `LOCAL_ERROR` (`NETWORK`, `TIMEOUT`, `NOT_SENT`, `INVALID`,
   `NO_SESSION`, `DROPPED`).
 - Boot (only `src/main.tsx`): `installStoreHttp()`, `startStore()`, await `ready`,
@@ -419,7 +435,7 @@ invite from them (tomorrow); realtime events are injected with `startRealtime({ 
 | `/discover` | swipe deck | signed in + complete profile |
 | `/matches`, `/chat/:userId` | connections and the conversation with one; the dates planned with them sit in its thread (drawn from the calendar: the invite where it was sent, answered or called off there, and the start of an accepted one), and its header books a new one | signed in + complete profile |
 | `/calendar` | dates with your connections: invites to answer, what is ahead, what is over; plan one (also from a conversation) | signed in + complete profile |
-| `/activity` | likes received, profile viewers | signed in + complete profile |
+| `/activity` | likes received, profile viewers, the profiles you visited, notifications (`?tab=views`, `?tab=visited`, `?tab=notifications`) | signed in + complete profile |
 | `/me` | own profile, pictures, settings | signed in |
 | `/styleguide` | design system showcase | any |
 
