@@ -29,62 +29,57 @@ BACKEND_URL=http://localhost:3000
 
 ### TO DO FRONTEND
 
-- [x] sta cosa dei mockup degli utenti finti è strafiga ma levala, se vogliamo la facciamo fare a claudio che però faccia
-	le cose con le api sennò i match non tornano
-
-
 - Mancano le traduzioni
-
-- Ottima la ricerca avanzata, leviamola dalla home
 
 - Bisognerebbe trovare un modo per avere la lista degli utenti bloccati per aver modo di sbloccarli
 
 - Durante la registrazione, quando ti chiede le preferenze fa delle call strane che falliscono (vedi console)
-
-- Mappa
-  - La mappa non renderizza le foto 
- 
-- anche la pagina activity fa due richieste http per MyLikes
   
 - notifiche di errore troppo lunghe rompono la ui, praticamente sforando in larghezza e la pagina diventa "scorribbile" orizzontalmente
-
 
 - Login
   - OAuh2 callback non funziona testando dal telefono, probabilmente c'è problema con gli indirizzi ip come il problema iniziale (Parliamone insieme)
 
-- Discover
-  - Disattiva discover se non l'utente non rispetta i requisiti base come avere una foto profilo
+- Discover 
+  - Disattiva discover se non l'utente non rispetta i requisiti base come avere una foto profilo !IMPORTANTE!
+		questo controllo va al caricamento della pagina
 
 - Own profile
 	- quando cambi sexioni (Photos/Details/Account) ti scrolla in alto all'inizio della pagina
 	- rimuovere "Edit profile" btn, inutile dato che le info si modificano semplicemente scegliendo la tab
-	- la stellina dovrebbe essere solo sull'immagine profile, ad ora credo sia in tutte tranne che quella
+	- rifacciamo la grafica per settare l'immagine di profilo, io non ci capisco molto
 	- Tab Account
-    	- rimuovere "Simulated"
-    	- rimuovere "About this build"
+		io leverei anche under the hood
+
+
 - Matches
-    - al caricamento della pagina viene fatte un botto di chiamate:
-  		validate ??
-		profile ??
-		viewers OK
-		map ??
-		discover ??
-		interests ??
+    - rifacciamo la call api tutte le volte che viene caricata la pagina
   
 - User profile
-    - Paris 18e che minghia è? leviamolo sembra il suo indirizzo di casa (non so perchè ma c'è solo quando clicchi sul profilo dalla chat)
-    - i km di distanza non mi sembrano veri 
+    - cosa sono Shared? io lo leverei
 
 - Activity
+	- you visited api call isn't done when activiy page is loaded
     - al caricamento della pagine vengono fatte mille richieste a caso (validate profile viewers X3 map discover interess)
     - viewer tab non funziona
+	- Quando arriva una visualizzazzione mettiamola in cima alla lista
+	- il pass sul profilo non funziona, sembra che non faccia proprio la call
 
 - Notifiche
   - sembra che non ci sia la notifica di quando qualcuno ti mette like nemmeno il match (dimmi se ci sono problemi con i ws)
   - it's a match ws notify dovrebbe apparire con l'animazione carina dovunque tu sia, ora lo fa solo se tu metti like a qualcuno che ti ha già messo like SOLO nella pagina activity
+  - SEE WHO btn non funziona
+  - Unmatch notify non viene mostrata, IL SUBJECT LO RICHIEDE
+  - Controlla che quando si clicca su una notifica, chiusa eventuali modal prima di rimandare alla pagina
+
+-Calendar (è na hit zio can)
+
   
 ### TO DO BACKEND
 
 - Implementare nuovo oaut2 method
 
 - Un certo oAuth state viene inserito nei cookie dopo il login - con il logout non scompare
+
+- Calendar
+	se l'invitato fa DECLINE, l'invitante poi cancella l'evento, all'invitato non deve arrivare la notifica di cancellazione
