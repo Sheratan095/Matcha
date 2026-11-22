@@ -226,9 +226,11 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
         <div className={s.confirm}>
           {pending ? <PhotoFrame src={pending.url} alt="" radius="md" shadow={2} tilt={-3} className={s.confirmThumb} /> : null}
           <Text>
-            {pending?.isProfile
-              ? 'This is your main photo. Once it’s gone, choose another one with the star.'
-              : 'It leaves your card straight away. You can always upload it again.'}
+            {pictures.length === 1
+              ? 'This is your only photo. Without one Discover closes, you leave everyone’s deck and cannot like anyone until you add another.'
+              : pending?.isProfile
+                ? 'This is your main photo. Your oldest other photo takes its place; press the star on another one to choose.'
+                : 'It leaves your card straight away. You can always upload it again.'}
           </Text>
         </div>
       </Modal>

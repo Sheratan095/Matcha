@@ -82,7 +82,7 @@ export function createFakeBackend(): FakeBackend {
   const state: FakeBackend['state'] = {
     session: null,
     refreshToken: null,
-    profile: { ...profile(ME), latitude: null, longitude: null },
+    profile: { ...profile(ME), latitude: null, longitude: null, dateOfBirth: '1996-03-14' },
     deck: [deckCard('ann', { likesYou: true }), deckCard('bea'), deckCard('cid')],
     liked: new Set(),
     passed: new Set(),

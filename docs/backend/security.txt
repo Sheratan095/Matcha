@@ -10,8 +10,9 @@ Rate limiting is enforced at the gateway (global per IP, sensitive auth routes p
 
 Only the gateway is reachable from other machines.
   auth, notification and profile listen on 127.0.0.1 (app.listen in each main.ts),
-  and docker-compose publishes PostgreSQL (5432) and the Garage S3 API (3900) on 127.0.0.1 only.
-  Public: the gateway, the frontend and Garage's read-only image endpoint (3902).
+  and docker-compose publishes PostgreSQL (5432) and both Garage endpoints (S3 API 3900, images 3902)
+  on 127.0.0.1 only. Public: the gateway and the frontend, whose server forwards /api to the gateway
+  and /pictures to Garage's read-only image endpoint.
   The internal key stays the second layer: every service HTTP route requires it
   (InternalKeyGuard), and so does the notification socket handshake, so a local process
   still cannot claim an x-user-id without going through the gateway.

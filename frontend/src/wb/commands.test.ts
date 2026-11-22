@@ -27,15 +27,12 @@ async function signIn(): Promise<void> {
 }
 
 describe('the graph at rest', () => {
-  it('sends nothing while tangling, and only the renewal and the probe while anonymous', async () => {
+  it('sends nothing while tangling, and only the probe for a first-time visitor', async () => {
     expect(server().requests).toHaveLength(0)
     await expect(actions.bootSession()).resolves.toBe('anonymous')
     await flush()
-    // the renewal (refused: a visitor has no refresh token) comes first, so a returning user is not taken for one
-    expect(server().requests.map((request) => `${request.method} ${request.url}`)).toEqual([
-      `POST ${API_URL}/auth/refresh`,
-      `GET ${API_URL}/auth/validate`,
-    ])
+    // no renewal: this browser never held a session, so a refresh could only be refused (sessionHint.ts)
+    expect(server().requests.map((request) => `${request.method} ${request.url}`)).toEqual([`GET ${API_URL}/auth/validate`])
     expect(getNodeValue('sessionUserId')).toBeNull()
     expect(getNodeValue('myProfile')).toBeNull()
   })
@@ -46,7 +43,6 @@ describe('the graph at rest', () => {
     const sent = server().requests.map((request) => `${request.method} ${request.url.replace(API_URL, '')}`)
     expect(sent.sort()).toEqual(
       [
-        'POST /auth/refresh',
         'GET /auth/validate',
         'POST /auth/login',
         'GET /auth/validate',

@@ -177,6 +177,11 @@ export interface OwnProfile extends Profile {
   /** Decimal degrees, full precision; both null until a location is set. */
   latitude: number | null
   longitude: number | null
+  /**
+   * 'YYYY-MM-DD'; only the owner gets it (others see `age`). null for a GitHub sign-up until it is set:
+   * PATCH /profile accepts it once, while it is null (409 afterwards).
+   */
+  dateOfBirth: string | null
 }
 
 /** PUT /profile/location. Latitude in [-90, 90], longitude in [-180, 180]. */
@@ -196,6 +201,8 @@ export interface ProfileUpdatePayload {
   sexualPreference?: SexualPreference
   biography?: string
   interests?: string[]
+  /** 'YYYY-MM-DD', 18 to 120 years ago. Set-once: accepted only while the profile has none. */
+  dateOfBirth?: string
 }
 
 /** POST/DELETE/PATCH on /profile/pictures all return the full list. */

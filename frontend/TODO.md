@@ -1,7 +1,7 @@
 - [x] remove wavebinder dependencies
 - [x] remove support without backend
 - [ ] Automatic(test) card creation needs to be handled in a more customizable approach. ex(asset usage)
-- [ ] design needs heavy adjustement on mobile side (6 tabs in the bottom bar since /calendar: about 58px a tab on a 360px phone; "Calendar" and "Activity" are the longest labels, check they fit)
+- [ ] design needs heavy adjustement on mobile side (6 tabs in the bottom bar since /calendar: about 58px a tab on a 360px phone; "Calendar" and "Activity" touched: below 420px the labels now track tighter with a gutter between tabs, and end in an ellipsis on narrower phones)
 - [x] User map shared among friends (leaflet implementation): /map, GET /profile/matches/map
 - [ ] design document draft
 - [x] location fetching at runtime (useAutoLocation + "Locate me precisely" on /map)
@@ -23,8 +23,8 @@
 ### IV.2 User profile
 - [x] "Who liked me": Activity > Likes reads GET /profile/likes (username + picture only: the sheet loads the rest)
 - [x] "Profiles I visited" (visit history): Activity > You visited reads GET /profile/visited (asked for with the page, so its tab has a count at once; refetched after you open a profile from the page, and after a block)
-- [ ] Date of birth editable in Me (GitHub sign-ups have none, and the age shown everywhere depends on it): PATCH /profile accepts `dateOfBirth`, the frontend payload does not send it
-- [ ] `profileComplete` (src/wb/functions.ts) checks less than the backend's `profile_is_complete` (last name, date of birth, profile picture are missing): align them, or onboarding lets through a profile the backend rejects
+- [x] Date of birth for GitHub sign-ups (they have none, and the age shown everywhere depends on it): onboarding's first step and Me > Details > Names ask for it while it is missing; PATCH /profile `dateOfBirth`, set once
+- [x] `profileComplete` (src/wb/functions.ts) is the backend's `profile_is_complete`, field for field (last name, date of birth and a profile picture were missing): the photos step of onboarding is required; without a photo /discover does not open (it says why and links to the photos), the other sections stay open; deleting the last photo warns first
 - [x] Remove `createMissingProfile` / `profileCreate` (POST /profile): that route no longer exists (only /internal/create, blocked by the gateway), so the "heal" path always failed
 
 ### IV.4 Research
@@ -61,7 +61,7 @@
 - [x] Remove src/mock and the `social` service (and `resetDemoData`, "Reset demo" in Me)
 - [x] Realtime never connected behind the Vite proxy (SAL: "problemi con i ws"): `io('/api/notification')` made `/api/notification` the namespace and connected to `/socket.io`, which Vite does not forward (it answered its index.html). The socket now connects to namespace `/notification` on path `/api/socket.io` (`socketTarget` in src/wb/realtime.ts)
 - [x] Unnecessary / duplicate requests (SAL 12/11): only what the shell shows loads at sign-in (profile, matches, chat list, likes); the deck, interests, viewers, visits, blocks and the map load when a screen asks (`useLoad`), StrictMode no longer doubles them, an opened profile is fetched (and the visit recorded) once, the `match` / `unmatch` echo of your own action no longer refreshes the lists a second time, GET /notification/online is no longer called (nothing showed it)
-- [ ] No unhandled error in the console with the real backend (every page, logged in and out)
+- [x] No unhandled error in the console with the real backend (every page, logged in and out): checked on the production build in Chrome (headless), 360px and 1280px. A first-time visitor no longer sends the boot `POST /auth/refresh` that 403'd on every page (src/wb/sessionHint.ts), and the engine logs an HTTP failure as a debug line (the screens show it)
 - [ ] Check every page on Firefox and Chrome, and on a phone width
 
 ## Bonus 

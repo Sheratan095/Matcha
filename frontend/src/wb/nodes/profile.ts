@@ -48,7 +48,9 @@ export interface ProfileNodes extends CommandNodes<ProfileCommands> {
   myProfileRefresh: number
   /** `GET /profile`: the signed-in user's own profile. */
   myProfile: OwnProfile
-  /** null while `myProfile` is not loaded. */
+  /** Everything but the profile picture is there (the sections other than Discover); null while not loaded. */
+  profileFilled: boolean
+  /** The backend's completeness, picture included (Discover); null while `myProfile` is not loaded. */
   profileComplete: boolean
   viewersWanted: boolean
   viewersRefresh: number
@@ -75,6 +77,7 @@ export interface ProfileNodes extends CommandNodes<ProfileCommands> {
 export const profileNodes = {
   myProfileRefresh: selection(),
   myProfile: get('api', '/profile', [session(), trigger('myProfileRefresh')]),
+  profileFilled: derived('profileFilled', [input('myProfile', 'profile')]),
   profileComplete: derived('profileComplete', [input('myProfile', 'profile')]),
   viewersWanted: selection(),
   viewersRefresh: selection(),

@@ -64,6 +64,7 @@ import {
   writeSearch,
   type SearchCriteria,
 } from './search'
+import { forgetSession, maySignedIn, rememberSession } from './sessionHint'
 import { firstTimeForStore, getNodeStatus, getNodeValue, isStoreLive, node$, onStoreStop, setNode, writeNode } from './store'
 
 export const MAX_MESSAGE_LENGTH = 1000
@@ -235,6 +236,8 @@ function profileUpdateBody(changes: ProfileUpdatePayload): ProfileUpdatePayload 
   if (changes.biography !== undefined) body.biography = changes.biography
   // A full replacement list; duplicates after lowercasing make the backend answer 500.
   if (changes.interests !== undefined) body.interests = normaliseTags(changes.interests)
+  // set-once (a GitHub sign-up has none): the backend answers 409 once it is set
+  if (changes.dateOfBirth !== undefined) body.dateOfBirth = changes.dateOfBirth.trim()
   return body
 }
 
@@ -251,6 +254,8 @@ function watchSession(): void {
   const users = node$('sessionUserId').subscribe((value) => {
     const previous = user
     user = value ?? null
+    // a session was seen in this browser: the next boot tries to renew it (sessionHint.ts)
+    if (user !== null) rememberSession()
     if (first) {
       first = false
       return
@@ -298,11 +303,20 @@ function watchChat(): void {
 /**
  * Probes the session (`GET /auth/validate`) and resolves with the resulting status. Called once at
  * boot; also picks up a session created by the GitHub OAuth redirect.
+ *
+ * The probe only reads the access cookie (15 minutes), so a browser that held a session renews it first
+ * from the refresh cookie (7 days): a returning user is never taken for a visitor, not even for a moment.
+ * A browser that never held one skips the renewal, which could only be refused (sessionHint.ts).
  */
 async function bootSession(): Promise<AuthStatus> {
   watchSession()
   watchChat()
-  await renewSession().catch(() => undefined)
+  if (maySignedIn()) {
+    await renewSession().catch((error: unknown) => {
+      // no live refresh token here any more: the next boot does not ask again (until a sign-in)
+      if (toApiError(error).status === 403) forgetSession()
+    })
+  }
   await probeSession()
   return getNodeValue('authStatus') ?? 'anonymous'
 }
@@ -314,7 +328,7 @@ async function login(credentials: LoginPayload): Promise<LoginResult> {
   if (getNodeValue('sessionUserId') == null) {
     throw apiError(
       0,
-      'Signed in, but the browser kept no session. Open the app on http://localhost:4000 (not 127.0.0.1 or another port) and allow cookies.',
+      'Signed in, but the browser kept no session. Allow cookies for this site, and open the app on the address set as FRONTEND_URL in backend/.env.',
       LOCAL_ERROR.NO_SESSION,
     )
   }
@@ -335,6 +349,7 @@ async function logout(): Promise<void> {
   }
   // the feed is kept in this browser: signing out takes it away (a session that merely expires keeps it)
   clearNotifications()
+  forgetSession()
   await probeSession()
 }
 

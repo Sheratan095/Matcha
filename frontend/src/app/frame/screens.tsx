@@ -1,6 +1,7 @@
 /**
  * Full-page states of the app frame: the branded loader (guards, lazy routes), "can't reach the
- * server" (the session probe failed), the profile that would not load, and the route error page.
+ * server" (the session probe failed), the profile that would not load, Discover without a profile
+ * photo, and the route error page.
  */
 import { useState } from 'react'
 import { Link, Outlet, ScrollRestoration, useRouteError } from 'react-router-dom'
@@ -9,10 +10,12 @@ import { API_URL } from '@/config'
 import { bannerFor } from '@/features/auth/errors'
 import {
   Button,
+  ButtonLink,
   Card,
   ColorBar,
   EmptyState,
   Headline,
+  IconCamera,
   IconRefresh,
   Label,
   Loader,
@@ -84,7 +87,7 @@ export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
               <code>{API_URL}</code>.
             </li>
             <li>
-              Open the app on <code>http://localhost:4000</code>: the gateway only accepts that origin.
+              This app's server forwards <code>/api</code> to the gateway: check <code>BACKEND_URL</code> in <code>frontend/.env</code>.
             </li>
           </ol>
         </Card>
@@ -106,7 +109,33 @@ export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
   )
 }
 
-/** `myProfile` failed: the pages behind RequireCompleteProfile need it. */
+/**
+ * Discover without a profile photo (`RequireProfilePhoto`): the backend keeps such a profile out of every
+ * deck and refuses its likes and passes, so the deck stays closed until a photo is added (on /me, whose
+ * first tab is the photos). The rest of the app stays open.
+ */
+export function NoProfilePhoto() {
+  return (
+    <div className={s.trouble}>
+      <title>Add a photo · Matcha</title>
+      <EmptyState
+        stamp="No photo"
+        stampTone="yolk"
+        title="Add a photo to open the deck"
+        action={
+          <ButtonLink to="/me" icon={<IconCamera size={18} />}>
+            Add a photo
+          </ButtonLink>
+        }
+      >
+        Discover needs a profile photo: without one nobody sees your card, and you cannot like or pass on anyone.
+        Your matches, chats and dates are still here.
+      </EmptyState>
+    </div>
+  )
+}
+
+/** `myProfile` failed: the pages behind RequireFilledProfile need it. */
 export function ProfileTrouble({ error }: { error: ApiError | null }) {
   const [busy, setBusy] = useState(false)
   // refresh() never rejects: a new failure lands on the node's status, i.e. back in `error`.

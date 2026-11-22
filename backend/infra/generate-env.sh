@@ -11,7 +11,7 @@
 #
 # An existing .env keeps everything else: postgres and garage keep the credentials they were created
 # with. Only its NODE_ENV is switched, when a mode is given, so `make dev` after `make up` really runs
-# in development.
+# in development, and an S3_PUBLIC_URL still on the old *.localhost default moves to the new one.
 # Kept compatible with bash 3.2 (macOS's /bin/bash), hence no associative arrays.
 
 set -euo pipefail
@@ -141,10 +141,26 @@ fi
 
 if [ -f "$ENV_FILE" ]
 then
+	changes=""
+
+	# (when NODE_ENV already matches, a write for S3_PUBLIC_URL rewrites it with the same value)
 	if [ -n "$MODE" ] && ! grep -qE "^NODE_ENV=$MODE$" "$ENV_FILE"
 	then
+		changes="NODE_ENV set to $MODE"
+	fi
+
+	# The old default image URL only resolved on this machine (*.localhost): switch it to the new
+	# default, which goes through the frontend's origin (migration 013 rewrites the saved URLs).
+	if grep -qE "^S3_PUBLIC_URL=http://profile-pictures\.web\.garage\.localhost:3902([[:space:]]|$)" "$ENV_FILE"
+	then
+		set_value S3_PUBLIC_URL "$(example_value S3_PUBLIC_URL)"
+		changes="${changes:+$changes, }S3_PUBLIC_URL set to $(example_value S3_PUBLIC_URL) (run make db-migrate)"
+	fi
+
+	if [ -n "$changes" ]
+	then
 		write_env "$ENV_FILE"
-		echo ".env already exists, NODE_ENV set to $MODE"
+		echo ".env already exists, $changes"
 	else
 		echo ".env already exists, skipping generation"
 	fi

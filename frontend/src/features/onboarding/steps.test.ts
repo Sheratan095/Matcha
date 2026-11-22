@@ -10,11 +10,12 @@ const BASE: OwnProfile = {
   sexualPreference: 'both',
   biography: 'Hello',
   interests: [{ id: 't1', name: 'tea' }],
-  pictures: [],
+  pictures: [{ id: 'p1', url: 'http://img.test/p1.webp', isProfile: true }],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   latitude: 41.89,
   longitude: 12.51,
+  dateOfBirth: '1995-12-10',
 }
 
 const indexOf = (key: string) => STEPS.findIndex((step) => step.key === key)
@@ -34,9 +35,19 @@ describe('onboarding steps', () => {
     expect(firstRequiredGap({ ...BASE, biography: ' ', latitude: null, longitude: null })).toBe(indexOf('bio'))
   })
 
-  it('goes to the photos, then is done, once the location is set', () => {
+  it('goes to the photos once the location is set, and is done only with a profile picture', () => {
+    const unpictured = { ...BASE, pictures: [] }
+    expect(firstRequiredGap(unpictured)).toBe(indexOf('photos'))
+    expect(resumeStep(unpictured)).toBe(indexOf('photos'))
+    // a picture that is not the profile picture does not count (the backend wants is_profile)
+    expect(firstRequiredGap({ ...BASE, pictures: [{ id: 'p2', url: 'http://img.test/p2.webp', isProfile: false }] })).toBe(indexOf('photos'))
     expect(firstRequiredGap(BASE)).toBe(-1)
-    expect(resumeStep(BASE)).toBe(indexOf('photos'))
-    expect(resumeStep({ ...BASE, pictures: [{ id: 'p1', url: 'http://img.test/p1.webp', isProfile: true }] })).toBe(STEPS.length)
+    expect(resumeStep(BASE)).toBe(STEPS.length)
+  })
+
+  it('asks for the last name and the date of birth on the first step, like the backend', () => {
+    expect(firstRequiredGap({ ...BASE, lastName: '  ' })).toBe(indexOf('about'))
+    // a GitHub sign-up has no date of birth until it sets one
+    expect(firstRequiredGap({ ...BASE, dateOfBirth: null })).toBe(indexOf('about'))
   })
 })

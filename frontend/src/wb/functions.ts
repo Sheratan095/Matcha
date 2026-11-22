@@ -41,21 +41,39 @@ export function authStatus(check: SessionCheck | null | undefined): AuthStatus {
   return sessionUserId(check) ? 'authenticated' : 'anonymous'
 }
 
+/** Every field of the backend's `profile_is_complete` but the picture: what onboarding fills in. */
+function filledIn(profile: OwnProfile): boolean {
+  return Boolean(
+    profile.firstName?.trim() &&
+      profile.lastName?.trim() &&
+      profile.gender &&
+      profile.sexualPreference &&
+      profile.dateOfBirth &&
+      profile.latitude != null &&
+      profile.longitude != null &&
+      profile.biography?.trim() &&
+      profile.interests.length > 0,
+  )
+}
+
 /**
- * What the backend's `profile_is_complete` checks that onboarding asks for: gender, preference, a
- * non-empty biography, at least one interest and a location (without one, discover answers 403).
- * The backend also wants a last name, a date of birth and a profile picture, not checked here yet.
+ * The profile is filled in, the picture aside: first and last name, gender, preference, date of birth, a
+ * location, a non-empty biography and at least one interest. What every section but Discover needs
+ * (without it the app sends the user to onboarding). null while no profile.
+ */
+export function profileFilled(profile: OwnProfile | null | undefined): boolean | null {
+  if (!profile) return null
+  return filledIn(profile)
+}
+
+/**
+ * The backend's `profile_is_complete` (backend/infra/db/migrations/002_profiles.sql), field for field:
+ * `profileFilled` plus a profile picture. An incomplete profile is left out of everyone's deck and
+ * search, and cannot like or pass (403 without a picture): Discover stays closed until it is complete.
  */
 export function profileComplete(profile: OwnProfile | null | undefined): boolean | null {
   if (!profile) return null
-  return Boolean(
-    profile.gender &&
-      profile.sexualPreference &&
-      profile.biography?.trim() &&
-      profile.interests.length > 0 &&
-      profile.latitude != null &&
-      profile.longitude != null,
-  )
+  return filledIn(profile) && profile.pictures.some((picture) => picture.isProfile)
 }
 
 /** Nearest first; an unknown distance (no location) last. */
@@ -198,6 +216,7 @@ export function dates(
 export const FUNCTIONS: FunctionDef[] = [
   { name: 'sessionUserId', implementation: sessionUserId },
   { name: 'authStatus', implementation: authStatus },
+  { name: 'profileFilled', implementation: profileFilled },
   { name: 'profileComplete', implementation: profileComplete },
   { name: 'visibleDeck', implementation: visibleDeck },
   { name: 'visibleSearch', implementation: visibleSearch },

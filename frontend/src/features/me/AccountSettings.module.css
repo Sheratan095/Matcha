@@ -6,34 +6,3 @@
   padding: 0;
   list-style: none;
 }
-
-/* ------------------------------------------------------------ about this build */
-.specs {
-  display: grid;
-  margin: 0;
-  border-top: var(--bw-thin) dashed var(--c-paper-hi);
-}
-
-.specs > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--s-2) 0;
-  border-bottom: var(--bw-thin) dashed var(--c-paper-hi);
-}
-
-.specs dt {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: var(--fs-label);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--c-matcha);
-}
-
-.specs dd {
-  margin: 0;
-  font-weight: 800;
-  font-size: var(--fs-lead);
-  overflow-wrap: anywhere;
-}

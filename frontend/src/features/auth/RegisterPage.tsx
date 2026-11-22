@@ -297,7 +297,7 @@ export default function RegisterPage() {
             />
           </div>
           <Text size="xs" muted>
-            Names use the letters A–Z only, without spaces or accents.
+            Names: {NAME_RULE.charAt(0).toLowerCase() + NAME_RULE.slice(1)}
           </Text>
           <TextField
             label="Date of birth"

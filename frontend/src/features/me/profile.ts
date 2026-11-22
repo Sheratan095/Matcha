@@ -3,6 +3,7 @@
  * diff that turns a form draft into the partial `PATCH /profile` body.
  */
 import type { Gender, OwnProfile, Profile, ProfileUpdatePayload, SexualPreference, UserPicture } from '@/api/types'
+import { checkDateOfBirth, checkName } from '@/features/auth/rules'
 import { normaliseTags } from '@/wb'
 
 export const GENDER_OPTIONS: readonly { value: Gender; label: string }[] = [
@@ -53,7 +54,7 @@ export function serialOf(userId: string): number {
   return Number.isFinite(value) ? value % 1_000_000 : 0
 }
 
-export type CheckKey = 'name' | 'gender' | 'preference' | 'biography' | 'interests' | 'location' | 'photo'
+export type CheckKey = 'name' | 'birthday' | 'gender' | 'preference' | 'biography' | 'interests' | 'location' | 'photo'
 
 export interface ProfileCheck {
   key: CheckKey
@@ -64,13 +65,29 @@ export interface ProfileCheck {
   /** Button text that leads to the fix (≤ 3 words). */
   fix: string
   done: boolean
-  /** Required to appear in Discover (gender, preference, biography, an interest, a location). */
+  /** Required to appear in Discover: every item is (the backend's `profile_is_complete`). */
   required: boolean
 }
 
+/** One item per field the backend's `profile_is_complete` checks (`profileComplete` in src/wb/functions.ts). */
 export function profileChecks(profile: OwnProfile): ProfileCheck[] {
   return [
-    { key: 'name', short: 'Name', missing: 'your first name', fix: 'Add name', done: Boolean(profile.firstName?.trim()), required: false },
+    {
+      key: 'name',
+      short: 'Name',
+      missing: 'your first and last name',
+      fix: 'Add name',
+      done: Boolean(profile.firstName?.trim() && profile.lastName?.trim()),
+      required: true,
+    },
+    {
+      key: 'birthday',
+      short: 'Born',
+      missing: 'your date of birth',
+      fix: 'Add birthday',
+      done: Boolean(profile.dateOfBirth),
+      required: true,
+    },
     { key: 'gender', short: 'I am', missing: 'your gender', fix: 'Set gender', done: Boolean(profile.gender), required: true },
     {
       key: 'preference',
@@ -97,7 +114,14 @@ export function profileChecks(profile: OwnProfile): ProfileCheck[] {
       done: profile.latitude != null && profile.longitude != null,
       required: true,
     },
-    { key: 'photo', short: 'Photo', missing: 'a photo', fix: 'Add photo', done: profile.pictures.length > 0, required: false },
+    {
+      key: 'photo',
+      short: 'Photo',
+      missing: 'a profile photo',
+      fix: 'Add photo',
+      done: profile.pictures.some((picture) => picture.isProfile),
+      required: true,
+    },
   ]
 }
 
@@ -113,6 +137,8 @@ export function listPhrase(items: readonly string[]): string {
 export interface ProfileDraft {
   firstName: string
   lastName: string
+  /** 'YYYY-MM-DD'; editable only while the profile has none (set-once: GitHub sign-ups start without). */
+  dateOfBirth: string
   gender: Gender | null
   sexualPreference: SexualPreference | null
   biography: string
@@ -121,15 +147,24 @@ export interface ProfileDraft {
 
 export type DraftKey = keyof ProfileDraft
 
-export function draftOf(profile: Profile): ProfileDraft {
+/** A profile a form edits: the own profile carries the date of birth, someone else's does not. */
+export type EditableProfile = Profile & { dateOfBirth?: string | null }
+
+export function draftOf(profile: EditableProfile): ProfileDraft {
   return {
     firstName: profile.firstName ?? '',
     lastName: profile.lastName ?? '',
+    dateOfBirth: profile.dateOfBirth ?? '',
     gender: profile.gender,
     sexualPreference: profile.sexualPreference,
     biography: profile.biography ?? '',
     interests: interestNames(profile),
   }
+}
+
+/** The date of birth can still be set (PATCH accepts it once, while the profile has none). */
+export function canSetDateOfBirth(profile: EditableProfile): boolean {
+  return !profile.dateOfBirth
 }
 
 function sameTags(a: readonly string[], b: readonly string[]): boolean {
@@ -142,7 +177,7 @@ function sameTags(a: readonly string[], b: readonly string[]): boolean {
  * The `PATCH /profile` body for the given fields: only what differs from the saved profile, so a
  * step or a section never overwrites what it does not show. Interests are a full replacement list.
  */
-export function profileChanges(profile: Profile, draft: ProfileDraft, keys: readonly DraftKey[]): ProfileUpdatePayload {
+export function profileChanges(profile: EditableProfile, draft: ProfileDraft, keys: readonly DraftKey[]): ProfileUpdatePayload {
   const saved = draftOf(profile)
   const body: ProfileUpdatePayload = {}
   for (const key of keys) {
@@ -165,6 +200,10 @@ export function profileChanges(profile: Profile, draft: ProfileDraft, keys: read
       case 'interests':
         if (!sameTags(draft.interests, saved.interests)) body.interests = normaliseTags(draft.interests)
         break
+      case 'dateOfBirth':
+        // set-once: sent only while the profile has none (the backend answers 409 otherwise)
+        if (!saved.dateOfBirth && draft.dateOfBirth.trim()) body.dateOfBirth = draft.dateOfBirth.trim()
+        break
     }
   }
   return body
@@ -174,13 +213,25 @@ export function isEmptyChange(body: ProfileUpdatePayload): boolean {
   return Object.keys(body).length === 0
 }
 
-/** Client-side rules, the same as the backend's (plus a first name, which registration requires). */
-export function draftProblems(draft: ProfileDraft, keys: readonly DraftKey[]): Partial<Record<DraftKey, string>> {
+/**
+ * Client-side rules, the same as the backend's: names in its format (profiles_*_name_format_check, and
+ * both required by `profile_is_complete`), a date of birth of someone 18 to 120 while one can still be
+ * set (`saved` is the profile's own draft), the enums, a biography and an interest.
+ */
+export function draftProblems(
+  draft: ProfileDraft,
+  keys: readonly DraftKey[],
+  saved?: ProfileDraft,
+): Partial<Record<DraftKey, string>> {
   const problems: Partial<Record<DraftKey, string>> = {}
   for (const key of keys) {
-    if (key === 'firstName' && !draft.firstName.trim()) problems.firstName = 'Add your first name.'
-    if ((key === 'firstName' || key === 'lastName') && draft[key].trim().length > 50) {
-      problems[key] = 'Names are 50 characters at most.'
+    if (key === 'firstName' || key === 'lastName') {
+      const problem = checkName(draft[key], key === 'firstName' ? 'first' : 'last')
+      if (problem) problems[key] = problem
+    }
+    if (key === 'dateOfBirth' && !saved?.dateOfBirth) {
+      const problem = checkDateOfBirth(draft.dateOfBirth)
+      if (problem) problems.dateOfBirth = problem
     }
     if (key === 'gender' && !draft.gender) problems.gender = 'Pick the one that fits you best.'
     if (key === 'sexualPreference' && !draft.sexualPreference) problems.sexualPreference = 'Pick who you want to see.'

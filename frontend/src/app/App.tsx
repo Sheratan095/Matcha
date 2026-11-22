@@ -4,13 +4,18 @@
  */
 import { Suspense } from 'react'
 import { RouterProvider } from 'react-router-dom'
-import { Toaster } from '@/ui'
+import { closeModals, Toaster } from '@/ui'
 import { RealtimeToasts } from './frame/RealtimeToasts'
 import { PageLoader } from './frame/screens'
 import { router } from './router'
 
-/** Toasts live outside the router tree: navigate through, and read the location from, the router itself. */
+/**
+ * Toasts live outside the router tree: navigate through, and read the location from, the router itself.
+ * An open sheet or dialog is closed first: when the toast leads to the page already open (another of
+ * its tabs), it would otherwise stay over what the user was taken to.
+ */
 function go(to: string): void {
+  closeModals()
   void router.navigate(to)
 }
 

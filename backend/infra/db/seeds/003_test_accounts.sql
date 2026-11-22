@@ -66,5 +66,5 @@ ON CONFLICT DO NOTHING;
 -- already uploads; the URL hardcodes the default S3_PUBLIC_URL like the other seeds.
 INSERT INTO user_pictures (user_id, url, is_profile)
 VALUES
-	('3a1f0b21-0107-4000-8000-000000000107', 'http://profile-pictures.web.garage.localhost:3902/seed/alice-1.webp', TRUE)
+	('3a1f0b21-0107-4000-8000-000000000107', '/pictures/seed/alice-1.webp', TRUE)
 ON CONFLICT DO NOTHING;

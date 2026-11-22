@@ -35,8 +35,8 @@ Unlabelled statements are [CODE].
 | Profile service (internal) | `http://localhost:3003` | `PROFILE_PORT` |
 | Postgres | `localhost:5432` | `docker-compose.yml` |
 | Garage S3 API (backend only) | `http://localhost:3900` | `docker-compose.yml` |
-| Garage public web endpoint (browser loads images from here) | `http://profile-pictures.web.garage.localhost:3902` | `S3_PUBLIC_URL` |
-| Expected frontend origin | `http://localhost:4000` | `FRONTEND_URL=http://localhost`, `FRONTEND_PORT=4000` |
+| Pictures, as the browser loads them | `/pictures/*` on the frontend's origin, forwarded to Garage's web endpoint `http://profile-pictures.web.garage.localhost:3902` (loopback only) | `S3_PUBLIC_URL=/pictures`; `PICTURES_URL` in `frontend/.env` |
+| Expected frontend origin | `http://localhost:4000` | `FRONTEND_URL=http://localhost`, `FRONTEND_PORT=4000`. Set it to the address other devices use (e.g. `http://192.168.1.10`) to open the app from them |
 
 Never call ports 3001–3003 from the browser: every microservice controller is behind `InternalKeyGuard` and answers `401 {"message":"Invalid or missing internal key","error":"Unauthorized","statusCode":401}` without the `x-internal-key` header, which only the gateway adds.
 
@@ -312,7 +312,7 @@ Profile JSON shape returned by GET/PATCH (class `Profile` in shared-types; dates
   "sexualPreference": "both",
   "biography": "Curiouser and curiouser.",
   "interests": [ { "id": "<uuid>", "name": "travel" } ],
-  "pictures":  [ { "id": "<uuid>", "url": "http://profile-pictures.web.garage.localhost:3902/seed/alice-1.webp", "isProfile": true } ],
+  "pictures":  [ { "id": "<uuid>", "url": "/pictures/seed/alice-1.webp", "isProfile": true } ],
   "createdAt": "2026-09-30T08:45:31.644Z",
   "updatedAt": "2026-09-30T08:45:31.644Z"
 }
@@ -431,20 +431,20 @@ Dates between connected people (`012_calendar.sql`): each event hangs off the pa
 ```ts
 res.cookie('access_token', tokens.access_token, {
 	httpOnly: true,
-	secure: env.NODE_ENV === 'production',
+	secure: SECURE_COOKIES,
 	sameSite: 'strict',
 	maxAge: env.JWT_ACCESS_EXPIRATION_MS,      // 900000 ms = 15 min
 });
 res.cookie('refresh_token', tokens.refresh_token, {
 	httpOnly: true,
-	secure: env.NODE_ENV === 'production',
+	secure: SECURE_COOKIES,
 	sameSite: 'strict',
 	maxAge: env.JWT_REFRESH_EXPIRATION_MS,     // 604800000 ms = 7 days
 });
 ```
 
 - Both are cookies only; never in a JSON body; not readable from JS.
-- No `Domain`, default `Path=/`. Not `Secure` in development.
+- No `Domain`, default `Path=/`. `Secure` only when `FRONTEND_URL` is `https://` (`SECURE_COOKIES` in `@repo/config`): browsers drop Secure cookies over plain HTTP except on `localhost`, so a NODE_ENV-based flag broke production builds opened from another device.
 - JWT payload is `{ sub: <userId> }`.
 - Cookies are set by: `POST /auth/login`, `POST /auth/refresh`, `GET /auth/github/callback`. Not by register or verify-email.
 
@@ -476,7 +476,7 @@ From a browser's point of view the effective lifetimes are the cookie lifetimes 
   - One live refresh token per user: logging in from a second browser invalidates the first browser's refresh token.
   - Two concurrent refresh calls race; the loser gets 403. **Serialise refresh on the client** (single in-flight promise).
 - Suggested client logic: on a 401 from a protected endpoint → one `POST /auth/refresh` → retry once → on 403 treat as logged out. Because the access cookie silently disappears after 15 minutes, expect this on the first call after idle.
-- `GET /auth/validate` never refreshes: with the access cookie gone it answers `{ valid: false }` even though a live refresh cookie is still in the browser, and an app that boots anonymous sends no protected request that could 401. So the client must call `POST /auth/refresh` **before** its first `GET /auth/validate` (the frontend's `bootSession` does; the 403 for a visitor is expected and ignored), and again when the socket is refused (§ websockets).
+- `GET /auth/validate` never refreshes: with the access cookie gone it answers `{ valid: false }` even though a live refresh cookie is still in the browser, and an app that boots anonymous sends no protected request that could 401. So the client must call `POST /auth/refresh` **before** its first `GET /auth/validate` (the frontend's `bootSession` does, when this browser held a session before: `src/wb/sessionHint.ts`; a 403 there is expected and ignored), and again when the socket is refused (§ websockets).
 
 ### 3.6 Unverified-email login
 
@@ -515,7 +515,7 @@ Which account a GitHub sign-in lands in:
 All three return the caller's full picture list after the change:
 
 ```json
-{ "pictures": [ { "id": "<uuid>", "url": "http://profile-pictures.web.garage.localhost:3902/<userId>/<uuid>.webp", "isProfile": true } ] }
+{ "pictures": [ { "id": "<uuid>", "url": "/pictures/<userId>/<uuid>.webp", "isProfile": true } ] }
 ```
 
 #### POST `/profile/pictures` — Auth: yes — **200**
@@ -555,11 +555,9 @@ No body. Marks that picture as the profile picture and clears the previous one. 
 
 ### 4.2 Displaying images
 
-- `url` is an absolute, **public, unsigned** URL served directly by Garage's web endpoint (port 3902); it is not proxied by the gateway and needs no cookies. Use it as-is in `<img src>`.
-- Format: `${S3_PUBLIC_URL}/${userId}/${randomUUID}.webp`, default `http://profile-pictures.web.garage.localhost:3902/<userId>/<uuid>.webp`. The full URL is stored in the DB (`user_pictures.url VARCHAR(255)`).
-- `*.localhost` resolves to loopback in Chrome, Edge and Firefox without DNS setup.
-- No CORS is configured on the Garage web endpoint: fine for `<img>`, but reading the pixels via `fetch`/canvas will not work cross-origin. [INFERRED]
-- If Vite adds a CSP, allow that host in `img-src`.
+- `url` is a **public, unsigned** URL, by default a path on the frontend's own origin (`/pictures/...`). The frontend's server (`server.mjs` in production, the Vite proxy in dev) forwards `GET`/`HEAD /pictures/*` to Garage's web endpoint (port 3902, loopback only) without cookies; the gateway is not involved. Use it as-is in `<img src>`: it works from any host name or device.
+- Format: `${S3_PUBLIC_URL}/${userId}/${randomUUID}.webp`, default `/pictures/<userId>/<uuid>.webp`. The URL is stored in the DB as returned (`user_pictures.url VARCHAR(255)`); migration `013_relative_picture_urls.sql` rewrote the rows saved under the old default `http://profile-pictures.web.garage.localhost:3902`.
+- Same origin, so no CORS question, and a CSP's `img-src 'self'` covers it.
 
 ### 4.3 Seed pictures
 
@@ -567,7 +565,7 @@ No body. Marks that picture as the profile picture and clears the previous one. 
 
 | User | Picture URLs | `isProfile` |
 |---|---|---|
-| testuser | `http://profile-pictures.web.garage.localhost:3902/seed/testuser-1.webp` … `testuser-5.webp` | `testuser-1` |
+| testuser | `/pictures/seed/testuser-1.webp` … `testuser-5.webp` | `testuser-1` |
 | alice | `…/seed/alice-1.webp`, `…/seed/alice-2.webp` | `alice-1` |
 | admin | none | — |
 
@@ -763,7 +761,7 @@ Other Makefile targets: `install`, `build`, `up` (same setup as `dev`, then ever
 
 Notes:
 - Migrations and seeds run only when the Postgres volume is created. Use `make db-reset` to re-run them (also wipes uploaded pictures).
-- `docker-compose.yml` defines only the infrastructure (`postgres`, `garage`); the apps always run on the host. Postgres and the Garage S3 API are published on `127.0.0.1` only, and auth / notification / profile listen on `127.0.0.1` only: just the gateway (3000), the frontend (4000) and Garage's image endpoint (3902) are reachable from other machines.
+- `docker-compose.yml` defines only the infrastructure (`postgres`, `garage`); the apps always run on the host. Postgres and both Garage endpoints (S3 API 3900, images 3902) are published on `127.0.0.1` only, and auth / notification / profile listen on `127.0.0.1` only: just the gateway (3000) and the frontend (4000) are reachable from other machines. The browser needs only the frontend: it forwards `/api` and `/pictures`.
 - With `GITHUB_CLIENT_ID` empty, `passport-oauth2` throws "OAuth2Strategy requires a clientID option" at construction, which would stop the auth service from booting. Put any non-empty placeholder if you do not need OAuth. [INFERRED]
 - Without working SMTP, registration succeeds but no email arrives and the token is stored only as a bcrypt hash. For local testing use the seeded users, or mark a user verified by hand:
   `docker compose exec postgres psql -U pg-admin -d matcha -c "UPDATE users SET email_verified = TRUE WHERE username = '<name>';"`

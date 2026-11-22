@@ -183,6 +183,18 @@ export function	applyRouteRateLimits(app: INestApplication): void
 const	upgradeStore = new MemoryStore();
 upgradeStore.init({ windowMs: UPGRADE_WINDOW_MS } as Options);
 
+// The client's address for an upgrade, by the same rule as Express's `trust proxy: 'loopback'` (main.ts),
+// which never runs here: behind the frontend's server (same host, so loopback) it is the last
+// X-Forwarded-For entry, the one that server appended; from anywhere else, the socket's own address.
+function	upgradeClientIp(req: IncomingMessage): string
+{
+	const	socketIp = req.socket.remoteAddress ?? '';
+	const	loopback = socketIp === '::1' || socketIp.startsWith('127.') || socketIp.startsWith('::ffff:127.');
+	const	forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',').map((entry) => entry.trim()).filter(Boolean);
+
+	return (loopback && forwarded.length > 0 ? forwarded[forwarded.length - 1] : socketIp);
+}
+
 // Returns 0 when the upgrade may proceed, otherwise the NUMBER OF SECONDS TO WAIT.
 // Used by the GATEWAY'S UPGRADE HANDLER (ws-proxy.ts) to throttle WebSocket floods. The
 export async function	checkUpgradeRateLimit(req: IncomingMessage): Promise<number>
@@ -190,7 +202,7 @@ export async function	checkUpgradeRateLimit(req: IncomingMessage): Promise<numbe
 	if (!env.RATE_LIMIT_ENABLED)
 		return (0);
 
-	const	key = ipKeyGenerator(req.socket.remoteAddress ?? '');
+	const	key = ipKeyGenerator(upgradeClientIp(req));
 	const	{ totalHits, resetTime } = await upgradeStore.increment(key);
 
 	if (totalHits <= UPGRADE_LIMIT)

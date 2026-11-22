@@ -5,7 +5,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import AppLayout from './AppLayout'
 import { RootLayout, RouteError } from './frame/screens'
-import { AnonymousOnly, HomeGate, RequireAuth, RequireCompleteProfile } from './guards'
+import { AnonymousOnly, HomeGate, RequireAuth, RequireFilledProfile, RequireProfilePhoto } from './guards'
 import {
   ActivityPage,
   CalendarPage,
@@ -54,9 +54,10 @@ export const router = createBrowserRouter([
             children: [
               { path: '/me', element: <MePage /> },
               {
-                element: <RequireCompleteProfile />,
+                element: <RequireFilledProfile />,
                 children: [
-                  { path: '/discover', element: <DiscoverPage /> },
+                  // the deck also wants a profile photo; the other sections do not
+                  { element: <RequireProfilePhoto />, children: [{ path: '/discover', element: <DiscoverPage /> }] },
                   { path: '/matches', element: <MatchesPage /> },
                   { path: '/calendar', element: <CalendarPage /> },
                   { path: '/activity', element: <ActivityPage /> },

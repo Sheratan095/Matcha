@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { cx } from '../cx'
 import { IconX } from '../icons'
 import type { Tone } from '../tones'
+import { listOpenModal } from './openModals'
 import s from './Modal.module.css'
 
 const FOCUSABLE =
@@ -100,6 +101,12 @@ export function Modal({
   useEffect(() => {
     onCloseRef.current = onClose
   })
+
+  // listed for closeModals() while open and dismissible
+  useEffect(() => {
+    if (!open || !dismissible) return
+    return listOpenModal(() => onCloseRef.current())
+  }, [open, dismissible])
 
   // unmount once the exit animation has played
   useEffect(() => {

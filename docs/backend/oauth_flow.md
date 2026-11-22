@@ -107,7 +107,7 @@ The callback is a browser navigation, so the default `AuthGuard('github')` behav
 | `SameSite` | `Lax` | The callback is a top-level redirect *from github.com*; `Strict` cookies are not sent on cross-site navigations, so the check would always fail |
 | `Path` | `/auth/github` | The public path through the gateway (which strips `/auth` before the service); the cookie goes nowhere else |
 | `Max-Age` | 10 minutes | Backstop when the user never comes back from GitHub |
-| `Secure` | in production | Same rule as the auth cookies |
+| `Secure` | when `FRONTEND_URL` is `https://` | Same rule as the auth cookies (`SECURE_COOKIES` in `@repo/config`) |
 
 **Why a custom store.** passport-oauth2's built-in `state: true` keeps the value in a server session, which requires `express-session`; the app has no sessions. A custom store implements passport-oauth2's `store(req, meta, cb)` / `verify(req, state, cb)` interface; the cookie plays the session's role for this one round trip.
 

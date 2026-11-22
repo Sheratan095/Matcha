@@ -125,12 +125,12 @@ Deliberate choices:
 
 | Key | Used by | Value |
 |-----|---------|-------|
-| **IP** | global, the public auth routes, upgrades | the socket's address, IPv6 grouped by /56 |
+| **IP** | global, the public auth routes, upgrades | the client's address (see below), IPv6 grouped by /56 |
 | **user** | the logged-in write actions | `user:<userId>` from `x-user-id`; falls back to `ip:<address>` if the request is anonymous |
 
 **Why per user for logged-in actions.** Many people can share one public IP: the 42 campus NAT, or several evaluators on the same network. Keying on the user id gives each person their own budget. The `x-user-id` header is trustworthy at this point: the identity middleware deletes any copy the client sent and sets it only from a validated token.
 
-**Why not `X-Forwarded-For`.** The gateway is exposed directly, with no reverse proxy in front, so Express's `trust proxy` stays **off** and `req.ip` is the real socket address. Trusting `X-Forwarded-For` would let any client choose its own key by sending a different value with each request. If a reverse proxy (nginx, a load balancer) is ever put in front of the gateway, set `app.set('trust proxy', 1)` (one trusted hop). Otherwise every client would share the proxy's IP.
+**`X-Forwarded-For` from loopback only.** The browser reaches the gateway through the frontend's server on the same host (`server.mjs` in production, the Vite proxy in dev), so every request arrives from loopback. Both append the client's address to `X-Forwarded-For`, and the gateway sets `app.set('trust proxy', 'loopback')`: `req.ip` is then the entry that proxy appended, i.e. the real client, and each device gets its own budget. A request from any other address (someone calling `:3000` directly) keeps its socket address, so a remote client can't choose its own key by sending the header. WebSocket upgrades skip Express; `upgradeClientIp()` in `rateLimit.ts` applies the same rule. If a reverse proxy on another machine (nginx, a load balancer) is ever put in front, trust its address too, or every client would share the proxy's IP.
 
 **IPv6 /56 grouping.** An IPv6 client usually controls a whole block of addresses. `ipKeyGenerator()` (from express-rate-limit) groups addresses by their /56 prefix, so rotating addresses inside that block doesn't produce a fresh budget.
 
@@ -160,7 +160,7 @@ Content-Type: application/json
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `RATE_LIMIT_ENABLED` | `true` | `false` turns off **every** layer, and the gateway logs a warning at startup. In dev every tester shares `127.0.0.1`, so switch it off if local testing trips the limits. It must be exactly `true` or `false`. Any other value, including an empty one, stops the service at startup, like every other invalid variable. |
+| `RATE_LIMIT_ENABLED` | `true` | `false` turns off **every** layer, and the gateway logs a warning at startup. Every tester on one machine shares `127.0.0.1`, so switch it off if local testing trips the limits. It must be exactly `true` or `false`. Any other value, including an empty one, stops the service at startup, like every other invalid variable. |
 
 The variable is parsed with `z.enum(["true", "false"])`, **not** `z.coerce.boolean()`, because the latter runs `Boolean("false")`, which is `true`.
 
@@ -175,7 +175,7 @@ The variable is parsed with `z.enum(["true", "false"])`, **not** `z.coerce.boole
 ## Known limitations
 
 - **Counters live in memory.** They reset when the gateway restarts, and they assume a **single gateway instance**: two instances would each keep their own counts. Scaling out would need a shared store (for example Redis via `rate-limit-redis`).
-- **Garage's public image endpoint (`:3902`) isn't covered.** The browser loads pictures from it directly, without going through the gateway. This is acceptable: the endpoint is anonymous and **read-only**, it doesn't list the bucket, and every key contains a random UUID. The only possible abuse is wasting bandwidth, not reading data. Uploads go through the gateway and are limited by `picture-upload`.
+- **Pictures (`/pictures/*`) aren't covered.** The frontend's server forwards them to Garage's image endpoint (`:3902`, loopback only), without going through the gateway. This is acceptable: the endpoint is anonymous and **read-only**, it doesn't list the bucket, and every key contains a random UUID. The only possible abuse is wasting bandwidth, not reading data. Uploads go through the gateway and are limited by `picture-upload`.
 - **Per-account login limits don't exist.** The login limit is per IP, so an attacker spreading guesses for one account across many IPs isn't stopped by it. With bcrypt and the 10-failures limit per IP, that's slow enough for this project. A per-account lockout would have to live in the auth service, which can read the username from the request body. The gateway can't: it streams request bodies straight to the services without reading them.
 
 ---

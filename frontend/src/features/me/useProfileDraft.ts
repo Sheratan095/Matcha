@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Profile, ProfileUpdatePayload } from '@/api/types'
+import type { ProfileUpdatePayload } from '@/api/types'
 import { actions, toApiError } from '@/wb'
 import { splitApiError } from './errors'
 import {
@@ -8,6 +8,7 @@ import {
   isEmptyChange,
   profileChanges,
   type DraftKey,
+  type EditableProfile,
   type ProfileDraft,
 } from './profile'
 
@@ -15,6 +16,7 @@ import {
 const FIELD_LABELS: Record<DraftKey, string> = {
   firstName: 'First name',
   lastName: 'Last name',
+  dateOfBirth: 'Date of birth',
   gender: 'Gender',
   sexualPreference: 'Preference',
   biography: 'Biography',
@@ -49,7 +51,7 @@ export interface ProfileDraftApi {
 }
 
 /** A form over the own profile: draft, client checks, partial save, and server errors per field. */
-export function useProfileDraft(profile: Profile): ProfileDraftApi {
+export function useProfileDraft(profile: EditableProfile): ProfileDraftApi {
   const [draft, setDraft] = useState<ProfileDraft | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -75,7 +77,7 @@ export function useProfileDraft(profile: Profile): ProfileDraftApi {
 
   const save = async (keys: readonly DraftKey[], options: SaveOptions = {}) => {
     if (saving) return false
-    const problems = draftProblems(value, keys)
+    const problems = draftProblems(value, keys, draftOf(profile))
     if (Object.values(problems).some(Boolean)) {
       setErrors(problems)
       return false

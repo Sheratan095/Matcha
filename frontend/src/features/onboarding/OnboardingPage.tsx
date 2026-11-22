@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import type { OwnProfile } from '@/api/types'
 import { MAX_BIOGRAPHY_LENGTH, MAX_INTEREST_LENGTH } from '@/api/types'
+import { dateOfBirthBounds, MIN_AGE } from '@/features/auth/rules'
 import { savedSpot, sameSpot, type PlacedSpot } from '@/features/location/geo'
 import { LocationPicker } from '@/features/location/LocationPicker'
 import { locationMode, modeAfterSaving, setLocationMode } from '@/features/location/mode'
@@ -10,7 +11,7 @@ import { describe } from '@/features/me/errors'
 import { focusFirstInvalid } from '@/features/me/focus'
 import { PhotoManager } from '@/features/me/PhotoManager'
 import { ProfileLoading, ProfileUnavailable, SignedOut } from '@/features/me/ProfileStatus'
-import { GENDER_OPTIONS, PREFERENCE_OPTIONS } from '@/features/me/profile'
+import { canSetDateOfBirth, GENDER_OPTIONS, PREFERENCE_OPTIONS } from '@/features/me/profile'
 import { useMyProfile } from '@/features/me/useMyProfile'
 import { useProfileDraft, type ProfileDraftApi } from '@/features/me/useProfileDraft'
 import { useTagCatalogue } from '@/features/me/useTagCatalogue'
@@ -88,7 +89,12 @@ function Frame({ children, footer, poster, current }: { children: ReactNode; foo
 
 // ---------------------------------------------------------------- steps
 
-function AboutFields({ form }: { form: ProfileDraftApi }) {
+/**
+ * Names and gender; the date of birth too while the profile has none (a GitHub sign-up: registering asks
+ * for it). It is set once, then only the age shows.
+ */
+function AboutFields({ form, askBirthday }: { form: ProfileDraftApi; askBirthday: boolean }) {
+  const [bounds] = useState(dateOfBirthBounds)
   return (
     <>
       <div className={s.names}>
@@ -107,9 +113,21 @@ function AboutFields({ form }: { form: ProfileDraftApi }) {
           value={form.value.lastName}
           onChange={(e) => form.set('lastName', e.currentTarget.value)}
           error={form.errors.lastName}
-          aside="Optional"
         />
       </div>
+      {askBirthday ? (
+        <TextField
+          label="Date of birth"
+          type="date"
+          autoComplete="bday"
+          min={bounds.min}
+          max={bounds.max}
+          value={form.value.dateOfBirth}
+          onChange={(e) => form.set('dateOfBirth', e.currentTarget.value)}
+          error={form.errors.dateOfBirth}
+          hint={`${MIN_AGE}+ only. Others see your age, never the date, and it can't be changed later.`}
+        />
+      ) : null}
       <Segmented
         label="I am"
         options={GENDER_OPTIONS}
@@ -254,7 +272,11 @@ function Wizard({ profile }: { profile: OwnProfile }) {
     const gap = firstRequiredGap(profile)
     if (!complete || gap >= 0) {
       const target = gap >= 0 ? gap : 0
-      setGapNotice(`One more thing before the deck: ${STEPS[target].label.toLowerCase()} is still missing.`)
+      setGapNotice(
+        STEPS[target].key === 'photos'
+          ? 'One more thing before the deck: add a photo. Without one you stay out of everyone’s deck and cannot like anyone.'
+          : `One more thing before the deck: ${STEPS[target].label.toLowerCase()} is still missing.`,
+      )
       go(target)
       return
     }
@@ -311,8 +333,7 @@ function Wizard({ profile }: { profile: OwnProfile }) {
     toast.show({ tone: 'matcha', title: 'You’re in the deck', message: 'Swipe right on what you like. Your profile lives under Me.' })
   }
 
-  const photoCount = profile.pictures.length
-  const nextLabel = last ? (photoCount > 0 ? 'Finish' : 'Skip & finish') : 'Continue'
+  const nextLabel = last ? 'Finish' : 'Continue'
 
   return (
     <Frame
@@ -379,7 +400,7 @@ function Wizard({ profile }: { profile: OwnProfile }) {
         ) : null}
 
         <div className={s.fields}>
-          {step.key === 'about' ? <AboutFields form={form} /> : null}
+          {step.key === 'about' ? <AboutFields form={form} askBirthday={canSetDateOfBirth(profile)} /> : null}
           {step.key === 'into' ? <IntoFields form={form} /> : null}
           {step.key === 'bio' ? <BioFields form={form} /> : null}
           {step.key === 'interests' ? <InterestFields form={form} /> : null}

@@ -121,13 +121,22 @@ describe('own profile', () => {
     expect(getNodeValue('profileComplete')).toBe(false)
   })
 
-  it('setLocation stores the position and completes the profile once myProfile has it', async () => {
+  it('setLocation stores the position; the profile is complete once it also has a profile picture', async () => {
     await signIn()
     await actions.updateProfile({ ...COMPLETE, interests: [...COMPLETE.interests] })
     await actions.setLocation({ latitude: 41.8905, longitude: 12.5127 })
     expect(server().sent('PUT', `${API_URL}/profile/location`)[0].body).toEqual({ latitude: 41.8905, longitude: 12.5127 })
     expect(getNodeValue('myProfile')).toMatchObject({ latitude: 41.8905, longitude: 12.5127 })
+    // the backend's profile_is_complete also wants a profile picture: without one nobody sees you
+    expect(getNodeValue('profileComplete')).toBe(false)
+    await actions.uploadPicture(new Blob(['x'], { type: 'image/png' }))
     expect(getNodeValue('profileComplete')).toBe(true)
+  })
+
+  it('updateProfile sends a date of birth (set once, for a GitHub sign-up) and nothing else unasked', async () => {
+    await signIn()
+    await actions.updateProfile({ dateOfBirth: ' 1990-05-04 ' })
+    expect(server().sent('PATCH', `${API_URL}/profile`)[0].body).toEqual({ dateOfBirth: '1990-05-04' })
   })
 
   it('setLocation refuses impossible coordinates without a request', async () => {

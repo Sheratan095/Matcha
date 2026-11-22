@@ -28,6 +28,7 @@ function tabFrom(value: string | null): Tab {
 
 const FIX_TARGET: Record<CheckKey, { tab: Tab; id: string }> = {
   name: { tab: 'details', id: SECTION_IDS.names },
+  birthday: { tab: 'details', id: SECTION_IDS.names },
   gender: { tab: 'details', id: SECTION_IDS.identity },
   preference: { tab: 'details', id: SECTION_IDS.identity },
   biography: { tab: 'details', id: SECTION_IDS.biography },
@@ -42,6 +43,7 @@ function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError
   const navigate = useNavigate()
   const tab = tabFrom(params.get('tab'))
   const [previewing, setPreviewing] = useState(false)
+  const filled = useNodeValue('profileFilled') === true
   const complete = useNodeValue('profileComplete') === true
 
   /**
@@ -97,7 +99,7 @@ function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError
         </Notice>
       ) : null}
 
-      {!complete ? (
+      {!filled ? (
         <Notice
           tone="info"
           title="Finish your profile to start swiping"
@@ -107,7 +109,20 @@ function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError
             </ButtonLink>
           }
         >
-          Gender, preference, a biography, one interest and your location put you in the deck.
+          Your name, date of birth, gender and preference, a biography, one interest, your location and a photo put you
+          in the deck.
+        </Notice>
+      ) : !complete ? (
+        <Notice
+          tone="info"
+          title="Add a photo to start swiping"
+          action={
+            <Button size="sm" variant="blue" iconRight={<IconArrowRight size={16} />} onClick={() => setTab('photos')}>
+              Add a photo
+            </Button>
+          }
+        >
+          Discover opens once your card has a photo: without one nobody sees you, and you cannot like anyone.
         </Notice>
       ) : null}
 

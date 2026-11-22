@@ -13,7 +13,7 @@ import MePage from './MePage'
 
 vi.mock('@/wb', () => ({
   refresh: vi.fn(() => Promise.resolve()),
-  useNodeValue: (name: string) => (name === 'profileComplete' ? true : null),
+  useNodeValue: (name: string) => (name === 'profileComplete' || name === 'profileFilled' ? true : null),
 }))
 vi.mock('./useMyProfile', () => ({
   useMyProfile: () => ({

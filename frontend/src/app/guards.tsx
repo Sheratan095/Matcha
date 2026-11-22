@@ -1,13 +1,14 @@
 /**
  * Route guards (docs/ARCHITECTURE.md §6). They read `authStatus` ('checking' until the first probe
- * answers) and, for the signed-in area, `profileComplete` / the status of `myProfile`.
+ * answers) and, for the signed-in area, `profileFilled` (the sections), `profileComplete` (Discover,
+ * which also wants a profile photo) and the status of `myProfile`.
  */
 import { useEffect, useState } from 'react'
 import { Navigate, Outlet, useLocation, type Location } from 'react-router-dom'
 import { readLoginState } from '@/features/auth/navState'
 import { Loader, toast } from '@/ui'
 import { refresh, useNodeStatus, useNodeValue } from '@/wb'
-import { PageLoader, ProfileTrouble, ServerDown } from './frame/screens'
+import { NoProfilePhoto, PageLoader, ProfileTrouble, ServerDown } from './frame/screens'
 
 const CHECKING = 'Checking your ticket'
 
@@ -70,27 +71,46 @@ export function RequireAuth() {
 }
 
 /**
- * Requires a complete profile (gender, preference, biography, one interest); otherwise /onboarding.
+ * The sections: require a filled-in profile (`profileFilled`: names, date of birth, gender, preference,
+ * biography, an interest, a location); otherwise /onboarding. The photo is Discover's own requirement
+ * (`RequireProfilePhoto`): without one, the connections, chats and dates stay reachable.
  */
-export function RequireCompleteProfile() {
-  const complete = useNodeValue('profileComplete')
+export function RequireFilledProfile() {
+  const filled = useNodeValue('profileFilled')
   const profile = useNodeStatus('myProfile')
-  if (complete === true) return <Outlet />
-  if (complete === false) return <Navigate to="/onboarding" replace />
+  if (filled === true) return <Outlet />
+  if (filled === false) return <Navigate to="/onboarding" replace />
   if (profile.status === 'error') return <ProfileTrouble error={profile.error} />
   return <Loader fill>Fetching your profile</Loader>
 }
 
-/** `/`: the landing page for visitors; members go to the app (or onboarding while incomplete). */
+/**
+ * Discover: requires the profile the backend calls complete, i.e. a profile picture on top of a filled-in
+ * profile (it sits inside `RequireFilledProfile`). Without one the backend hides you from everyone's deck
+ * and refuses every like and pass (403), so the page does not open at all (and its deck is not
+ * requested): it says why and leads to the photos.
+ */
+export function RequireProfilePhoto() {
+  const complete = useNodeValue('profileComplete')
+  if (complete === true) return <Outlet />
+  if (complete === false) return <NoProfilePhoto />
+  return <Loader fill>Fetching your profile</Loader>
+}
+
+/**
+ * `/`: the landing page for visitors; members go to the app, or to onboarding while their profile is not
+ * filled in. A profile without a photo goes to the app too (Discover then asks for one): onboarding is a
+ * full screen without the app's navigation, the other sections would be out of reach from there.
+ */
 export function HomeGate() {
   const status = useNodeValue('authStatus')
-  const complete = useNodeValue('profileComplete')
+  const filled = useNodeValue('profileFilled')
   const profile = useNodeStatus('myProfile')
   if (status === 'anonymous') return <Outlet />
   if (status === 'authenticated') {
-    if (complete === false) return <Navigate to="/onboarding" replace />
-    // A failed profile is RequireCompleteProfile's to report (with a retry), on /discover.
-    if (complete === true || profile.status === 'error') return <Navigate to="/discover" replace />
+    if (filled === false) return <Navigate to="/onboarding" replace />
+    // A failed profile is RequireFilledProfile's to report (with a retry), on /discover.
+    if (filled === true || profile.status === 'error') return <Navigate to="/discover" replace />
     return <PageLoader caption="Fetching your profile" />
   }
   return <PageLoader caption={CHECKING} />

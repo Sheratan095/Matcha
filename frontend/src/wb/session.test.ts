@@ -8,6 +8,7 @@ import { io } from 'socket.io-client'
 import { API_URL } from '@/config'
 import { actions } from './actions'
 import { refresh } from './commands'
+import { maySignedIn, rememberSession } from './sessionHint'
 import { startRealtime } from './realtime'
 import { getNodeValue, node$ } from './store'
 import { ME } from './testing/fakeBackend'
@@ -37,6 +38,7 @@ async function signIn(): Promise<void> {
 
 describe('booting', () => {
   it('signs a returning user back in from the refresh token, without the guards ever seeing them as anonymous', async () => {
+    rememberSession() // they signed in from this browser before
     state().refreshToken = ME // the access cookie is gone: they come back after a break
     const seen: unknown[] = []
     const subscription = node$('authStatus').subscribe((status) => seen.push(status))
@@ -53,18 +55,35 @@ describe('booting', () => {
     expect(getNodeValue('myProfile')?.userId).toBe(ME)
   })
 
-  it('boots a visitor as anonymous after one refused refresh, and loads nothing that needs a session', async () => {
+  it('boots a first-time visitor as anonymous with the probe alone: no refresh to be refused (403)', async () => {
     await expect(actions.bootSession()).resolves.toBe('anonymous')
     await flush(30)
-    expect(sent()).toEqual(['POST /auth/refresh', 'GET /auth/validate'])
+    expect(sent()).toEqual(['GET /auth/validate'])
     expect(getNodeValue('sessionUserId')).toBeNull()
   })
 
+  it('stops asking for a renewal once the refresh token is gone (after one refused refresh)', async () => {
+    rememberSession() // someone signed in here a week ago: the refresh token has expired since
+    await expect(actions.bootSession()).resolves.toBe('anonymous')
+    expect(sent()).toEqual(['POST /auth/refresh', 'GET /auth/validate'])
+    expect(maySignedIn()).toBe(false)
+  })
+
+  it('remembers a session once it is seen, and forgets it on sign-out', async () => {
+    await signIn()
+    expect(maySignedIn()).toBe(true)
+    await actions.logout()
+    expect(maySignedIn()).toBe(false)
+  })
+
   it('boots from the access cookie when the refresh token was replaced by a sign-in elsewhere', async () => {
+    rememberSession()
     state().session = ME
     state().refreshToken = null // the refresh is refused (403), the access cookie is still good
     await expect(actions.bootSession()).resolves.toBe('authenticated')
     expect(getNodeValue('sessionUserId')).toBe(ME)
+    // the session is there all the same: the next boot tries again
+    expect(maySignedIn()).toBe(true)
   })
 })
 

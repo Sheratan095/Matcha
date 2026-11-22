@@ -198,6 +198,20 @@
   text-transform: uppercase;
 }
 
+/*
+ * Six sections on a 360px phone leave about 58px a tab: as wide as "CALENDAR" in this type, so two long
+ * labels touched ("CALENDARACTIVITY"). Narrow shells track the labels tighter and keep a gutter between
+ * tabs; anything still too long ends in an ellipsis instead of running into its neighbour.
+ */
+@container (max-width: 419px) {
+  .tab {
+    padding-inline: 2px;
+  }
+  .tabLabel {
+    letter-spacing: 0.02em;
+  }
+}
+
 /* ------------------------------------------------------------ screen (chat) */
 .screenRoot {
   display: flex;

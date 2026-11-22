@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { env } from "@repo/config";
+import { env, SECURE_COOKIES } from "@repo/config";
 import { DbService } from "../db/db.service";
 
 @Injectable()
@@ -33,14 +33,14 @@ export class JwtHelper
 	{
 		res.cookie('access_token', tokens.access_token, {
 			httpOnly: true,
-			secure: env.NODE_ENV === 'production', // Set secure flag ONLY in production
+			secure: SECURE_COOKIES, // Only when the frontend is served over HTTPS (see @repo/config)
 			sameSite: 'strict',
 			maxAge: env.JWT_ACCESS_EXPIRATION_MS,
 		});
 
 		res.cookie('refresh_token', tokens.refresh_token, {
 			httpOnly: true,
-			secure: env.NODE_ENV === 'production', // Set secure flag ONLY in production
+			secure: SECURE_COOKIES, // Only when the frontend is served over HTTPS (see @repo/config)
 			sameSite: 'strict',
 			maxAge: env.JWT_REFRESH_EXPIRATION_MS,
 		});

@@ -24,11 +24,15 @@ RxJS-based engine (`src/wb`). Companion document in this folder:
 
 | Service | Served by |
 |---|---|
-| `api` (auth, profile, notification: discovery, search, likes, connections, chat) | the gateway at `VITE_API_URL` (`http://localhost:3000`) |
+| `api` (auth, profile, notification: discovery, search, likes, connections, chat) | the gateway, at `VITE_API_URL` (default `/api`: this origin, forwarded to `BACKEND_URL`, by default `http://localhost:3000`) |
 | realtime | the gateway's socket.io namespace `/notification` (§4.6, `src/wb/realtime.ts`) |
 
 `npm run dev` must run on **port 4000** (CORS, OAuth redirect and email links are hardcoded to
-`http://localhost:4000`). `src/config.ts` exposes `API_URL` and the third-party
+`http://localhost:4000`). The browser only talks to that origin: `/api/*`, HTTP and the socket.io
+upgrade, is forwarded to the gateway with the prefix stripped and cookie paths rewritten to `/`, by the
+Vite dev proxy (`vite.config.ts`) in development and by `server.mjs` (dependency-free, `npm start` /
+`npm run prod`, also on :4000) in production, which also serves `dist/` with index.html for the routes.
+Keep the two proxies in step. `src/config.ts` exposes `API_URL` and the third-party
 location services (§6.1) `GEOIP_URL`, `GEOCODER_URL`, `MAP_TILES_URL` (each overridable with its `VITE_` variable).
 
 ## 3. Folder ownership
@@ -63,6 +67,7 @@ src/wb/
   demand.ts         load(): reads loaded on demand, and refetched only when stale
   filters.ts        discover filters (one request for several changes)
   actions.ts        the flows screens call
+  sessionHint.ts    whether this browser held a session (bootSession renews only then)
   realtime.ts       the socket, realtime$ and the refreshes its events cause
   notifications.ts  the notification feed (Activity > Notifications), built from realtime$
   boot.ts           installStoreHttp() for main.tsx
@@ -91,7 +96,9 @@ interface StoreEngine {
 It implements the subset this app uses: top-level `SINGLE` nodes, `USER_SELECTION` / `CUSTOM_FUNCTION` /
 HTTP loading actions, `isOptional` / `onUpdate`, `PATH_VARIABLE` / `REQUEST_PARAMETER` / `BODY`
 dependencies, `bodyType`, `defaultValue`, the argument mapping and snapshot of custom functions, `null`
-on a failed call (with a `console.error`), one request per dependency while tangling, no cancellation.
+on a failed call (logged as a `console.debug` line for an HTTP answer, which the app reads from the request
+status; a `console.warn` without one; nothing for a DROPPED request), one request per dependency while
+tangling, no cancellation.
 The graph comes alive asynchronously (a value written before `ready` is reset by the tangle). Anything
 outside the subset is rejected at construction: no `LIST`, `COMPLEX` or `MULTI` nodes.
 
@@ -219,7 +226,8 @@ dependency; F inputs are always optional (4.2).
 | Node | Kind | Depends on | Value |
 |---|---|---|---|
 | `myProfile` | GET api `/profile` | `sessionUserId`, `myProfileRefresh` (opt) | `OwnProfile` (`Profile` + `latitude` / `longitude`) |
-| `profileComplete` | F | `myProfile` (opt) | `boolean` (gender, preference, biography, ≥ 1 interest, a location); `null` while no profile |
+| `profileFilled` | F | `myProfile` (opt) | `boolean`: every field of the backend's `profile_is_complete` but the picture (first and last name, gender, preference, date of birth, a location, biography, ≥ 1 interest); `null` while no profile. What the sections need (`RequireFilledProfile`, otherwise /onboarding) |
+| `profileComplete` | F | `myProfile` (opt) | `boolean`: the backend's `profile_is_complete`, field for field: `profileFilled` and a profile picture; `null` while no profile. What Discover needs (`RequireProfilePhoto`: without a photo the page does not open and says why); onboarding resumes at the first step missing one (`firstRequiredGap`), the photos step included |
 | `profileUpdate` | Payload + PATCH api `/profile` | payload | `OwnProfile` |
 | `locationUpdate` | Payload + PUT api `/profile/location` | payload | `LocationResult` |
 | `pictureUpload` | Payload (`FormData`, field `file`) + POST api `/profile/pictures` | payload | `PicturesResult` |
@@ -325,7 +333,7 @@ is `NodeValues[N] | null | undefined`.
 
   | Action | Resolves when |
   |---|---|
-  | `bootSession(): Promise<AuthStatus>` | the session was renewed (`POST /auth/refresh`, failure ignored) and the probe answered (installs the session watcher). Renewing first: the access cookie lasts 15 minutes and the browser drops it, the refresh cookie 7 days, so a user back after a break would otherwise be probed as a visitor, and nothing else would renew them (only a 401 does). `authStatus` stays `checking` meanwhile, so the guards do not bounce them to /login and back. A visitor costs one refused refresh (403) per page load |
+  | `bootSession(): Promise<AuthStatus>` | the session was renewed (`POST /auth/refresh`, failure ignored) and the probe answered (installs the session watcher). Renewing first: the access cookie lasts 15 minutes and the browser drops it, the refresh cookie 7 days, so a user back after a break would otherwise be probed as a visitor, and nothing else would renew them (only a 401 does). `authStatus` stays `checking` meanwhile, so the guards do not bounce them to /login and back. The renewal is only tried when this browser held a session (`src/wb/sessionHint.ts`: remembered once a session is seen, forgotten on sign-out and on a refused renewal), so a first-time visitor sends the probe alone, not a refresh refused with 403 |
   | `login({ username, password }): Promise<LoginResult>` | re-probed and `sessionUserId` is set (`NO_SESSION` if the browser kept no cookie) |
   | `logout(): Promise<void>` | re-probed; authenticated nodes and selection state are reset |
   | `register(payload): Promise<RegisterResult>` | the account exists (not signed in) |
@@ -432,10 +440,10 @@ invite from them (tomorrow); realtime events are injected with `startRealtime({ 
 | `/login`, `/register`, `/forgot-password` | auth | anonymous |
 | `/verify-email?token=`, `/reset-password?token=` | targets of the links in emails | any |
 | `/onboarding` | complete the profile | signed in, profile incomplete |
-| `/discover` | swipe deck | signed in + complete profile |
-| `/matches`, `/chat/:userId` | connections and the conversation with one; the dates planned with them sit in its thread (drawn from the calendar: the invite where it was sent, answered or called off there, and the start of an accepted one), and its header books a new one | signed in + complete profile |
-| `/calendar` | dates with your connections: invites to answer, what is ahead, what is over; plan one (also from a conversation) | signed in + complete profile |
-| `/activity` | likes received, profile viewers, the profiles you visited, notifications (`?tab=views`, `?tab=visited`, `?tab=notifications`) | signed in + complete profile |
+| `/discover` | swipe deck | signed in + complete profile, profile photo included (otherwise an "add a photo" page, and no deck request) |
+| `/matches`, `/chat/:userId` | connections and the conversation with one; the dates planned with them sit in its thread (drawn from the calendar: the invite where it was sent, answered or called off there, and the start of an accepted one), and its header books a new one | signed in + filled-in profile (a photo is not needed) |
+| `/calendar` | dates with your connections: invites to answer, what is ahead, what is over; plan one (also from a conversation) | signed in + filled-in profile |
+| `/activity` | likes received, profile viewers, the profiles you visited, notifications (`?tab=views`, `?tab=visited`, `?tab=notifications`) | signed in + filled-in profile |
 | `/me` | own profile, pictures, settings | signed in |
 | `/styleguide` | design system showcase | any |
 

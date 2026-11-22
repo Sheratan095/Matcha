@@ -2,10 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { UserSummary } from '@/api/types'
-import { API_URL } from '@/config'
 import {
   Avatar,
-  Barcode,
   Button,
   Card,
   FormError,
@@ -15,7 +13,6 @@ import {
   IconRefresh,
   ListRow,
   Notice,
-  Serial,
   Skeleton,
   Stack,
   Text,
@@ -242,7 +239,7 @@ function BlockedSection() {
   )
 }
 
-/** The account tab: email, blocked people, session, and what this build runs on. */
+/** The account tab: email, blocked people and the session. */
 export function AccountSettings() {
   return (
     <Stack gap={6}>

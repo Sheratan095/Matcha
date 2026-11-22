@@ -126,6 +126,21 @@ function callFunction(node: GraphNode, fn: AnyFunction | undefined): unknown {
   return fn(...args)
 }
 
+/**
+ * Logs a request of node `name` that failed. An HTTP answer (4xx / 5xx) is expected traffic: the app
+ * reads it from the request status (src/api/http.ts, `useNodeStatus`) and the browser already lists the
+ * response, so it is only a debug line, and a request dropped on purpose (code DROPPED, src/wb/stale.ts)
+ * is not logged at all. Anything else (no answer, an exception while building the request) is a warning.
+ */
+function reportFailure(name: string, error: unknown): void {
+  if (axios.isAxiosError(error) && error.response) {
+    console.debug(`Request of node "${name}" answered ${error.response.status}`)
+    return
+  }
+  if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'DROPPED') return
+  console.warn('Backend call failed for node', name, error)
+}
+
 export function createGraphEngine(config: EngineConfig): StoreEngine {
   config.nodes.forEach(assertSupported)
 
@@ -181,7 +196,7 @@ export function createGraphEngine(config: EngineConfig): StoreEngine {
       pending
         .then((data) => node.next(data))
         .catch((error: unknown) => {
-          console.error('Backend call failed for node', name, error)
+          reportFailure(name, error)
           node.next(null)
         })
     }

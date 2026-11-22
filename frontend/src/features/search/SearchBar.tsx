@@ -3,8 +3,9 @@
  * distance, minimum fame, interests, sort) and by gender and preference, edited in the deck's own
  * filter sheet (`GET /profile/search`).
  * The results drop down under the top bar, which anchors them; picking one opens the shared profile
- * sheet (that records a profile view, as opening a deck card does). Shown to a complete profile only:
- * the backend answers 403 to anyone without a location.
+ * sheet (that records a profile view, as opening a deck card does). Shown to a filled-in profile
+ * (`profileFilled`, a location included: the backend answers 403 to anyone without one); a profile photo
+ * is not needed to search, only to like (the backend's 403 says so).
  *
  * Data: `useSearchCriteria()`, `visibleSearch` (sorted in the browser) + `useNodeStatus('searchResults')`.
  * Flows: `actions.search / clearSearch`. The input is a combobox over a listbox: arrows move, Enter
@@ -52,7 +53,7 @@ function isEditable(target: EventTarget | null): boolean {
 export function SearchBar() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const complete = useNodeValue('profileComplete')
+  const filled = useNodeValue('profileFilled')
   const criteria = useSearchCriteria()
   const results = useNodeValue('visibleSearch')
   const status = useNodeStatus('searchResults')
@@ -181,7 +182,7 @@ export function SearchBar() {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  if (complete !== true) return null
+  if (filled !== true) return null
 
   // ---------------------------------------------------------------- what the list shows
 

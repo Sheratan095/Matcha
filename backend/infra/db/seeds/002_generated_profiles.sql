@@ -154,11 +154,11 @@ ON CONFLICT DO NOTHING;
 
 -- One profile picture, plus 0-3 others. 17 is coprime with 60, so the extras never repeat the avatar.
 INSERT INTO user_pictures (user_id, url, is_profile)
-SELECT id, 'http://profile-pictures.web.garage.localhost:3902/seed/avatar-' || lpad(avatar::text, 2, '0') || '.webp', TRUE
+SELECT id, '/pictures/seed/avatar-' || lpad(avatar::text, 2, '0') || '.webp', TRUE
 FROM seed_people;
 
 INSERT INTO user_pictures (user_id, url, is_profile)
-SELECT p.id, 'http://profile-pictures.web.garage.localhost:3902/seed/avatar-' || lpad((1 + (p.avatar - 1 + s * 17) % 60)::text, 2, '0') || '.webp', FALSE
+SELECT p.id, '/pictures/seed/avatar-' || lpad((1 + (p.avatar - 1 + s * 17) % 60)::text, 2, '0') || '.webp', FALSE
 FROM seed_people p
 CROSS JOIN LATERAL generate_series(1, p.extra_pictures) AS s;
 

@@ -36,7 +36,8 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 5))
 let server: FakeServer
 let uninstall: () => void
 let engine: StoreEngine | null = null
-let consoleError: ReturnType<typeof vi.spyOn>
+let consoleWarn: ReturnType<typeof vi.spyOn>
+let consoleDebug: ReturnType<typeof vi.spyOn>
 
 function start(nodes: NodeDef[], functions: FunctionDef[] = []): StoreEngine {
   engine = createGraphEngine({ nodes, services, functions })
@@ -46,14 +47,16 @@ function start(nodes: NodeDef[], functions: FunctionDef[] = []): StoreEngine {
 beforeEach(() => {
   server = new FakeServer()
   uninstall = server.install()
-  consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  consoleDebug = vi.spyOn(console, 'debug').mockImplementation(() => undefined)
 })
 
 afterEach(() => {
   engine?.destroy()
   engine = null
   uninstall()
-  consoleError.mockRestore()
+  consoleWarn.mockRestore()
+  consoleDebug.mockRestore()
 })
 
 describe('graph engine: tangle and propagation', () => {
@@ -224,7 +227,7 @@ describe('graph engine: HTTP nodes', () => {
     expect(server.sent('GET', `${API}/users/9`)).toHaveLength(1)
   })
 
-  it('sets the node to null when the request fails, and logs the failure', async () => {
+  it('sets the node to null when the request fails; an HTTP answer is only a debug line', async () => {
     server.on('GET', `${API}/users/:id`, () => nestError(500, 'Failed'))
     const engine = start([
       selection('uid', 1),
@@ -235,7 +238,25 @@ describe('graph engine: HTTP nodes', () => {
     await engine.ready
     await settle()
     expect(engine.getNode('user').getValue()).toBeNull()
-    expect(consoleError).toHaveBeenCalledWith('Backend call failed for node', 'user', expect.anything())
+    // the app reads it from the request status; the browser already lists the response
+    expect(consoleDebug).toHaveBeenCalledWith('Request of node "user" answered 500')
+    expect(consoleWarn).not.toHaveBeenCalled()
+  })
+
+  it('warns about a request that got no answer at all', async () => {
+    server.on('GET', `${API}/users/:id`, () => {
+      throw new Error('socket hang up')
+    })
+    const engine = start([
+      selection('uid', 1),
+      node('user', { type: 'GET', serviceName: 'api', addr: '/users/{id}' }, [
+        dep('uid', 'id', { type: 'PATH_VARIABLE', onUpdate: false }),
+      ]),
+    ])
+    await engine.ready
+    await settle()
+    expect(engine.getNode('user').getValue()).toBeNull()
+    expect(consoleWarn).toHaveBeenCalledWith('Backend call failed for node', 'user', expect.anything())
   })
 
   it('sends one request per dependency while tangling', async () => {

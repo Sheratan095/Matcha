@@ -77,12 +77,12 @@ Garage exposes several ports, and we use two of them:
 | Port | Name | Used by | Access |
 |---|---|---|---|
 | `3900` | **S3 API** | Profile service (upload / delete) | Requires access key + secret |
-| `3902` | **Web endpoint** | Browser (`<img src>`) | Anonymous, **read-only**, only for buckets with website access enabled |
+| `3902` | **Web endpoint** | The frontend's server, for the browser's `<img src="/pictures/...">` | Anonymous, **read-only**, only for buckets with website access enabled. Published on `127.0.0.1` only |
 | `3901` | RPC | Garage internal / CLI | Protected by `GARAGE_RPC_SECRET`, not exposed |
 
 Unlike MinIO, Garage is configured with its **CLI**, not the S3 API. Creating the bucket, creating the access key and enabling public read happen once, in `backend/infra/garage/init.sh`, not in the application code.
 
-On the web endpoint the **bucket is chosen by the hostname**. `http://profile-pictures.web.garage.localhost:3902/<key>` serves `<key>` from the `profile-pictures` bucket (`root_domain = ".web.garage.localhost"` in `garage.toml`). Browsers resolve any `*.localhost` name to `127.0.0.1`, so no DNS setup is needed.
+On the web endpoint the **bucket is chosen by the hostname**. `http://profile-pictures.web.garage.localhost:3902/<key>` serves `<key>` from the `profile-pictures` bucket (`root_domain = ".web.garage.localhost"` in `garage.toml`). Browsers resolve any `*.localhost` name to `127.0.0.1`, but only on their own machine, so the browser does not load images from here directly: it asks the frontend's origin for `/pictures/<key>`, and the frontend's server (`frontend/server.mjs` in production, the Vite proxy in dev) connects to `127.0.0.1:3902` with `Host: profile-pictures.web.garage.localhost`. Images then load from any host name or device, like the rest of the app.
 
 ---
 
@@ -100,10 +100,10 @@ Browser ──POST /profile/pictures──▶ Gateway ──▶ Profile service
 
 Display
 Browser ──GET /profile/:userId──▶ Gateway ──▶ Profile service ──▶ PostgreSQL (urls)
-Browser ──<img src="http://profile-pictures.web.garage.localhost:3902/...">──▶ Garage (web :3902)
+Browser ──<img src="/pictures/...">──▶ frontend :4000 ──▶ Garage (web :3902)
 ```
 
-The images go straight from Garage to the browser, so the backend never serves image bytes.
+The images go from Garage to the browser through the frontend's server (a plain stream, no cookies forwarded), so the backend services never serve image bytes.
 
 ### Upload pipeline
 
@@ -183,7 +183,7 @@ S3_REGION=garage
 S3_ACCESS_KEY=GK<24 hex chars>
 S3_SECRET_KEY=<64 hex chars>
 S3_BUCKET=profile-pictures
-S3_PUBLIC_URL=http://profile-pictures.web.garage.localhost:3902
+S3_PUBLIC_URL=/pictures
 ```
 
 | Variable | Default | Used by | Description |
@@ -194,11 +194,11 @@ S3_PUBLIC_URL=http://profile-pictures.web.garage.localhost:3902
 | `S3_ACCESS_KEY` | empty | Profile service + `init.sh` | Access key ID. `init.sh` imports this exact value into Garage. |
 | `S3_SECRET_KEY` | empty | Profile service + `init.sh` | Secret access key |
 | `S3_BUCKET` | `profile-pictures` | Profile service + `init.sh` | Bucket where pictures are stored |
-| `S3_PUBLIC_URL` | `http://profile-pictures.web.garage.localhost:3902` | Profile service | Base URL the **browser** uses to load images. It already points at the bucket root, and it is saved in the DB URLs. |
+| `S3_PUBLIC_URL` | `/pictures` | Profile service | Base URL the **browser** uses to load images. It already points at the bucket root, and it is saved in the DB URLs. The default is a path on the frontend's origin, forwarded to the web endpoint by the frontend's server (`PICTURES_URL` in `frontend/.env`, default `http://profile-pictures.web.garage.localhost:3902`). |
 
 > **Why two addresses?** `S3_ENDPOINT` is the authenticated API the backend writes to. `S3_PUBLIC_URL` is the anonymous read-only endpoint the browser loads images from. They are different ports with different permissions.
 
-> **Changing `S3_PUBLIC_URL` later** does not update URLs already saved in the database. Pick it before storing real data.
+> **Changing `S3_PUBLIC_URL` later** does not update URLs already saved in the database. Pick it before storing real data. (The move from the old default `http://profile-pictures.web.garage.localhost:3902` to `/pictures` is handled by migration `013_relative_picture_urls.sql`, and `make dev` / `make up` switch an `.env` still on the old value.)
 
 ### 2. Start Garage
 
@@ -263,7 +263,7 @@ If Garage is down or not initialized, the service still starts and logs `Storage
 
 - **Upload with Postman:** `POST http://localhost:3000/profile/pictures` with a logged-in session (access-token cookie). Body → **form-data**, key `file`, type **File**, and pick an image.
 - **Open the returned `url`** in the browser. The image should load.
-- **Check the public endpoint is read-only:** `curl -X PUT --data x http://profile-pictures.web.garage.localhost:3902/test` must fail, and `curl http://profile-pictures.web.garage.localhost:3902/` must return `404` (no bucket listing).
+- **Check the public endpoint is read-only:** `curl -X PUT --data x http://profile-pictures.web.garage.localhost:3902/test` must fail, and `curl http://profile-pictures.web.garage.localhost:3902/` must return `404` (no bucket listing). Through the frontend, `curl -X PUT http://localhost:4000/pictures/test` must return `405`.
 - **Confirm the metadata is gone:** download the image and run `exiftool <file>`. It should show no GPS, Make or Model tags.
 
 ### Switching to another S3 provider
@@ -290,8 +290,8 @@ All endpoints act on the **authenticated user** (identified by the access token)
 ```json
 {
   "pictures": [
-    { "id": "5b0c…", "url": "http://profile-pictures.web.garage.localhost:3902/<userId>/<uuid>.webp", "isProfile": true },
-    { "id": "9e1a…", "url": "http://profile-pictures.web.garage.localhost:3902/<userId>/<uuid>.webp", "isProfile": false }
+    { "id": "5b0c…", "url": "/pictures/<userId>/<uuid>.webp", "isProfile": true },
+    { "id": "9e1a…", "url": "/pictures/<userId>/<uuid>.webp", "isProfile": false }
   ]
 }
 ```
@@ -321,7 +321,8 @@ Rules:
 | `AuthorizationHeaderMalformed` / signature errors | `S3_REGION` doesn't match `s3_region` in `garage.toml` (`garage`) |
 | `init.sh` fails at `key import` | `S3_ACCESS_KEY` doesn't have the `GK` + 24 hex format, or `S3_SECRET_KEY` isn't 64 hex characters |
 | Image URL returns `404` | Website access isn't enabled on the bucket (re-run `init.sh`), or the file was deleted |
-| Image URL doesn't resolve | The client doesn't resolve `*.localhost` names. Chrome, Firefox and curl do; Node's `fetch` and some other tools don't. Add `127.0.0.1 profile-pictures.web.garage.localhost` to `/etc/hosts`. |
+| Image URL doesn't resolve | A URL saved under the old default (`http://profile-pictures.web.garage.localhost:3902/...`) only resolves on the machine running Garage: run `make db-migrate` (migration 013) and set `S3_PUBLIC_URL=/pictures`. |
+| `/pictures/...` returns `502` | The frontend's server can't reach Garage: is it running (`make storage`)? Check `PICTURES_URL` in `frontend/.env`. |
 | `docker pull minio/minio` → `pull access denied` | MinIO no longer publishes free images, which is why this project uses Garage |
 | `400 Only JPEG, PNG and WEBP images are allowed` for a real photo | HEIC/HEIF photos (the iPhone default) aren't accepted. Export them as JPEG first; browsers usually convert them automatically when you pick a file. |
 | `400 File is not a valid image` | The file's bytes don't match its declared type (renamed or corrupted file) |

@@ -25,7 +25,8 @@ export const STEPS: readonly StepDef[] = [
     label: 'About you',
     poster: 'Hello',
     tone: 'matcha',
-    fields: ['firstName', 'lastName', 'gender'],
+    // dateOfBirth only reaches the PATCH when the profile has none yet (a GitHub sign-up): it is set-once
+    fields: ['firstName', 'lastName', 'dateOfBirth', 'gender'],
     title: ['Nice to', 'meet you'],
     lead: 'Your first name goes on your card. You can change all of this later.',
   },
@@ -73,28 +74,33 @@ export const STEPS: readonly StepDef[] = [
     tone: 'matcha',
     fields: [],
     title: ['Strike a', 'pose'],
-    lead: 'Up to five photos. Optional, but a face gets a lot more right swipes than a poster.',
+    lead: 'Up to five photos. One at least: without a photo you stay out of the deck and cannot like anyone.',
   },
 ]
 
 export const STEP_LABELS: readonly string[] = STEPS.map((step) => step.label)
 
-/** Index of the first step whose required content is missing. */
+/** The profile picture the backend's completeness check asks for (the first upload becomes it). */
+export function hasProfilePicture(profile: OwnProfile): boolean {
+  return profile.pictures.some((picture) => picture.isProfile)
+}
+
+/**
+ * Index of the first step whose required content is missing: the backend's `profile_is_complete`, step by
+ * step (`profileComplete` in src/wb/functions.ts is the same rule). -1 when nothing is missing.
+ */
 export function firstRequiredGap(profile: OwnProfile): number {
-  if (!profile.firstName?.trim() || !profile.gender) return 0
+  if (!profile.firstName?.trim() || !profile.lastName?.trim() || !profile.dateOfBirth || !profile.gender) return 0
   if (!profile.sexualPreference) return 1
   if (!profile.biography?.trim()) return 2
   if (profile.interests.length === 0) return 3
   if (profile.latitude == null || profile.longitude == null) return 4
+  if (!hasProfilePicture(profile)) return 5
   return -1
 }
 
-/**
- * Where to resume: the first step with something missing; the photos step while there is no photo;
- * `STEPS.length` when there is nothing left to do.
- */
+/** Where to resume: the first step with something missing; `STEPS.length` when there is nothing left to do. */
 export function resumeStep(profile: OwnProfile): number {
   const gap = firstRequiredGap(profile)
-  if (gap >= 0) return gap
-  return profile.pictures.length === 0 ? STEPS.length - 1 : STEPS.length
+  return gap >= 0 ? gap : STEPS.length
 }

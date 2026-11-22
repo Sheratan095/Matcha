@@ -103,18 +103,18 @@ ON CONFLICT DO NOTHING;
 --- picture is an eligibility requirement for discovery, and which image it is does not matter.
 INSERT INTO user_pictures (user_id, url, is_profile)
 VALUES
-	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-1.webp', TRUE),
-	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-2.webp', FALSE),
-	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-3.webp', FALSE),
-	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-4.webp', FALSE),
-	((SELECT id FROM users WHERE username = 'testuser'), 'http://profile-pictures.web.garage.localhost:3902/seed/testuser-5.webp', FALSE),
-	((SELECT id FROM users WHERE username = 'alice'),    'http://profile-pictures.web.garage.localhost:3902/seed/alice-1.webp',    TRUE),
-	((SELECT id FROM users WHERE username = 'alice'),    'http://profile-pictures.web.garage.localhost:3902/seed/alice-2.webp',    FALSE),
-	((SELECT id FROM users WHERE username = 'admin'),    'http://profile-pictures.web.garage.localhost:3902/seed/testuser-1.webp', TRUE),
-	((SELECT id FROM users WHERE username = 'bob'),      'http://profile-pictures.web.garage.localhost:3902/seed/testuser-2.webp', TRUE),
-	((SELECT id FROM users WHERE username = 'carol'),    'http://profile-pictures.web.garage.localhost:3902/seed/alice-1.webp',    TRUE),
-	((SELECT id FROM users WHERE username = 'dave'),     'http://profile-pictures.web.garage.localhost:3902/seed/testuser-3.webp', TRUE),
-	((SELECT id FROM users WHERE username = 'eve'),      'http://profile-pictures.web.garage.localhost:3902/seed/alice-2.webp',    TRUE)
+	((SELECT id FROM users WHERE username = 'testuser'), '/pictures/seed/testuser-1.webp', TRUE),
+	((SELECT id FROM users WHERE username = 'testuser'), '/pictures/seed/testuser-2.webp', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), '/pictures/seed/testuser-3.webp', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), '/pictures/seed/testuser-4.webp', FALSE),
+	((SELECT id FROM users WHERE username = 'testuser'), '/pictures/seed/testuser-5.webp', FALSE),
+	((SELECT id FROM users WHERE username = 'alice'),    '/pictures/seed/alice-1.webp',    TRUE),
+	((SELECT id FROM users WHERE username = 'alice'),    '/pictures/seed/alice-2.webp',    FALSE),
+	((SELECT id FROM users WHERE username = 'admin'),    '/pictures/seed/testuser-1.webp', TRUE),
+	((SELECT id FROM users WHERE username = 'bob'),      '/pictures/seed/testuser-2.webp', TRUE),
+	((SELECT id FROM users WHERE username = 'carol'),    '/pictures/seed/alice-1.webp',    TRUE),
+	((SELECT id FROM users WHERE username = 'dave'),     '/pictures/seed/testuser-3.webp', TRUE),
+	((SELECT id FROM users WHERE username = 'eve'),      '/pictures/seed/alice-2.webp',    TRUE)
 ON CONFLICT DO NOTHING;
 
 -- Likes, so the deck shows a mix of likesYou true/false and the fame ratings below differ.

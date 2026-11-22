@@ -1,4 +1,4 @@
-import type { FormEvent, ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import type { OwnProfile, Profile } from '@/api/types'
 import { MAX_BIOGRAPHY_LENGTH, MAX_INTEREST_LENGTH } from '@/api/types'
 import {
@@ -14,10 +14,19 @@ import {
   TextArea,
   TextField,
 } from '@/ui'
+import { dateOfBirthBounds, MIN_AGE } from '@/features/auth/rules'
 import { tagFromInput } from '@/wb'
 import { focusFirstInvalid } from './focus'
 import { LocationSection } from './LocationSection'
-import { GENDER_OPTIONS, isEmptyChange, PREFERENCE_OPTIONS, SECTION_IDS, type DraftKey } from './profile'
+import {
+  canSetDateOfBirth,
+  GENDER_OPTIONS,
+  isEmptyChange,
+  PREFERENCE_OPTIONS,
+  SECTION_IDS,
+  type DraftKey,
+  type EditableProfile,
+} from './profile'
 import { useProfileDraft, type ProfileDraftApi } from './useProfileDraft'
 import { useTagCatalogue } from './useTagCatalogue'
 import s from './EditSections.module.css'
@@ -85,10 +94,20 @@ function Section({ id, number, title, intro, form, keys, children }: SectionProp
   )
 }
 
-function NamesSection({ profile }: { profile: Profile }) {
+/** Names, and the date of birth while there is none (GitHub sign-ups): it can be set once, here or in onboarding. */
+function NamesSection({ profile }: { profile: EditableProfile }) {
   const form = useProfileDraft(profile)
+  const askBirthday = canSetDateOfBirth(profile)
+  const [bounds] = useState(dateOfBirthBounds)
   return (
-    <Section id={SECTION_IDS.names} number={1} title="Names" intro="Your first name is printed on your card." form={form} keys={['firstName', 'lastName']}>
+    <Section
+      id={SECTION_IDS.names}
+      number={1}
+      title={askBirthday ? 'Names & birthday' : 'Names'}
+      intro="Your first name is printed on your card."
+      form={form}
+      keys={askBirthday ? ['firstName', 'lastName', 'dateOfBirth'] : ['firstName', 'lastName']}
+    >
       <div className={s.pair}>
         <TextField
           label="First name"
@@ -107,6 +126,19 @@ function NamesSection({ profile }: { profile: Profile }) {
           error={form.errors.lastName}
         />
       </div>
+      {askBirthday ? (
+        <TextField
+          label="Date of birth"
+          type="date"
+          autoComplete="bday"
+          min={bounds.min}
+          max={bounds.max}
+          value={form.value.dateOfBirth}
+          onChange={(e) => form.set('dateOfBirth', e.currentTarget.value)}
+          error={form.errors.dateOfBirth}
+          hint={`Required to appear in Discover. ${MIN_AGE}+ only: others see your age, never the date, and it can't be changed later.`}
+        />
+      ) : null}
     </Section>
   )
 }

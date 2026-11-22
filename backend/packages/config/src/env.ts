@@ -85,8 +85,10 @@ const envSchema = z.object({
 	S3_ACCESS_KEY: z.string().default(""),
 	S3_SECRET_KEY: z.string().default(""),
 	S3_BUCKET: z.string().default("profile-pictures"),
-	// Base URL the BROWSER uses to load images, already pointing at the bucket root
-	S3_PUBLIC_URL: z.string().default("http://profile-pictures.web.garage.localhost:3902"),
+	// Base URL the BROWSER uses to load images, already pointing at the bucket root. The default is a
+	// path on the frontend's own origin: its server (frontend/server.mjs, or the Vite dev proxy)
+	// forwards /pictures/* to Garage's web endpoint, so images load from any host name or device.
+	S3_PUBLIC_URL: z.string().default("/pictures"),
 
 	// Github OAuth
 	GITHUB_CLIENT_ID: z.string(),
@@ -121,6 +123,11 @@ const buildFrontendBaseUrl = (): string =>
 }
 
 export const FRONTEND_BASE_URL = buildFrontendBaseUrl();
+
+// Whether cookies get the Secure flag: only when the frontend is served over HTTPS. Browsers drop a
+// Secure cookie set over plain HTTP, except on http://localhost, so tying the flag to NODE_ENV made
+// a production build unusable from any other host (a LAN IP, a phone) until HTTPS is in front of it.
+export const SECURE_COOKIES = FRONTEND_BASE_URL.startsWith("https://");
 
 // Used for verifying the internal key in controllers and middleware without importing the entire env object
 export const verifyInternalKey = (key?: string): boolean =>

@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { env, FRONTEND_BASE_URL } from "@repo/config";
 import { createProxyMiddleware } from 'http-proxy-middleware';
@@ -54,7 +55,14 @@ function hasValidDocsCredentials(header?: string): boolean
 
 async function bootstrap()
 {
-	const app = await NestFactory.create(AppModule);
+	const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+	// The browser reaches the gateway through the frontend's server on the same host (server.mjs in
+	// production, which appends the client to X-Forwarded-For), so every request arrives from
+	// loopback. Trusting X-Forwarded-For from loopback only makes req.ip the real client, so the
+	// per-IP rate limits count each device on its own instead of everyone as 127.0.0.1. A request
+	// from any other address keeps its socket address: a remote client can't spoof its IP this way.
+	app.set('trust proxy', 'loopback');
 
 	// Enable CORS so the frontend (http://localhost:4000) can call gateway endpoints
 	app.enableCors({

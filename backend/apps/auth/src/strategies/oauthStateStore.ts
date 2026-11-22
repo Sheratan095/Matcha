@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'crypto';
-import { env } from '@repo/config';
+import { SECURE_COOKIES } from '@repo/config';
 
 // OAuth `state` parameter, kept in a short-lived cookie instead of a server session (the app has
 // none, and passport-oauth2's built-in `state: true` requires express-session).
@@ -28,7 +28,7 @@ const	cookieOptions =
 	// Lax, not Strict: the callback is a top-level redirect coming FROM github.com, and Strict
 	// cookies are not sent on cross-site navigations, so the check would always fail.
 	sameSite: 'lax' as const,
-	secure: env.NODE_ENV === 'production', // Same rule as the auth cookies (utils/jwt.ts)
+	secure: SECURE_COOKIES, // Same rule as the auth cookies (utils/jwt.ts)
 	path: COOKIE_PATH,
 };
 

@@ -36,7 +36,9 @@ services:
       TZ: ${TZ}
     ports:
       - "127.0.0.1:3900:3900" # S3 API (uploads / deletes, needs credentials): loopback only, used by profile
-      - "3902:3902" # Public web endpoint (the browser loads images from here)
+      # Public, read-only web endpoint for the images. Loopback only too: the browser loads them from
+      # /pictures on the frontend's origin, and the frontend's server forwards that here.
+      - "127.0.0.1:3902:3902"
     volumes:
       - ./infra/garage/garage.toml:/etc/garage.toml:ro
       - garage_meta:/var/lib/garage/meta
