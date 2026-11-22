@@ -30,52 +30,40 @@ BACKEND_URL=http://localhost:3000
 ### TO DO FRONTEND
 
 - Mancano le traduzioni
-
-- Bisognerebbe trovare un modo per avere la lista degli utenti bloccati per aver modo di sbloccarli 
-
-- Durante la registrazione, quando ti chiede le preferenze fa delle call strane che falliscono (vedi console)
   
-- notifiche di errore troppo lunghe rompono la ui, praticamente sforando in larghezza e la pagina diventa "scorribbile" orizzontalmente
-
 - Login
   - OAuh2 callback non funziona testando dal telefono, probabilmente c'è problema con gli indirizzi ip come il problema iniziale (Parliamone insieme)
 
 - Discover 
-  - Disattiva discover se non l'utente non rispetta i requisiti base come avere una foto profilo !IMPORTANTE!
-		questo controllo va al caricamento della pagina
 
 - Own profile
-	- quando cambi sexioni (Photos/Details/Account) ti scrolla in alto all'inizio della pagina
 	- rimuovere "Edit profile" btn, inutile dato che le info si modificano semplicemente scegliendo la tab
 	- rifacciamo la grafica per settare l'immagine di profilo, io non ci capisco molto
-	- Tab Account
-		io leverei anche under the hood
-
 
 - Matches
     - rifacciamo la call api tutte le volte che viene caricata la pagina
   
 - User profile
     - cosa sono Shared? io lo leverei
+    - va mostrato il FAME RATING da subject
+
+-Chat
+    - non funziona il block, l'api call va fatta in POST e non in GET
+
 
 - Activity
-	- you visited api call isn't done when activiy page is loaded
-    - al caricamento della pagine vengono fatte mille richieste a caso (validate profile viewers X3 map discover interess)
-    - viewer tab non funziona
 	- Quando arriva una visualizzazzione mettiamola in cima alla lista
-	- il pass sul profilo non funziona, sembra che non faccia proprio la call
 	- io leverei notifications
 	- you visited lo leverei, se lo vogliamo lasciare mettiamolo stile insta quando clicchi sulla search, di default ci sono i profili che hai visitato, poi digitando appaiono i match
 
 - Notifiche
   - sembra che non ci sia la notifica di quando qualcuno ti mette like nemmeno il match (dimmi se ci sono problemi con i ws)
   - it's a match ws notify dovrebbe apparire con l'animazione carina dovunque tu sia, ora lo fa solo se tu metti like a qualcuno che ti ha già messo like SOLO nella pagina activity
-  - SEE WHO btn non funziona
-  - Unmatch notify non viene mostrata, IL SUBJECT LO RICHIEDE
-  - Controlla che quando si clicca su una notifica, chiusa eventuali modal prima di rimandare alla pagina
+  - Controlla che quando si clicca su una notifica, chiusa eventuali modal prima di rimandare alla pagina, stessa roba per la search bar
 
 -Calendar (è na hit zio can)
 
+- Zio pera il photo edit
   
 ### TO DO BACKEND
 
