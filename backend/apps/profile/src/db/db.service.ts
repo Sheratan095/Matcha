@@ -1231,6 +1231,21 @@ export class DbService implements OnModuleInit
 		return (CalendarEvent.fromDbRow(result.rows[0]));
 	}
 
+	async getCalendarEventStatus(eventId: string): Promise<CalendarEventStatus | null>
+	{
+		const result = await this.pool.query(
+			`SELECT status
+			 FROM calendar_events
+			 WHERE id = $1`,
+			[eventId]
+		);
+
+		if (result.rows.length === 0)
+			return (null);
+
+		return (result.rows[0].status);
+	}
+
 	// The accepted events whose start falls in (after, until]: what the start watcher announces on
 	// one tick. A pending invite nobody answered before its start is not a date, so it is left out.
 	async getEventsStartingBetween(after: Date, until: Date): Promise<CalendarEvent[]>
