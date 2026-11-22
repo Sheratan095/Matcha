@@ -32,7 +32,6 @@ BACKEND_URL=http://localhost:3000
 - Mancano le traduzioni
 
 - Bisognerebbe trovare un modo per avere la lista degli utenti bloccati per aver modo di sbloccarli 
-> presente nelle impostazioni account
 
 - Durante la registrazione, quando ti chiede le preferenze fa delle call strane che falliscono (vedi console)
   
@@ -47,7 +46,6 @@ BACKEND_URL=http://localhost:3000
 
 - Own profile
 	- quando cambi sexioni (Photos/Details/Account) ti scrolla in alto all'inizio della pagina
-  > risolto [fe735648656214132a32e9400401ec57ec946827]
 	- rimuovere "Edit profile" btn, inutile dato che le info si modificano semplicemente scegliendo la tab
 	- rifacciamo la grafica per settare l'immagine di profilo, io non ci capisco molto
 	- Tab Account
@@ -66,6 +64,8 @@ BACKEND_URL=http://localhost:3000
     - viewer tab non funziona
 	- Quando arriva una visualizzazzione mettiamola in cima alla lista
 	- il pass sul profilo non funziona, sembra che non faccia proprio la call
+	- io leverei notifications
+	- you visited lo leverei, se lo vogliamo lasciare mettiamolo stile insta quando clicchi sulla search, di default ci sono i profili che hai visitato, poi digitando appaiono i match
 
 - Notifiche
   - sembra che non ci sia la notifica di quando qualcuno ti mette like nemmeno il match (dimmi se ci sono problemi con i ws)
@@ -82,6 +82,3 @@ BACKEND_URL=http://localhost:3000
 - Implementare nuovo oaut2 method
 
 - Un certo oAuth state viene inserito nei cookie dopo il login - con il logout non scompare
-
-- Calendar
-	se l'invitato fa DECLINE, l'invitante poi cancella l'evento, all'invitato non deve arrivare la notifica di cancellazione

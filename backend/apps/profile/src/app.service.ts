@@ -905,6 +905,8 @@ export class AppService
 
 		try
 		{
+			const startingStatus: CalendarEventStatus = await this.dbService.getCalendarEventStatus(eventId);
+
 			const	updatedEvent = await this.dbService.updateCalendarEventStatus(eventId, userId, newStatus);
 
 			if (!updatedEvent)
@@ -916,7 +918,9 @@ export class AppService
 			// not turn into a 500.
 			try
 			{
-				await sendEventNotification(updatedEvent.inviteeId, updatedEvent.inviterId, userId, updatedEvent.eventId, updatedEvent.title, updatedEvent.startTime, this.httpService, notificationTypes[newStatus]);
+				// The invitee already declined, so they have nothing to be told about a cancellation
+				if (!(startingStatus === 'declined' && newStatus === 'cancelled'))
+					await sendEventNotification(updatedEvent.inviteeId, updatedEvent.inviterId, userId, updatedEvent.eventId, updatedEvent.title, updatedEvent.startTime, this.httpService, notificationTypes[newStatus]);
 			}
 			catch (notifyError: any)
 			{
