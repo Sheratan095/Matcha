@@ -1,5 +1,6 @@
 import type { ComponentProps, CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useT, type MessageKey } from '@/i18n'
 import { cx } from '../cx'
 import { Spinner } from '../display/Loader'
 import { IconHeart, IconStar, IconUndo, IconX } from '../icons'
@@ -19,6 +20,8 @@ interface ButtonLook {
   icon?: ReactNode
   /** Trailing icon. */
   iconRight?: ReactNode
+  /** Let a long label (a translation) wrap onto a second line instead of ending in an ellipsis. */
+  wrap?: boolean
 }
 
 function tone(variant: ButtonVariant): Tone {
@@ -26,8 +29,8 @@ function tone(variant: ButtonVariant): Tone {
 }
 
 function classes(look: ButtonLook, extra?: string | false) {
-  const { variant = 'matcha', size = 'md', block } = look
-  return cx(s.button, s[size], variant === 'ghost' && s.ghost, block && s.block, extra)
+  const { variant = 'matcha', size = 'md', block, wrap } = look
+  return cx(s.button, s[size], variant === 'ghost' && s.ghost, block && s.block, wrap && s.wrap, extra)
 }
 
 export interface ButtonProps extends Omit<ComponentProps<'button'>, 'children'>, ButtonLook {
@@ -41,6 +44,7 @@ export function Button({
   variant = 'matcha',
   size = 'md',
   block,
+  wrap,
   icon,
   iconRight,
   loading,
@@ -55,7 +59,7 @@ export function Button({
     <button
       type={type}
       data-tone={tone(variant)}
-      className={classes({ variant, size, block }, cx(loading && s.loading, className))}
+      className={classes({ variant, size, block, wrap }, cx(loading && s.loading, className))}
       disabled={disabled}
       aria-busy={loading || undefined}
       aria-disabled={loading || undefined}
@@ -96,6 +100,7 @@ export function ButtonLink({
   variant = 'matcha',
   size = 'md',
   block,
+  wrap,
   icon,
   iconRight,
   className,
@@ -110,7 +115,7 @@ export function ButtonLink({
       {iconRight ? <span className={s.icon}>{iconRight}</span> : null}
     </>
   )
-  const cls = classes({ variant, size, block }, className)
+  const cls = classes({ variant, size, block, wrap }, className)
   if (to != null) {
     return (
       <Link to={to} replace={replace} data-tone={tone(variant)} className={cls} {...rest}>
@@ -182,11 +187,11 @@ export function IconButton({
 
 export type ActionKind = 'pass' | 'like' | 'superlike' | 'rewind'
 
-const ACTIONS: Record<ActionKind, { tone: Tone; label: string; icon: (px: number) => ReactNode }> = {
-  pass: { tone: 'paper', label: 'Pass', icon: (px) => <IconX size={px} strokeWidth={4} /> },
-  like: { tone: 'strawberry', label: 'Like', icon: (px) => <IconHeart size={px} filled /> },
-  superlike: { tone: 'yolk', label: 'Super like', icon: (px) => <IconStar size={px} filled /> },
-  rewind: { tone: 'blue', label: 'Rewind', icon: (px) => <IconUndo size={px} strokeWidth={3} /> },
+const ACTIONS: Record<ActionKind, { tone: Tone; label: MessageKey; icon: (px: number) => ReactNode }> = {
+  pass: { tone: 'paper', label: 'kit.actionPass', icon: (px) => <IconX size={px} strokeWidth={4} /> },
+  like: { tone: 'strawberry', label: 'kit.actionLike', icon: (px) => <IconHeart size={px} filled /> },
+  superlike: { tone: 'yolk', label: 'kit.actionSuperlike', icon: (px) => <IconStar size={px} filled /> },
+  rewind: { tone: 'blue', label: 'kit.actionRewind', icon: (px) => <IconUndo size={px} strokeWidth={3} /> },
 }
 
 export interface ActionButtonProps extends Omit<ComponentProps<'button'>, 'children' | 'aria-label'> {
@@ -215,8 +220,9 @@ export function ActionButton({
   children,
   ...rest
 }: ActionButtonProps) {
+  const t = useT()
   const preset = kind ? ACTIONS[kind] : undefined
-  const name = label ?? preset?.label ?? 'Action'
+  const name = label ?? t(preset?.label ?? 'kit.actionDefault')
   return (
     <button
       type={type}

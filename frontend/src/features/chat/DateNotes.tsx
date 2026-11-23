@@ -4,6 +4,7 @@
  * about it; where an accepted date began, a line saying so.
  */
 import type { PlannedDate } from '@/api/types'
+import { useT } from '@/i18n'
 import { lookOf, useAnswerInvite } from '@/features/calendar/moves'
 import { isHappening, longDayLabel, mapLink, movesOf, nameOf, stubOf, timeRange } from '@/features/calendar/schedule'
 import { coordinatesLabel } from '@/features/location/geo'
@@ -21,27 +22,20 @@ export interface DatePlannedProps {
 
 /** The invite: who asked whom, the ticket, and accept / decline / call off while they can be done. */
 export function DatePlanned({ date, now, onCallOff }: DatePlannedProps) {
+  const t = useT()
   const { busy, answer } = useAnswerInvite(date)
   const name = nameOf(date)
   const stub = stubOf(date.startsAt)
   const look = lookOf(date, now)
   const moves = movesOf(date, now)
   const over = date.endsAt <= now
-  const badge = look.badge ?? (date.status === 'accepted' ? 'Been there' : null)
+  const badge = look.badge ?? (date.status === 'accepted' ? t('cal.beenThere') : null)
 
   return (
-    <article className={s.planned} data-over={over ? '' : undefined} aria-label={`Date: ${date.title}`}>
+    <article className={s.planned} data-over={over ? '' : undefined} aria-label={t('chat.dateLabel', { title: date.title })}>
       <p className={s.kicker}>
         <IconCalendar size={14} aria-hidden="true" />
-        {date.mine ? (
-          <span>
-            You invited <strong>{name}</strong> on a date
-          </span>
-        ) : (
-          <span>
-            <strong>{name}</strong> invited you on a date
-          </span>
-        )}
+        <span>{t.rich(date.mine ? 'chat.youInvited' : 'chat.invitedYou', { name: <strong>{name}</strong> })}</span>
         {date.plannedAt != null ? (
           <time className={s.kickerTime} dateTime={iso(date.plannedAt)}>
             {clockTime(date.plannedAt)}
@@ -80,9 +74,9 @@ export function DatePlanned({ date, now, onCallOff }: DatePlannedProps) {
               <IconPin size={16} aria-hidden="true" />
               <span className={s.placeText}>{coordinatesLabel(date.place)}</span>
               <span className={s.placeOpen}>
-                Map <IconExternal size={14} aria-hidden="true" />
+                {t('chat.mapLink')} <IconExternal size={14} aria-hidden="true" />
               </span>
-              <span className="sr-only"> (opens OpenStreetMap in a new tab)</span>
+              <span className="sr-only">{t('chat.mapSr')}</span>
             </a>
           ) : null}
 
@@ -97,7 +91,7 @@ export function DatePlanned({ date, now, onCallOff }: DatePlannedProps) {
                     disabled={busy !== null}
                     onClick={() => answer('accept')}
                   >
-                    Accept
+                    {t('chat.accept')}
                   </Button>
                   <Button
                     size="sm"
@@ -107,13 +101,13 @@ export function DatePlanned({ date, now, onCallOff }: DatePlannedProps) {
                     disabled={busy !== null}
                     onClick={() => answer('decline')}
                   >
-                    Decline
+                    {t('chat.decline')}
                   </Button>
                 </>
               ) : null}
               {moves.cancel ? (
                 <Button size="sm" variant="ghost" onClick={() => onCallOff(date)}>
-                  {date.status === 'declined' ? 'Remove' : 'Call off'}
+                  {date.status === 'declined' ? t('chat.remove') : t('chat.callOff')}
                 </Button>
               ) : null}
             </div>
@@ -126,12 +120,13 @@ export function DatePlanned({ date, now, onCallOff }: DatePlannedProps) {
 
 /** An accepted date began: lit while it is on. */
 export function DateStarted({ date, now }: { date: PlannedDate; now: number }) {
+  const t = useT()
   const on = isHappening(date, now)
   return (
     <p className={s.started} data-on={on ? '' : undefined}>
       <span className={s.startedDot} aria-hidden="true" />
       <span className={s.startedText}>
-        {on ? 'Your date has started' : 'Your date started'} · <strong>{date.title}</strong>
+        {on ? t('chat.dateStarting') : t('chat.dateStarted')} · <strong>{date.title}</strong>
       </span>
       <time className={s.kickerTime} dateTime={iso(date.startsAt)}>
         {clockTime(date.startsAt)}

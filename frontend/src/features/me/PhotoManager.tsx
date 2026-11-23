@@ -1,9 +1,12 @@
 import { useRef, useState } from 'react'
 import type { ApiError, Profile, UserPicture } from '@/api/types'
-import { MAX_PICTURE_BYTES, MAX_USER_PICTURES, PICTURE_MIME_TYPES } from '@/api/types'
+import { MAX_USER_PICTURES, PICTURE_MIME_TYPES } from '@/api/types'
+import { useT, type MessageKey, type Translator } from '@/i18n'
 import { Button, IconStar, IconTrash, Modal, Notice, PhotoFrame, PhotoTile, Text } from '@/ui'
 import { actions, toApiError } from '@/wb'
 import { describe } from './errors'
+import { PhotoEditor } from './PhotoEditor'
+import { MAX_SOURCE_BYTES } from './photoEdit'
 import s from './PhotoManager.module.css'
 
 type Busy = { kind: 'upload' } | { kind: 'delete' | 'main'; id: string } | null
@@ -19,29 +22,29 @@ function megabytes(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)
 }
 
-/** The same checks the backend makes, before anything is sent. */
-function checkFile(file: File, count: number): Problem | null {
+/**
+ * What is checked before the editor opens. The backend's 5 MB limit applies to what is sent, which the editor
+ * resizes, so a picked file may be larger than that (a phone picture often is).
+ */
+function checkFile(file: File, count: number, t: Translator): Problem | null {
   if (count >= MAX_USER_PICTURES) {
-    return { title: `You already have ${MAX_USER_PICTURES} photos`, message: 'Remove one to make room for another.' }
+    return { title: t('me.photoFilesMax', { n: MAX_USER_PICTURES }), message: t('me.photoMakeRoom') }
   }
   if (!PICTURE_MIME_TYPES.includes(file.type)) {
-    return {
-      title: 'That file type isn’t supported',
-      message: `“${file.name}” is not a JPEG, PNG or WEBP image. Pick one of those.`,
-    }
+    return { title: t('me.photoBadType'), message: t('me.photoBadTypeBody', { name: file.name }) }
   }
-  if (file.size > MAX_PICTURE_BYTES) {
+  if (file.size > MAX_SOURCE_BYTES) {
     return {
-      title: 'That photo is too large',
-      message: `“${file.name}” weighs ${megabytes(file.size)} MB; the limit is 5 MB.`,
+      title: t('me.photoTooLarge'),
+      message: t('me.photoTooLargeBody', { name: file.name, size: megabytes(file.size), max: megabytes(MAX_SOURCE_BYTES) }),
     }
   }
   return null
 }
 
-function problemFrom(error: ApiError, action: string): Problem {
-  if (error.status === 413) return { title: 'That photo is too large', message: 'The limit is 5 MB.' }
-  return { title: `Could not ${action}`, message: describe(error) }
+function problemFrom(error: ApiError, title: MessageKey, t: Translator): Problem {
+  if (error.status === 413) return { title: t('me.photoTooLarge'), message: t('me.photoLimit5') }
+  return { title: t(title), message: describe(error) }
 }
 
 export interface PhotoManagerProps {
@@ -51,16 +54,23 @@ export interface PhotoManagerProps {
 }
 
 /**
- * Five photo slots: upload (checked for type, size and count first), remove with a confirmation, and
- * choose the main photo. Tolerates a profile without a main photo by offering to pick one.
+ * Five photo slots: add (checked for type, size and count, then cropped, filtered and resized in the editor),
+ * remove with a confirmation, and choose the main photo. Tolerates a profile without a main photo by offering
+ * to pick one.
  */
-export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerProps) {
+export function PhotoManager({ profile, label }: PhotoManagerProps) {
+  const t = useT()
   const pictures = profile.pictures
   const [busy, setBusy] = useState<Busy>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
   const [announcement, setAnnouncement] = useState('')
   const [pending, setPending] = useState<UserPicture | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  // The picture being edited. `id` gives each pick a fresh editor (its edits start over); the editor stays
+  // mounted after it closes so that it can play its exit.
+  const [editing, setEditing] = useState<{ file: File; id: number } | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const picks = useRef(0)
   const gridRef = useRef<HTMLUListElement>(null)
   const keepRef = useRef<HTMLButtonElement>(null)
 
@@ -77,20 +87,29 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
     })
   }
 
-  const upload = async (file: File) => {
-    const local = checkFile(file, pictures.length)
+  /** A file was chosen: check it, then open it in the editor. Nothing is sent until the editor hands it back. */
+  const pick = (file: File) => {
+    const local = checkFile(file, pictures.length, t)
     if (local) {
       setProblem(local)
       return
     }
     setProblem(null)
+    picks.current += 1
+    setEditing({ file, id: picks.current })
+    setEditorOpen(true)
+  }
+
+  const upload = async (file: File) => {
+    setEditorOpen(false)
+    setProblem(null)
     setBusy({ kind: 'upload' })
     try {
       const result = await actions.uploadPicture(file)
-      setAnnouncement(`Photo ${pad(result.pictures.length)} added.`)
+      setAnnouncement(t('me.photoAdded', { n: pad(result.pictures.length) }))
       focusLater(result.pictures.length < MAX_USER_PICTURES ? 'input[type="file"]:not(:disabled)' : `li:nth-child(${result.pictures.length}) button`)
     } catch (failure) {
-      setProblem(problemFrom(toApiError(failure), 'add the photo'))
+      setProblem(problemFrom(toApiError(failure), 'me.couldNotAdd', t))
     } finally {
       setBusy(null)
     }
@@ -101,10 +120,10 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
     setBusy({ kind: 'main', id: picture.id })
     try {
       await actions.setMainPicture(picture.id)
-      setAnnouncement(`Photo ${pad(numberOf(picture.id))} is now your main photo.`)
+      setAnnouncement(t('me.photoNowMain', { n: pad(numberOf(picture.id)) }))
       focusLater(`[data-picture="${picture.id}"] button`)
     } catch (failure) {
-      setProblem(problemFrom(toApiError(failure), 'change the main photo'))
+      setProblem(problemFrom(toApiError(failure), 'me.couldNotMain', t))
     } finally {
       setBusy(null)
     }
@@ -124,10 +143,10 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
     setBusy({ kind: 'delete', id: picture.id })
     try {
       await actions.deletePicture(picture.id)
-      setAnnouncement(`Photo ${pad(number)} removed.`)
+      setAnnouncement(t('me.photoRemoved', { n: pad(number) }))
       focusLater('input[type="file"]:not(:disabled)')
     } catch (failure) {
-      setProblem(problemFrom(toApiError(failure), 'remove the photo'))
+      setProblem(problemFrom(toApiError(failure), 'me.couldNotRemove', t))
     } finally {
       setBusy(null)
     }
@@ -147,18 +166,18 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
       {pictures.length > 0 && !hasMain ? (
         <Notice
           tone="warning"
-          title="No main photo"
+          title={t('me.noMainTitle')}
           action={
             <Button size="sm" variant="ink" icon={<IconStar size={16} filled />} disabled={working} onClick={() => makeMain(pictures[0])}>
-              Use photo 01
+              {t('me.usePhoto', { n: '01' })}
             </Button>
           }
         >
-          Your card shows a poster until you choose one. Press the star on the photo you want people to see first.
+          {t('me.noMainBody')}
         </Notice>
       ) : null}
 
-      <ul ref={gridRef} className={s.grid} aria-label={label}>
+      <ul ref={gridRef} className={s.grid} aria-label={label ?? t('me.photosLabel')}>
         {Array.from({ length: MAX_USER_PICTURES }, (_, i) => {
           const picture = pictures[i]
           if (picture) {
@@ -168,7 +187,7 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
                 <PhotoTile
                   index={i + 1}
                   src={picture.url}
-                  alt={`Photo ${pad(i + 1)}${picture.isProfile ? ', your main photo' : ''}`}
+                  alt={t(picture.isProfile ? 'me.photoAltMain' : 'me.photoAlt', { n: pad(i + 1) })}
                   main={picture.isProfile}
                   busy={isBusy}
                   disabled={working && !isBusy}
@@ -183,20 +202,20 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
             <li key={`empty-${i}`}>
               <PhotoTile
                 index={i + 1}
-                label={active ? (pictures.length === 0 ? 'Add a photo' : 'Add photo') : 'Empty'}
+                label={active ? (pictures.length === 0 ? t('me.addAPhoto') : t('kit.addPhoto')) : t('me.empty')}
                 busy={active && busy?.kind === 'upload'}
                 disabled={!active || working}
-                onPick={upload}
+                onPick={pick}
               />
             </li>
           )
         })}
         <li className={s.rules} data-surface="ink">
-          <span className={s.rulesHead}>Rules</span>
-          <span className={s.rule}>JPEG, PNG, WEBP</span>
-          <span className={s.rule}>5 MB max</span>
+          <span className={s.rulesHead}>{t('me.rules')}</span>
+          <span className={s.rule}>{t('me.ruleTypes')}</span>
+          <span className={s.rule}>{t('me.ruleSize', { n: megabytes(MAX_SOURCE_BYTES) })}</span>
           <span className={s.ruleStar}>
-            <IconStar size={13} filled /> = main
+            <IconStar size={13} filled /> {t('me.ruleStar')}
           </span>
         </li>
       </ul>
@@ -205,20 +224,30 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
         {announcement}
       </p>
 
+      {editing ? (
+        <PhotoEditor
+          key={editing.id}
+          file={editing.file}
+          open={editorOpen}
+          onCancel={() => setEditorOpen(false)}
+          onApply={upload}
+        />
+      ) : null}
+
       <Modal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title={`Remove photo ${pad(pendingNumber)}?`}
-        kicker="Photos"
+        title={t('me.removeTitle', { n: pad(pendingNumber) })}
+        kicker={t('me.removeKicker')}
         size="sm"
         initialFocus={keepRef}
         footer={
           <>
             <Button ref={keepRef} variant="paper" onClick={() => setConfirmOpen(false)}>
-              Keep it
+              {t('cal.keepIt')}
             </Button>
             <Button variant="strawberry" icon={<IconTrash size={18} />} onClick={remove}>
-              Remove
+              {t('chat.remove')}
             </Button>
           </>
         }
@@ -227,10 +256,10 @@ export function PhotoManager({ profile, label = 'Your photos' }: PhotoManagerPro
           {pending ? <PhotoFrame src={pending.url} alt="" radius="md" shadow={2} tilt={-3} className={s.confirmThumb} /> : null}
           <Text>
             {pictures.length === 1
-              ? 'This is your only photo. Without one Discover closes, you leave everyone’s deck and cannot like anyone until you add another.'
+              ? t('me.removeOnly')
               : pending?.isProfile
-                ? 'This is your main photo. Your oldest other photo takes its place; press the star on another one to choose.'
-                : 'It leaves your card straight away. You can always upload it again.'}
+                ? t('me.removeMain')
+                : t('me.removeOther')}
           </Text>
         </div>
       </Modal>

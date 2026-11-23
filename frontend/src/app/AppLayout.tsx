@@ -25,37 +25,39 @@ import {
   type ShellTab,
 } from '@/ui'
 import { useInvitesWaiting } from '@/features/calendar/useInvitesWaiting'
+import { useT } from '@/i18n'
 import { useAutoLocation } from '@/features/location/useAutoLocation'
 import { SearchBar } from '@/features/search/SearchBar'
 import { actions, toApiError, useNodeValue } from '@/wb'
 
 const SECTIONS = [
-  { to: '/discover', label: 'Discover', poster: 'discover', icon: <IconRegMark size={22} /> },
-  { to: '/matches', label: 'Matches', poster: 'matches', icon: <IconChat size={22} /> },
-  { to: '/calendar', label: 'Calendar', poster: 'dates', icon: <IconCalendar size={22} /> },
-  { to: '/activity', label: 'Activity', poster: 'activity', icon: <IconHeart size={22} /> },
-  { to: '/map', label: 'Map', poster: 'map', icon: <IconGlobe size={22} /> },
-  { to: '/me', label: 'Me', poster: 'profile', icon: <IconUser size={22} /> },
+  { to: '/discover', label: 'nav.discover', poster: 'nav.posterDiscover', icon: <IconRegMark size={22} /> },
+  { to: '/matches', label: 'nav.matches', poster: 'nav.posterMatches', icon: <IconChat size={22} /> },
+  { to: '/calendar', label: 'nav.calendar', poster: 'nav.posterDates', icon: <IconCalendar size={22} /> },
+  { to: '/activity', label: 'nav.activity', poster: 'nav.posterActivity', icon: <IconHeart size={22} /> },
+  { to: '/map', label: 'nav.map', poster: 'nav.posterMap', icon: <IconGlobe size={22} /> },
+  { to: '/me', label: 'nav.me', poster: 'nav.posterProfile', icon: <IconUser size={22} /> },
 ] as const
 
 function AccountMenu() {
+  const t = useT()
   const navigate = useNavigate()
   const profile = useNodeValue('myProfile')
-  const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || 'You'
+  const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || t('nav.you')
   const photo = profile?.pictures.find((picture) => picture.isProfile)?.url ?? null
   return (
     <Menu
-      label="Account"
+      label={t('nav.account')}
       triggerVariant="ghost"
       trigger={<Avatar src={photo} name={name} size="sm" decorative />}
       items={[
-        { label: 'Your profile', icon: <IconUser size={18} />, onSelect: () => navigate('/me') },
+        { label: t('nav.yourProfile'), icon: <IconUser size={18} />, onSelect: () => navigate('/me') },
         {
-          label: 'Sign out',
+          label: t('nav.signOut'),
           icon: <IconLogout size={18} />,
           // RequireAuth sees the sign-out and takes the user to the front page.
           onSelect: () =>
-            void actions.logout().catch((error: unknown) => toast.error("Couldn't sign out", toApiError(error).message)),
+            void actions.logout().catch((error: unknown) => toast.error(t('nav.signOutFailed'), toApiError(error).message)),
         },
       ]}
     />
@@ -70,6 +72,7 @@ function usePartnerName(userId: string | undefined): string | undefined {
 }
 
 export default function AppLayout() {
+  const t = useT()
   useAutoLocation()
   const { pathname } = useLocation()
   const unread = useNodeValue('unreadCount') ?? 0
@@ -87,7 +90,7 @@ export default function AppLayout() {
   }
   const tabs: ShellTab[] = SECTIONS.map((candidate) => ({
     to: candidate.to,
-    label: candidate.label,
+    label: t(candidate.label),
     icon: candidate.icon,
     badge: badges[candidate.to],
     // the router lights a section's own paths; this also lights Matches in a conversation
@@ -97,7 +100,7 @@ export default function AppLayout() {
   return (
     <AppShell
       tabs={tabs}
-      poster={chat ? (partnerName ?? 'chat') : section?.poster}
+      poster={chat ? (partnerName ?? t('nav.posterChat')) : section ? t(section.poster) : undefined}
       homeTo="/discover"
       // The deck runs edge to edge, like the designer's shell demo.
       flush={section?.to === '/discover'}
@@ -106,7 +109,9 @@ export default function AppLayout() {
       search={<SearchBar />}
       actions={<AccountMenu />}
     >
-      <Suspense fallback={<Loader fill>Turning the page</Loader>}>
+      {/* The Me page names itself (it also knows when the profile is not loaded yet). */}
+      {section && section.to !== '/me' ? <title>{`${t(section.label)} · Matcha`}</title> : null}
+      <Suspense fallback={<Loader fill>{t('nav.turningPage')}</Loader>}>
         <Outlet />
       </Suspense>
     </AppShell>

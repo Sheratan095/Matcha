@@ -9,6 +9,7 @@ import { useId, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { DeckAction, UserSummary } from '@/api/types'
 import { firstNameOf, mainPicture } from '@/features/chat/people'
+import { useT } from '@/i18n'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import { summaryPreviewProfile } from '@/features/profile/format'
 import { ActionButton, IconBell, IconEye, IconHeart, IconPin, MatchMoment, PageHeader, TabPanel, toast } from '@/ui'
@@ -26,6 +27,7 @@ function tabFrom(value: string | null): TabValue {
 }
 
 export default function ActivityPage() {
+  const t = useT()
   const idBase = useId()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -95,8 +97,8 @@ export default function ActivityPage() {
         setTarget(null)
         setAdmirer(null)
         if (outcome.matched) setMatch(person)
-        else if (action === 'like') toast.show({ tone: 'strawberry', title: `You liked ${name}` })
-        else toast.show({ tone: 'ink', title: `You passed on ${name}`, message: 'They will not show up here again.' })
+        else if (action === 'like') toast.show({ tone: 'strawberry', title: t('act.youLiked', { name }) })
+        else toast.show({ tone: 'ink', title: t('act.youPassed', { name }), message: t('act.passedMessage') })
       },
       (error: unknown) => {
         setBusy(null)
@@ -112,13 +114,13 @@ export default function ActivityPage() {
           <span className={s.answerHeart} aria-hidden="true">
             <IconHeart size={16} filled />
           </span>
-          {admirer.username} already likes you. Like back and you&rsquo;re connected.
+          {t('act.admirerNote', { name: admirer.username })}
         </p>
         <div className={s.answerButtons}>
           <ActionButton
             kind="pass"
             size="lg"
-            label={`Pass on ${admirer.username}`}
+            label={t('act.passOn', { name: admirer.username })}
             disabled={busy !== null}
             aria-busy={busy === 'pass' || undefined}
             onClick={() => answer(admirer, 'pass')}
@@ -126,7 +128,7 @@ export default function ActivityPage() {
           <ActionButton
             kind="like"
             size="xl"
-            label={`Like ${admirer.username} back`}
+            label={t('act.likeBack', { name: admirer.username })}
             disabled={busy !== null}
             aria-busy={busy === 'like' || undefined}
             onClick={() => answer(admirer, 'like')}
@@ -142,19 +144,19 @@ export default function ActivityPage() {
 
   return (
     <div className={s.page}>
-      <PageHeader title="Activity" kicker="Who is into you" />
+      <PageHeader title={t('act.title')} kicker={t('act.kicker')} />
 
       <ScoreTabs
-        label="Activity"
+        label={t('act.title')}
         idBase={idBase}
         value={tab}
         onChange={setTab}
         items={[
-          { value: 'likes', label: 'Likes you', count: likes ? likes.length : null, tone: 'strawberry', icon: <IconHeart size={16} filled /> },
-          { value: 'views', label: 'Viewed you', count: viewers ? viewers.length : null, tone: 'blue', icon: <IconEye size={16} strokeWidth={3} /> },
-          { value: 'visited', label: 'You visited', count: visited ? visited.length : null, tone: 'yolk', icon: <IconPin size={16} strokeWidth={3} /> },
+          { value: 'likes', label: t('act.tabLikes'), count: likes ? likes.length : null, tone: 'strawberry', icon: <IconHeart size={16} filled /> },
+          { value: 'views', label: t('act.tabViews'), count: viewers ? viewers.length : null, tone: 'blue', icon: <IconEye size={16} strokeWidth={3} /> },
+          { value: 'visited', label: t('act.tabVisited'), count: visited ? visited.length : null, tone: 'yolk', icon: <IconPin size={16} strokeWidth={3} /> },
           // the numeral is what is new, not the length of the list (kept up to NOTIFICATION_LIMIT)
-          { value: 'notifications', label: 'Notifications', count: unreadNotifications, unit: 'unread', tone: 'matcha', icon: <IconBell size={16} strokeWidth={3} /> },
+          { value: 'notifications', label: t('act.tabNotifications'), count: unreadNotifications, unit: t('act.unread'), tone: 'matcha', icon: <IconBell size={16} strokeWidth={3} /> },
         ]}
       />
 
@@ -194,15 +196,15 @@ export default function ActivityPage() {
       <MatchMoment
         open={match !== null}
         onClose={() => setMatch(null)}
-        me={{ name: firstNameOf(myProfile, 'You'), photo: mainPicture(myProfile), seed: myId ?? 'me' }}
-        them={{ name: shownMatch?.username ?? 'Someone', photo: shownMatch?.profilePictureUrl ?? null, seed: shownMatch?.userId }}
+        me={{ name: firstNameOf(myProfile, t('nav.you')), photo: mainPicture(myProfile), seed: myId ?? 'me' }}
+        them={{ name: shownMatch?.username ?? t('toast.someone'), photo: shownMatch?.profilePictureUrl ?? null, seed: shownMatch?.userId }}
         onMessage={() => {
           const id = match?.userId
           setMatch(null)
           if (id) navigate(`/chat/${id}`)
         }}
       >
-        {shownMatch?.username ?? 'They'} liked you first, and now it&rsquo;s mutual. Say something before the tea goes cold.
+        {t('act.matchLine', { name: shownMatch?.username ?? t('toast.someone') })}
       </MatchMoment>
     </div>
   )

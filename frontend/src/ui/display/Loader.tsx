@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { LogoMark } from '../lettering/Wordmark'
 import s from './Loader.module.css'
@@ -12,16 +13,18 @@ export interface SpinnerProps {
 }
 
 /** A registration mark that clicks round in eight steps. Inherits currentColor. */
-export function Spinner({ size = 20, label = 'Loading', className }: SpinnerProps) {
+export function Spinner({ size = 20, label, className }: SpinnerProps) {
+  const t = useT()
+  const name = label ?? t('kit.loading')
   return (
     <svg
       className={cx(s.spinner, className)}
       viewBox="0 0 24 24"
       width={size}
       height={size}
-      role={label ? 'img' : undefined}
-      aria-label={label || undefined}
-      aria-hidden={label ? undefined : true}
+      role={name ? 'img' : undefined}
+      aria-label={name || undefined}
+      aria-hidden={name ? undefined : true}
       focusable="false"
     >
       <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="2.5" />
@@ -41,7 +44,8 @@ export interface LoaderProps {
 }
 
 /** The page-level loader: the brand tile being stamped onto the paper, over and over. */
-export function Loader({ children = 'Whisking', fill, className, style }: LoaderProps) {
+export function Loader({ children, fill, className, style }: LoaderProps) {
+  const t = useT()
   return (
     <div className={cx(s.loader, fill && s.fill, className)} style={style} role="status" aria-live="polite">
       <span className={s.pad}>
@@ -50,7 +54,7 @@ export function Loader({ children = 'Whisking', fill, className, style }: Loader
         </span>
       </span>
       <span className={s.caption}>
-        {children}
+        {children ?? t('kit.whisking')}
         <span className={s.dots} aria-hidden="true">
           <i>.</i>
           <i>.</i>

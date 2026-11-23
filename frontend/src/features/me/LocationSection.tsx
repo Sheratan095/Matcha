@@ -3,6 +3,7 @@ import type { OwnProfile } from '@/api/types'
 import { savedSpot, sameSpot, type PlacedSpot } from '@/features/location/geo'
 import { LocationPicker } from '@/features/location/LocationPicker'
 import { locationMode, modeAfterSaving, setLocationMode, type LocationMode } from '@/features/location/mode'
+import { useT } from '@/i18n'
 import { Button, Card, FormError, Headline, IconCheck, Stack, Switch, Text } from '@/ui'
 import { actions, toApiError } from '@/wb'
 import { describe } from './errors'
@@ -17,6 +18,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
  * once a new spot is stored.
  */
 export function LocationSection({ profile, number, onSaved }: { profile: OwnProfile; number?: number; onSaved?: () => void }) {
+  const t = useT()
   const saved = savedSpot(profile)
   const [base, setBase] = useState(saved)
   const [draft, setDraft] = useState<PlacedSpot | null>(saved)
@@ -34,7 +36,15 @@ export function LocationSection({ profile, number, onSaved }: { profile: OwnProf
 
   const dirty = draft !== null && (!saved || !sameSpot(draft, saved))
   const titleId = `${SECTION_IDS.location}-title`
-  const state = saving ? 'Saving' : dirty ? 'Unsaved' : justSaved ? 'Saved' : saved ? 'Up to date' : 'Not set'
+  const state = saving
+    ? t('me.stateSaving')
+    : dirty
+      ? t('me.stateUnsaved')
+      : justSaved
+        ? t('me.stateSaved')
+        : saved
+          ? t('me.stateUpToDate')
+          : t('me.stateNotSet')
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -56,15 +66,15 @@ export function LocationSection({ profile, number, onSaved }: { profile: OwnProf
   }
 
   return (
-    <Card as="section" id={SECTION_IDS.location} aria-labelledby={titleId} label={number === undefined ? 'Your spot' : `Section ${pad(number)}`} meta={state} className={s.section}>
+    <Card as="section" id={SECTION_IDS.location} aria-labelledby={titleId} label={number === undefined ? t('me.locSpot') : t('me.section', { n: pad(number) })} meta={state} className={s.section}>
       <form onSubmit={onSubmit} noValidate>
         <Stack gap={4}>
           <Stack gap={2}>
             <Headline as="h2" id={titleId} size="d3" width="condensed">
-              Location
+              {t('me.locTitle')}
             </Headline>
             <Text size="sm" muted>
-              Discover measures distances from here. Others see how far away you are, never where.
+              {t('me.locIntro')}
             </Text>
           </Stack>
           <LocationPicker
@@ -81,26 +91,26 @@ export function LocationSection({ profile, number, onSaved }: { profile: OwnProf
               setLocationMode(profile.userId, next)
               setMode(next)
             }}
-            description="At each visit, when this browser may use your location, your spot follows you. Off: it stays where you put it."
+            description={t('me.locAutoHint')}
           >
-            Keep it up to date from this device
+            {t('me.locAuto')}
           </Switch>
-          <FormError error={error} title="Not saved" />
+          <FormError error={error} title={t('me.notSaved')} />
           <div className={s.actions}>
             <span className={s.status} role="status">
               {justSaved && !dirty ? (
                 <span className={s.saved}>
-                  <IconCheck size={16} strokeWidth={4} /> Saved
+                  <IconCheck size={16} strokeWidth={4} /> {t('me.stateSaved')}
                 </span>
               ) : null}
             </span>
             {dirty && !saving ? (
               <Button variant="ghost" onClick={() => setDraft(saved)}>
-                Undo
+                {t('me.undo')}
               </Button>
             ) : null}
             <Button type="submit" loading={saving} disabled={!dirty}>
-              Save
+              {t('me.save')}
             </Button>
           </div>
         </Stack>

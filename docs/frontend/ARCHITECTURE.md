@@ -444,7 +444,7 @@ invite from them (tomorrow); realtime events are injected with `startRealtime({ 
 | `/matches`, `/chat/:userId` | connections and the conversation with one; the dates planned with them sit in its thread (drawn from the calendar: the invite where it was sent, answered or called off there, and the start of an accepted one), and its header books a new one | signed in + filled-in profile (a photo is not needed) |
 | `/calendar` | dates with your connections: invites to answer, what is ahead, what is over; plan one (also from a conversation) | signed in + filled-in profile |
 | `/activity` | likes received, profile viewers, the profiles you visited, notifications (`?tab=views`, `?tab=visited`, `?tab=notifications`) | signed in + filled-in profile |
-| `/me` | own profile, pictures, settings | signed in |
+| `/me` | own profile, pictures, settings. A chosen photo opens in `PhotoEditor` first (`features/me`: crop, rotate, filter and resize on a canvas, nothing sent until "Use photo"), then goes through `actions.uploadPicture`; the onboarding photos step uses the same `PhotoManager` | signed in |
 | `/styleguide` | design system showcase | any |
 
 GitHub OAuth is a top-level navigation to `${API_URL}/auth/github`; the backend redirects back to `/`
@@ -497,3 +497,62 @@ Tactile, bold, typographic.
   extra space for poster-like composition.
 - Accessible: real buttons and labels, visible focus, WCAG AA text contrast, swipe actions reachable
   by button and keyboard.
+
+## 8. Interface language (`src/i18n`)
+
+The whole app speaks English, French and Spanish (`en` / `fr` / `es`, the same three the backend mails in): the landing
+page, the signed-out screens, the signed-in app (Discover, Matches, Chat, Calendar, Activity, Map, Me, onboarding) and
+the UI kit's own words (aria labels, toasts, dialogs). The language is a **UI preference, not domain state**: it lives
+in a tiny external store in `src/i18n/locale.ts` (not in the node graph), saved in `localStorage` under `matcha.locale`,
+defaulting to the first browser language that is translated, and mirrored on `<html lang>`.
+
+- **Where the choice is made.** `LocalePicker` (`@/ui`): a clickable flag that opens the menu of languages. Signed
+  out, it sits in the postage box of a `ParcelLabel` (`LocaleLabel`, also shown in the styleguide), which the pages
+  place absolutely in their bottom right corner: the landing page's colophon and every `AuthLayout` screen (login,
+  register, …). Signed in, the compact picker (`variant="chip"`: the flag and the code) lives in the "Language" card of
+  the Account tab on `/me` (`AccountSettings`). Registration pre-fills "Email language" from it, and follows it until
+  the user picks one there.
+- **Catalogues.** `messages/en.ts` is the source of truth for the key type (flat keys, `'login.intro': '…'`); `fr.ts`
+  and `es.ts` are typed against it, so a missing key is a compile error. The signed-out screens' keys live in those
+  three files. Everything else is written **per domain, the three languages side by side**, in
+  `messages/app/<domain>.ts` (`kit`, `shell`, `checks`, `chat` (time labels, conversation, calendar), `activity`
+  (+ matches), `deck`, `places` (search, location, map), `profile`, `me`, `onboarding`) with `domain({ en, fr, es })`
+  (`messages/define.ts`): a key missing from, or extra in, one language is a compile error right there.
+  `messages/app/index.ts` merges the domains into `appEn` / `appFr` / `appEs`, which the three catalogues spread at the
+  end. A domain's keys carry its own prefix (`deck.`, `me.`…); `i18n.test.tsx` checks that no two domains share a
+  key, that the three languages cover the same keys with the same placeholders and line stacks, and that no sentence
+  is left in English in French or Spanish. `{name}` is a placeholder; `a|b|c` is a stack of short lines (poster
+  lettering and stickers).
+- **Using it.** In a component, `const t = useT()` (it re-renders on a language change): `t('key', { n: 8 })`,
+  `t.rich('key', { email: <strong>{email}</strong> })` for markup inside a sentence, `t.lines('key')` /
+  `t.stack('key')` for stacks. Outside components (`rules.ts`, `errors.ts`, `wb/`, toasts fired by realtime events)
+  import `t` from `@/i18n`: it reads the current locale. Never keep a translated string in a module-level constant
+  (it would be frozen in the language at load): build it inside a function or component, as `posterFor(t)`,
+  `genderOptions()` and `copyFor(kind, t)` do, or keep a **catalogue key** in the constant (`label: 'deck.sortBest'`)
+  and print it with `t(key)` when rendering.
+- **Plurals.** A count is a pair of keys, `'matches.newCount.one'` and `'.other'` (both in every language), read with
+  `t.n('matches.newCount', 3)` (or `tn` outside components): the form comes from `Intl.PluralRules`, `{n}` is the
+  count (print it your own way with `t.n(key, n, { n: pad(n) })`). French counts 0 and 1 as singular.
+- **Dates and numbers.** `dateFormat(options)`, `numberFormat(options)` and `localeTag()` (`@/i18n`) give
+  `Intl` formatters for the current language (English is `en-GB`: 24-hour clock, day before month; `fr-FR`; `es-ES`),
+  cached per language. Call them when rendering, never at module level (`features/chat/time.ts` and
+  `features/calendar/schedule.ts` do). A component that prints one must be subscribed to the locale (`useT()` or
+  `useLocale()`). Place names from the geocoder come back in the interface language too.
+- **Wording that outlives a change of language.** Form errors and banners are strings worded when they were set, so
+  keep them in `useLocaleState` (as `useAuthForm` does): they read back empty once the language changes, instead of
+  staying on screen in the old one. State that decides *which view* is shown (a dead reset token) stays plain state.
+  When the problem can be a *kind* instead of a sentence (`PhotoEditor`'s `{ kind: 'open' | 'save' }`), keep the kind
+  and word it at render.
+- **What the app says itself vs what the server says.** Input refused before a request is sent (`wb/actions.ts`,
+  `wb/filters.ts`, `wb/search.ts`) and the errors of the HTTP client (`api/http.ts`) are catalogue messages
+  (`checks.ts`), worded when they happen. What the server says (`error.message` of a 4xx it words itself) is shown as
+  it comes, except the class-validator messages the forms know how to word (`features/auth/errors.ts`,
+  `features/me/errors.ts`).
+- **Not translated.** What the server says and the validation messages the client does not map; user content
+  (usernames, names, biographies, messages, date titles) and the interest catalogue (`#hiking`); the language names
+  (each is written in itself); the styleguide (`/styleguide`, a developer page); the `<title>` and description in
+  `index.html`, which show until the app starts (each page sets its own `<title>` afterwards); errors thrown for
+  developers (the state store failing to start, a missing node).
+- **Adding a language.** Add its code to `LANGUAGES` (`api/types.ts`: it is also the backend's), its name to
+  `LANGUAGE_NAMES`, a catalogue to `CATALOGUES` (with its side of every `domain({ … })`), a regional tag to `TAGS`
+  in `format.ts`, and a flag to `Flag` and `LocalePicker`.

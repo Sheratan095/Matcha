@@ -534,7 +534,7 @@
   aspect-ratio: 1;
 }
 
-/* halftone photo: bare specimens of the --fx-halftone-* tokens. PhotoFrame treatment="halftone" wraps the colour one (Photo.module.css). */
+/* halftone photo: PhotoFrame treatment="halftone" next to its source and a coarser setting (Photo.module.css has the recipe) */
 .halftones {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
@@ -545,48 +545,6 @@
   flex-direction: column;
   gap: var(--s-3);
   margin: 0;
-}
-.halftoneFrame {
-  isolation: isolate;
-  overflow: hidden;
-  border: var(--line);
-  border-radius: var(--r-md);
-  background: var(--c-paper-hi);
-  box-shadow: var(--sh-2);
-}
-.halftone {
-  position: relative;
-  /* bleed past the frame: the blur fades the wrapper's own edge, the frame's overflow crops that away */
-  margin: -4px;
-  /* ink on paper: white becomes the frame's stock instead of pure white */
-  mix-blend-mode: multiply;
-}
-.halftone > img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
-}
-.halftoneInk {
-  filter: var(--fx-halftone-mono);
-}
-.halftoneCmyk {
-  filter: var(--fx-halftone);
-}
-.halftoneInk::after,
-.halftoneCmyk::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-size: var(--fx-halftone-size);
-  mix-blend-mode: screen;
-}
-.halftoneInk::after {
-  background-image: var(--fx-halftone-screen);
-}
-.halftoneCmyk::after {
-  background-image: var(--fx-halftone-screen-cmyk);
-  background-blend-mode: multiply;
 }
 
 /* ------------------------------------------------------------ forms & display */

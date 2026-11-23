@@ -94,6 +94,18 @@
   margin-inline: -2px;
 }
 
+/* a label that may take two lines (translations run longer than English) */
+.wrap {
+  white-space: normal;
+  padding-block: 8px;
+}
+.wrap .label {
+  overflow: visible;
+  text-overflow: clip;
+  text-align: center;
+  line-height: 1.15;
+}
+
 /* sizes */
 .sm {
   --btn-h: 38px;

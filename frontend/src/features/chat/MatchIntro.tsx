@@ -1,6 +1,7 @@
 /** The top of a conversation: who you are connected with, and, while it is empty, a few ways to start. */
 import { useId } from 'react'
 import type { Match } from '@/api/types'
+import { useT } from '@/i18n'
 import { Button, Headline, IconArrowRight, IconCalendar, Label, PhotoFrame, Serial, Stamp } from '@/ui'
 import { icebreakersFor } from './icebreakers'
 import { pad2 } from './time'
@@ -24,6 +25,7 @@ function ticketNumber(id: string): number {
 }
 
 export function MatchIntro({ match, me, empty, onIcebreaker, onPlanDate }: MatchIntroProps) {
+  const t = useT()
   const headingId = useId()
   const name = match.username
 
@@ -31,9 +33,9 @@ export function MatchIntro({ match, me, empty, onIcebreaker, onPlanDate }: Match
     return (
       <div className={s.stub}>
         <Stamp variant="rubber" tone="matcha" size="sm" rotate={-3}>
-          Matched
+          {t('chat.matched')}
         </Stamp>
-        <span className="sr-only">You and {name} are connected.</span>
+        <span className="sr-only">{t('chat.connectedSr', { name })}</span>
       </div>
     )
   }
@@ -46,22 +48,22 @@ export function MatchIntro({ match, me, empty, onIcebreaker, onPlanDate }: Match
         <PhotoFrame src={me.photo} alt="" seed={me.seed} radius="md" shadow={3} tilt={-6} className={s.introMe} />
         <PhotoFrame src={match.profilePictureUrl} alt="" seed={match.userId} radius="md" shadow={3} tilt={5} className={s.introThem} />
         <Stamp tone="matcha" size="md" rotate={-11} className={s.introStamp} thunk>
-          Match!
+          {t('kit.matchStamp')}
         </Stamp>
       </div>
 
       <div className={s.introCopy}>
         <Label tone="muted" className={s.introMeta}>
-          <Serial value={ticketNumber(match.userId)} /> · Connected
+          <Serial value={ticketNumber(match.userId)} /> · {t('chat.connected')}
         </Label>
         <Headline as="h2" id={headingId} size="d2" width="condensed" print="riso" align="center">
-          Say hi to {name}
+          {t('chat.sayHi', { name })}
         </Headline>
       </div>
 
       <div className={s.breakers}>
         <Label size="sm" className={s.breakersHead}>
-          Icebreakers · tap to use
+          {t('chat.icebreakers')}
         </Label>
         <ul className={s.breakerList}>
           {icebreakers.map((item, index) => (
@@ -74,7 +76,7 @@ export function MatchIntro({ match, me, empty, onIcebreaker, onPlanDate }: Match
                 <span className={s.breakerUse} aria-hidden="true">
                   <IconArrowRight size={18} strokeWidth={3} />
                 </span>
-                <span className="sr-only">: put it in the message box</span>
+                <span className="sr-only">{t('chat.useSr')}</span>
               </button>
             </li>
           ))}
@@ -83,7 +85,7 @@ export function MatchIntro({ match, me, empty, onIcebreaker, onPlanDate }: Match
 
       {onPlanDate ? (
         <Button variant="paper" icon={<IconCalendar size={18} />} onClick={onPlanDate} className={s.introPlan}>
-          Or plan a date
+          {t('chat.orPlan')}
         </Button>
       ) : null}
     </section>

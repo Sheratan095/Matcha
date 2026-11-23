@@ -4,29 +4,30 @@
  */
 import type { Gender, OwnProfile, Profile, ProfileUpdatePayload, SexualPreference, UserPicture } from '@/api/types'
 import { checkDateOfBirth, checkName } from '@/features/auth/rules'
+import { t } from '@/i18n'
 import { normaliseTags } from '@/wb'
 
-export const GENDER_OPTIONS: readonly { value: Gender; label: string }[] = [
-  { value: 'female', label: 'Woman' },
-  { value: 'male', label: 'Man' },
-  { value: 'other', label: 'Other' },
-]
+/** The gender choices, worded in the language the page is in: call while rendering, never at module level. */
+export function genderOptions(): readonly { value: Gender; label: string }[] {
+  return [
+    { value: 'female', label: t('me.genderFemale') },
+    { value: 'male', label: t('me.genderMale') },
+    { value: 'other', label: t('me.genderOther') },
+  ]
+}
 
-export const PREFERENCE_OPTIONS: readonly { value: SexualPreference; label: string }[] = [
-  { value: 'female', label: 'Women' },
-  { value: 'male', label: 'Men' },
-  { value: 'both', label: 'Men & women' },
-  { value: 'other', label: 'Other' },
-]
+/** Whom the user can be into, likewise. */
+export function preferenceOptions(): readonly { value: SexualPreference; label: string }[] {
+  return [
+    { value: 'female', label: t('me.prefFemale') },
+    { value: 'male', label: t('me.prefMale') },
+    { value: 'both', label: t('me.prefBoth') },
+    { value: 'other', label: t('me.prefOther') },
+  ]
+}
 
-export const GENDER_LABEL: Record<Gender, string> = { female: 'Woman', male: 'Man', other: 'Other' }
-
-/** As the end of "Into …". */
-export const PREFERENCE_LABEL: Record<SexualPreference, string> = {
-  female: 'women',
-  male: 'men',
-  both: 'men & women',
-  other: 'other',
+export function genderLabel(gender: Gender): string {
+  return genderOptions().find((option) => option.value === gender)?.label ?? ''
 }
 
 /** Ids of the Me screen's edit sections, so other parts of the page can jump to them. */
@@ -74,51 +75,65 @@ export function profileChecks(profile: OwnProfile): ProfileCheck[] {
   return [
     {
       key: 'name',
-      short: 'Name',
-      missing: 'your first and last name',
-      fix: 'Add name',
+      short: t('me.checkNameShort'),
+      missing: t('me.checkNameMissing'),
+      fix: t('me.checkNameFix'),
       done: Boolean(profile.firstName?.trim() && profile.lastName?.trim()),
       required: true,
     },
     {
       key: 'birthday',
-      short: 'Born',
-      missing: 'your date of birth',
-      fix: 'Add birthday',
+      short: t('me.checkBirthShort'),
+      missing: t('me.checkBirthMissing'),
+      fix: t('me.checkBirthFix'),
       done: Boolean(profile.dateOfBirth),
       required: true,
     },
-    { key: 'gender', short: 'I am', missing: 'your gender', fix: 'Set gender', done: Boolean(profile.gender), required: true },
+    {
+      key: 'gender',
+      short: t('me.checkGenderShort'),
+      missing: t('me.checkGenderMissing'),
+      fix: t('me.checkGenderFix'),
+      done: Boolean(profile.gender),
+      required: true,
+    },
     {
       key: 'preference',
-      short: 'Into',
-      missing: 'who you are into',
-      fix: 'Set preference',
+      short: t('me.checkPrefShort'),
+      missing: t('me.checkPrefMissing'),
+      fix: t('me.checkPrefFix'),
       done: Boolean(profile.sexualPreference),
       required: true,
     },
     {
       key: 'biography',
-      short: 'Bio',
-      missing: 'a biography',
-      fix: 'Write bio',
+      short: t('me.checkBioShort'),
+      missing: t('me.checkBioMissing'),
+      fix: t('me.checkBioFix'),
       done: Boolean(profile.biography?.trim()),
       required: true,
     },
-    { key: 'interests', short: 'Tags', missing: 'an interest', fix: 'Add interests', done: profile.interests.length > 0, required: true },
+    {
+      key: 'interests',
+      short: t('me.checkTagsShort'),
+      missing: t('me.checkTagsMissing'),
+      fix: t('me.checkTagsFix'),
+      done: profile.interests.length > 0,
+      required: true,
+    },
     {
       key: 'location',
-      short: 'Place',
-      missing: 'your location',
-      fix: 'Set location',
+      short: t('me.checkPlaceShort'),
+      missing: t('me.checkPlaceMissing'),
+      fix: t('me.checkPlaceFix'),
       done: profile.latitude != null && profile.longitude != null,
       required: true,
     },
     {
       key: 'photo',
-      short: 'Photo',
-      missing: 'a profile photo',
-      fix: 'Add photo',
+      short: t('me.checkPhotoShort'),
+      missing: t('me.checkPhotoMissing'),
+      fix: t('me.checkPhotoFix'),
       done: profile.pictures.some((picture) => picture.isProfile),
       required: true,
     },
@@ -128,7 +143,7 @@ export function profileChecks(profile: OwnProfile): ProfileCheck[] {
 /** "a, b and c". */
 export function listPhrase(items: readonly string[]): string {
   if (items.length <= 1) return items.join('')
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+  return `${items.slice(0, -1).join(', ')} ${t('search.and')} ${items[items.length - 1]}`
 }
 
 // ---------------------------------------------------------------- drafts
@@ -233,11 +248,11 @@ export function draftProblems(
       const problem = checkDateOfBirth(draft.dateOfBirth)
       if (problem) problems.dateOfBirth = problem
     }
-    if (key === 'gender' && !draft.gender) problems.gender = 'Pick the one that fits you best.'
-    if (key === 'sexualPreference' && !draft.sexualPreference) problems.sexualPreference = 'Pick who you want to see.'
-    if (key === 'biography' && !draft.biography.trim()) problems.biography = 'Write a line or two: it is required to appear in Discover.'
-    if (key === 'biography' && draft.biography.length > 500) problems.biography = 'A biography is 500 characters at most.'
-    if (key === 'interests' && normaliseTags(draft.interests).length === 0) problems.interests = 'Add at least one interest.'
+    if (key === 'gender' && !draft.gender) problems.gender = t('me.pickGender')
+    if (key === 'sexualPreference' && !draft.sexualPreference) problems.sexualPreference = t('me.pickPreference')
+    if (key === 'biography' && !draft.biography.trim()) problems.biography = t('me.bioRequired')
+    if (key === 'biography' && draft.biography.length > 500) problems.biography = t('me.bioLong')
+    if (key === 'interests' && normaliseTags(draft.interests).length === 0) problems.interests = t('me.interestRequired')
   }
   return problems
 }

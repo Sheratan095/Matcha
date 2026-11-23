@@ -4,6 +4,7 @@
  */
 import { useState } from 'react'
 import type { PlannedDate } from '@/api/types'
+import { t, type MessageKey } from '@/i18n'
 import { toast, type Tone } from '@/ui'
 import { actions, toApiError, type DateAnswer } from '@/wb'
 import { isHappening, nameOf } from './schedule'
@@ -16,24 +17,24 @@ export interface Look {
 /** The stub's colour and the badge of a date. */
 export function lookOf(date: PlannedDate, now: number): Look {
   // an invite nobody answered before it started can no longer be answered
-  if (date.status === 'pending' && date.startsAt <= now) return { tone: 'kraft', badge: 'No answer' }
+  if (date.status === 'pending' && date.startsAt <= now) return { tone: 'kraft', badge: t('cal.badgeNoAnswer') }
   if (date.endsAt <= now) return { tone: 'kraft', badge: null }
   // only a date both said yes to is happening (a declined one stays declined through its hours)
-  if (date.status === 'accepted') return isHappening(date, now) ? { tone: 'strawberry', badge: 'Now' } : { tone: 'matcha', badge: "It's on" }
-  if (date.status === 'declined') return { tone: 'ink', badge: 'Declined' }
-  return date.mine ? { tone: 'kraft', badge: 'Waiting' } : { tone: 'yolk', badge: 'Invite' }
+  if (date.status === 'accepted') return isHappening(date, now) ? { tone: 'strawberry', badge: t('time.now') } : { tone: 'matcha', badge: t('cal.badgeOn') }
+  if (date.status === 'declined') return { tone: 'ink', badge: t('cal.badgeDeclined') }
+  return date.mine ? { tone: 'kraft', badge: t('cal.badgeWaiting') } : { tone: 'yolk', badge: t('cal.badgeInvite') }
 }
 
-const ANSWERED: Record<DateAnswer, { tone: 'matcha' | 'ink'; title: (name: string) => string }> = {
-  accept: { tone: 'matcha', title: (name) => `It's a date with ${name}` },
-  decline: { tone: 'ink', title: (name) => `You declined ${name}'s invite` },
-  cancel: { tone: 'ink', title: () => 'Date called off' },
+const ANSWERED: Record<DateAnswer, { tone: 'matcha' | 'ink'; title: MessageKey }> = {
+  accept: { tone: 'matcha', title: 'cal.answeredAccept' },
+  decline: { tone: 'ink', title: 'cal.answeredDecline' },
+  cancel: { tone: 'ink', title: 'cal.answeredCancel' },
 }
 
 /** The toast after an answer went through. */
 export function answered(date: PlannedDate, answer: DateAnswer): void {
   const { tone, title } = ANSWERED[answer]
-  toast.show({ id: `date-${date.id}`, tone, title: title(nameOf(date)), message: date.title })
+  toast.show({ id: `date-${date.id}`, tone, title: t(title, { name: nameOf(date) }), message: date.title })
 }
 
 /** Accepting or declining an invite from where it is shown; `busy` is the answer on its way. */
@@ -49,7 +50,7 @@ export function useAnswerInvite(date: PlannedDate): { busy: DateAnswer | null; a
       },
       (error: unknown) => {
         setBusy(null)
-        toast.error(choice === 'accept' ? 'Could not accept' : 'Could not decline', toApiError(error).message)
+        toast.error(choice === 'accept' ? t('cal.couldNotAccept') : t('cal.couldNotDecline'), toApiError(error).message)
       },
     )
   }

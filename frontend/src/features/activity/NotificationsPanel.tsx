@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useNow } from '@/features/chat/hooks'
+import { useT } from '@/i18n'
 import { pad2, shortAgo } from '@/features/chat/time'
 import { Avatar, Button, EmptyState, IconTrash, ListRow, TicketHeader } from '@/ui'
 import { clearNotifications, markAllNotificationsRead, NOTIFICATION_LIMIT, useNotifications, type AppNotification } from '@/wb'
@@ -25,6 +26,7 @@ export interface NotificationsPanelProps {
 }
 
 export function NotificationsPanel({ onTab }: NotificationsPanelProps) {
+  const t = useT()
   const items = useNotifications()
   const now = useNow(30_000)
   const unread = items.filter((item) => !item.read)
@@ -40,23 +42,23 @@ export function NotificationsPanel({ onTab }: NotificationsPanelProps) {
 
   if (items.length === 0) {
     return (
-      <EmptyState stamp="All quiet" stampTone="matcha" title="Nothing new yet">
-        Likes, visits, matches, messages and dates show up here as they happen, even when you were on another page.
+      <EmptyState stamp={t('act.quietStamp')} stampTone="matcha" title={t('act.noteQuietTitle')}>
+        {t('act.noteEmpty')}
       </EmptyState>
     )
   }
 
   return (
     <>
-      <TicketHeader label="Newest first" meta={pad2(items.length)} />
+      <TicketHeader label={t('act.newestFirst')} meta={pad2(items.length)} />
       <p className={s.honest}>
-        The last {NOTIFICATION_LIMIT} are kept in this browser, and signing out clears them.
+        {t('act.kept', { n: NOTIFICATION_LIMIT })}
       </p>
       <ul className={s.notes}>
         {items.map((item) => {
           const copy = notificationCopy(item, now)
           const go = copy.go
-          const name = item.person.username.trim() || 'Someone'
+          const name = item.person.username.trim() || t('toast.someone')
           return (
             <li key={item.id}>
               <ListRow
@@ -74,7 +76,7 @@ export function NotificationsPanel({ onTab }: NotificationsPanelProps) {
       </ul>
       <div className={s.notesFoot}>
         <Button size="sm" variant="paper" icon={<IconTrash size={16} />} onClick={clearNotifications}>
-          Clear all
+          {t('act.clearAll')}
         </Button>
       </div>
     </>

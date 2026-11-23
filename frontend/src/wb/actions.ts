@@ -42,6 +42,7 @@ import {
   type VerifyEmailResult,
 } from '@/api/types'
 import { API_URL } from '@/config'
+import { t } from '@/i18n'
 import { awaitLoad, awaitPending, refresh, reload, run } from './commands'
 import { closeGates, markStale } from './demand'
 import {
@@ -328,7 +329,7 @@ async function login(credentials: LoginPayload): Promise<LoginResult> {
   if (getNodeValue('sessionUserId') == null) {
     throw apiError(
       0,
-      'Signed in, but the browser kept no session. Allow cookies for this site, and open the app on the address set as FRONTEND_URL in backend/.env.',
+      t('check.noSession'),
       LOCAL_ERROR.NO_SESSION,
     )
   }
@@ -413,8 +414,8 @@ async function updateProfile(changes: ProfileUpdatePayload): Promise<OwnProfile>
  */
 async function setLocation(spot: LocationPayload): Promise<void> {
   const { latitude, longitude } = spot
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) invalid('Latitude must be between -90 and 90')
-  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) invalid('Longitude must be between -180 and 180')
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) invalid(t('check.latitude'))
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) invalid(t('check.longitude'))
   await run('locationUpdate', { latitude, longitude })
   await refresh('myProfile')
   // Distances on the cards are measured from here.
@@ -423,10 +424,10 @@ async function setLocation(spot: LocationPayload): Promise<void> {
 
 /** Uploads one picture (JPEG / PNG / WEBP, 5 MB, 5 pictures at most); resolves once `myProfile` has it. */
 async function uploadPicture(file: Blob): Promise<PicturesResult> {
-  if (!PICTURE_MIME_TYPES.includes(file.type)) invalid('Only JPEG, PNG and WEBP images are allowed')
-  if (file.size > MAX_PICTURE_BYTES) invalid('File too large: 5 MB at most')
+  if (!PICTURE_MIME_TYPES.includes(file.type)) invalid(t('check.pictureType'))
+  if (file.size > MAX_PICTURE_BYTES) invalid(t('check.pictureSize'))
   const count = getNodeValue('myProfile')?.pictures.length ?? 0
-  if (count >= MAX_USER_PICTURES) invalid(`You can upload at most ${MAX_USER_PICTURES} pictures`)
+  if (count >= MAX_USER_PICTURES) invalid(t('check.pictureCount', { n: MAX_USER_PICTURES }))
   const form = new FormData()
   form.append('file', file, file instanceof File ? file.name : 'picture')
   const result = await run('pictureUpload', form)
@@ -464,7 +465,7 @@ async function showApiProfile(userId: string): Promise<OtherProfile> {
       : await awaitLoad('apiProfile', () => setNode('apiProfileId', userId))
   if (outcome.error) throw outcome.error
   const profile = getNodeValue('apiProfile')
-  if (!profile) throw apiError(0, 'The profile could not be loaded.', LOCAL_ERROR.NOT_SENT)
+  if (!profile) throw apiError(0, t('check.profileNotLoaded'), LOCAL_ERROR.NOT_SENT)
   if (profile.userId !== userId) throw apiError(0, 'Another profile was opened meanwhile.', LOCAL_ERROR.DROPPED)
   // the visit is recorded: the visit history is out of date (refetched when it is shown next)
   markStale('visitedProfiles')
@@ -864,8 +865,8 @@ async function openChat(userId: string): Promise<Message[]> {
 async function sendMessage(userId: string, text: string): Promise<void> {
   pathId(userId, 'user id')
   const content = text.trim()
-  if (!content) invalid('The message is empty.')
-  if (content.length > MAX_MESSAGE_LENGTH) invalid(`A message is ${MAX_MESSAGE_LENGTH} characters at most.`)
+  if (!content) invalid(t('check.messageEmpty'))
+  if (content.length > MAX_MESSAGE_LENGTH) invalid(t('check.messageLong', { n: MAX_MESSAGE_LENGTH }))
   await run('chatSend', { toUserId: userId, content })
   await refresh('chatList')
   await reloadOpenChat(userId)
@@ -895,19 +896,19 @@ function timeOf(value: number | Date): number {
 
 /** The request body for `plan`, or INVALID (nothing is sent) when the backend would refuse it. */
 function eventBody(plan: DatePlan): CreateEventPayload {
-  if (typeof plan.inviteeId !== 'string' || !URL_SAFE.test(plan.inviteeId)) invalid('Pick who the date is with.')
+  if (typeof plan.inviteeId !== 'string' || !URL_SAFE.test(plan.inviteeId)) invalid(t('check.datePickWho'))
   const title = (plan.title ?? '').replace(/\s+/g, ' ').trim()
-  if (!title) invalid('Give the date a title.')
-  if (title.length > MAX_EVENT_TITLE_LENGTH) invalid(`A title is ${MAX_EVENT_TITLE_LENGTH} characters at most.`)
+  if (!title) invalid(t('check.dateTitle'))
+  if (title.length > MAX_EVENT_TITLE_LENGTH) invalid(t('check.dateTitleLong', { n: MAX_EVENT_TITLE_LENGTH }))
   const description = (plan.description ?? '').trim()
   if (description.length > MAX_EVENT_DESCRIPTION_LENGTH) {
-    invalid(`A description is ${MAX_EVENT_DESCRIPTION_LENGTH} characters at most.`)
+    invalid(t('check.dateDescriptionLong', { n: MAX_EVENT_DESCRIPTION_LENGTH }))
   }
   const startsAt = timeOf(plan.startsAt)
   const endsAt = timeOf(plan.endsAt)
-  if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) invalid('Pick a day and a time.')
-  if (startsAt <= Date.now()) invalid('A date cannot start in the past.')
-  if (endsAt <= startsAt) invalid('A date has to end after it starts.')
+  if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) invalid(t('check.datePickTime'))
+  if (startsAt <= Date.now()) invalid(t('check.datePast'))
+  if (endsAt <= startsAt) invalid(t('check.dateEnd'))
   const body: CreateEventPayload = {
     inviteeId: plan.inviteeId,
     title,
@@ -918,8 +919,8 @@ function eventBody(plan: DatePlan): CreateEventPayload {
   if (description) body.description = description
   if (plan.place) {
     const { latitude, longitude } = plan.place
-    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) invalid('Latitude must be between -90 and 90')
-    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) invalid('Longitude must be between -180 and 180')
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) invalid(t('check.latitude'))
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) invalid(t('check.longitude'))
     body.latitude = latitude
     body.longitude = longitude
   }

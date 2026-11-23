@@ -1,4 +1,5 @@
 /** First lines for an empty conversation, built from what the two people share when it is known. */
+import { t, type MessageKey } from '@/i18n'
 import { tagLabel } from './people'
 
 export interface Icebreaker {
@@ -15,24 +16,12 @@ export interface IcebreakerSource {
   interests: readonly string[]
 }
 
-const SHARED: readonly ((tag: string) => string)[] = [
-  (tag) => `Okay, we both like ${tag}. How did you get into it?`,
-  (tag) => `Settle this: where's the best place for ${tag} around here?`,
-  (tag) => `Rate your ${tag} skills from 1 to 10. Be honest.`,
-  (tag) => `Hot take about ${tag}. Go.`,
-  (tag) => `What's the best ${tag} moment you've had this year?`,
-]
+// The openers are catalogue messages (`chat.ice…`), read in the language the page is in when they are built.
+const SHARED: readonly MessageKey[] = ['chat.iceShared1', 'chat.iceShared2', 'chat.iceShared3', 'chat.iceShared4', 'chat.iceShared5']
 
-const THEIRS: readonly ((tag: string) => string)[] = [
-  (tag) => `I saw ${tag} on your profile. What's the story there?`,
-  (tag) => `Teach me one thing about ${tag} in a single message?`,
-]
+const THEIRS: readonly MessageKey[] = ['chat.iceTheirs1', 'chat.iceTheirs2']
 
-const GENERIC: readonly string[] = [
-  'Tea or coffee? Choose carefully, this decides everything.',
-  "What's the best thing that happened to you this week?",
-  'Describe your perfect Sunday in three words.',
-]
+const GENERIC: readonly MessageKey[] = ['chat.iceGeneric1', 'chat.iceGeneric2', 'chat.iceGeneric3']
 
 const NOTHING_KNOWN: IcebreakerSource = { commonTags: [], interests: [] }
 
@@ -40,14 +29,14 @@ const NOTHING_KNOWN: IcebreakerSource = { commonTags: [], interests: [] }
 export function icebreakersFor(person: IcebreakerSource = NOTHING_KNOWN, count = 3): Icebreaker[] {
   const out: Icebreaker[] = []
   person.commonTags.slice(0, count).forEach((tag, index) => {
-    out.push({ text: SHARED[index % SHARED.length](tagLabel(tag)), tag })
+    out.push({ text: t(SHARED[index % SHARED.length], { tag: tagLabel(tag) }), tag })
   })
   const theirs = person.interests.filter((name) => !person.commonTags.includes(name))
   for (let index = 0; out.length < count && index < Math.min(theirs.length, THEIRS.length); index++) {
-    out.push({ text: THEIRS[index](tagLabel(theirs[index])), tag: theirs[index] })
+    out.push({ text: t(THEIRS[index], { tag: tagLabel(theirs[index]) }), tag: theirs[index] })
   }
   for (let index = 0; out.length < count && index < GENERIC.length; index++) {
-    out.push({ text: GENERIC[index], tag: null })
+    out.push({ text: t(GENERIC[index]), tag: null })
   }
   return out
 }

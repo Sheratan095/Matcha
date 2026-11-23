@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { UserSummary } from '@/api/types'
+import { useT } from '@/i18n'
 import {
   Avatar,
   Button,
@@ -12,6 +13,7 @@ import {
   IconMail,
   IconRefresh,
   ListRow,
+  LocalePicker,
   Notice,
   Skeleton,
   Stack,
@@ -28,6 +30,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 // ---------------------------------------------------------------- email
 
 function EmailSection() {
+  const t = useT()
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | undefined>()
   const [formError, setFormError] = useState<string[]>([])
@@ -39,7 +42,7 @@ function EmailSection() {
     if (busy) return
     const value = email.trim()
     if (!EMAIL.test(value)) {
-      setError('Enter a valid email address.')
+      setError(t('me.emailInvalid'))
       return
     }
     setBusy(true)
@@ -50,7 +53,7 @@ function EmailSection() {
       setSentTo(value.toLowerCase())
       setEmail('')
     } catch (failure) {
-      const split = splitApiError(toApiError(failure), { newEmail: 'New email' }, 'newEmail')
+      const split = splitApiError(toApiError(failure), { newEmail: t('me.labelNewEmail') }, 'newEmail')
       setError(split.fields.newEmail)
       setFormError(split.form)
     } finally {
@@ -59,15 +62,15 @@ function EmailSection() {
   }
 
   return (
-    <Card as="section" aria-labelledby="me-email-title" label="Account" meta="Email">
+    <Card as="section" aria-labelledby="me-email-title" label={t('me.tabAccount')} meta={t('me.emailMeta')}>
       <Stack gap={4}>
         <Headline as="h2" id="me-email-title" size="d3" width="condensed">
-          Change email
+          {t('me.emailTitle')}
         </Headline>
         <form onSubmit={submit} noValidate>
           <Stack gap={4}>
             <TextField
-              label="New email"
+              label={t('me.labelNewEmail')}
               type="email"
               autoComplete="email"
               inputMode="email"
@@ -78,22 +81,43 @@ function EmailSection() {
                 setError(undefined)
               }}
               error={error}
-              hint="We send a link to the new address. Your current one keeps working until you open it."
+              hint={t('me.emailHint')}
             />
-            <FormError error={formError} title="Not sent" />
+            <FormError error={formError} title={t('me.notSent')} />
             <div>
               <Button type="submit" variant="ink" icon={<IconMail size={18} />} loading={busy}>
-                Send link
+                {t('me.sendLink')}
               </Button>
             </div>
           </Stack>
         </form>
         {sentTo ? (
-          <Notice tone="success" title="Check the new inbox" onDismiss={() => setSentTo(null)}>
-            A verification link is on its way to <strong>{sentTo}</strong>. Your sign-in email changes once you open
-            it.
+          <Notice tone="success" title={t('me.checkInbox')} onDismiss={() => setSentTo(null)}>
+            {t.rich('me.linkSent', { email: <strong>{sentTo}</strong> })}
           </Notice>
         ) : null}
+      </Stack>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------- language
+
+/** The interface language: the same compact picker as the signed-out pages (a flag and the language code), kept in this browser. */
+function LanguageSection() {
+  const t = useT()
+  return (
+    <Card as="section" aria-labelledby="me-language-title" label={t('me.tabAccount')} meta={t('me.language')}>
+      <Stack gap={4}>
+        <Headline as="h2" id="me-language-title" size="d3" width="condensed">
+          {t('me.language')}
+        </Headline>
+        <Text size="sm" muted>
+          {t('me.languageIntro')}
+        </Text>
+        <div>
+          <LocalePicker align="start" />
+        </div>
       </Stack>
     </Card>
   )
@@ -102,6 +126,7 @@ function EmailSection() {
 // ---------------------------------------------------------------- session
 
 function SessionSection() {
+  const t = useT()
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -117,18 +142,18 @@ function SessionSection() {
     }
   }
   return (
-    <Card as="section" aria-labelledby="me-session-title" label="Account" meta="Session">
+    <Card as="section" aria-labelledby="me-session-title" label={t('me.tabAccount')} meta={t('me.sessionMeta')}>
       <Stack gap={4}>
         <Headline as="h2" id="me-session-title" size="d3" width="condensed">
-          Log out
+          {t('me.logOut')}
         </Headline>
         <Text size="sm" muted>
-          Ends the session in this browser. Your profile stays as it is.
+          {t('me.logOutBody')}
         </Text>
-        <FormError error={error} title="Could not log out" />
+        <FormError error={error} title={t('me.logOutFailed')} />
         <div>
           <Button variant="paper" icon={<IconLogout size={18} />} loading={busy} onClick={logout}>
-            Log out
+            {t('me.logOut')}
           </Button>
         </div>
       </Stack>
@@ -142,6 +167,7 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 
 /** The people you blocked (`GET /profile/blocks`, loaded when this tab first shows), each with "Unblock". */
 function BlockedSection() {
+  const t = useT()
   useLoad('blockedUsers')
   const result = useNodeValue('blockedUsers')
   const status = useNodeStatus('blockedUsers')
@@ -157,8 +183,8 @@ function BlockedSection() {
       await actions.unblockUser(person.userId)
       toast.show({
         tone: 'matcha',
-        title: `@${person.username} is unblocked`,
-        message: 'They can show up in your deck and in searches again.',
+        title: t('me.unblockedTitle', { username: person.username }),
+        message: t('me.unblockedBody'),
       })
     } catch (failure) {
       setError(describe(toApiError(failure)))
@@ -173,24 +199,24 @@ function BlockedSection() {
       status.status === 'error' ? (
         <Notice
           tone="error"
-          title="The list did not load"
+          title={t('me.blockedLoadFailed')}
           action={
             <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={() => void refresh('blockedUsers')}>
-              Try again
+              {t('common.tryAgain')}
             </Button>
           }
         >
-          {status.error ? describe(status.error) : 'Something went wrong.'}
+          {status.error ? describe(status.error) : t('kit.wrong')}
         </Notice>
       ) : (
-        <div className={s.blocked} aria-busy="true" aria-label="Loading the people you blocked">
+        <div className={s.blocked} aria-busy="true" aria-label={t('me.blockedLoading')}>
           {[0, 1].map((index) => (
             <Skeleton key={index} height={52} />
           ))}
         </div>
       )
   } else if (blocks.length === 0) {
-    list = <Text size="sm">Nobody. Someone you block from their profile shows up here, and can be unblocked.</Text>
+    list = <Text size="sm">{t('me.blockedNobody')}</Text>
   } else {
     list = (
       <ul className={s.blocked}>
@@ -205,10 +231,10 @@ function BlockedSection() {
                   variant="paper"
                   loading={busyId === person.userId}
                   disabled={busyId !== null && busyId !== person.userId}
-                  aria-label={`Unblock @${person.username}`}
+                  aria-label={t('me.unblockName', { username: person.username })}
                   onClick={() => void unblock(person)}
                 >
-                  Unblock
+                  {t('me.unblock')}
                 </Button>
               }
             />
@@ -222,28 +248,29 @@ function BlockedSection() {
     <Card
       as="section"
       aria-labelledby="me-blocked-title"
-      label="Account"
-      meta={blocks ? `${pad2(blocks.length)} blocked` : 'Blocked'}
+      label={t('me.tabAccount')}
+      meta={blocks ? t.n('me.blockedCount', blocks.length, { n: pad2(blocks.length) }) : t('me.blockedMeta')}
     >
       <Stack gap={4}>
         <Headline as="h2" id="me-blocked-title" size="d3" width="condensed">
-          Blocked people
+          {t('me.blockedTitle')}
         </Headline>
         <Text size="sm" muted>
-          They do not show up in your deck or searches, and cannot reach you. Unblocking does not bring a match back.
+          {t('me.blockedBody')}
         </Text>
         {list}
-        <FormError error={error} title="Not unblocked" />
+        <FormError error={error} title={t('me.notUnblocked')} />
       </Stack>
     </Card>
   )
 }
 
-/** The account tab: email, blocked people and the session. */
+/** The account tab: email, language, blocked people and the session. */
 export function AccountSettings() {
   return (
     <Stack gap={6}>
       <EmailSection />
+      <LanguageSection />
       <BlockedSection />
       <SessionSection />
     </Stack>

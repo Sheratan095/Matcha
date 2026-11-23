@@ -12,6 +12,7 @@ import {
   type Gender,
   type SexualPreference,
 } from '@/api/types'
+import { t } from '@/i18n'
 import { nextNonce } from './commands'
 import { DISCOVER_SORTS, FILTER_LIMITS, normaliseTags, parseTags } from './filters'
 import type { NodeName } from './nodes'
@@ -125,17 +126,17 @@ const isWhole = (value: number | null) => value === null || Number.isInteger(val
 export function searchProblem(criteria: SearchCriteria): string | null {
   const { q, ageMin, ageMax, distance, fameMin, sort } = criteria
   const { age, distance: km, fame } = FILTER_LIMITS
-  if (q !== null && q.length > MAX_SEARCH_QUERY_LENGTH) return `A name is ${MAX_SEARCH_QUERY_LENGTH} characters at most.`
-  if (![ageMin, ageMax, distance, fameMin].every(isWhole)) return 'Filters must be whole numbers.'
-  if (ageMin !== null && (ageMin < age.min || ageMin > age.max)) return `Ages go from ${age.min} to ${age.max}.`
-  if (ageMax !== null && (ageMax < age.min || ageMax > age.max)) return `Ages go from ${age.min} to ${age.max}.`
-  if (ageMin !== null && ageMax !== null && ageMin > ageMax) return 'The minimum age cannot be above the maximum age.'
-  if (distance !== null && (distance < km.min || distance > km.max)) return `The distance must be between ${km.min} and ${km.max} km.`
-  if (fameMin !== null && (fameMin < fame.min || fameMin > fame.max)) return `The fame rating goes from ${fame.min} to ${fame.max}.`
-  if (criteria.genders.some((gender) => !GENDERS.includes(gender))) return 'Unknown gender.'
-  if (criteria.preferences.some((preference) => !SEXUAL_PREFERENCES.includes(preference))) return 'Unknown preference.'
-  if (!DISCOVER_SORTS.includes(sort)) return `Unknown sort "${sort}".`
-  if (!hasSearchCriteria(criteria)) return 'Type a name or pick a filter.'
+  if (q !== null && q.length > MAX_SEARCH_QUERY_LENGTH) return t('filters.nameLong', { n: MAX_SEARCH_QUERY_LENGTH })
+  if (![ageMin, ageMax, distance, fameMin].every(isWhole)) return t('filters.whole')
+  if (ageMin !== null && (ageMin < age.min || ageMin > age.max)) return t('filters.ages', { min: age.min, max: age.max })
+  if (ageMax !== null && (ageMax < age.min || ageMax > age.max)) return t('filters.ages', { min: age.min, max: age.max })
+  if (ageMin !== null && ageMax !== null && ageMin > ageMax) return t('filters.minAboveMax')
+  if (distance !== null && (distance < km.min || distance > km.max)) return t('filters.distance', { min: km.min, max: km.max })
+  if (fameMin !== null && (fameMin < fame.min || fameMin > fame.max)) return t('filters.fame', { min: fame.min, max: fame.max })
+  if (criteria.genders.some((gender) => !GENDERS.includes(gender))) return t('filters.unknownGender')
+  if (criteria.preferences.some((preference) => !SEXUAL_PREFERENCES.includes(preference))) return t('filters.unknownPreference')
+  if (!DISCOVER_SORTS.includes(sort)) return t('filters.sort', { sort })
+  if (!hasSearchCriteria(criteria)) return t('filters.needCriteria')
   return null
 }
 

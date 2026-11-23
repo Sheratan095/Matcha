@@ -1,5 +1,6 @@
 /** What the deck's tray shows when there is no card: shuffling, jammed, sold out. */
 import type { ReactNode } from 'react'
+import { useT } from '@/i18n'
 import {
   Button,
   Halftone,
@@ -17,17 +18,18 @@ import {
 import s from './DeckStates.module.css'
 
 /** A deck of blank cards being shuffled. */
-export function DeckSkeleton({ caption = 'Shuffling the deck' }: { caption?: string }) {
+export function DeckSkeleton({ caption }: { caption?: string }) {
+  const t = useT()
   return (
     <div className={s.skeleton} role="status" aria-live="polite">
-      <span className="sr-only">{caption}…</span>
+      <span className="sr-only">{caption ?? t('deck.shuffling')}…</span>
       <div className={s.skUnder} data-depth="2" aria-hidden="true" />
       <div className={s.skUnder} data-depth="1" aria-hidden="true" />
       <div className={s.skCard} aria-hidden="true">
         <div className={s.skPhoto}>
           <Skeleton className={s.skFill} />
           <Stamp variant="rubber" tone="ink" size="lg" rotate={-9} className={s.skStamp}>
-            Shuffling
+            {t('deck.skeletonStamp')}
           </Stamp>
         </div>
         <div className={s.skLabel}>
@@ -76,20 +78,21 @@ export interface DeckErrorProps {
 }
 
 export function DeckError({ message, onRetry, retrying }: DeckErrorProps) {
+  const t = useT()
   return (
-    <PosterPanel word="Jam" wordTone="strawberry" role="alert">
+    <PosterPanel word={t('deck.jam')} wordTone="strawberry" role="alert">
       <Stamp variant="rubber" tone="strawberry" size="md" rotate={-7} className={s.stamp}>
-        Misprint
+        {t('deck.misprint')}
       </Stamp>
       <Headline as="h2" size="d2" width="condensed" print="riso" offset="strawberry">
-        The press jammed
+        {t('deck.jammedTitle')}
       </Headline>
       <Text size="sm" className={s.copy}>
-        <IconWarning size={16} strokeWidth={3} className={s.inlineIcon} /> The deck could not be printed: {message}
+        <IconWarning size={16} strokeWidth={3} className={s.inlineIcon} /> {t('deck.jammedBody', { message })}
       </Text>
       <div className={s.actions}>
         <Button variant="ink" block icon={<IconRefresh size={20} />} loading={retrying} onClick={onRetry}>
-          Try again
+          {t('common.tryAgain')}
         </Button>
       </div>
     </PosterPanel>
@@ -109,32 +112,33 @@ export interface DeckEmptyProps {
 }
 
 export function DeckEmpty({ scope, onWiden, onEditFilters, onReload, onRewind, busy }: DeckEmptyProps) {
+  const t = useT()
   return (
-    <PosterPanel word="Sold out" wordTone="matcha" halftone="yolk" role="status">
+    <PosterPanel word={t('deck.soldOut')} wordTone="matcha" halftone="yolk" role="status">
       <Label tone="muted" className={s.kicker}>
-        Last card · end of the print run
+        {t('deck.lastCard')}
       </Label>
       <Headline as="h2" size="d2" width="condensed" print="riso">
-        That&rsquo;s everyone
+        {t('deck.everyone')}
       </Headline>
       <Text size="sm" className={s.copy}>
-        Nobody new {scope}. Widen the net, or go round again: the people you passed on come back.
+        {t('deck.emptyBody', { scope })}
       </Text>
       <div className={s.actions}>
         {onWiden ? (
           <Button block icon={<IconSliders size={20} />} loading={busy === 'widen'} onClick={onWiden}>
-            Widen filters
+            {t('deck.widen')}
           </Button>
         ) : (
           <Button block icon={<IconSliders size={20} />} onClick={onEditFilters}>
-            Edit filters
+            {t('deck.editFilters')}
           </Button>
         )}
         <Button variant="paper" size="sm" block loading={busy === 'reload'} onClick={onReload}>
-          Go round again
+          {t('deck.goRound')}
         </Button>
         <button type="button" className={s.textButton} onClick={onRewind}>
-          Undo my last swipe
+          {t('deck.undoLast')}
         </button>
       </div>
     </PosterPanel>

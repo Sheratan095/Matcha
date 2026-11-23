@@ -5,13 +5,14 @@
  */
 import { useId, useState, type ReactNode } from 'react'
 import type { DiscoverSort, Gender, SexualPreference } from '@/api/types'
-import { GENDER_OPTIONS, PREFERENCE_OPTIONS } from '@/features/me/profile'
+import { genderOptions, preferenceOptions } from '@/features/me/profile'
+import { useT } from '@/i18n'
 import { Button, Chip, DualSlider, Field, FormError, Segmented, Sheet, Skeleton, Slider, Stack, Text } from '@/ui'
 import { actions, DEFAULT_DISCOVER_FILTERS, toApiError, useLoad, useNodeStatus, useNodeValue } from '@/wb'
-import { AGE_RANGE, DISTANCE_RANGE, FAME_RANGE, sameFilters, SORT_LABEL, type SheetFilters } from './filterRules'
+import { AGE_RANGE, DISTANCE_RANGE, FAME_RANGE, sameFilters, SORT_KEY, type SheetFilters } from './filterRules'
 import s from './FilterSheet.module.css'
 
-const SORT_OPTIONS = (Object.keys(SORT_LABEL) as DiscoverSort[]).map((value) => ({ value, label: SORT_LABEL[value] }))
+const SORTS = Object.keys(SORT_KEY) as DiscoverSort[]
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
@@ -29,9 +30,15 @@ function ChipChoice<V extends string>({
   picked: readonly V[]
   onToggle: (value: V) => void
 }) {
+  const t = useT()
   const labelId = useId()
   return (
-    <Field label={label} labelId={labelId} aside={picked.length > 0 ? `${pad2(picked.length)} picked` : 'Any'} hint={hint}>
+    <Field
+      label={label}
+      labelId={labelId}
+      aside={picked.length > 0 ? t.n('deck.picked', picked.length, { n: pad2(picked.length) }) : t('deck.any')}
+      hint={hint}
+    >
       <div role="group" aria-labelledby={labelId} className={s.tags}>
         {options.map((option) => {
           const selected = picked.includes(option.value)
@@ -96,14 +103,15 @@ export function FilterSheet({
   onApplied,
   defaults = DECK_DEFAULTS,
   people = false,
-  title = 'Filters',
-  kicker = 'Tune the deck',
-  tagsHint = 'People who have at least one of these.',
-  submitLabel = 'Show people',
-  sortLabel = 'Order the deck by',
+  title,
+  kicker,
+  tagsHint,
+  submitLabel,
+  sortLabel,
   formatDistance,
   formatFame,
 }: FilterSheetProps) {
+  const t = useT()
   const [draft, setDraft] = useState<SheetFilters>(filters)
   const [wasOpen, setWasOpen] = useState(open)
   const [busy, setBusy] = useState(false)
@@ -162,31 +170,31 @@ export function FilterSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title={title}
-      kicker={kicker}
+      title={title ?? t('deck.filtersTitle')}
+      kicker={kicker ?? t('deck.filtersKicker')}
       footer={
         <div className={s.footer}>
           <Button variant="paper" onClick={() => setDraft(draftOf(defaults))} disabled={busy || sameFilters(draft, defaults)}>
-            Reset
+            {t('deck.reset')}
           </Button>
           <Button onClick={apply} loading={busy} block>
-            {submitLabel}
+            {submitLabel ?? t('deck.showPeople')}
           </Button>
         </div>
       }
     >
       <Stack gap={6}>
         <DualSlider
-          label="Age"
+          label={t('deck.segAge')}
           value={ageClamped}
           onChange={([ageMin, ageMax]) => patch({ ageMin, ageMax })}
           min={AGE_RANGE.min}
           max={AGE_RANGE.max}
-          thumbLabels={['Minimum age', 'Maximum age']}
+          thumbLabels={[t('deck.minAge'), t('deck.maxAge')]}
           format={(v) => (v >= AGE_RANGE.max ? `${v}+` : String(v))}
         />
         <Slider
-          label="Maximum distance"
+          label={t('deck.maxDistance')}
           value={Math.min(draft.distance, DISTANCE_RANGE.max)}
           onChange={(distance) => patch({ distance })}
           min={DISTANCE_RANGE.min}
@@ -196,7 +204,7 @@ export function FilterSheet({
           unit={formatDistance ? undefined : 'km'}
         />
         <Slider
-          label="Minimum fame rating"
+          label={t('deck.minFame')}
           value={Math.max(FAME_RANGE.min, Math.min(draft.fameMin, FAME_RANGE.max))}
           onChange={(fameMin) => patch({ fameMin })}
           min={FAME_RANGE.min}
@@ -207,32 +215,32 @@ export function FilterSheet({
         {people ? (
           <>
             <ChipChoice
-              label="Gender"
-              hint="People who are any of these."
-              options={GENDER_OPTIONS}
+              label={t('deck.gender')}
+              hint={t('deck.genderHint')}
+              options={genderOptions()}
               picked={draft.genders ?? []}
               onToggle={toggleGender}
             />
             <ChipChoice
-              label="Interested in"
-              hint="People whose preference is any of these."
-              options={PREFERENCE_OPTIONS}
+              label={t('deck.interestedIn')}
+              hint={t('deck.interestedInHint')}
+              options={preferenceOptions()}
               picked={draft.preferences ?? []}
               onToggle={togglePreference}
             />
           </>
         ) : null}
         <Segmented<DiscoverSort>
-          label={sortLabel}
-          options={SORT_OPTIONS}
+          label={sortLabel ?? t('deck.sortLabel')}
+          options={SORTS.map((value) => ({ value, label: t(SORT_KEY[value]) }))}
           value={draft.sort}
           onChange={(sort) => patch({ sort })}
         />
         <Field
-          label="Interests"
+          label={t('deck.interests')}
           labelId={tagsLabelId}
-          aside={draft.tags.length > 0 ? `${String(draft.tags.length).padStart(2, '0')} picked` : 'Any'}
-          hint={tagsHint}
+          aside={draft.tags.length > 0 ? t.n('deck.picked', draft.tags.length, { n: pad2(draft.tags.length) }) : t('deck.any')}
+          hint={tagsHint ?? t('deck.tagsHint')}
         >
           {catalogue ? (
             <div role="group" aria-labelledby={tagsLabelId} className={s.tags}>
@@ -247,7 +255,7 @@ export function FilterSheet({
             </div>
           ) : catalogueStatus.status === 'error' ? (
             <Text size="sm" muted>
-              The interest list could not be loaded. The other filters still work.
+              {t('deck.tagsFailed')}
             </Text>
           ) : (
             <div className={s.tags} aria-hidden="true">
@@ -257,7 +265,7 @@ export function FilterSheet({
             </div>
           )}
         </Field>
-        <FormError error={error} title="Filters not applied" />
+        <FormError error={error} title={t('deck.filtersNotApplied')} />
       </Stack>
     </Sheet>
   )

@@ -37,6 +37,9 @@ export type {
   TicketHeaderProps,
 } from './print/Print'
 
+export { ParcelLabel } from './print/ParcelLabel'
+export type { ParcelLabelProps } from './print/ParcelLabel'
+
 // controls
 export { Button, ButtonLink, IconButton, ActionButton } from './controls/Button'
 export type {
@@ -85,6 +88,10 @@ export { Spinner, Loader, Skeleton } from './display/Loader'
 export type { SpinnerProps, LoaderProps, SkeletonProps } from './display/Loader'
 export { Stat, StatGroup, Steps, Tabs, TabPanel, ListRow, EmptyState } from './display/Data'
 export type { StatProps, StepsProps, TabsProps, TabItem, TabPanelProps, ListRowProps, EmptyStateProps } from './display/Data'
+export { CommandBlock } from './display/Code'
+export type { CommandBlockProps } from './display/Code'
+export { Flag } from './display/Flag'
+export type { FlagProps, FlagCountry } from './display/Flag'
 export { ProfileCard } from './display/ProfileCard'
 export type { ProfileCardProps, CardStamp } from './display/ProfileCard'
 export { MatchCelebration, MatchMoment } from './display/Match'
@@ -100,6 +107,8 @@ export { closeModals } from './overlay/openModals'
 export type { ModalProps, SheetProps } from './overlay/Modal'
 export { Menu, ActionList } from './overlay/Menu'
 export type { MenuProps, MenuItem, ActionListProps } from './overlay/Menu'
+export { LocalePicker, LocaleLabel } from './overlay/LocalePicker'
+export type { LocaleLabelProps, LocalePickerProps } from './overlay/LocalePicker'
 
 // chat
 export { ChatBubble, TypingIndicator, DayDivider, ChatComposer, ChatThread } from './chat/Chat'

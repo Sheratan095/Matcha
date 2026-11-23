@@ -6,7 +6,8 @@
 	Email-specific constraints this file is written around:
 	  - Table layout and INLINE styles throughout: Gmail and Outlook ignore much of <style>.
 	  - The hard shadow is a thicker right/bottom border, NOT box-shadow, which Gmail strips.
-	  - No CSS variables, no inline SVG (the logo tile is rebuilt in HTML), no transforms.
+	  - No CSS variables, no inline SVG, no transforms. The logo is a PNG of the cup mark (frontend/public/LOGO),
+	    sent as an inline attachment and referenced as cid:matcha-logo (see mailer.service.ts, src/mail/assets).
 	  - Archivo / Space Mono load from Google Fonts where the client allows it (Apple Mail, iOS);
 	    elsewhere the stacks fall back to Arial Black / Courier New, which keep the same character.
 -->
@@ -42,12 +43,12 @@
 			<td align="center" style="padding:40px 16px;">
 				<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
 
-					<!-- WORDMARK: the tea-tin tile + MATCHA lettering with its misregistered green plate -->
+					<!-- WORDMARK: the cup mark + MATCHA lettering with its misregistered green plate -->
 					<tr>
 						<td style="padding:0 0 24px 0;">
 							<table role="presentation" cellpadding="0" cellspacing="0" border="0">
 								<tr>
-									<td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;background-color:#72c13c;border:3px solid #15130f;border-right-width:5px;border-bottom-width:5px;border-radius:9px;font-family:Arial,sans-serif;font-size:18px;line-height:34px;color:#15130f;">&#9829;</td>
+									<td width="40" height="40" valign="middle" style="width:40px;height:40px;"><img src="cid:matcha-logo" width="40" height="40" alt="" style="display:block;width:40px;height:40px;border:0;outline:none;" /></td>
 									<td style="padding-left:12px;">
 										<div style="font-family:'Archivo','Arial Black',Arial,sans-serif;font-weight:900;font-stretch:125%;font-size:28px;line-height:0.8;letter-spacing:-0.045em;text-transform:uppercase;color:#15130f;text-shadow:2px 2px 0 #72c13c;">Matcha</div>
 										<div style="padding-top:7px;font-family:'Space Mono','Courier New',monospace;font-weight:700;font-size:9px;line-height:1;letter-spacing:0.18em;text-transform:uppercase;color:#15130f;">Press edition</div>

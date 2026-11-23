@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { useT, type MessageKey } from '@/i18n'
 import { cx } from '../cx'
 import { IconPin, IconRegMark } from '../icons'
 import { Stamp, Sticker } from '../lettering/Stamp'
@@ -45,10 +46,10 @@ export interface ProfileCardProps {
   style?: CSSProperties
 }
 
-const STAMPS: Record<CardStamp, { word: string; tone: 'strawberry' | 'ink' | 'yolk'; rotate: number }> = {
-  like: { word: 'Like', tone: 'strawberry', rotate: -14 },
-  nope: { word: 'Nope', tone: 'ink', rotate: 12 },
-  super: { word: 'Super', tone: 'yolk', rotate: -6 },
+const STAMPS: Record<CardStamp, { word: MessageKey; tone: 'strawberry' | 'ink' | 'yolk'; rotate: number }> = {
+  like: { word: 'kit.stampLike', tone: 'strawberry', rotate: -14 },
+  nope: { word: 'kit.stampNope', tone: 'ink', rotate: 12 },
+  super: { word: 'kit.stampSuper', tone: 'yolk', rotate: -6 },
 }
 
 /**
@@ -78,15 +79,16 @@ export function ProfileCard({
   className,
   style,
 }: ProfileCardProps) {
-  const common = commonTags.filter((t) => tags.includes(t) || !tags.length)
-  const others = tags.filter((t) => !common.includes(t))
+  const tx = useT()
+  const common = commonTags.filter((tag) => tags.includes(tag) || !tags.length)
+  const others = tags.filter((tag) => !common.includes(tag))
   const ordered = [...common, ...others]
   const visible = ordered.slice(0, 4)
   const rest = ordered.length - visible.length
   const where = [
-    distanceKm != null ? `${distanceKm < 1 ? '<1' : Math.round(distanceKm)} km away` : null,
+    distanceKm != null ? tx('kit.cardAway', { distance: distanceKm < 1 ? '<1' : Math.round(distanceKm) }) : null,
     city,
-    fame != null ? `Fame ${Math.round(fame)}` : null,
+    fame != null ? tx('kit.cardFame', { n: Math.round(fame) }) : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -98,14 +100,14 @@ export function ProfileCard({
         <PhotoFrame src={photo} alt="" seed={seed ?? name} ratio="auto" framed={false} radius="none" loading="eager" className={s.frame} />
 
         {photoCount != null && photoCount > 1 ? (
-          <div className={s.pips} aria-label={`Photo ${photoIndex + 1} of ${photoCount}`} role="img">
+          <div className={s.pips} aria-label={tx('kit.cardPhotoOf', { i: photoIndex + 1, n: photoCount })} role="img">
             {Array.from({ length: photoCount }, (_, i) => (
               <i key={i} className={cx(i === photoIndex && s.pipOn)} />
             ))}
           </div>
         ) : null}
 
-        {online ? <span className={s.online}>Online</span> : null}
+        {online ? <span className={s.online}>{tx('kit.cardOnline')}</span> : null}
 
         {stamp ? (
           <span
@@ -114,16 +116,14 @@ export function ProfileCard({
             aria-hidden="true"
           >
             <Stamp tone={STAMPS[stamp].tone} size="lg" rotate={STAMPS[stamp].rotate}>
-              {STAMPS[stamp].word}
+              {tx(STAMPS[stamp].word)}
             </Stamp>
           </span>
         ) : null}
 
         {likedYou ? (
           <Sticker tone="yolk" shape="burst" size="84px" rotate={12} className={s.likesYou}>
-            Likes
-            <br />
-            you
+            {tx.stack('kit.likesYou')}
           </Sticker>
         ) : null}
 
@@ -147,16 +147,16 @@ export function ProfileCard({
             {age != null ? <span className={s.age}>{age}</span> : null}
           </h3>
           {onInfo ? (
-            <button type="button" className={s.info} aria-label={`Open ${name}'s profile`} onClick={onInfo}>
+            <button type="button" className={s.info} aria-label={tx('kit.cardOpen', { name })} onClick={onInfo}>
               <IconRegMark size={22} strokeWidth={3} filled />
             </button>
           ) : null}
         </div>
         {visible.length > 0 ? (
           <div className={s.tags}>
-            {visible.map((t) => (
-              <Chip key={t} size="sm" tone={common.includes(t) ? 'matcha' : 'paper'}>
-                #{t}
+            {visible.map((tag) => (
+              <Chip key={tag} size="sm" tone={common.includes(tag) ? 'matcha' : 'paper'}>
+                #{tag}
               </Chip>
             ))}
             {rest > 0 ? (

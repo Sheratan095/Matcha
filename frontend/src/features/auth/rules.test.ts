@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { checkDateOfBirth, checkName, dateOfBirthBounds, NAME_RULE } from './rules'
+import { checkDateOfBirth, checkName, dateOfBirthBounds, nameRule } from './rules'
 
 describe('checkName', () => {
   it('accepts what the database accepts: any alphabet, single spaces, hyphens or apostrophes between parts', () => {
@@ -10,7 +10,7 @@ describe('checkName', () => {
 
   it('refuses digits, symbols, doubled or dangling separators', () => {
     for (const name of ['R2D2', 'Jo!', 'Anne  Marie', 'Jean--Luc', '-Jean', "Brien'", 'Jo_Doe']) {
-      expect(checkName(name, 'last'), name).toBe(NAME_RULE)
+      expect(checkName(name, 'last'), name).toBe(nameRule())
     }
   })
 

@@ -1,19 +1,20 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { Headline } from '../lettering/Headline'
-import { Marquee } from '../lettering/Marquee'
 import { Sticker } from '../lettering/Stamp'
 import { Wordmark } from '../lettering/Wordmark'
+import { LocaleLabel } from '../overlay/LocalePicker'
 import { Barcode, Halftone, Perforation, RegMark, Serial } from '../print/Print'
 import s from './Auth.module.css'
 
 export interface PosterProps {
-  /** Two to four short words, stacked. Each line is sized to fill the width. */
+  /** Two to four short words, stacked. Each line is sized to fill the width. Default: "Whisk me away" in the current language. */
   lines?: readonly string[]
   /** Colour field. Default matcha. */
   tone?: 'matcha' | 'strawberry' | 'yolk' | 'blue'
-  /** The burst sticker. null hides it. */
+  /** The burst sticker. null hides it; left out, it says "Fresh daily" in the current language. */
   sticker?: ReactNode | null
   /** Phrases for the ticker band along the bottom. null hides it. */
   marquee?: readonly string[] | null
@@ -27,31 +28,24 @@ export interface PosterProps {
   style?: CSSProperties
 }
 
-const DEFAULT_LINES = ['Whisk', 'me', 'away'] as const
-const DEFAULT_MARQUEE = ['Fresh matches daily', 'Stone-ground in Paris', 'Ceremonial grade romance', 'No sugar added'] as const
-
 /**
  * The poster: a flat colour field with huge stacked lettering that runs off the edge, a halftone
  * sun, a sticker, registration marks and a ticker band. Decorative; the lettering is hidden from
  * assistive tech, so say the same thing in real text nearby.
  */
 export function Poster({
-  lines = DEFAULT_LINES,
+  lines: linesProp,
   tone = 'matcha',
-  sticker = (
-    <>
-      Fresh
-      <br />
-      daily
-    </>
-  ),
-  marquee = DEFAULT_MARQUEE,
+  sticker: stickerProp,
   wordmark = true,
   homeTo = '/',
   compact,
   className,
   style,
 }: PosterProps) {
+  const t = useT()
+  const lines = linesProp ?? t.lines('poster.defaultLines')
+  const sticker = stickerProp === undefined ? t.stack('poster.defaultSticker') : stickerProp
   return (
     <div data-tone={tone} className={cx(s.poster, compact && s.compact, className)} style={style}>
       <div className={s.sun} aria-hidden="true">
@@ -62,15 +56,15 @@ export function Poster({
 
       <div className={s.top}>
         {wordmark ? (
-          <Link to={homeTo} className={s.mark} aria-label="Matcha home">
+          <Link to={homeTo} className={s.mark} aria-label={t('poster.home')}>
             <Wordmark size={compact ? 'sm' : 'md'} />
           </Link>
         ) : (
           <span />
         )}
         <span className={s.edition} aria-hidden="true">
-          <Serial value="01" prefix="Nº" />
-          <span>Press edition</span>
+          <Serial value="01" prefix={t('poster.serialPrefix')} />
+          <span>{t('poster.edition')}</span>
         </span>
       </div>
 
@@ -93,12 +87,6 @@ export function Poster({
           <Barcode value={lines.join('-')} height={44} caption />
         </div>
       ) : null}
-
-      {marquee && marquee.length > 0 ? (
-        <div className={s.band}>
-          <Marquee items={[...marquee]} tone="ink" size={compact ? 'sm' : 'md'} tilt={-2.5} speed={26} />
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -106,7 +94,7 @@ export function Poster({
 export interface AuthLayoutProps {
   /** The form's heading. */
   title: ReactNode
-  /** Mono label on the ticket strip. Default "Admit one". */
+  /** Mono label on the ticket strip. Default "Admit one" in the current language. */
   kicker?: ReactNode
   /** A sentence under the heading. */
   intro?: ReactNode
@@ -119,21 +107,31 @@ export interface AuthLayoutProps {
 }
 
 /**
- * The signed-out frame. Phones: a poster band, then the form on a ticket that overlaps it.
- * Wide screens: the poster fills the left half, the ticket sits calm on paper on the right.
+ * The signed-out frame. Phones: a poster band (wordmark in its corner), then the form on a ticket that overlaps it.
+ * Wide screens: the poster fills the left half, the ticket sits calm on paper on the right with the wordmark
+ * above it, so the poster's lettering has the whole panel to itself.
  */
-export function AuthLayout({ title, kicker = 'Admit one', intro, children, footer, poster }: AuthLayoutProps) {
+export function AuthLayout({ title, kicker, intro, children, footer, poster }: AuthLayoutProps) {
+  const t = useT()
+  const { wordmark = true, homeTo = '/' } = poster ?? {}
   return (
     <div className={s.authRoot}>
       <div className={s.auth}>
         <div className={s.posterSide}>
           <Poster {...poster} compact className={s.posterCompact} />
-          <Poster {...poster} className={s.posterFull} />
+          <Poster {...poster} wordmark={false} className={s.posterFull} />
         </div>
         <main id="main" className={s.formSide}>
+          {wordmark ? (
+            <div className={s.formMark}>
+              <Link to={homeTo} className={s.formMarkLink} aria-label={t('poster.home')}>
+                <Wordmark size="md" />
+              </Link>
+            </div>
+          ) : null}
           <div className={s.ticket}>
             <div className={s.ticketStrip}>
-              <span>{kicker}</span>
+              <span>{kicker ?? t('auth.kicker')}</span>
               <i aria-hidden="true" />
               <Serial value={4217} digits={6} />
             </div>
@@ -145,6 +143,9 @@ export function AuthLayout({ title, kicker = 'Admit one', intro, children, foote
             <div className={s.form}>{children}</div>
           </div>
           {footer ? <div className={s.footer}>{footer}</div> : null}
+          <div className={s.locale}>
+            <LocaleLabel side="up" />
+          </div>
         </main>
       </div>
     </div>

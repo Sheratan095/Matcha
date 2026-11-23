@@ -87,31 +87,81 @@
 }
 
 /*
- * halftone: the pure-CSS CMYK screen (--fx-halftone-*, after leanrada.com/notes/pure-css-halftone).
- * .screen wraps the picture: the filter blurs and thresholds it while ::after screens a dot grid over it.
- * It bleeds 4px past the frame so the blur's faded edge falls under the frame's overflow, and it is
- * multiplied onto the frame so the white of the print becomes the paper stock. `tone` does not apply:
- * process inks need paper, and on a colour field they go muddy.
+ * halftone: a pure-CSS CMYK print with a separate black plate (--fx-halftone-*, after
+ * leanrada.com/notes/pure-css-halftone). .plates holds two copies of the picture, multiplied onto the
+ * paper so the white of the print becomes the stock (`tone` does not apply: process inks need paper):
+ *   .plateColour  the hues only (picture washed out, then oversaturated), screened with yellow dots at
+ *                 30deg and magenta and cyan dots at -21deg (+ --fx-halftone-rotation)
+ *   .plateBlack   the greyscale picture, screened with black dots at 30deg
+ * A blurred picture screened with blurry dots leaves big dots where it is dark and small ones where it is
+ * light; contrast(1000) then thresholds every RGB channel, so each ink turns into hard dots on its own.
+ * Brightness is that threshold and rises with the bleed. The dot gradients are literal process colours on
+ * purpose: the blend maths needs the extremes. Each plate bleeds half a pitch past the frame so the blur's
+ * faded edge falls under the frame's overflow.
  */
 .halftone {
   background: var(--c-paper-hi);
 }
-.screen {
+.plates {
   position: absolute;
   z-index: -1;
-  inset: -4px;
-  filter: var(--fx-halftone);
+  inset: 0;
   mix-blend-mode: multiply;
 }
-.screen::after {
-  content: '';
+.plate {
+  --dot: calc(var(--fx-halftone-size) * var(--fx-halftone-bleed));
+  position: absolute;
+  inset: calc(var(--fx-halftone-size) * -0.5);
+  overflow: hidden;
+  filter: brightness(calc(0.48 + var(--fx-halftone-bleed) * 0.3)) blur(calc(var(--fx-halftone-size) * 0.1))
+    contrast(1000) blur(0.6px);
+}
+.plate .img {
+  z-index: auto;
+}
+.plateColour .img {
+  filter: invert(1) brightness(0.75) invert(1) saturate(2);
+}
+.plateBlack {
+  mix-blend-mode: multiply;
+}
+.plateBlack .img {
+  filter: grayscale(1) brightness(2);
+}
+
+/* the dots: oversized and turned, so the rotated grid still covers the plate on any ratio */
+.ink {
   position: absolute;
   inset: 0;
-  background-image: var(--fx-halftone-screen-cmyk);
-  background-size: var(--fx-halftone-size);
-  background-blend-mode: multiply;
   mix-blend-mode: screen;
   pointer-events: none;
+}
+.ink::before,
+.ink::after,
+.plateBlack::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background-size: var(--fx-halftone-size) var(--fx-halftone-size);
+  background-blend-mode: multiply;
+  mix-blend-mode: multiply;
+}
+.ink::before {
+  transform: rotate(30deg);
+  background-image: radial-gradient(var(--dot) at 25% 25%, #ff0, #ff6, #fff),
+    radial-gradient(var(--dot) at 75% 75%, #ff0, #ff6, #fff);
+}
+.ink::after {
+  transform: rotate(calc(-21deg + var(--fx-halftone-rotation))) translateX(calc(var(--fx-halftone-size) * 0.58));
+  background-image: radial-gradient(var(--dot) at 75% 25%, #f0f, #f6f, #fff),
+    radial-gradient(var(--dot) at 25% 75%, #f0f, #f6f, #fff), radial-gradient(var(--dot) at 75% 75%, #0ff, #6ff, #fff),
+    radial-gradient(var(--dot) at 25% 25%, #0ff, #6ff, #fff);
+}
+.plateBlack::after {
+  mix-blend-mode: screen;
+  transform: rotate(30deg);
+  background-image: radial-gradient(var(--dot) at 25% 25%, #000, #666, #ccc, #fff),
+    radial-gradient(var(--dot) at 75% 75%, #000, #fff);
 }
 
 /* ------------------------------------------------------------ avatar */

@@ -19,6 +19,7 @@ import { FilterSheet } from '@/features/discover/FilterSheet'
 import type { SheetFilters } from '@/features/discover/filterRules'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import { cardName, deckPreviewProfile, distanceText } from '@/features/profile/format'
+import { useT, type Translator } from '@/i18n'
 import { Avatar, Button, CountBadge, cx, IconPin, IconSearch, IconSliders, IconX, Spinner } from '@/ui'
 import {
   actions,
@@ -38,10 +39,10 @@ const DEBOUNCE_MS = 250
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /** "@alice · 4 km away · fame 55" */
-function detailsOf(card: DeckCard): string {
+function detailsOf(card: DeckCard, t: Translator): string {
   const parts = [`@${card.username}`]
-  if (card.distanceKm != null) parts.push(`${distanceText(card.distanceKm)} away`)
-  parts.push(`fame ${Math.round(card.fameRating)}`)
+  if (card.distanceKm != null) parts.push(t('search.away', { distance: distanceText(card.distanceKm) }))
+  parts.push(t('search.fame', { n: Math.round(card.fameRating) }))
   return parts.join(' · ')
 }
 
@@ -51,6 +52,7 @@ function isEditable(target: EventTarget | null): boolean {
 }
 
 export function SearchBar() {
+  const t = useT()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const filled = useNodeValue('profileFilled')
@@ -260,8 +262,8 @@ export function SearchBar() {
             role="combobox"
             className={s.input}
             value={text}
-            placeholder="Search"
-            aria-label="Search people by name"
+            placeholder={t('search.placeholder')}
+            aria-label={t('search.label')}
             aria-expanded={showList}
             aria-controls={showList ? panelId : undefined}
             aria-activedescendant={showList && active >= 0 && options[active] ? `${listId}-${options[active].userId}` : undefined}
@@ -288,7 +290,7 @@ export function SearchBar() {
             onKeyDown={onKeyDown}
           />
           {text ? (
-            <button type="button" className={s.clear} aria-label="Clear search" onClick={clear}>
+            <button type="button" className={s.clear} aria-label={t('search.clear')} onClick={clear}>
               <IconX size={16} strokeWidth={3} />
             </button>
           ) : null}
@@ -297,7 +299,7 @@ export function SearchBar() {
             type="button"
             className={s.knob}
             data-active={filterCount > 0 ? '' : undefined}
-            aria-label={filterCount > 0 ? `Search filters, ${filterCount} active` : 'Search filters'}
+            aria-label={filterCount > 0 ? t('search.filtersActive', { n: filterCount }) : t('search.filters')}
             aria-haspopup="dialog"
             aria-expanded={filtersOpen}
             onClick={() => setFiltersOpen(true)}
@@ -312,30 +314,28 @@ export function SearchBar() {
         <div id={panelId} className={s.panel}>
           {failed ? (
             <div className={cx(s.state, s.stateStack)} role="alert">
-              <p className={s.stateTitle}>{noLocation ? 'Set your location to search' : 'The search did not go through'}</p>
+              <p className={s.stateTitle}>{noLocation ? t('search.needLocation') : t('search.failed')}</p>
               <p className={s.stateText}>{failed.message}</p>
               {noLocation ? (
                 <Button size="sm" variant="ink" icon={<IconPin size={16} />} onClick={() => navigate('/map')}>
-                  Open the map
+                  {t('search.openMap')}
                 </Button>
               ) : (
                 <Button size="sm" variant="paper" onClick={() => fire(q)}>
-                  Try again
+                  {t('common.tryAgain')}
                 </Button>
               )}
             </div>
           ) : options.length > 0 ? (
             <>
               <div className={s.head} aria-hidden="true">
-                <span>
-                  {pad(options.length)} {options.length === 1 ? 'person' : 'people'}
-                </span>
-                <span className={s.headScope}>{scope || 'nearest first'}</span>
+                <span>{t.n('search.person', options.length, { n: pad(options.length) })}</span>
+                <span className={s.headScope}>{scope || t('search.nearest')}</span>
               </div>
               <ul
                 id={listId}
                 role="listbox"
-                aria-label={`${options.length} ${options.length === 1 ? 'person' : 'people'} found${scope ? `, ${scope}` : ''}`}
+                aria-label={`${t.n('search.found', options.length)}${scope ? `, ${scope}` : ''}`}
                 aria-busy={busy || undefined}
                 className={s.list}
               >
@@ -358,7 +358,7 @@ export function SearchBar() {
                       <span className={s.optionTitle}>
                         {cardName(card)}, {card.age}
                       </span>
-                      <span className={s.optionSub}>{detailsOf(card)}</span>
+                      <span className={s.optionSub}>{detailsOf(card, t)}</span>
                     </span>
                   </li>
                 ))}
@@ -366,26 +366,24 @@ export function SearchBar() {
             </>
           ) : busy || kept === null ? (
             <p className={s.state} role="status">
-              <Spinner size={16} label="" /> Searching…
+              <Spinner size={16} label="" /> {t('search.searching')}
             </p>
           ) : (
             <div className={cx(s.state, s.stateStack)} role="status">
               <p className={s.stateText}>
-                {q ? (
-                  <>
-                    Nobody matches “{q}”{filterCount > 0 ? ' with these filters' : ''}.
-                  </>
-                ) : (
-                  'Nobody matches these filters.'
-                )}
+                {q
+                  ? filterCount > 0
+                    ? t('search.nobodyQFilters', { q })
+                    : t('search.nobodyQ', { q })
+                  : t('search.nobodyFilters')}
               </p>
               {filterCount > 0 ? (
                 <div className={s.stateActions}>
                   <Button size="sm" variant="paper" onClick={clearFilters}>
-                    Clear filters
+                    {t('search.clearFilters')}
                   </Button>
                   <Button size="sm" variant="paper" icon={<IconSliders size={16} />} onClick={() => setFiltersOpen(true)}>
-                    Change filters
+                    {t('search.changeFilters')}
                   </Button>
                 </div>
               ) : null}
@@ -401,11 +399,11 @@ export function SearchBar() {
         apply={applyFilters}
         defaults={OPEN_FILTERS}
         people
-        title="Search filters"
-        kicker="Narrow the search"
-        tagsHint="People who have all of these."
-        submitLabel="Search"
-        sortLabel="Order the results by"
+        title={t('search.filters')}
+        kicker={t('search.sheetKicker')}
+        tagsHint={t('search.sheetTagsHint')}
+        submitLabel={t('search.sheetSubmit')}
+        sortLabel={t('search.sheetSort')}
         formatDistance={formatDistance}
         formatFame={formatFame}
       />

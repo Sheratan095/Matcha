@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import { animationFrameScheduler, auditTime, distinctUntilChanged, fromEvent, map } from 'rxjs'
 import type { UserPicture } from '@/api/types'
+import { useT } from '@/i18n'
 import { IconButton, IconChevronLeft, IconChevronRight, PhotoFrame } from '@/ui'
 import s from './PhotoCarousel.module.css'
 
@@ -25,6 +26,7 @@ function reducedMotion(): boolean {
 }
 
 export function PhotoCarousel({ photos, name, seed, children }: PhotoCarouselProps) {
+  const t = useT()
   const trackRef = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
   const count = Math.max(1, photos.length)
@@ -59,7 +61,7 @@ export function PhotoCarousel({ photos, name, seed, children }: PhotoCarouselPro
   }
 
   return (
-    <div className={s.carousel} role="region" aria-roledescription="carousel" aria-label={`${name}'s photos`}>
+    <div className={s.carousel} role="region" aria-roledescription="carousel" aria-label={t('prof.photosOf', { name })}>
       <div ref={trackRef} className={s.track} onClick={onTap}>
         {photos.length > 0 ? (
           photos.map((photo, i) => (
@@ -68,11 +70,11 @@ export function PhotoCarousel({ photos, name, seed, children }: PhotoCarouselPro
               className={s.slide}
               role="group"
               aria-roledescription="slide"
-              aria-label={`${i + 1} of ${photos.length}`}
+              aria-label={t('prof.slide', { i: i + 1, n: photos.length })}
             >
               <PhotoFrame
                 src={photo.url}
-                alt={i === 0 ? name : `${name}, photo ${i + 1}`}
+                alt={i === 0 ? name : t('prof.photoAlt', { name, i: i + 1 })}
                 seed={seed}
                 ratio="auto"
                 framed={false}
@@ -84,7 +86,7 @@ export function PhotoCarousel({ photos, name, seed, children }: PhotoCarouselPro
           ))
         ) : (
           <div className={s.slide}>
-            <PhotoFrame src={null} alt={`${name} has no photo yet`} seed={seed} ratio="auto" framed={false} radius="none" className={s.photo} />
+            <PhotoFrame src={null} alt={t('prof.noPhotoAlt', { name })} seed={seed} ratio="auto" framed={false} radius="none" className={s.photo} />
           </div>
         )}
       </div>
@@ -100,12 +102,12 @@ export function PhotoCarousel({ photos, name, seed, children }: PhotoCarouselPro
             {String(index + 1).padStart(2, '0')}/{String(count).padStart(2, '0')}
           </span>
           <span className={s.prev}>
-            <IconButton label="Previous photo" size="sm" round onClick={() => go(index - 1)} disabled={index === 0}>
+            <IconButton label={t('prof.prevPhoto')} size="sm" round onClick={() => go(index - 1)} disabled={index === 0}>
               <IconChevronLeft size={20} strokeWidth={3} />
             </IconButton>
           </span>
           <span className={s.next}>
-            <IconButton label="Next photo" size="sm" round onClick={() => go(index + 1)} disabled={index >= count - 1}>
+            <IconButton label={t('prof.nextPhoto')} size="sm" round onClick={() => go(index + 1)} disabled={index >= count - 1}>
               <IconChevronRight size={20} strokeWidth={3} />
             </IconButton>
           </span>

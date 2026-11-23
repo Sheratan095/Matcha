@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { IconX } from '../icons'
 import type { Tone } from '../tones'
@@ -34,11 +35,12 @@ export function Chip({
   onClick,
   selected,
   onRemove,
-  removeLabel = 'Remove',
+  removeLabel,
   disabled,
   className,
   style,
 }: ChipProps) {
+  const t = useT()
   const cls = cx(s.chip, s[size], onClick && s.clickable, selected && s.selected, onRemove && s.removable, className)
   const body = (
     <>
@@ -65,7 +67,7 @@ export function Chip({
     <span data-tone={tone} className={cls} style={style}>
       {body}
       {onRemove ? (
-        <button type="button" className={s.remove} aria-label={removeLabel} disabled={disabled} onClick={onRemove}>
+        <button type="button" className={s.remove} aria-label={removeLabel ?? t('kit.remove')} disabled={disabled} onClick={onRemove}>
           <IconX size={12} strokeWidth={4} />
         </button>
       ) : null}

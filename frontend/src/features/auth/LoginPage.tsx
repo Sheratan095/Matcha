@@ -6,12 +6,13 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useLocaleState, useT } from '@/i18n'
 import { AuthLayout, Button, IconArrowLeft, Notice, PasswordField, TextField } from '@/ui'
 import { actions, refresh, useNodeStatus } from '@/wb'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { readLoginState } from './navState'
 import { FormBanner, GithubButton, OrRule } from './parts'
-import { checkRequired, CODE_LIFETIME } from './rules'
+import { checkRequired, codeLifetime } from './rules'
 import { useAuthForm } from './useAuthForm'
 import { VerifyCodeForm } from './VerifyCodeForm'
 import a from './auth.module.css'
@@ -24,11 +25,12 @@ type Phase = 'form' | 'unverified'
 type Flash = 'verified' | 'reset' | null
 
 export default function LoginPage() {
+  const t = useT()
   const location = useLocation()
   const arrived = readLoginState(location.state)
   const [username, setUsername] = useState(arrived.username ?? '')
   const [password, setPassword] = useState('')
-  const [banner, setBanner] = useState<Banner | null>(null)
+  const [banner, setBanner] = useLocaleState<Banner | null>(null)
   const [busy, setBusy] = useState(false)
   const [phase, setPhase] = useState<Phase>('form')
   const [flash, setFlash] = useState<Flash>(arrived.verified ? 'verified' : arrived.reset ? 'reset' : null)
@@ -38,7 +40,10 @@ export default function LoginPage() {
   const values: Record<Field, string> = { username, password }
   const form = useAuthForm(
     FIELDS,
-    (field) => (field === 'username' ? checkRequired(username, 'Enter your username.') : checkRequired(password, 'Enter your password.')),
+    (field) =>
+      field === 'username'
+        ? checkRequired(username, t('login.enterUsername'))
+        : checkRequired(password, t('login.enterPassword')),
     formRef,
   )
 
@@ -61,8 +66,8 @@ export default function LoginPage() {
         setPhase('unverified')
       } else if (error.status === 403) {
         setBanner({
-          title: 'Wrong username or password',
-          detail: 'Check both and try again. Usernames are not case-sensitive; passwords are.',
+          title: t('login.wrongTitle'),
+          detail: t('login.wrongDetail'),
           retry: false,
         })
         const input = document.getElementById(PASSWORD_ID)
@@ -85,39 +90,32 @@ export default function LoginPage() {
   if (phase === 'unverified') {
     return (
       <>
-        <title>Verify your email · Matcha</title>
+        <title>{`${t('verify.title')} · Matcha`}</title>
         <AuthLayout
-          title="Check your inbox"
-          kicker="One step left"
-          intro={
-            <>
-              The email of <strong>{username.trim().toLowerCase()}</strong> isn't verified yet. We've just sent a fresh
-              code to it; earlier codes no longer work. Enter it below, then sign in.
-            </>
-          }
+          title={t('common.checkInbox')}
+          kicker={t('common.oneStepLeft')}
+          intro={t.rich('login.unverifiedIntro', { username: <strong>{username.trim().toLowerCase()}</strong> })}
           poster={{
-            lines: ['Check', 'your', 'mail'],
+            lines: t.lines('common.checkMailLines'),
             tone: 'blue',
-            sticker: (
-              <>
-                1 new
-                <br />
-                letter
-              </>
-            ),
-            marquee: ['Signed, sealed, delivered', 'One code per sign-in', `Valid for ${CODE_LIFETIME}`],
+            sticker: t.stack('common.newLetterSticker'),
+            marquee: [
+              t('common.signedSealed'),
+              t('login.unverifiedMarquee1'),
+              t('common.validFor', { time: codeLifetime() }),
+            ],
           }}
           footer={
             <p className={a.links}>
-              Not your account?{' '}
+              {t('login.notYours')}{' '}
               <button type="button" className={a.inlineButton} onClick={() => setPhase('form')}>
-                Use another one
+                {t('login.useAnother')}
               </button>
             </p>
           }
         >
           <VerifyCodeForm
-            submitLabel="Verify and continue"
+            submitLabel={t('login.verifyContinue')}
             onVerified={() => {
               setFlash('verified')
               setBanner(null)
@@ -125,7 +123,7 @@ export default function LoginPage() {
             }}
           />
           <Button variant="ghost" icon={<IconArrowLeft size={18} strokeWidth={3} />} onClick={() => setPhase('form')}>
-            Back to sign in
+            {t('common.backToSignIn')}
           </Button>
         </AuthLayout>
       </>
@@ -137,17 +135,13 @@ export default function LoginPage() {
 
   return (
     <>
-      <title>Sign in · Matcha</title>
+      <title>{`${t('common.signIn')} · Matcha`}</title>
       <AuthLayout
-        title="Sign in"
-        intro={
-          arrived.from
-            ? 'Sign in to pick up where you left off.'
-            : 'Welcome back. Your matches have been steeping.'
-        }
+        title={t('common.signIn')}
+        intro={arrived.from ? t('login.introFrom') : t('login.intro')}
         footer={
           <p className={a.links}>
-            No account yet? <Link to="/register">Create one</Link>
+            {t('login.noAccount')} <Link to="/register">{t('login.createOne')}</Link>
           </p>
         }
       >
@@ -161,30 +155,30 @@ export default function LoginPage() {
           }}
         >
           {flash === 'verified' ? (
-            <Notice tone="success" title="Email verified" onDismiss={() => setFlash(null)}>
-              {password ? 'Press Sign in to step inside.' : 'Sign in with your username and password.'}
+            <Notice tone="success" title={t('login.verifiedTitle')} onDismiss={() => setFlash(null)}>
+              {password ? t('login.verifiedPressSignIn') : t('login.verifiedSignIn')}
             </Notice>
           ) : flash === 'reset' ? (
-            <Notice tone="success" title="Password changed" onDismiss={() => setFlash(null)}>
-              Sign in with your new password.
+            <Notice tone="success" title={t('common.passwordChanged')} onDismiss={() => setFlash(null)}>
+              {t('login.resetSignIn')}
             </Notice>
           ) : null}
           {serverDown ? (
             <Notice
               tone="warning"
-              title="The server isn't answering"
+              title={t('login.serverDownTitle')}
               action={
                 <Button size="sm" variant="paper" onClick={() => void refresh('sessionCheck')}>
-                  Check again
+                  {t('login.checkAgain')}
                 </Button>
               }
             >
-              Signing in will fail until the Matcha backend is up.
+              {t('login.serverDownBody')}
             </Notice>
           ) : null}
 
           <TextField
-            label="Username"
+            label={t('common.username')}
             name="username"
             value={values.username}
             onChange={(event) => {
@@ -202,7 +196,7 @@ export default function LoginPage() {
           />
           <PasswordField
             id={PASSWORD_ID}
-            label="Password"
+            label={t('common.password')}
             name="password"
             value={values.password}
             onChange={(event) => {
@@ -212,12 +206,12 @@ export default function LoginPage() {
             onBlur={(event) => form.blur('password', event.target.value)}
             error={form.errorOf('password')}
             autoComplete="current-password"
-            aside={<Link to="/forgot-password">Forgot it?</Link>}
+            aside={<Link to="/forgot-password">{t('login.forgot')}</Link>}
             autoFocus={Boolean(arrived.username)}
           />
           <FormBanner banner={banner} onRetry={() => void submit()} retrying={busy} />
           <Button type="submit" size="lg" block loading={busy}>
-            Sign in
+            {t('common.signIn')}
           </Button>
           <OrRule />
           <GithubButton />

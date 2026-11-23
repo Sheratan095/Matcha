@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { MemoryRouter, useInRouterContext } from 'react-router-dom'
 import {
   ActionButton,
@@ -16,6 +16,7 @@ import {
   Checkbox,
   Chip,
   ColorBar,
+  CommandBlock,
   CountBadge,
   CropMarks,
   DayDivider,
@@ -42,6 +43,8 @@ import {
   IconButton,
   Label,
   ListRow,
+  LocaleLabel,
+  LocalePicker,
   Loader,
   LogoMark,
   Marquee,
@@ -557,9 +560,7 @@ function Guide() {
               <Spec label="Comic panel" note="caption boxes hang over the corners">
                 <div className={s.comicPanel}>
                   <div className={s.comicArt}>
-                    <div className={cx(s.halftone, s.halftoneInk)}>
-                      <img src={SAMPLE} alt="" />
-                    </div>
+                    <PhotoFrame src={SAMPLE} alt="" framed={false} radius="none" treatment="halftone" />
                   </div>
                   <p className={cx(s.caption, s.captionTop)}>Meanwhile, at the tea stall</p>
                   <p className={cx(s.caption, s.captionBottom)}>Three drums later</p>
@@ -648,40 +649,61 @@ function Guide() {
                 ))}
               </div>
             </Spec>
-            <Spec label="Halftone photo" wide note="--fx-halftone-* · PhotoFrame treatment=halftone">
+            <Spec label="Halftone photo" wide note="PhotoFrame treatment=halftone · --fx-halftone-*">
               <Stack gap={4}>
                 <div className={s.halftones}>
                   <figure>
-                    <div className={s.halftoneFrame}>
-                      <div className={s.halftone}>
-                        <img src={SAMPLE} alt={SAMPLE_ALT} />
-                      </div>
-                    </div>
+                    <PhotoFrame src={SAMPLE} alt={SAMPLE_ALT} shadow={2} />
                     <Label size="sm">source · tonal range</Label>
                   </figure>
                   <figure>
-                    <div className={s.halftoneFrame}>
-                      <div className={cx(s.halftone, s.halftoneInk)}>
-                        <img src={SAMPLE} alt="" />
-                      </div>
-                    </div>
-                    <Label size="sm">ink screen · fx-halftone-mono</Label>
+                    <PhotoFrame src={SAMPLE} alt="" treatment="halftone" shadow={2} />
+                    <Label size="sm">default · 9px, bleed 0.39</Label>
                   </figure>
                   <figure>
-                    <div className={s.halftoneFrame}>
-                      <div className={cx(s.halftone, s.halftoneCmyk)}>
-                        <img src={SAMPLE} alt="" />
-                      </div>
-                    </div>
-                    <Label size="sm">cmyk screen · fx-halftone</Label>
+                    <PhotoFrame
+                      src={SAMPLE}
+                      alt=""
+                      treatment="halftone"
+                      shadow={2}
+                      style={{ '--fx-halftone-size': '16px', '--fx-halftone-bleed': 0.3 } as CSSProperties}
+                    />
+                    <Label size="sm">coarse · 16px, bleed 0.3</Label>
                   </figure>
                 </div>
                 <Text size="xs" muted>
-                  Pure CSS, after leanrada.com/notes/pure-css-halftone. The filter blurs and thresholds the photo while a dot grid is screened
-                  over it; the tokens are in tokens.css and PhotoFrame treatment="halftone" uses the colour screen (see Photo frames). Tune the brightness per photo: it sets the threshold.
+                  Pure CSS, after leanrada.com/notes/pure-css-halftone. Two copies of the photo are blurred, thresholded and screened with
+                  dots: the hues with yellow, magenta and cyan, a greyscale copy with black. Size, bleed (the dot radius, 0.1 to 0.45) and
+                  rotation of the cyan and magenta screens are the --fx-halftone-* tokens: override them on the frame. Needs a photo with a
+                  tonal range.
                 </Text>
               </Stack>
             </Spec>
+            <div className={s.grid2}>
+              <Spec label="Parcel label" note="ParcelLabel · LocaleLabel">
+                <Stack gap={4}>
+                  <LocaleLabel />
+                  <Text size="xs" muted>
+                    A priority-mail label whose postage box is the language picker: click the flag. The sender line, the service band
+                    and the tracking caption follow the language. It scales with its own width; the landing, login and register pages
+                    place it absolutely in the bottom right corner, opening the menu upward (side="up").
+                  </Text>
+                </Stack>
+              </Spec>
+              <Spec label="Language picker" note="LocalePicker variant · side">
+                <Stack gap={4}>
+                  <Row gap={4} wrap>
+                    <LocalePicker />
+                    <LocalePicker side="up" align="start" />
+                  </Row>
+                  <Text size="xs" muted>
+                    A clickable flag that opens the menu of languages: English, Français, Español. Arrow keys move, Enter picks, Escape
+                    closes. The choice is kept in this browser, sets the page language and pre-fills the email language when registering.
+                    Use side="up" at the foot of a page.
+                  </Text>
+                </Stack>
+              </Spec>
+            </div>
           </Section>
 
           {/* ------------------------------------------------------------ 7 buttons */}
@@ -797,7 +819,7 @@ function Guide() {
             <div className={s.grid2}>
               <Spec label="Segmented choice" note="Segmented">
                 <Stack gap={5}>
-                  <Segmented label="I am" options={GENDERS} value={gender} onChange={setGender} block />
+                  <Segmented label="I am a" options={GENDERS} value={gender} onChange={setGender} block />
                   <Segmented label="Show me" options={PREFS} value={pref} onChange={setPref} tone="yolk" />
                   <Segmented
                     label="Sort by"
@@ -956,7 +978,7 @@ function Guide() {
                 </figure>
                 <figure>
                   <PhotoFrame src={SAMPLE} alt={SAMPLE_ALT} treatment="halftone" shadow={2} />
-                  <Label size="sm">halftone · cmyk screen</Label>
+                  <Label size="sm">halftone · cmyk + black plate</Label>
                 </figure>
               </div>
             </Spec>
@@ -1066,6 +1088,33 @@ function Guide() {
                     onInfo={() => undefined}
                   />
                 </div>
+              </Spec>
+            </div>
+            <div className={s.grid2}>
+              <Spec label="Command block" note="CommandBlock · ink">
+                <CommandBlock
+                  label="Terminal"
+                  lines={[
+                    '# bring the stack up',
+                    'make infra',
+                    'make db-migrate',
+                    'make db-seed',
+                    'pnpm --filter @matcha/profile test | tail -n 20',
+                    'cd frontend && npm run dev',
+                  ]}
+                />
+              </Spec>
+              <Spec label="Command block" note="CommandBlock tone=paper · prompt">
+                <CommandBlock
+                  tone="paper"
+                  label="PowerShell"
+                  prompt="PS>"
+                  lines={[
+                    '# who is holding the dev port?',
+                    'Get-NetTCPConnection -LocalPort 4000 | Format-Table LocalAddress,State,OwningProcess',
+                    'Get-Process node | Format-Table Id,CPU,WorkingSet',
+                  ]}
+                />
               </Spec>
             </div>
           </Section>

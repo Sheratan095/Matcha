@@ -121,7 +121,8 @@
   font-family: var(--font-display);
   font-weight: 900;
   font-stretch: var(--wd-condensed);
-  font-size: min(33cqi, 9rem);
+  /* 33cqi fits the six letters of the longest English line; --n-stack (set from the text) shrinks it for a longer line in another language */
+  font-size: min(33cqi, 9rem, calc(198cqi / var(--n-stack, 6)));
   line-height: 0.8;
   letter-spacing: -0.01em;
   text-transform: uppercase;
@@ -336,12 +337,15 @@
 
 /* ------------------------------------------------------------ colophon */
 .colophon {
+  /* the language label is absolute in the bottom right corner; its height is about 0.74 of its width, and on a phone the bar grows to hold it below the text */
+  --label-w: 15rem;
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--s-3) var(--s-4);
-  padding: var(--s-5) var(--gutter) calc(var(--s-5) + var(--safe-b));
+  padding: var(--s-5) var(--gutter) calc(var(--s-5) * 2 + var(--label-w) * 0.74 + var(--safe-b));
   border-top: var(--line);
   background: var(--c-paper-lo);
   background-image: var(--tex-grain);
@@ -356,6 +360,13 @@
 }
 .colophonCode {
   display: none;
+}
+/* bottom right of the page, out of the flow */
+.colophonLocale {
+  position: absolute;
+  right: var(--gutter);
+  bottom: calc(var(--s-5) + var(--safe-b));
+  width: var(--label-w);
 }
 
 /* ------------------------------------------------------------ medium */
@@ -388,8 +399,13 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--s-5);
   }
+  /* the label sits beside the text now: the bar is as tall as the label and the text keeps clear of it */
   .colophon {
-    padding-inline: var(--s-6);
+    min-height: calc(var(--s-5) * 2 + var(--label-w) * 0.74 + var(--safe-b));
+    padding: var(--s-5) calc(var(--s-6) * 2 + var(--label-w)) calc(var(--s-5) + var(--safe-b)) var(--s-6);
+  }
+  .colophonLocale {
+    right: var(--s-6);
   }
   .colophonCode {
     display: inline-flex;
@@ -414,8 +430,8 @@
     align-content: start;
   }
   .title {
-    /* one line, edge to edge: the A of MATCHA kisses the trim */
-    font-size: 18.4cqi;
+    /* one line, edge to edge: the A of MATCHA kisses the trim (18.4cqi for the 13 characters of the English line; --n-row is the length of the line in use) */
+    font-size: min(18.4cqi, calc(239.2cqi / var(--n-row, 13)));
     line-height: 0.82;
   }
   .titleA,
@@ -484,6 +500,9 @@
     gap: var(--s-8);
   }
   .colophon {
-    padding-inline: var(--s-10);
+    padding-inline: var(--s-10) calc(var(--s-10) * 2 + var(--label-w));
+  }
+  .colophonLocale {
+    right: var(--s-10);
   }
 }

@@ -10,6 +10,7 @@ import L from 'leaflet'
 import { useEffect, useImperativeHandle, useRef, type Ref } from 'react'
 import { MAP_TILES_URL } from '@/config'
 import type { Spot } from '@/features/location/geo'
+import { useT } from '@/i18n'
 import { initialsOf, kmText, safeImageUrl, type PlacedMatch } from './layout'
 import s from './MapPage.module.css'
 
@@ -61,11 +62,14 @@ function tooltipFor(person: PlacedMatch): HTMLElement {
 const ME_ICON = L.divIcon({ className: s.meIcon, html: '<span></span>', iconSize: [32, 40], iconAnchor: [16, 36] })
 
 export function MatchMap({ people, me, selectedId, onSelect, ready, ref }: MatchMapProps) {
+  const t = useT()
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const facesRef = useRef<L.LayerGroup | null>(null)
   const markers = useRef(new Map<string, L.Marker>())
   const meRef = useRef<L.Marker | null>(null)
+  /** The name the viewer's pin was made with: a change of language makes it again. */
+  const meName = useRef('')
   const onSelectRef = useRef(onSelect)
   /** Fit once the first time there is something to show; after that the user's view is kept. */
   const fitted = useRef(false)
@@ -146,14 +150,20 @@ export function MatchMap({ people, me, selectedId, onSelect, ready, ref }: Match
       meRef.current = null
       return
     }
+    const you = t('nav.you')
+    if (meRef.current && meName.current !== you) {
+      meRef.current.remove()
+      meRef.current = null
+    }
     if (!meRef.current) {
-      meRef.current = L.marker([meLat, meLon], { icon: ME_ICON, title: 'You', alt: 'You', keyboard: false, zIndexOffset: -100 })
-        .bindTooltip('You', { direction: 'top', offset: [0, -34] })
+      meName.current = you
+      meRef.current = L.marker([meLat, meLon], { icon: ME_ICON, title: you, alt: you, keyboard: false, zIndexOffset: -100 })
+        .bindTooltip(you, { direction: 'top', offset: [0, -34] })
         .addTo(map)
     } else {
       meRef.current.setLatLng([meLat, meLon])
     }
-  }, [meLat, meLon])
+  }, [meLat, meLon, t])
 
   // First view, once the connections are in: everybody at once.
   useEffect(() => {
@@ -187,7 +197,7 @@ export function MatchMap({ people, me, selectedId, onSelect, ready, ref }: Match
       ref={box}
       className={s.map}
       role="region"
-      aria-label="Map of your connections. Each face is a person; press Tab to move between them and Enter to select."
+      aria-label={t('map.regionLabel')}
     />
   )
 }

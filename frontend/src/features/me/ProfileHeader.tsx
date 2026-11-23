@@ -1,4 +1,5 @@
-import type { OwnProfile, Profile } from '@/api/types'
+import type { OwnProfile, Profile, SexualPreference } from '@/api/types'
+import { useT, type MessageKey, type Translator } from '@/i18n'
 import {
   Button,
   Chip,
@@ -21,10 +22,9 @@ import {
 import { REVISIT_MS, useLoad, useNodeStatus, useNodeValue } from '@/wb'
 import { CompletenessMeter } from './CompletenessMeter'
 import {
-  GENDER_LABEL,
+  genderLabel,
   interestNames,
   mainPicture,
-  PREFERENCE_LABEL,
   profileChecks,
   serialOf,
   type CheckKey,
@@ -39,21 +39,31 @@ export interface ProfileHeaderProps {
   onPreview?: () => void
 }
 
-function identityLine(profile: Profile): string {
+const INTO: Record<SexualPreference, MessageKey> = {
+  female: 'prof.intoFemale',
+  male: 'prof.intoMale',
+  both: 'prof.intoBoth',
+  other: 'prof.intoOther',
+}
+
+const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
+function identityLine(profile: Profile, t: Translator): string {
   const parts: string[] = []
-  if (profile.gender) parts.push(GENDER_LABEL[profile.gender])
-  if (profile.sexualPreference) parts.push(`Into ${PREFERENCE_LABEL[profile.sexualPreference]}`)
-  return parts.length ? parts.join(' · ') : 'Gender and preference not set'
+  if (profile.gender) parts.push(genderLabel(profile.gender))
+  if (profile.sexualPreference) parts.push(capitalise(t(INTO[profile.sexualPreference])))
+  return parts.length ? parts.join(' · ') : t('me.identityEmpty')
 }
 
 /** The own profile as a poster: tilted main photo on a matcha band, the name in heavy type, the numbers. */
 export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHeaderProps) {
+  const t = useT()
   const complete = useNodeValue('profileComplete') === true
   useLoad('myViewers', { maxAgeMs: REVISIT_MS })
   const viewers = useNodeValue('myViewers')
   const viewersStatus = useNodeStatus('myViewers')
   const main = mainPicture(profile)
-  const first = profile.firstName?.trim() || 'You'
+  const first = profile.firstName?.trim() || t('me.headerYou')
   const last = profile.lastName?.trim()
   const tags = interestNames(profile)
   const since = new Date(profile.createdAt).getFullYear()
@@ -69,7 +79,7 @@ export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHead
         <div className={s.hero}>
           <PhotoFrame
             src={main?.url}
-            alt={main ? `${first}’s main photo` : ''}
+            alt={main ? t('me.mainPhotoAlt', { name: first }) : ''}
             seed={profile.userId}
             shadow={4}
             radius="xl"
@@ -77,25 +87,15 @@ export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHead
             loading="eager"
           />
           <span className={s.stamp}>
-            <Stamp tone={complete ? 'ink' : 'strawberry'} size="md" rotate={9} sub={complete ? 'In the deck' : 'Not in the deck'}>
-              {complete ? 'Live' : 'Draft'}
+            <Stamp tone={complete ? 'ink' : 'strawberry'} size="md" rotate={9} sub={complete ? t('me.stampInDeck') : t('me.stampNotInDeck')}>
+              {complete ? t('me.stampLive') : t('me.stampDraft')}
             </Stamp>
           </span>
         </div>
         {!main ? (
           <span className={s.sticker}>
           <Sticker tone="yolk" rotate={-12} size="84px">
-            {profile.pictures.length === 0 ? (
-              <>
-                Add a<br />
-                photo
-              </>
-            ) : (
-              <>
-                Pick a<br />
-                main
-              </>
-            )}
+            {t.stack(profile.pictures.length === 0 ? 'me.stickerAddPhoto' : 'me.stickerPickMain')}
           </Sticker>
           </span>
         ) : null}
@@ -103,7 +103,7 @@ export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHead
 
       <div className={s.identity}>
         <Label tone="muted">
-          <Serial value={serialOf(profile.userId)} /> · Member since {since}
+          <Serial value={serialOf(profile.userId)} /> · {t('me.memberSince', { year: since })}
         </Label>
         <Headline as="h1" id="me-name" size="d1" width="condensed" print="riso" className={s.name}>
           {first}
@@ -112,7 +112,7 @@ export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHead
         <p className={s.line}>
           <IconUser size={16} strokeWidth={3} />
           <Text as="span" size="sm" strong>
-            {identityLine(profile)}
+            {identityLine(profile, t)}
           </Text>
         </p>
       </div>
@@ -120,13 +120,13 @@ export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHead
       <CompletenessMeter checks={profileChecks(profile)} onFix={onFix} />
 
       <StatGroup>
-        <Stat value={viewerCount} label="Viewers" />
-        <Stat value={profile.interests.length} label="Interests" tone="strawberry" />
-        <Stat value={profile.pictures.length} unit="/5" label="Photos" tone="yolk" />
+        <Stat value={viewerCount} label={t('me.statViewers')} />
+        <Stat value={profile.interests.length} label={t('me.statInterests')} tone="strawberry" />
+        <Stat value={profile.pictures.length} unit="/5" label={t('me.statPhotos')} tone="yolk" />
       </StatGroup>
 
       {tags.length > 0 ? (
-        <ul className={s.chips} aria-label="Interests">
+        <ul className={s.chips} aria-label={t('me.statInterests')}>
           {tags.map((tag) => (
             <li key={tag}>
               <Chip>#{tag}</Chip>
@@ -137,10 +137,10 @@ export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHead
 
       <div className={s.actions}>
         <Button variant="paper" icon={<IconPencil size={18} />} onClick={onEdit} className={s.grow}>
-          Edit profile
+          {t('me.editProfile')}
         </Button>
         {onPreview ? (
-          <IconButton label="See how others see you" size="lg" onClick={onPreview}>
+          <IconButton label={t('me.seeAsOthers')} size="lg" onClick={onPreview}>
             <IconEye size={24} />
           </IconButton>
         ) : null}

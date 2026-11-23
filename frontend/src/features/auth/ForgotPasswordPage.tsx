@@ -4,33 +4,22 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useLocaleState, useT } from '@/i18n'
 import { AuthLayout, Button, ButtonLink, IconArrowLeft, Stamp, TextField } from '@/ui'
 import { actions } from '@/wb'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { FormBanner } from './parts'
-import { checkEmail, CODE_LIFETIME, EMAIL_MAX, normaliseEmail } from './rules'
+import { checkEmail, codeLifetime, EMAIL_MAX, normaliseEmail } from './rules'
 import { useAuthForm } from './useAuthForm'
 import a from './auth.module.css'
 
 type Field = 'email'
 const FIELDS: readonly Field[] = ['email']
 
-const POSTER = {
-  lines: ['Lost', 'the', 'key?'],
-  tone: 'yolk' as const,
-  sticker: (
-    <>
-      No
-      <br />
-      stress
-    </>
-  ),
-  marquee: ['Happens to the best of us', 'A fresh key in one email', `Valid for ${CODE_LIFETIME}`],
-}
-
 export default function ForgotPasswordPage() {
+  const t = useT()
   const [email, setEmail] = useState('')
-  const [banner, setBanner] = useState<Banner | null>(null)
+  const [banner, setBanner] = useLocaleState<Banner | null>(null)
   const [busy, setBusy] = useState(false)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -63,36 +52,32 @@ export default function ForgotPasswordPage() {
     }
   }
 
+  const signInFooter = (
+    <p className={a.links}>
+      {t('common.remembered')} <Link to="/login">{t('common.signIn')}</Link>
+    </p>
+  )
+
   if (sentTo) {
     return (
       <>
-        <title>Check your inbox · Matcha</title>
+        <title>{`${t('common.checkInbox')} · Matcha`}</title>
         <AuthLayout
-          title="Check your inbox"
-          kicker="Request received"
-          intro={
-            <>
-              If an account uses <strong>{sentTo}</strong>, a reset link is on its way. It works for {CODE_LIFETIME}; asking
-              again replaces it.
-            </>
-          }
-          poster={POSTER}
-          footer={
-            <p className={a.links}>
-              Remembered it? <Link to="/login">Sign in</Link>
-            </p>
-          }
+          title={t('common.checkInbox')}
+          kicker={t('forgot.sentKicker')}
+          intro={t.rich('forgot.sentIntro', { email: <strong>{sentTo}</strong>, time: codeLifetime() })}
+          footer={signInFooter}
         >
           <div className={a.result}>
-            <Stamp tone="blue" variant="rubber" size="lg" rotate={-6} thunk sub="Reset request" className={a.resultStamp}>
-              Posted
+            <Stamp tone="blue" variant="rubber" size="lg" rotate={-6} thunk sub={t('forgot.stampSub')} className={a.resultStamp}>
+              {t('forgot.stamp')}
             </Stamp>
             <div className={a.actions}>
               <ButtonLink to="/login" size="lg" block variant="paper" icon={<IconArrowLeft size={20} strokeWidth={3} />}>
-                Back to sign in
+                {t('common.backToSignIn')}
               </ButtonLink>
               <Button variant="ghost" onClick={() => setSentTo(null)}>
-                Use another address
+                {t('forgot.useAnother')}
               </Button>
             </div>
           </div>
@@ -103,17 +88,12 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <title>Forgot your password · Matcha</title>
+      <title>{`${t('forgot.docTitle')} · Matcha`}</title>
       <AuthLayout
-        title="Forgot your password?"
-        kicker="Key cutting"
-        intro="Tell us the email on your account and we'll send you a link to choose a new password."
-        poster={POSTER}
-        footer={
-          <p className={a.links}>
-            Remembered it? <Link to="/login">Sign in</Link>
-          </p>
-        }
+        title={t('forgot.title')}
+        kicker={t('common.keyCutting')}
+        intro={t('forgot.intro')}
+        footer={signInFooter}
       >
         <form
           ref={formRef}
@@ -125,7 +105,7 @@ export default function ForgotPasswordPage() {
           }}
         >
           <TextField
-            label="Email"
+            label={t('common.email')}
             name="email"
             type="email"
             inputMode="email"
@@ -145,7 +125,7 @@ export default function ForgotPasswordPage() {
           />
           <FormBanner banner={banner} onRetry={() => void submit()} retrying={busy} />
           <Button type="submit" size="lg" block loading={busy}>
-            Send reset link
+            {t('forgot.send')}
           </Button>
         </form>
       </AuthLayout>

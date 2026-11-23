@@ -15,14 +15,15 @@ import {
   TextField,
 } from '@/ui'
 import { dateOfBirthBounds, MIN_AGE } from '@/features/auth/rules'
+import { useT } from '@/i18n'
 import { tagFromInput } from '@/wb'
 import { focusFirstInvalid } from './focus'
 import { LocationSection } from './LocationSection'
 import {
   canSetDateOfBirth,
-  GENDER_OPTIONS,
+  genderOptions,
   isEmptyChange,
-  PREFERENCE_OPTIONS,
+  preferenceOptions,
   SECTION_IDS,
   type DraftKey,
   type EditableProfile,
@@ -45,6 +46,7 @@ interface SectionProps {
 
 /** One editable block: its own form, its own partial save, its own saved / error feedback. */
 function Section({ id, number, title, intro, form, keys, children }: SectionProps) {
+  const t = useT()
   const dirty = !isEmptyChange(form.changesFor(keys))
   const titleId = `${id}-title`
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -54,9 +56,15 @@ function Section({ id, number, title, intro, form, keys, children }: SectionProp
       if (!ok) focusFirstInvalid(element)
     })
   }
-  const state = form.saving ? 'Saving' : dirty ? 'Unsaved' : form.saved ? 'Saved' : 'Up to date'
+  const state = form.saving
+    ? t('me.stateSaving')
+    : dirty
+      ? t('me.stateUnsaved')
+      : form.saved
+        ? t('me.stateSaved')
+        : t('me.stateUpToDate')
   return (
-    <Card as="section" id={id} aria-labelledby={titleId} label={`Section ${pad(number)}`} meta={state} className={s.section}>
+    <Card as="section" id={id} aria-labelledby={titleId} label={t('me.section', { n: pad(number) })} meta={state} className={s.section}>
       <form onSubmit={onSubmit} noValidate>
         <Stack gap={4}>
           <Stack gap={2}>
@@ -70,22 +78,22 @@ function Section({ id, number, title, intro, form, keys, children }: SectionProp
             ) : null}
           </Stack>
           {children}
-          <FormError error={form.formError} title="Not saved" />
+          <FormError error={form.formError} title={t('me.notSaved')} />
           <div className={s.actions}>
             <span className={s.status} role="status">
               {form.saved && !dirty ? (
                 <span className={s.saved}>
-                  <IconCheck size={16} strokeWidth={4} /> Saved
+                  <IconCheck size={16} strokeWidth={4} /> {t('me.stateSaved')}
                 </span>
               ) : null}
             </span>
             {dirty && !form.saving ? (
               <Button variant="ghost" onClick={form.reset}>
-                Undo
+                {t('me.undo')}
               </Button>
             ) : null}
             <Button type="submit" loading={form.saving} disabled={!dirty}>
-              Save
+              {t('me.save')}
             </Button>
           </div>
         </Stack>
@@ -96,6 +104,7 @@ function Section({ id, number, title, intro, form, keys, children }: SectionProp
 
 /** Names, and the date of birth while there is none (GitHub sign-ups): it can be set once, here or in onboarding. */
 function NamesSection({ profile }: { profile: EditableProfile }) {
+  const t = useT()
   const form = useProfileDraft(profile)
   const askBirthday = canSetDateOfBirth(profile)
   const [bounds] = useState(dateOfBirthBounds)
@@ -103,14 +112,14 @@ function NamesSection({ profile }: { profile: EditableProfile }) {
     <Section
       id={SECTION_IDS.names}
       number={1}
-      title={askBirthday ? 'Names & birthday' : 'Names'}
-      intro="Your first name is printed on your card."
+      title={askBirthday ? t('me.namesBirthTitle') : t('me.namesTitle')}
+      intro={t('me.namesIntro')}
       form={form}
       keys={askBirthday ? ['firstName', 'lastName', 'dateOfBirth'] : ['firstName', 'lastName']}
     >
       <div className={s.pair}>
         <TextField
-          label="First name"
+          label={t('me.labelFirstName')}
           autoComplete="given-name"
           maxLength={50}
           value={form.value.firstName}
@@ -118,7 +127,7 @@ function NamesSection({ profile }: { profile: EditableProfile }) {
           error={form.errors.firstName}
         />
         <TextField
-          label="Last name"
+          label={t('me.labelLastName')}
           autoComplete="family-name"
           maxLength={50}
           value={form.value.lastName}
@@ -128,7 +137,7 @@ function NamesSection({ profile }: { profile: EditableProfile }) {
       </div>
       {askBirthday ? (
         <TextField
-          label="Date of birth"
+          label={t('me.labelBirth')}
           type="date"
           autoComplete="bday"
           min={bounds.min}
@@ -136,7 +145,7 @@ function NamesSection({ profile }: { profile: EditableProfile }) {
           value={form.value.dateOfBirth}
           onChange={(e) => form.set('dateOfBirth', e.currentTarget.value)}
           error={form.errors.dateOfBirth}
-          hint={`Required to appear in Discover. ${MIN_AGE}+ only: others see your age, never the date, and it can't be changed later.`}
+          hint={t('me.birthHint', { n: MIN_AGE })}
         />
       ) : null}
     </Section>
@@ -144,27 +153,28 @@ function NamesSection({ profile }: { profile: EditableProfile }) {
 }
 
 function IdentitySection({ profile }: { profile: Profile }) {
+  const t = useT()
   const form = useProfileDraft(profile)
   return (
     <Section
       id={SECTION_IDS.identity}
       number={2}
-      title="You & your type"
-      intro="Discover shows you people who match this, and shows you to them."
+      title={t('me.identityTitle')}
+      intro={t('me.identityIntro')}
       form={form}
       keys={['gender', 'sexualPreference']}
     >
       <Segmented
-        label="I am"
-        options={GENDER_OPTIONS}
+        label={t('me.iAmA')}
+        options={genderOptions()}
         value={form.value.gender}
         onChange={(value) => form.set('gender', value)}
         error={form.errors.gender}
         block
       />
       <Segmented
-        label="Show me"
-        options={PREFERENCE_OPTIONS}
+        label={t('me.showMe')}
+        options={preferenceOptions()}
         value={form.value.sexualPreference}
         onChange={(value) => form.set('sexualPreference', value)}
         error={form.errors.sexualPreference}
@@ -175,36 +185,38 @@ function IdentitySection({ profile }: { profile: Profile }) {
 }
 
 function BiographySection({ profile }: { profile: Profile }) {
+  const t = useT()
   const form = useProfileDraft(profile)
   return (
-    <Section id={SECTION_IDS.biography} number={3} title="Biography" form={form} keys={['biography']}>
+    <Section id={SECTION_IDS.biography} number={3} title={t('me.bioTitle')} form={form} keys={['biography']}>
       <TextArea
-        label="About you"
+        label={t('me.aboutYou')}
         maxLength={MAX_BIOGRAPHY_LENGTH}
         rows={5}
         value={form.value.biography}
         onChange={(e) => form.set('biography', e.currentTarget.value)}
         error={form.errors.biography}
-        hint="Required to appear in Discover."
+        hint={t('me.bioHint')}
       />
     </Section>
   )
 }
 
 function InterestsSection({ profile }: { profile: Profile }) {
+  const t = useT()
   const form = useProfileDraft(profile)
   const catalogue = useTagCatalogue()
   return (
     <Section
       id={SECTION_IDS.interests}
       number={4}
-      title="Interests"
-      intro="Shared interests are printed first on other people’s cards."
+      title={t('me.interestsTitle')}
+      intro={t('me.interestsIntro')}
       form={form}
       keys={['interests']}
     >
       <TagInput
-        label="Your interests"
+        label={t('me.yourInterests')}
         value={form.value.interests}
         onChange={(tags) => form.set('interests', tags)}
         normalize={tagFromInput}

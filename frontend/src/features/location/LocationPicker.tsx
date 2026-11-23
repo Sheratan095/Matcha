@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { MAP_TILES_URL } from '@/config'
+import { useT, type MessageKey } from '@/i18n'
 import { Button, FieldError, IconPin, IconSearch, Notice, Spinner, TextField } from '@/ui'
 import { coordinatesLabel, deviceSpot, networkSpot, placeName, searchPlaces, wrapLongitude, type Place, type PlacedSpot, type Spot, type SpotSource } from './geo'
 import s from './LocationPicker.module.css'
@@ -22,12 +23,12 @@ export interface LocationPickerProps {
   error?: string
 }
 
-const PRECISION: Record<SpotSource, string> = {
-  saved: 'Saved',
-  device: 'Precise · from this device',
-  network: 'Approximate · from your connection',
-  map: 'Picked on the map',
-  search: 'Picked from search',
+const PRECISION: Record<SpotSource, MessageKey> = {
+  saved: 'loc.precSaved',
+  device: 'loc.precDevice',
+  network: 'loc.precNetwork',
+  map: 'loc.precMap',
+  search: 'loc.precSearch',
 }
 
 /** How close the map comes for each kind of spot (a city-level guess stays wider). */
@@ -42,6 +43,7 @@ function keyOf(spot: Spot): string {
 }
 
 export function LocationPicker({ value, onChange, locateWhenEmpty, center, error }: LocationPickerProps) {
+  const t = useT()
   const errorId = useId()
   /**
    * Read once, when the map is created: the pin it opens with (a spot picked on the map has no zoom of
@@ -55,6 +57,8 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, center, error
   const mapBox = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
+  /** The name the pin was made with: a change of language makes it again. */
+  const markerName = useRef('')
   const onChangeRef = useRef(onChange)
   /**
    * Arrived without a pin: a city-level guess from the connection, without any prompt. Decided once:
@@ -115,8 +119,14 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, center, error
       return
     }
     const at = L.latLng(value.latitude, value.longitude)
+    const spotName = t('loc.yourSpot')
+    if (markerRef.current && markerName.current !== spotName) {
+      markerRef.current.remove()
+      markerRef.current = null
+    }
     if (!markerRef.current) {
-      const marker = L.marker(at, { draggable: true, icon: PIN, title: 'Your spot', alt: 'Your spot', keyboard: false }).addTo(map)
+      markerName.current = spotName
+      const marker = L.marker(at, { draggable: true, icon: PIN, title: spotName, alt: spotName, keyboard: false }).addTo(map)
       marker.on('dragend', () => {
         const moved = marker.getLatLng()
         move({ latitude: moved.lat, longitude: moved.lng }, 'map')
@@ -127,7 +137,7 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, center, error
     }
     const zoom = ZOOM[value.source]
     if (zoom !== null) map.setView(at, zoom)
-  }, [value, move])
+  }, [value, move, t])
 
   useEffect(() => {
     if (!arriving) return
@@ -217,15 +227,15 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, center, error
         <div className={s.placeText}>
           {value ? (
             <>
-              <span className={s.placeName}>{name ? `Near ${name}` : coordinatesLabel(value)}</span>
-              <span className={s.precision}>{PRECISION[value.source]}</span>
+              <span className={s.placeName}>{name ? t('loc.near', { name }) : coordinatesLabel(value)}</span>
+              <span className={s.precision}>{t(PRECISION[value.source])}</span>
             </>
           ) : busy === 'network' ? (
             <span className={s.finding}>
-              <Spinner size={16} /> Finding you…
+              <Spinner size={16} /> {t('loc.finding')}
             </span>
           ) : (
-            <span className={s.placeName}>No spot yet</span>
+            <span className={s.placeName}>{t('loc.noSpot')}</span>
           )}
         </div>
       </div>
@@ -234,18 +244,18 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, center, error
         ref={mapBox}
         className={s.map}
         data-invalid={error ? '' : undefined}
-        aria-label="Map: click or tap to place your spot, drag the pin to move it"
+        aria-label={t('loc.mapLabel')}
         aria-describedby={error ? errorId : undefined}
       />
 
       <div className={s.controls}>
         <Button variant="ink" icon={<IconPin size={18} />} loading={busy === 'device'} disabled={busy === 'search'} onClick={() => void locateDevice()}>
-          Use my location
+          {t('loc.useMine')}
         </Button>
         <TextField
-          label="Or search a place"
+          label={t('loc.searchLabel')}
           hideLabel
-          placeholder="Search a place"
+          placeholder={t('loc.searchPlaceholder')}
           value={query}
           onChange={(event) => setQuery(event.currentTarget.value)}
           onKeyDown={onSearchKey}
@@ -257,14 +267,14 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, center, error
           fieldClassName={s.search}
           trailing={
             <Button size="sm" variant="paper" loading={busy === 'search'} disabled={query.trim().length < 2} onClick={() => void search()}>
-              Search
+              {t('loc.search')}
             </Button>
           }
         />
       </div>
 
       {results && results.length > 0 ? (
-        <ul className={s.results} aria-label="Places found">
+        <ul className={s.results} aria-label={t('loc.placesFound')}>
           {results.map((place) => (
             <li key={`${place.latitude},${place.longitude}`}>
               <button
@@ -283,28 +293,28 @@ export function LocationPicker({ value, onChange, locateWhenEmpty, center, error
       ) : null}
 
       {note === 'denied' ? (
-        <Notice tone="info" title="Location access is off" onDismiss={() => setNote(null)}>
-          We placed you roughly from your connection instead. Drag the pin or search if it’s wrong.
+        <Notice tone="info" title={t('loc.deniedTitle')} onDismiss={() => setNote(null)}>
+          {t('loc.roughBody')}
         </Notice>
       ) : null}
       {note === 'device-failed' ? (
-        <Notice tone="info" title="This device couldn’t say where it is" onDismiss={() => setNote(null)}>
-          We placed you roughly from your connection instead. Drag the pin or search if it’s wrong.
+        <Notice tone="info" title={t('loc.deviceFailedTitle')} onDismiss={() => setNote(null)}>
+          {t('loc.roughBody')}
         </Notice>
       ) : null}
       {note === 'lost' ? (
-        <Notice tone="warning" title="We couldn’t find you" onDismiss={() => setNote(null)}>
-          Search a place, or tap the map where you are.
+        <Notice tone="warning" title={t('loc.lostTitle')} onDismiss={() => setNote(null)}>
+          {t('loc.lostBody')}
         </Notice>
       ) : null}
       {note === 'search-empty' ? (
         <Notice tone="info" onDismiss={() => setNote(null)}>
-          Nothing found for “{query.trim()}”. Try a town or a neighbourhood.
+          {t('loc.nothingFound', { query: query.trim() })}
         </Notice>
       ) : null}
       {note === 'search-failed' ? (
-        <Notice tone="warning" title="Search is unavailable" onDismiss={() => setNote(null)}>
-          Tap the map where you are, or use your location.
+        <Notice tone="warning" title={t('loc.searchDownTitle')} onDismiss={() => setNote(null)}>
+          {t('loc.searchDownBody')}
         </Notice>
       ) : null}
 

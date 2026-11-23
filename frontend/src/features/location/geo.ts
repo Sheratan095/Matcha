@@ -9,6 +9,7 @@
  * credentials: the app's axios instance sends cookies, which these open-CORS services refuse.
  */
 import { GEOCODER_URL, GEOIP_URL } from '@/config'
+import { getLocale, t } from '@/i18n'
 
 export interface Spot {
   latitude: number
@@ -47,8 +48,8 @@ export function wrapLongitude(longitude: number): number {
 
 /** '41.905° N, 12.543° E' (the picker's caption, a date's place). */
 export function coordinatesLabel(spot: Spot): string {
-  const lat = `${Math.abs(spot.latitude).toFixed(3)}° ${spot.latitude >= 0 ? 'N' : 'S'}`
-  const lon = `${Math.abs(spot.longitude).toFixed(3)}° ${spot.longitude >= 0 ? 'E' : 'W'}`
+  const lat = `${Math.abs(spot.latitude).toFixed(3)}° ${spot.latitude >= 0 ? t('loc.north') : t('loc.south')}`
+  const lon = `${Math.abs(spot.longitude).toFixed(3)}° ${spot.longitude >= 0 ? t('loc.east') : t('loc.west')}`
   return `${lat}, ${lon}`
 }
 
@@ -169,8 +170,9 @@ export function placeLabel(raw: unknown): string | null {
   return null
 }
 
+/** Place names come back in the interface language. */
 function language(): string {
-  return typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en'
+  return getLocale()
 }
 
 async function nominatim(path: string, params: Record<string, string>, signal?: AbortSignal): Promise<unknown> {

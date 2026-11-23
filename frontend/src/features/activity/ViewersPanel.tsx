@@ -5,56 +5,62 @@
 import type { ReactNode } from 'react'
 import { Barcode, Button, ButtonLink, EmptyState, IconEye, IconPencil, IconRefresh, IconRegMark, Notice, Skeleton, TicketHeader } from '@/ui'
 import type { UserSummary } from '@/api/types'
+import { useT, type Translator } from '@/i18n'
 import type { NodeStatus } from '@/wb'
 import { pad2 } from '@/features/chat/time'
 import s from './ActivityPage.module.css'
 
 type VisitKind = 'viewers' | 'visited'
 
-const COPY: Record<
-  VisitKind,
-  {
-    failed: string
-    loading: string
-    stamp: string
-    emptyTitle: string
-    emptyText: string
-    emptyAction: ReactNode
-    header: string
-    kicker: string
-    who: string
+interface VisitCopy {
+  failed: string
+  loading: string
+  stamp: string
+  emptyTitle: string
+  emptyText: string
+  emptyAction: ReactNode
+  header: string
+  kicker: string
+  who: string
+  honest: string
+}
+
+/** The words of each kind of visit list, in the language the page is in. */
+function copyFor(kind: VisitKind, t: Translator): VisitCopy {
+  if (kind === 'viewers') {
+    return {
+      failed: t('act.viewersFailed'),
+      loading: t('act.viewersLoading'),
+      stamp: t('act.viewersStamp'),
+      emptyTitle: t('act.viewersEmptyTitle'),
+      emptyText: t('act.viewersEmptyText'),
+      emptyAction: (
+        <ButtonLink to="/me" variant="paper" icon={<IconPencil size={18} />}>
+          {t('act.viewersPolish')}
+        </ButtonLink>
+      ),
+      header: t('act.viewersHeader'),
+      kicker: t('act.viewersKicker'),
+      who: t('act.viewersWho'),
+      honest: t('act.viewersHonest'),
+    }
   }
-> = {
-  viewers: {
-    failed: 'Your visitors did not load',
-    loading: 'Loading your visitors',
-    stamp: 'No visits',
-    emptyTitle: 'Nobody has peeked yet',
-    emptyText: 'A clear photo and a few honest interests go a long way. Visitors land here as soon as they open your profile.',
-    emptyAction: (
-      <ButtonLink to="/me" variant="paper" icon={<IconPencil size={18} />}>
-        Polish your profile
-      </ButtonLink>
-    ),
-    header: 'Visitors · newest first',
-    kicker: 'Admit one · Visitor',
-    who: 'Visitor',
-  },
-  visited: {
-    failed: 'Your visits did not load',
-    loading: 'Loading the profiles you visited',
-    stamp: 'No trips',
-    emptyTitle: 'You have not opened a profile yet',
-    emptyText: 'Open a card on the deck, a search result or a face on the map: every profile you open lands here.',
+  return {
+    failed: t('act.visitedFailed'),
+    loading: t('act.visitedLoading'),
+    stamp: t('act.visitedStamp'),
+    emptyTitle: t('act.visitedEmptyTitle'),
+    emptyText: t('act.visitedEmptyText'),
     emptyAction: (
       <ButtonLink to="/discover" variant="paper" icon={<IconRegMark size={18} />}>
-        Go to the deck
+        {t('act.visitedGoDeck')}
       </ButtonLink>
     ),
-    header: 'Profiles you opened · latest first',
-    kicker: 'Return ticket · Visited',
-    who: 'Visited',
-  },
+    header: t('act.visitedHeader'),
+    kicker: t('act.visitedKicker'),
+    who: t('act.visitedWho'),
+    honest: t('act.visitedHonest'),
+  }
 }
 
 export interface ViewersPanelProps {
@@ -67,7 +73,8 @@ export interface ViewersPanelProps {
 }
 
 export function ViewersPanel({ kind = 'viewers', viewers, status, onOpen, onRetry }: ViewersPanelProps) {
-  const copy = COPY[kind]
+  const t = useT()
+  const copy = copyFor(kind, t)
   if (!viewers) {
     if (status.status === 'error') {
       return (
@@ -76,11 +83,11 @@ export function ViewersPanel({ kind = 'viewers', viewers, status, onOpen, onRetr
           title={copy.failed}
           action={
             <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={onRetry}>
-              Try again
+              {t('common.tryAgain')}
             </Button>
           }
         >
-          {status.error?.message ?? 'Something went wrong.'}
+          {status.error?.message ?? t('kit.wrong')}
         </Notice>
       )
     }
@@ -105,9 +112,7 @@ export function ViewersPanel({ kind = 'viewers', viewers, status, onOpen, onRetr
     <>
       <TicketHeader label={copy.header} meta={pad2(viewers.length)} />
       <p className={s.honest}>
-        {kind === 'viewers'
-          ? 'Open a stub to see their profile: that counts as a visit to theirs too.'
-          : 'Open a stub to see their profile again: they are told about each visit.'}
+        {copy.honest}
       </p>
       <ol className={s.stubs}>
         {viewers.map(({ userId: id, username }, index) => (
@@ -130,10 +135,10 @@ export function ViewersPanel({ kind = 'viewers', viewers, status, onOpen, onRetr
                 </span>
                 <span className={s.stubOpen} aria-hidden="true">
                   <IconEye size={16} strokeWidth={3} />
-                  Open
+                  {t('act.stubOpen')}
                 </span>
               </span>
-              <span className="sr-only">, number {index + 1}. Open their profile.</span>
+              <span className="sr-only">{t('act.stubSr', { n: index + 1 })}</span>
             </button>
           </li>
         ))}

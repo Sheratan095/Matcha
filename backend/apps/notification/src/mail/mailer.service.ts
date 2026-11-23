@@ -37,6 +37,44 @@ function renderTemplate(template: string, values: Record<string, unknown>, rawHt
 	return (out);
 }
 
+// The logo in the email header: a PNG of the cup mark (frontend/public/LOGO), attached inline and referenced
+// by the templates as <img src="cid:matcha-logo">. Gmail and Outlook render neither inline SVG nor SVG
+// images and block data: URIs, so a CID attachment is the form that works in every client.
+const LOGO_ATTACHMENT =
+{
+	filename: 'matcha-logo.png',
+	path: path.join(__dirname, 'assets', 'logo.png'),
+	cid: 'matcha-logo',
+	contentDisposition: 'inline' as const,
+};
+
+// The paper grain of the reset emails: the site's --tex-grain / --tex-grain-soft as 240px PNG tiles
+// (assets/grain.png, assets/grain-soft.png), inlined as data: URIs into {{GRAIN_URI}} / {{GRAIN_SOFT_URI}}.
+// It is decoration, so a client that drops data: URIs shows the flat paper colour every surface also sets.
+// A missing asset must not stop the email: it falls back to a transparent pixel.
+const NO_GRAIN = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+let grainCache: { GRAIN_URI: string; GRAIN_SOFT_URI: string } | undefined;
+
+function grainValues(): { GRAIN_URI: string; GRAIN_SOFT_URI: string }
+{
+	if (!grainCache)
+	{
+		const	dataUri = (file: string): string =>
+			`data:image/png;base64,${fs.readFileSync(path.join(__dirname, 'assets', file)).toString('base64')}`;
+
+		try
+		{
+			grainCache = { GRAIN_URI: dataUri('grain.png'), GRAIN_SOFT_URI: dataUri('grain-soft.png') };
+		}
+		catch
+		{
+			grainCache = { GRAIN_URI: NO_GRAIN, GRAIN_SOFT_URI: NO_GRAIN };
+		}
+	}
+
+	return (grainCache);
+}
+
 @Injectable()
 export class MailerService
 {
@@ -137,6 +175,7 @@ export class MailerService
 			subject: langPack.subject,
 			text: langPack.plainText.replace(/{{OTP_CODE}}/g, otpCode).replace(/{{EXPIRY_MINUTES}}/g, expiryMinutes),
 			html: htmlContent,
+			attachments: [LOGO_ATTACHMENT],
 		};
 
 		try
@@ -215,6 +254,7 @@ export class MailerService
 				FOOTER_MESSAGE:      langPack.footerMessage,
 				FOOTER_TEXT:         langPack.footerText,
 				ALL_RIGHTS_RESERVED: langPack.allRightsReserved,
+				...grainValues(),
 			}, ['SECURITY_POINTS']);
 
 			// Resolve {{EXPIRY_MINUTES}} last: it lives inside langPack strings (expiryText,
@@ -234,6 +274,7 @@ export class MailerService
 			subject: langPack.subject,
 			text: langPack.plainText.replace(/{{OTP_CODE}}/g, resetCode).replace(/{{EXPIRY_MINUTES}}/g, expiryMinutes),
 			html: htmlContent,
+			attachments: [LOGO_ATTACHMENT],
 		};
 
 		try
@@ -279,6 +320,7 @@ export class MailerService
 				FOOTER_MESSAGE:      langPack.footerMessage,
 				FOOTER_TEXT:         langPack.footerText,
 				ALL_RIGHTS_RESERVED: langPack.allRightsReserved,
+				...grainValues(),
 			}, ['SECURITY_POINTS']);
 
 			await this.transporter.sendMail({
@@ -287,6 +329,7 @@ export class MailerService
 				subject: langPack.subject,
 				text: langPack.plainText.replace(/{{RESET_LINK}}/g, resetLink),
 				html: htmlContent,
+				attachments: [LOGO_ATTACHMENT],
 			});
 
 			this.logger.log(`Password changed email sent to ${to}`);

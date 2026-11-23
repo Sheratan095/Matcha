@@ -24,6 +24,12 @@ stock (`--c-paper-hi`). Coloured text on paper uses the `-deep` variants (`--c-m
 `--c-yolk-deep`) or `--c-blue`. Strawberry means like / danger, yolk means super-like / highlight, cobalt means
 info and is the focus ring, matcha is the brand and "go". Never put light text on matcha/strawberry/yolk.
 
+**Words.** The kit prints no English of its own that a page cannot replace: the labels a component falls back on
+("Close", "Dismiss", "Loading", the deck buttons, the password toggle…) are read from the interface language
+(`kit.*` in `src/i18n/messages/app/kit.ts`), and every one is overridable with a prop (`label`, `placeholder`,
+`removeLabel`, `thumbLabels`…). Pages pass their own translated text; a default is never read at module level.
+Read ARCHITECTURE §8 before adding a string.
+
 **Spacing.** 4px rhythm: `--s-1` 4 · `--s-2` 8 · `--s-3` 12 · `--s-4` 16 · `--s-5` 20 · `--s-6` 24 · `--s-8` 32 ·
 `--s-10` 40 · `--s-12` 48 · `--s-16` 64. Page gutter `--gutter` (16px). Between form fields `--s-4`; between page
 sections `--s-6`–`--s-8`. Use `Stack` / `Row` (`gap={4}` = 16px) instead of ad-hoc margins.
@@ -93,7 +99,7 @@ font weights below 700 for anything uppercase.
 | Layout | `--col` 30rem (phone column), `--topbar-h` 60, `--tabbar-h` 68, `--rail-w` 240, `--touch` 44, `--safe-t`, `--safe-b` |
 | Layers | `--z-raised`, `--z-nav` 50, `--z-overlay` 200, `--z-toast` 300 |
 | Textures | `--tex-grain` (ground), `--tex-grain-soft` (forward surfaces), `--tex-wear` (mask), `--tex-dots`/`-size`, `--tex-halftone`/`-size`, `--tex-stripes`, `--tex-hatch`, `--tex-grid`/`-size`, `--tex-checks`/`-size` (paint in `currentColor`) |
-| Photo filters | `--fx-halftone` (colour), `--fx-halftone-mono` (ink), `--fx-halftone-size`, `--fx-halftone-screen`, `--fx-halftone-screen-cmyk`. The colour screen is applied by `PhotoFrame treatment="halftone"`, the ink one is not: see "Halftone photo" below |
+| Photo filters | `--fx-halftone-size` (dot pitch, 9px), `--fx-halftone-bleed` (dot radius as a share of the pitch, 0.39; 0.1–0.45), `--fx-halftone-rotation` (cyan and magenta screens, 0deg). Read by `PhotoFrame treatment="halftone"`: see "Halftone photo" below |
 
 **Tones.** Many components take `tone: Tone` = `'ink' | 'paper' | 'kraft' | 'matcha' | 'deep' | 'strawberry' | 'yolk' | 'blue'`.
 Any element with `data-tone="…"` gets `--tone-bg`, `--tone-fg` (AA text on it), `--tone-text` (the hue as text on
@@ -126,12 +132,13 @@ Props: `as` (default span), `size` `'sm'|'md'|'lg'`, `tone` `'ink'|'muted'|'matc
 
 **`VisuallyHidden`**: screen-reader-only content. Props: `as`, `children`.
 
-**`Wordmark`**: the MATCHA lockup (tile mark + expanded lettering with a matcha plate).
-Props: `size` `'sm'|'md'|'lg'|'xl'`, `mark` (show tile, default true), `tagline` (`true` = "Press edition", or a string),
+**`Wordmark`**: the MATCHA lockup (logo mark + expanded lettering with a matcha plate).
+Props: `size` `'sm'|'md'|'lg'|'xl'`, `mark` (show the logo, default true), `tagline` (`true` = "Press edition", or a string),
 `tone` `'ink'|'paper'` (paper on dark fields), `className`, `style`. `<Wordmark size="sm" />`
 
-**`LogoMark`**: the tile alone (heart made of two leaves). Props: `size` (px, default 32), `flat` (no shadow),
-`title`, `className`. Same drawing as `public/favicon.svg`.
+**`LogoMark`**: the coffee-cups logo (heavier line than `public/LOGO`) on a matcha tile with an ink outline and a hard
+shadow; the site logo, the loader and the match seal. Props: `size` (px, default 32), `flat` (no hard shadow),
+`title`, `className`. `public/favicon.svg` is the same tile and `favicon-mask.svg` the same line weight.
 
 **`Stamp`**: rotated heavy label: LIKE / NOPE / SUPER / MATCH.
 Props: `children`, `tone` (convention: strawberry LIKE, ink NOPE, yolk SUPER, matcha MATCH), `variant`
@@ -168,6 +175,12 @@ through the notches, default page paper), `className`, `style`. `<Perforation no
 **`Barcode`**: decorative bars derived from a string (stable per value). Props: `value`, `height` (36), `caption`
 (print the value), `tone` `'ink'|'paper'`, `className`. `<Barcode value={userId} height={28} />`
 
+**`ParcelLabel`**: a priority-mail shipping label (after the USPS one: white stock, hairline frame, a double rule over the band, a heavy one under it) that scales with its own width: a square mark cell
+("P"), the sender line, a **postage box** slot, a service band that sizes itself to the text, the tracking caption,
+a full-width barcode and the number. Props: `mark`, `from`, `postage` (any node), `service`, `trackingLabel`,
+`tracking` (printed, and seeds the bars), `className`, `style`. `LocaleLabel` (below) is it with the language picker
+in the postage box.
+
 **`CropMarks`**: printer's crop marks around the nearest positioned ancestor (which must not clip overflow).
 Props: `size` (14), `gap` (6), `tone`, `className`. `<div style={{ position: 'relative' }}><CropMarks />…</div>`
 
@@ -175,13 +188,14 @@ Props: `size` (14), `gap` (6), `tone`, `className`. `<div style={{ position: 're
 `public/emptycross.svg` (the default), `public/stylizedcross.svg` (the colour one, `IconRegMark filled`) and
 `public/cymkcross.svg` (cyan, magenta, yellow, black: a reference, not used in the UI); the styleguide shows all three.
 
-**Halftone photo** (`PhotoFrame treatment="halftone"` is the colour screen on paper; the ink screen is tokens only): a pure-CSS screen after leanrada.com/notes/pure-css-halftone. Wrap
-the `<img>`, give the wrapper `position: relative; filter: var(--fx-halftone-mono)` (colour: `--fx-halftone`), and screen
-a dot grid over it with `::after { content: ''; position: absolute; inset: 0; mix-blend-mode: screen; background-image:
-var(--fx-halftone-screen); background-size: var(--fx-halftone-size) }` (colour: `--fx-halftone-screen-cmyk` plus
-`background-blend-mode: multiply`). Keep the keyline and `overflow: hidden` on a parent, because the blur fades the
-wrapper's own edge. Grid, dot radius and offsets are one 20px set. The recipe is not robust: tune `brightness()` per
-photo (the poster fallback has little tonal range, so it comes out sparse). The styleguide's `.halftone*` classes are the bare example.
+**Halftone photo** (`PhotoFrame treatment="halftone"`): a pure-CSS CMYK print on paper with its own black plate, after
+leanrada.com/notes/pure-css-halftone. The frame renders the picture twice (the second copy is `alt=""`), multiplied onto the paper:
+one plate keeps only the hues and is screened with yellow dots (30°) and magenta and cyan dots (-21°, plus
+`--fx-halftone-rotation`), the other is the greyscale picture screened with black dots (30°). Each plate is blurred, then
+`contrast(1000)` thresholds every RGB channel, which turns the blurry dots into hard ones. The blur and the brightness (the
+threshold) are derived from `--fx-halftone-size` and `--fx-halftone-bleed`, so override those two on the frame to tune it
+(`style={{ '--fx-halftone-size': '16px' }}`); the recipe lives in `Photo.module.css`. Needs a photo with a tonal range: the
+poster fallback has little, so it comes out sparse. `tone` does not apply. The styleguide shows it next to its source and a coarser setting.
 
 **Comic caption** (styleguide specimen only, not exported): a square narration box, `--c-yolk` plate, `--line`, `--sh-2`,
 condensed uppercase Archivo 800, no radius and no tail. One short line, overhanging the corner of the art it describes.
@@ -195,7 +209,8 @@ condensed uppercase Archivo 800, no radius and no tail. One short line, overhang
 
 **`Button`**: the press button. Extends `<button>` props. Props: `variant`
 `'matcha'|'ink'|'strawberry'|'yolk'|'blue'|'paper'|'ghost'` (matcha = primary, paper = outline, ghost = text only),
-`size` `'sm'|'md'|'lg'` (38 / 50 / 60px; sm keeps a 44px hit area), `block`, `loading` (spinner, aria-busy, clicks
+`size` `'sm'|'md'|'lg'` (38 / 50 / 60px; sm keeps a 44px hit area), `block`, `wrap` (a long label, a translation, takes
+two lines instead of ending in an ellipsis), `loading` (spinner, aria-busy, clicks
 ignored), `icon`, `iconRight`, `type` (default `button`). `<Button type="submit" size="lg" block loading={busy}>Sign in</Button>`
 
 **`ButtonLink`**: a link that looks like a Button. Props: the same look props plus `to` (react-router) or `href`
@@ -290,7 +305,7 @@ tappable chips filtered by what is typed. Props: `value: string[]` (no '#'), `on
 
 **`PhotoFrame`**: outlined photo with a poster fallback and print treatments. Props: `src`, `alt` (required),
 `ratio` (default "3 / 4"; "auto" to size from the parent), `treatment` `'none'|'duotone'|'halftone'` (halftone is the
-CMYK dot screen on paper, 20px pitch, for large frames), `tone` (duotone field, matcha; not used by halftone), `seed` (fallback artwork; pass the user id), `framed` (default true), `shadow` 0–4, `radius`
+CMYK print on paper with a black plate, 9px dots by default), `tone` (duotone field, matcha; not used by halftone), `seed` (fallback artwork; pass the user id), `framed` (default true), `shadow` 0–4, `radius`
 `'none'|'sm'|'md'|'lg'|'xl'`, `tilt`, `loading`, `children` (overlay; the frame is `position: relative`), `className`, `style`.
 
 **`PosterFigure`**: placeholder portrait (flat two-plate poster bust, 3:4, palette and haircut from `seed`).
@@ -325,6 +340,12 @@ box. `<StatGroup><Stat value={74} label="Fame" /><Stat value={3} unit="km" label
 matcha edge), `to` (Link) or `onClick` (button), `className`. Wrap rows in `<ul><li>`.
 `<ListRow to={`/chat/${m.id}`} leading={<Avatar name={n} src={src} online={o} decorative />} title={n} subtitle={last} meta="14:02" unread />`
 
+**`CommandBlock`**: a listing of shell commands in a `Card` (ticket strip, mono body that scrolls sideways instead of
+wrapping, Copy button that copies the commands without prompts or comments). Props: `lines` (one command per entry; `#`
+starts a comment), `label` (strip, default "Terminal"), `meta` (strip, default the command count), `prompt` (default
+`$`; `PS>` for PowerShell), `tone` `'ink'|'paper'` (default ink), `copy` (default true), `className`. Highlights only
+the command and its `-flags`. `<CommandBlock label="PowerShell" prompt="PS>" lines={['Get-Process node | Format-Table Id,CPU']} />`
+
 **`EmptyState`**: Props: `title`, `children`, `stamp` (rubber-stamp word), `stampTone`, `icon`, `action`, `className`.
 `<EmptyState stamp="Sold out" title="You've seen everyone nearby" action={<Button>Widen filters</Button>} />`
 
@@ -352,8 +373,22 @@ focus restored, `aria-modal`, exit animation. Props: `open`, `onClose`, `title` 
 **`Sheet`**: a Modal that is always a bottom sheet (filters, action lists). Same props minus `variant`.
 
 **`Menu`**: dropdown of actions behind a "…" button (arrows, Home/End, Escape, Tab, outside click). Props:
-`items: {label, icon?, onSelect, tone?: 'default'|'danger', disabled?}[]`, `label` (trigger name, "More options"),
-`trigger` (content), `align` `'start'|'end'`, `triggerVariant` `'paper'|'ghost'`, `className`.
+`items: {label, icon?, onSelect, tone?: 'default'|'danger', disabled?, checked?}[]` (`checked` makes it a radio of the
+menu: `true` marks the current choice, focus lands on it), `label` (trigger name, "More options"), `trigger` (content),
+`align` `'start'|'end'`, `side` `'down'|'up'` (up for a trigger at the foot of the page), `triggerVariant`
+`'paper'|'ghost'`, `triggerClassName`, `className`.
+
+**`LocalePicker`**: the language switcher: a clickable flag (`Flag`) that opens a `Menu` of English / Français /
+Español, the current one checked. Props: `variant` `'chip'` (flag + code, for a corner or a footer) | `'postage'` (a
+box with caption, flag and name that fills a postage-box slot), `side`, `align`, `className`. The choice is saved in
+this browser and sets the page language (`src/i18n`, ARCHITECTURE §8). `LocaleLabel` is the `ParcelLabel` with the
+picker in its postage box, its text in the current language. Props: `side`, `className`. It fills the width it is given
+(32rem at most; its height is about 0.74 of that), so the page sizes and places it: the signed-out pages put it
+`position: absolute` in the bottom right corner at 15rem, with `side="up"`, and reserve room for it. The chip variant
+is the one the signed-in app uses: the Language card of `/me` → Account (`align="start"`).
+
+**`Flag`**: a small flag (`gb` / `fr` / `es`), inline SVG in the kit inks with the house keyline (emoji flags do not
+render on Windows). Props: `country`, `size` (height px, 3:2), `className`, `style`. Decorative: print the name next to it.
 
 **`ActionList`**: big tappable action rows for inside a Sheet. Props: `items` (MenuItem, plus `description`), `className`.
 
@@ -400,6 +435,8 @@ screens. Props: `header`, `footer`, `children`, `poster`, `banner`, `className`.
 Props: `title`, `kicker` ("Admit one"), `intro`, `children` (the form fields and buttons; spaced for you), `footer`
 (under the ticket), `poster` (PosterProps without `compact`). Wrap fields in your `<form>` inside.
 `<AuthLayout title="Sign in" intro="Welcome back." footer={<>No account? <Link to="/register">Register</Link></>}><form>…</form></AuthLayout>`
+The language label (`LocaleLabel`) sits absolute in the bottom right of the form column on every AuthLayout, which reserves room for it; the default kicker, poster lines and
+sticker follow the interface language.
 
 **`Poster`**: the poster composition on its own (landing page hero). Props: `lines` (2–4 short words, default
 "Whisk me away"), `tone` `'matcha'|'strawberry'|'yolk'|'blue'`, `sticker` (node or null), `marquee` (phrases or null),
@@ -417,7 +454,7 @@ Props: `title`, `kicker` ("Admit one"), `intro`, `children` (the form fields and
 `IconArrowRight`, `IconChevronLeft`, `IconChevronRight`, `IconChevronDown`, `IconChevronUp`, `IconMore`, `IconCheck`,
 `IconEye`, `IconEyeOff`, `IconBolt`, `IconPin`, `IconLogout`, `IconMail`, `IconLock`, `IconGithub`, `IconTrash`,
 `IconPlus`, `IconMinus`, `IconInfo`, `IconWarning`, `IconSearch`, `IconBell`, `IconShield`, `IconBlock`, `IconPencil`,
-`IconFlame`, `IconImage`, `IconClock`, `IconCalendar`, `IconRefresh`, `IconCup`, `IconGlobe`, `IconFlag`, `IconExternal`,
+`IconFlame`, `IconImage`, `IconClock`, `IconCalendar`, `IconRefresh`, `IconRotate`, `IconCup`, `IconGlobe`, `IconFlag`, `IconExternal`,
 `IconSparkle`, `IconTicket`, `IconCards`, `IconRegMark`. `ICONS` maps short names (`heart`, `x`, …) to components;
 types `IconProps`, `IconComponent`, `IconName`. Filled icons with a hole (settings, camera, pin, mail, lock, send,
 ticket) paint the hole with `var(--icon-hole)` (default card stock): set it to the background colour when that is not

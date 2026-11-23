@@ -4,6 +4,7 @@
  */
 import { Suspense } from 'react'
 import { RouterProvider } from 'react-router-dom'
+import { useT } from '@/i18n'
 import { closeModals, Toaster } from '@/ui'
 import { RealtimeToasts } from './frame/RealtimeToasts'
 import { PageLoader } from './frame/screens'
@@ -24,9 +25,10 @@ function currentPath(): string {
 }
 
 export default function App() {
+  const t = useT()
   return (
     <>
-      <Suspense fallback={<PageLoader caption="Setting the type" />}>
+      <Suspense fallback={<PageLoader caption={t('frame.settingType')} />}>
         <RouterProvider router={router} />
       </Suspense>
       <Toaster position="top-right" />

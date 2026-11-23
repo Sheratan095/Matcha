@@ -1,5 +1,6 @@
 import type { CSSProperties, ElementType, ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { CountBadge } from '../display/Chip'
 import { IconArrowLeft } from '../icons'
@@ -174,24 +175,25 @@ export function AppShell({
   flush,
   fit,
 }: AppShellProps) {
+  const tx = useT()
   return (
     <div className={s.shellRoot}>
       <div className={cx(s.shell, hideTabBar && s.noTabs, hideTopBar && s.noTop, fit && s.fit)}>
         <a href="#main" className={s.skip}>
-          Skip to content
+          {tx('kit.skipToContent')}
         </a>
         {banner ? <div className={s.banner}>{banner}</div> : null}
 
-        <aside className={s.rail} aria-label="Main">
-          <Link to={homeTo} className={s.railMark} aria-label="Matcha home">
-            <Wordmark size="md" tagline="Press edition · Nº 01" />
+        <aside className={s.rail} aria-label={tx('kit.navMain')}>
+          <Link to={homeTo} className={s.railMark} aria-label={tx('poster.home')}>
+            <Wordmark size="md" tagline={`${tx('poster.edition')} · Nº 01`} />
           </Link>
-          <nav className={s.railNav} aria-label="Sections">
+          <nav className={s.railNav} aria-label={tx('kit.navSections')}>
             {tabs.map((t) => (
               <TabLink key={t.to} tab={t} className={s.railLink}>
                 <span className={s.railIcon}>{t.icon}</span>
                 <span className={s.railLabel}>{t.label}</span>
-                <CountBadge count={t.badge ?? 0} label="new" className={s.railBadge} />
+                <CountBadge count={t.badge ?? 0} label={tx('kit.badgeNew')} className={s.railBadge} />
               </TabLink>
             ))}
           </nav>
@@ -204,7 +206,7 @@ export function AppShell({
 
         <Stage poster={poster} className={s.shellStage}>
           <header className={s.topbar}>
-            <Link to={homeTo} className={s.topMark} aria-label="Matcha home">
+            <Link to={homeTo} className={s.topMark} aria-label={tx('poster.home')}>
               <Wordmark size="sm" />
             </Link>
             {search ? <div className={s.topSearch}>{search}</div> : null}
@@ -216,12 +218,12 @@ export function AppShell({
         </Stage>
 
         {!hideTabBar ? (
-          <nav className={s.tabbar} aria-label="Sections">
+          <nav className={s.tabbar} aria-label={tx('kit.navSections')}>
             {tabs.map((t) => (
               <TabLink key={t.to} tab={t} className={s.tab}>
                 <span className={s.tabIcon}>
                   {t.icon}
-                  <CountBadge count={t.badge ?? 0} label="new" className={s.tabBadge} />
+                  <CountBadge count={t.badge ?? 0} label={tx('kit.badgeNew')} className={s.tabBadge} />
                 </span>
                 <span className={s.tabLabel}>{t.label}</span>
               </TabLink>
@@ -317,20 +319,22 @@ export function PageHeader({
   title,
   kicker,
   back,
-  backLabel = 'Back',
+  backLabel,
   actions,
   size = 'lg',
   print = 'riso',
   children,
   className,
 }: PageHeaderProps) {
+  const tx = useT()
+  const backName = backLabel ?? tx('kit.back')
   const backButton =
     back == null ? null : typeof back === 'string' ? (
-      <Link to={back} className={s.back} aria-label={backLabel} title={backLabel}>
+      <Link to={back} className={s.back} aria-label={backName} title={backName}>
         <IconArrowLeft size={22} strokeWidth={3} />
       </Link>
     ) : (
-      <button type="button" className={s.back} aria-label={backLabel} title={backLabel} onClick={back}>
+      <button type="button" className={s.back} aria-label={backName} title={backName} onClick={back}>
         <IconArrowLeft size={22} strokeWidth={3} />
       </button>
     )

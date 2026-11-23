@@ -9,6 +9,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { deviceSpot, savedSpot, type DeviceFailure } from '@/features/location/geo'
 import { setLocationMode } from '@/features/location/mode'
+import { useT, type MessageKey } from '@/i18n'
 import { LocationSection } from '@/features/me/LocationSection'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import {
@@ -32,16 +33,17 @@ import { kmText, placeMatches, type PlacedMatch } from './layout'
 import { MatchMap, type MatchMapHandle } from './MatchMap'
 import s from './MapPage.module.css'
 
-const DEVICE_FAILURE: Record<DeviceFailure, string> = {
-  unsupported: 'This browser cannot tell where it is.',
-  denied: 'Location access is off for this site: allow it in the browser to use your exact position.',
-  unavailable: 'This device could not find its position right now.',
-  timeout: 'Finding your position took too long. Try again outdoors or near a window.',
+const DEVICE_FAILURE: Record<DeviceFailure, MessageKey> = {
+  unsupported: 'map.failUnsupported',
+  denied: 'map.failDenied',
+  unavailable: 'map.failUnavailable',
+  timeout: 'map.failTimeout',
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
 export default function MapPage() {
+  const t = useT()
   const result = useNodeValue('matchesMap')
   const status = useNodeStatus('matchesMap')
   const profile = useNodeValue('myProfile')
@@ -77,16 +79,16 @@ export default function MapPage() {
     try {
       const found = await deviceSpot()
       if (!found.ok) {
-        toast.error('No precise position', DEVICE_FAILURE[found.reason])
+        toast.error(t('map.noPreciseTitle'), t(DEVICE_FAILURE[found.reason]))
         return
       }
       await actions.setLocation(found.spot)
       // From the device: keep it automatically up to date on the next visits too.
       if (profile) setLocationMode(profile.userId, 'auto')
-      toast.success('You are on the map', 'Others only ever see a distance, rounded to about a kilometre.')
+      toast.success(t('map.onMapTitle'), t('map.onMapBody'))
       mapRef.current?.fitAll()
     } catch (error) {
-      toast.error('Your position was not saved', toApiError(error).message)
+      toast.error(t('map.notSaved'), toApiError(error).message)
     } finally {
       setLocating(false)
     }
@@ -102,11 +104,11 @@ export default function MapPage() {
   return (
     <div className={s.page}>
       <PageHeader
-        title="Map"
-        kicker="Your connections nearby"
+        title={t('map.title')}
+        kicker={t('map.kicker')}
         actions={
           <Button size="sm" variant="paper" icon={<IconRefresh size={16} />} loading={reloading} onClick={() => void reload()}>
-            Refresh
+            {t('map.refresh')}
           </Button>
         }
       />
@@ -114,23 +116,23 @@ export default function MapPage() {
       {profile && !me ? (
         <Notice
           tone="info"
-          title="You are not on the map yet"
+          title={t('map.notOnTitle')}
           action={
             <Button size="sm" variant="ink" icon={<IconPin size={16} />} loading={locating} onClick={() => void locate()}>
-              Locate me
+              {t('map.locateMe')}
             </Button>
           }
         >
-          Set your position to see how far your connections are.
+          {t('map.notOnBody')}
         </Notice>
       ) : null}
 
       <div className={s.toolbar}>
         <Button size="sm" variant="ink" icon={<IconPin size={16} />} loading={locating} onClick={() => void locate()}>
-          Locate me precisely
+          {t('map.locatePrecisely')}
         </Button>
         <Button size="sm" variant="paper" icon={<IconGlobe size={16} />} onClick={() => mapRef.current?.fitAll()}>
-          Show everyone
+          {t('map.showEveryone')}
         </Button>
       </div>
 
@@ -141,10 +143,10 @@ export default function MapPage() {
           <Avatar src={selected.profilePictureUrl} name={selected.username} size="md" decorative />
           <div className={s.focusText}>
             <span className={s.focusName}>@{selected.username}</span>
-            <span className={s.focusMeta}>{selected.km !== null ? `${kmText(selected.km)} away · approximate` : 'Approximate area'}</span>
+            <span className={s.focusMeta}>{selected.km !== null ? t('map.awayApprox', { distance: kmText(selected.km) }) : t('map.approxArea')}</span>
           </div>
           <Button size="sm" onClick={() => open(selected)}>
-            View profile
+            {t('chat.viewProfile')}
           </Button>
         </div>
       ) : null}
@@ -152,44 +154,44 @@ export default function MapPage() {
       {failed ? (
         <Notice
           tone="error"
-          title="Your connections did not load"
+          title={t('map.loadFailed')}
           action={
             <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} loading={reloading} onClick={() => void reload()}>
-              Try again
+              {t('common.tryAgain')}
             </Button>
           }
         >
-          {status.error?.message ?? 'Something went wrong.'}
+          {status.error?.message ?? t('kit.wrong')}
         </Notice>
       ) : loading ? (
-        <div aria-busy="true" aria-label="Loading your connections">
+        <div aria-busy="true" aria-label={t('map.loading')}>
           {[0, 1, 2].map((index) => (
             <Skeleton key={index} height={64} style={{ marginBottom: 8, borderRadius: 'var(--r-md)' }} />
           ))}
         </div>
       ) : placed.length === 0 && unplaced.length === 0 ? (
         <EmptyState
-          stamp="Nobody yet"
+          stamp={t('map.nobodyStamp')}
           stampTone="blue"
-          title="No connections on the map"
+          title={t('map.emptyTitle')}
           action={
             <ButtonLink to="/discover" icon={<IconRegMark size={18} />}>
-              Go discover
+              {t('map.goDiscover')}
             </ButtonLink>
           }
         >
-          When you and someone like each other, they show up here.
+          {t('map.emptyBody')}
         </EmptyState>
       ) : (
-        <section aria-label="Your connections">
-          <TicketHeader label="Connections · nearest first" meta={pad2(placed.length + unplaced.length)} />
+        <section aria-label={t('map.connectionsLabel')}>
+          <TicketHeader label={t('map.listHeader')} meta={pad2(placed.length + unplaced.length)} />
           <ul className={s.list}>
             {placed.map((person) => (
               <li key={person.userId}>
                 <ListRow
                   leading={<Avatar src={person.profilePictureUrl} name={person.username} size="sm" decorative />}
                   title={`@${person.username}`}
-                  subtitle={person.km !== null ? `${kmText(person.km)} away` : 'On the map'}
+                  subtitle={person.km !== null ? t('search.away', { distance: kmText(person.km) }) : t('map.onTheMap')}
                   unread={person.userId === selectedId}
                   onClick={() => setSelectedId(person.userId)}
                 />
@@ -200,13 +202,13 @@ export default function MapPage() {
                 <ListRow
                   leading={<Avatar src={person.profilePictureUrl} name={person.username} size="sm" decorative />}
                   title={`@${person.username}`}
-                  subtitle="No location shared"
+                  subtitle={t('map.noLocation')}
                   onClick={() => setTarget({ userId: person.userId })}
                 />
               </li>
             ))}
           </ul>
-          <p className={s.note}>Positions are rounded to about a kilometre: a face shows a neighbourhood, not an address.</p>
+          <p className={s.note}>{t('map.rounded')}</p>
         </section>
       )}
 

@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { IconX } from '../icons'
 import type { Tone } from '../tones'
@@ -87,6 +88,7 @@ export function Modal({
   className,
   style,
 }: ModalProps) {
+  const t = useT()
   // `present` = mounted: it turns on with `open` and off once the exit animation has played.
   const [present, setPresent] = useState(open)
   if (open && !present) setPresent(true)
@@ -209,7 +211,7 @@ export function Modal({
               {title}
             </h2>
           </div>
-          <button type="button" className={s.close} aria-label="Close" onClick={() => onCloseRef.current()}>
+          <button type="button" className={s.close} aria-label={t('kit.close')} onClick={() => onCloseRef.current()}>
             <IconX size={20} strokeWidth={3.5} />
           </button>
         </header>

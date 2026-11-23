@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { IconBell, IconCheck, IconHeart, IconRegMark, IconWarning, IconX } from '../icons'
 import { toast } from './toast'
@@ -16,6 +17,7 @@ const ICON: Record<ToastTone, ReactNode> = {
 }
 
 function ToastView({ item, index }: { item: ToastItem; index: number }) {
+  const t = useT()
   const [paused, setPaused] = useState(false)
   const remaining = useRef(item.duration)
   const started = useRef(0)
@@ -65,7 +67,7 @@ function ToastView({ item, index }: { item: ToastItem; index: number }) {
           </button>
         ) : null}
       </div>
-      <button type="button" className={s.close} aria-label="Dismiss notification" onClick={() => toast.dismiss(item.id)}>
+      <button type="button" className={s.close} aria-label={t('kit.dismissNotification')} onClick={() => toast.dismiss(item.id)}>
         <IconX size={16} strokeWidth={3.5} />
       </button>
       {item.duration > 0 ? (
@@ -99,6 +101,7 @@ const mountStore = {
 
 /** Renders the toast stack. Mount once, anywhere (it portals to <body>); extra instances stay silent. */
 export function Toaster({ position = 'top-right' }: ToasterProps) {
+  const t = useT()
   const list = useSyncExternalStore(toast.subscribe, toast.getSnapshot, toast.getSnapshot)
   const [me] = useState(() => Symbol('toaster'))
   const first = useSyncExternalStore(mountStore.subscribe, mountStore.first, mountStore.first)
@@ -112,7 +115,7 @@ export function Toaster({ position = 'top-right' }: ToasterProps) {
   }, [me])
   if (typeof document === 'undefined' || first !== me) return null
   return createPortal(
-    <section className={cx(s.region, s[position])} aria-label="Notifications" data-toaster="">
+    <section className={cx(s.region, s[position])} aria-label={t('kit.notifications')} data-toaster="">
       <ol className={s.stack}>
         {list.map((item, i) => (
           <ToastView key={item.id} item={item} index={i} />

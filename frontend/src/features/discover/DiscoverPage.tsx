@@ -12,11 +12,12 @@ import { useNavigate } from 'react-router-dom'
 import type { DeckAction, DeckCard } from '@/api/types'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import { cardName, deckPreviewProfile, displayName, mainPicture } from '@/features/profile/format'
+import { useT } from '@/i18n'
 import { ActionButton, CountBadge, IconSliders, MatchMoment, toast } from '@/ui'
 import { actions, toApiError, useFilters, useLoad, useNodeStatus, useNodeValue, type DiscoverFilters } from '@/wb'
 import { Deck, type DeckHandle, type SwipeRecord } from './Deck'
 import { DeckEmpty, DeckError, DeckSkeleton } from './DeckStates'
-import { canWiden, changedFilters, scopeText, SORT_LABEL, WIDEST } from './filterRules'
+import { canWiden, changedFilters, scopeText, SORT_KEY, WIDEST } from './filterRules'
 import { FilterSheet } from './FilterSheet'
 import { useAnnouncer, usePreloadDeck, useViewportFit } from './hooks'
 import { prefersReducedMotion } from './motion'
@@ -24,38 +25,41 @@ import s from './DiscoverPage.module.css'
 
 const NO_CARDS: readonly DeckCard[] = []
 
-const DONE: Record<DeckAction, string> = { like: 'Liked', pass: 'Passed on' }
-
 type Busy = 'retry' | 'widen' | 'reload' | null
 
 /** "Alice, 27" */
 const nameAndAge = (card: DeckCard) => `${cardName(card)}, ${card.age}`
 
 function FilterTicket({ filters, onOpen }: { filters: DiscoverFilters; onOpen: () => void }) {
+  const t = useT()
   const changed = changedFilters(filters)
   const tags = filters.tags
-  const into = tags.length === 0 ? 'Anyone' : tags.length === 1 ? `#${tags[0]}` : `#${tags[0]} +${tags.length - 1}`
-  const summary = `ages ${filters.ageMin} to ${filters.ageMax}, within ${filters.distance} km, ${
-    filters.fameMin > 0 ? `fame ${filters.fameMin} or more, ` : ''
-  }sorted by ${SORT_LABEL[filters.sort]}, ${tags.length ? `into ${tags.join(', ')}` : 'any interests'}`
+  const into = tags.length === 0 ? t('deck.anyone') : tags.length === 1 ? `#${tags[0]}` : `#${tags[0]} +${tags.length - 1}`
+  const summary = [
+    t('deck.sumAges', { min: filters.ageMin, max: filters.ageMax }),
+    t('deck.sumWithin', { km: filters.distance }),
+    ...(filters.fameMin > 0 ? [t('deck.sumFame', { n: filters.fameMin })] : []),
+    t('deck.sumSort', { sort: t(SORT_KEY[filters.sort]) }),
+    tags.length ? t('deck.sumInto', { tags: tags.join(', ') }) : t('deck.sumAny'),
+  ].join(', ')
   return (
-    <button type="button" className={s.ticket} onClick={onOpen} aria-haspopup="dialog" aria-label={`Filters: ${summary}. Change filters`}>
+    <button type="button" className={s.ticket} onClick={onOpen} aria-haspopup="dialog" aria-label={t('deck.filtersLabel', { summary })}>
       <span className={s.seg}>
-        <small>Age</small>
+        <small>{t('deck.segAge')}</small>
         <b>
           {filters.ageMin}–{filters.ageMax}
         </b>
       </span>
       <span className={s.seg}>
-        <small>Within</small>
-        <b>{filters.distance} km</b>
+        <small>{t('deck.segWithin')}</small>
+        <b>{t('deck.kmValue', { n: filters.distance })}</b>
       </span>
       <span className={s.seg} data-optional="">
-        <small>Sort</small>
-        <b>{SORT_LABEL[filters.sort]}</b>
+        <small>{t('deck.segSort')}</small>
+        <b>{t(SORT_KEY[filters.sort])}</b>
       </span>
       <span className={s.seg} data-grow="">
-        <small>Into</small>
+        <small>{t('deck.segInto')}</small>
         <b>{into}</b>
       </span>
       <span className={s.knob} aria-hidden="true">
@@ -67,6 +71,7 @@ function FilterTicket({ filters, onOpen }: { filters: DiscoverFilters; onOpen: (
 }
 
 export default function DiscoverPage() {
+  const t = useT()
   const navigate = useNavigate()
   // Loaded once; afterwards swipes, filters and "reload" keep it current.
   useLoad('discoverDeck')
@@ -105,7 +110,11 @@ export default function DiscoverPage() {
     (card: DeckCard, action: DeckAction) => {
       const name = cardName(card)
       const next = latestCards.current.find((other) => other.userId !== card.userId)
-      announce(`${DONE[action]} ${name}.${next ? ` Next: ${nameAndAge(next)}.` : ''}`)
+      announce(
+        [t(action === 'like' ? 'deck.liked' : 'deck.passed', { name }), next ? t('deck.nextUp', { card: nameAndAge(next) }) : '']
+          .filter(Boolean)
+          .join(' '),
+      )
       setPendingSwipes((n) => n + 1)
       actions
         .swipe(card, action)
@@ -113,18 +122,23 @@ export default function DiscoverPage() {
           (result) => {
             if (result.matched) {
               setMatches((queue) => [...queue, card])
-              announce(`It's a match! You and ${name} liked each other.`)
+              announce(t('deck.announceMatch', { name }))
             }
           },
           (error: unknown) => {
             const reason = toApiError(error).message
-            toast.show({ id: `swipe-${card.userId}`, tone: 'strawberry', title: `${name} is back`, message: `That swipe did not go through: ${reason}` })
-            announce(`The swipe on ${name} failed: ${reason}`)
+            toast.show({
+              id: `swipe-${card.userId}`,
+              tone: 'strawberry',
+              title: t('deck.swipeBack', { name }),
+              message: t('deck.swipeFailed', { reason }),
+            })
+            announce(t('deck.swipeFailedAnnounce', { name, reason }))
           },
         )
         .finally(() => setPendingSwipes((n) => n - 1))
     },
-    [announce],
+    [announce, t],
   )
 
   const rewindBusy = useRef(false)
@@ -135,28 +149,28 @@ export default function DiscoverPage() {
     try {
       const result = await actions.rewind()
       if (result.restored) {
-        announce(`Rewound. ${nameAndAge(result.restored)} is back on top.`)
+        announce(t('deck.rewound', { card: nameAndAge(result.restored) }))
       } else if (result.matched) {
         toast.show({
           id: 'rewind',
           tone: 'blue',
-          title: 'That one is a match',
-          message: 'A match is not undone here: open their profile to disconnect.',
+          title: t('deck.rewindMatchTitle'),
+          message: t('deck.rewindMatchBody'),
         })
-        announce('The last swipe made a match, which cannot be undone here.')
+        announce(t('deck.rewindMatchAnnounce'))
       } else {
-        toast.show({ id: 'rewind', tone: 'blue', title: 'Nothing to undo', message: 'No swipe to take back in this session.' })
-        announce('Nothing to undo.')
+        toast.show({ id: 'rewind', tone: 'blue', title: t('deck.nothingToUndo'), message: t('deck.nothingToUndoBody') })
+        announce(t('deck.nothingToUndoAnnounce'))
       }
     } catch (error) {
       const reason = toApiError(error).message
-      toast.show({ id: 'rewind', tone: 'strawberry', title: 'Rewind failed', message: reason })
-      announce(`Rewind failed: ${reason}`)
+      toast.show({ id: 'rewind', tone: 'strawberry', title: t('deck.rewindFailed'), message: reason })
+      announce(t('deck.rewindFailedAnnounce', { reason }))
     } finally {
       rewindBusy.current = false
       setRewinding(false)
     }
-  }, [announce])
+  }, [announce, t])
 
   const onOpen = useCallback(
     (card: DeckCard) => setSheet({ userId: card.userId, preview: deckPreviewProfile(card) }),
@@ -171,13 +185,13 @@ export default function DiscoverPage() {
         if (done) announce(done)
       } catch (error) {
         const reason = toApiError(error).message
-        toast.show({ tone: 'strawberry', title: 'That did not work', message: reason })
+        toast.show({ tone: 'strawberry', title: t('deck.didNotWork'), message: reason })
         announce(reason)
       } finally {
         setBusy(null)
       }
     },
-    [announce],
+    [announce, t],
   )
 
   /** From the profile sheet: close it, then throw the card the same way the buttons do. */
@@ -208,13 +222,13 @@ export default function DiscoverPage() {
 
   let placeholder = null
   if (phase === 'loading') {
-    placeholder = <DeckSkeleton caption={deck == null ? 'Shuffling the deck' : 'Printing more cards'} />
+    placeholder = <DeckSkeleton caption={deck == null ? t('deck.shuffling') : t('deck.printingMore')} />
   } else if (phase === 'error') {
     placeholder = (
       <DeckError
-        message={deckStatus.error?.message ?? 'no answer from the server.'}
+        message={deckStatus.error?.message ?? t('deck.noAnswer')}
         retrying={busy === 'retry'}
-        onRetry={() => void run('retry', () => actions.reloadDeck(), 'Deck reloaded.')}
+        onRetry={() => void run('retry', () => actions.reloadDeck(), t('deck.reloaded'))}
       />
     )
   } else if (phase === 'empty') {
@@ -222,7 +236,7 @@ export default function DiscoverPage() {
       <DeckEmpty
         scope={scopeText(filters)}
         busy={busy === 'retry' ? null : busy}
-        onWiden={canWiden(filters) ? () => void run('widen', () => actions.setFilters(WIDEST), 'Filters widened.') : null}
+        onWiden={canWiden(filters) ? () => void run('widen', () => actions.setFilters(WIDEST), t('deck.widened')) : null}
         onEditFilters={() => setFiltersOpen(true)}
         onReload={() =>
           void run(
@@ -231,7 +245,7 @@ export default function DiscoverPage() {
               await actions.reloadDeck()
               history.length = 0
             },
-            'Deck reloaded.',
+            t('deck.reloaded'),
           )
         }
         onRewind={() => void onRewind()}
@@ -244,12 +258,12 @@ export default function DiscoverPage() {
 
   return (
     <div ref={fitRef} className={s.page}>
-      <h1 className="sr-only">Discover</h1>
+      <h1 className="sr-only">{t('nav.discover')}</h1>
 
       <header className={s.head}>
         <div className={s.count} aria-hidden={phase === 'loading' || phase === 'error'}>
           <b>{phase === 'ready' || phase === 'empty' ? String(cards.length).padStart(2, '0') : '··'}</b>
-          <small>In the deck</small>
+          <small>{t('deck.inDeck')}</small>
         </div>
         <FilterTicket filters={filters} onOpen={() => setFiltersOpen(true)} />
       </header>
@@ -274,7 +288,7 @@ export default function DiscoverPage() {
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         filters={filters}
-        onApplied={(next) => announce(`Filters applied: ${scopeText(next)}.`)}
+        onApplied={(next) => announce(t('deck.filtersApplied', { scope: scopeText(next) }))}
       />
 
       <ProfileSheet
@@ -283,8 +297,8 @@ export default function DiscoverPage() {
         actions={
           sheetCard ? (
             <div className={s.sheetActions}>
-              <ActionButton kind="pass" size="lg" label={`Pass on ${cardName(sheetCard)}`} onClick={() => swipeFromSheet('pass')} />
-              <ActionButton kind="like" size="lg" label={`Like ${cardName(sheetCard)}`} onClick={() => swipeFromSheet('like')} />
+              <ActionButton kind="pass" size="lg" label={t('act.passOn', { name: cardName(sheetCard) })} onClick={() => swipeFromSheet('pass')} />
+              <ActionButton kind="like" size="lg" label={t('deck.likeName', { name: cardName(sheetCard) })} onClick={() => swipeFromSheet('like')} />
             </div>
           ) : undefined
         }
@@ -294,7 +308,7 @@ export default function DiscoverPage() {
         <MatchMoment
           open={match !== null}
           onClose={() => setMatches((queue) => queue.slice(1))}
-          me={{ name: me ? displayName(me) : 'You', photo: mainPicture(me)?.url, seed: me?.userId ?? 'me' }}
+          me={{ name: me ? displayName(me) : t('nav.you'), photo: mainPicture(me)?.url, seed: me?.userId ?? 'me' }}
           them={{
             name: cardName(shownMatch),
             photo: shownMatch.profilePictureUrl,

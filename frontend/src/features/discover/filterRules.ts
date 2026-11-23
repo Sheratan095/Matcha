@@ -1,5 +1,6 @@
 /** Ranges, labels and comparisons for the deck filters (the controls' limits, within the backend's). */
 import type { DiscoverSort, Gender, SexualPreference } from '@/api/types'
+import { t, type MessageKey } from '@/i18n'
 import { DEFAULT_DISCOVER_FILTERS, FILTER_LIMITS, type DiscoverFilters } from '@/wb'
 
 /** What the filter sheet edits: the deck's filters, plus who people are for the search (empty: anyone). */
@@ -16,12 +17,13 @@ export const AGE_RANGE = { min: FILTER_LIMITS.age.min, max: 80 } as const
 export const DISTANCE_RANGE = { min: 5, max: FILTER_LIMITS.distance.max, step: 5 } as const
 export const FAME_RANGE = { min: FILTER_LIMITS.fame.min, max: 90, step: 5 } as const
 
-export const SORT_LABEL: Record<DiscoverSort, string> = {
-  best: 'Best',
-  distance: 'Nearest',
-  age: 'Age',
-  fame: 'Fame',
-  tags: 'Tags',
+/** The catalogue key of each sort's name (print it with `t(SORT_KEY[sort])`). */
+export const SORT_KEY: Record<DiscoverSort, MessageKey> = {
+  best: 'deck.sortBest',
+  distance: 'deck.sortDistance',
+  age: 'deck.sortAge',
+  fame: 'deck.sortFame',
+  tags: 'deck.sortTags',
 }
 
 /** As wide as the controls go (the "widen filters" shortcut of the empty deck). */
@@ -70,9 +72,10 @@ export function canWiden(filters: DiscoverFilters): boolean {
   )
 }
 
-/** "aged 18–45 within 50 km, fame 40+, into #tea or #jazz" */
+/** "aged 18–45 within 50 km, fame 40+, into #tea or #jazz", in the language the page is in. */
 export function scopeText(filters: DiscoverFilters): string {
-  const fame = filters.fameMin > 0 ? `, fame ${filters.fameMin}+` : ''
-  const tags = filters.tags.length > 0 ? `, into ${filters.tags.map((tag) => `#${tag}`).join(' or ')}` : ''
-  return `aged ${filters.ageMin}–${filters.ageMax} within ${filters.distance} km${fame}${tags}`
+  const fame = filters.fameMin > 0 ? t('deck.scopeFame', { n: filters.fameMin }) : ''
+  const tags =
+    filters.tags.length > 0 ? t('deck.scopeTags', { tags: filters.tags.map((tag) => `#${tag}`).join(` ${t('common.or')} `) }) : ''
+  return t('deck.scope', { min: filters.ageMin, max: filters.ageMax, km: filters.distance, fame, tags })
 }

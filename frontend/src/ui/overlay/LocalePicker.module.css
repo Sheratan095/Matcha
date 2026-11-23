@@ -1,0 +1,102 @@
+/*
+ * The language picker's trigger. It rides on Menu's ghost trigger, so the selectors say `button` to outrank
+ * Menu's single-class sizing (44 x 44).
+ */
+button.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: auto;
+  height: auto;
+  color: var(--c-ink);
+}
+
+/* flag + code, for a corner: a small paper plate with a keyline */
+button.chip {
+  min-height: 40px;
+  padding: 0 var(--s-3);
+  border: var(--line);
+  border-radius: var(--r-sm);
+  background: var(--c-paper-hi);
+  background-image: var(--tex-grain-soft);
+  box-shadow: 3px 3px 0 var(--c-ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-label);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+button.chip:active,
+button.chip[aria-expanded='true'] {
+  translate: 3px 3px;
+  box-shadow: none;
+}
+button.chip[aria-expanded='true'] {
+  background-color: var(--c-yolk);
+}
+.code {
+  line-height: 1;
+}
+
+/*
+ * The postage box: a bare rectangle that fills its slot on the ParcelLabel, set in the label's own type (regular
+ * caption, bold name) and sized in its container units so it scales with the label. The floors keep it legible
+ * and the box a decent target when the label is small.
+ */
+.postageRoot {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+button.postage {
+  position: relative;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  gap: 1cqi;
+  padding: 0 1cqi;
+  border: var(--hair, 1.5px) solid var(--c-ink);
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+}
+@media (hover: hover) {
+  button.postage:hover {
+    background-color: var(--c-yolk-tint);
+  }
+}
+button.postage[aria-expanded='true'] {
+  background-color: var(--c-yolk);
+}
+/* a few pixels more reach around the box, so it stays easy to hit on a small label */
+button.postage::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+.caption {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: max(8px, 2.9cqi);
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.flag {
+  width: max(24px, 9cqi);
+  height: auto;
+  aspect-ratio: 3 / 2;
+}
+.name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6cqi;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: max(9px, 3.5cqi);
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-transform: uppercase;
+}

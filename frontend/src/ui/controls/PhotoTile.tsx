@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import type { CSSProperties } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { Spinner } from '../display/Loader'
 import { IconCamera, IconStar, IconTrash } from '../icons'
@@ -43,12 +44,13 @@ export function PhotoTile({
   busy,
   disabled,
   accept = 'image/jpeg,image/png,image/webp',
-  label = 'Add photo',
+  label,
   index,
   ratio = '3 / 4',
   className,
   style,
 }: PhotoTileProps) {
+  const t = useT()
   const id = useId()
   const number = index != null ? String(index).padStart(2, '0') : null
   const vars = { aspectRatio: ratio, ...style } as CSSProperties
@@ -69,8 +71,8 @@ export function PhotoTile({
           }}
         />
         {number ? <span className={s.number}>{number}</span> : null}
-        <span className={s.plus}>{busy ? <Spinner size={24} label="Uploading" /> : <IconCamera size={24} />}</span>
-        <span className={s.addLabel}>{busy ? 'Uploading' : label}</span>
+        <span className={s.plus}>{busy ? <Spinner size={24} label={t('kit.uploading')} /> : <IconCamera size={24} />}</span>
+        <span className={s.addLabel}>{busy ? t('kit.uploading') : (label ?? t('kit.addPhoto'))}</span>
       </label>
     )
   }
@@ -79,15 +81,15 @@ export function PhotoTile({
     <div className={cx(s.tile, s.filled, main && s.isMain, className)} style={vars}>
       <img className={s.img} src={src} alt={alt} draggable={false} />
       {number ? <span className={cx(s.number, s.numberOn)}>{number}</span> : null}
-      {main ? <span className={s.main}>Main</span> : null}
+      {main ? <span className={s.main}>{t('kit.photoMain')}</span> : null}
       {(onRemove || (onMakeMain && !main)) && (
         <div className={s.actions}>
           {onMakeMain && !main ? (
             <button
               type="button"
               className={cx(s.act, s.actMain)}
-              aria-label="Make main photo"
-              title="Make main photo"
+              aria-label={t('kit.makeMain')}
+              title={t('kit.makeMain')}
               disabled={disabled || busy}
               onClick={onMakeMain}
             >
@@ -98,8 +100,8 @@ export function PhotoTile({
             <button
               type="button"
               className={cx(s.act, s.actRemove)}
-              aria-label="Remove photo"
-              title="Remove photo"
+              aria-label={t('kit.removePhoto')}
+              title={t('kit.removePhoto')}
               disabled={disabled || busy}
               onClick={onRemove}
             >
@@ -110,7 +112,7 @@ export function PhotoTile({
       )}
       {busy ? (
         <span className={s.busy}>
-          <Spinner size={32} label="Working" />
+          <Spinner size={32} label={t('kit.working')} />
         </span>
       ) : null}
     </div>

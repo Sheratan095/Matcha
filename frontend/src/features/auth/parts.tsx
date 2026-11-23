@@ -1,5 +1,6 @@
 /** Small pieces shared by the auth screens. */
 import { useState, type ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { Button, FormError, IconGithub, IconRefresh } from '@/ui'
 import { actions } from '@/wb'
 import { asApiError, type Banner } from './errors'
@@ -15,6 +16,7 @@ export function FormBanner({
   onRetry?: () => void
   retrying?: boolean
 }) {
+  const t = useT()
   if (!banner) return null
   return (
     <FormError
@@ -23,7 +25,7 @@ export function FormBanner({
       action={
         banner.retry && onRetry ? (
           <Button size="sm" variant="paper" icon={<IconRefresh size={16} />} loading={retrying} onClick={onRetry}>
-            Try again
+            {t('common.tryAgain')}
           </Button>
         ) : undefined
       }
@@ -32,16 +34,18 @@ export function FormBanner({
 }
 
 /** The dashed "— or —" rule between the form and the GitHub button. */
-export function OrRule({ children = 'or' }: { children?: ReactNode }) {
+export function OrRule({ children }: { children?: ReactNode }) {
+  const t = useT()
   return (
     <div className={a.or} role="presentation">
-      <span>{children}</span>
+      <span>{children ?? t('common.or')}</span>
     </div>
   )
 }
 
 /** GitHub OAuth: a top-level navigation to the gateway. */
-export function GithubButton({ label = 'Continue with GitHub', size = 'md' }: { label?: string; size?: 'md' | 'lg' }) {
+export function GithubButton({ label, size = 'md' }: { label?: string; size?: 'md' | 'lg' }) {
+  const t = useT()
   const [error, setError] = useState<string | null>(null)
   return (
     <div className={a.github}>
@@ -49,6 +53,7 @@ export function GithubButton({ label = 'Continue with GitHub', size = 'md' }: { 
         variant="ink"
         size={size}
         block
+        wrap
         icon={<IconGithub size={20} />}
         onClick={() => {
           try {
@@ -59,7 +64,7 @@ export function GithubButton({ label = 'Continue with GitHub', size = 'md' }: { 
           }
         }}
       >
-        {label}
+        {label ?? t('common.githubContinue')}
       </Button>
       {error ? <FormError error={error} /> : null}
     </div>

@@ -92,9 +92,9 @@ export interface PhotoFrameProps {
   /**
    * none: the photo as it is.
    * duotone: one ink plate over a colour field.
-   * halftone: a pure-CSS CMYK dot screen on paper (the --fx-halftone-* tokens). Needs a source with a
-   * tonal range: flat artwork, and so the PosterFigure fallback, comes out sparse. The 20px dot pitch is
-   * fixed, so use it on large frames. `tone` does not apply.
+   * halftone: a pure-CSS CMYK print on paper, with its own black plate (the --fx-halftone-* tokens: 9px
+   * dots by default, override them on the frame). Needs a source with a tonal range: flat artwork, and so
+   * the PosterFigure fallback, comes out sparse. `tone` does not apply.
    */
   treatment?: 'none' | 'duotone' | 'halftone'
   /** The colour field of the duotone. Default matcha. */
@@ -133,19 +133,21 @@ export function PhotoFrame({
 }: PhotoFrameProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const usable = src && failedSrc !== src
-  const picture = usable ? (
-    <img
-      className={s.img}
-      src={src}
-      alt={alt}
-      loading={loading}
-      decoding="async"
-      draggable={false}
-      onError={() => setFailedSrc(src)}
-    />
-  ) : (
-    <PosterFigure seed={seed ?? alt ?? 'matcha'} title={alt || undefined} className={s.img} />
-  )
+  // `decorative` is the second copy of the picture (the halftone's black plate): hidden from assistive tech
+  const picture = (decorative = false) =>
+    usable ? (
+      <img
+        className={s.img}
+        src={src}
+        alt={decorative ? '' : alt}
+        loading={loading}
+        decoding="async"
+        draggable={false}
+        onError={() => setFailedSrc(src)}
+      />
+    ) : (
+      <PosterFigure seed={seed ?? alt ?? 'matcha'} title={decorative ? undefined : alt || undefined} className={s.img} />
+    )
   return (
     <div
       className={cx(
@@ -166,7 +168,17 @@ export function PhotoFrame({
         } as CSSProperties
       }
     >
-      {treatment === 'halftone' ? <div className={s.screen}>{picture}</div> : picture}
+      {treatment === 'halftone' ? (
+        <div className={s.plates}>
+          <div className={cx(s.plate, s.plateColour)}>
+            {picture()}
+            <div className={s.ink} />
+          </div>
+          <div className={cx(s.plate, s.plateBlack)}>{picture(true)}</div>
+        </div>
+      ) : (
+        picture()
+      )}
       {children}
     </div>
   )

@@ -1,5 +1,6 @@
 /** Small, pure helpers shared by the deck and the profile sheet. */
 import type { DeckCard, Gender, OtherProfile, Profile, ProfileRelation, SexualPreference, UserPicture, UserSummary } from '@/api/types'
+import { dateFormat, t, type MessageKey } from '@/i18n'
 
 /** The profile picture, else the first one, else null. */
 export function mainPicture(profile: Pick<Profile, 'pictures'> | null | undefined): UserPicture | null {
@@ -16,7 +17,7 @@ export function orderedPictures(profile: Pick<Profile, 'pictures'>): UserPicture
 
 export function displayName(profile: Pick<Profile, 'firstName'> | null | undefined): string {
   const name = profile?.firstName?.trim()
-  return name ? name : 'Someone'
+  return name ? name : t('toast.someone')
 }
 
 /** "Alice" (the first name), else the username. */
@@ -71,7 +72,7 @@ export function serialOf(userId: string): number {
 }
 
 export function distanceText(km: number): string {
-  return km < 1 ? '<1 km' : `${Math.round(km)} km`
+  return t('deck.kmValue', { n: km < 1 ? '<1' : Math.round(km) })
 }
 
 /** "Last seen 5 min ago"; null when unknown. */
@@ -80,26 +81,26 @@ export function lastSeenText(iso: string | null | undefined, now: number = Date.
   const at = Date.parse(iso)
   if (!Number.isFinite(at)) return null
   const minutes = Math.max(0, Math.round((now - at) / 60_000))
-  if (minutes < 1) return 'Last seen just now'
-  if (minutes < 60) return `Last seen ${minutes} min ago`
+  if (minutes < 1) return t('prof.seenNow')
+  if (minutes < 60) return t('prof.seenMin', { n: minutes })
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `Last seen ${hours} h ago`
+  if (hours < 24) return t('prof.seenHours', { n: hours })
   const days = Math.round(hours / 24)
-  if (days < 7) return `Last seen ${days} d ago`
-  return `Last seen ${new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
+  if (days < 7) return t('prof.seenDays', { n: days })
+  return t('prof.seenDate', { date: dateFormat({ day: 'numeric', month: 'short' }).format(new Date(at)) })
 }
 
-const GENDER: Record<Gender, string> = { female: 'Woman', male: 'Man', other: 'Non-binary' }
-const INTO: Record<SexualPreference, string> = {
-  female: 'into women',
-  male: 'into men',
-  both: 'into everyone',
-  other: 'open-minded',
+const GENDER: Record<Gender, MessageKey> = { female: 'prof.genderFemale', male: 'prof.genderMale', other: 'prof.genderOther' }
+const INTO: Record<SexualPreference, MessageKey> = {
+  female: 'prof.intoFemale',
+  male: 'prof.intoMale',
+  both: 'prof.intoBoth',
+  other: 'prof.intoOther',
 }
 
 /** "Woman · into men"; null when neither is set. */
 export function identityText(profile: Pick<Profile, 'gender' | 'sexualPreference'>): string | null {
-  const parts = [profile.gender ? GENDER[profile.gender] : null, profile.sexualPreference ? INTO[profile.sexualPreference] : null]
+  const parts = [profile.gender ? t(GENDER[profile.gender]) : null, profile.sexualPreference ? t(INTO[profile.sexualPreference]) : null]
   const text = parts.filter(Boolean).join(' · ')
   return text || null
 }

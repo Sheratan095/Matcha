@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import type { ComponentProps, CSSProperties, ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { IconChevronDown, IconEye, IconEyeOff, IconWarning } from '../icons'
 import s from './Field.module.css'
@@ -155,6 +156,7 @@ export type PasswordFieldProps = Omit<TextFieldProps, 'type' | 'trailing'>
 
 /** A password input with a show / hide toggle. */
 export function PasswordField(props: PasswordFieldProps) {
+  const t = useT()
   const [shown, setShown] = useState(false)
   return (
     <TextField
@@ -167,7 +169,7 @@ export function PasswordField(props: PasswordFieldProps) {
         <button
           type="button"
           className={s.reveal}
-          aria-label={shown ? 'Hide password' : 'Show password'}
+          aria-label={shown ? t('kit.hidePassword') : t('kit.showPassword')}
           aria-pressed={shown}
           onClick={() => setShown((v) => !v)}
         >

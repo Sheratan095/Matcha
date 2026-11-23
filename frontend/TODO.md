@@ -68,7 +68,8 @@
 - [x] Interactive map of users (/map)
 - [x] GitHub OAuth
 - [x] Calendar (/calendar, its own tab with a badge for the invites waiting): plan dates with a match (title, description, place as coordinates, date and time; also from a conversation's menu), answer an invite, call a date off: GET /profile/calendar, POST /profile/calendar/event, POST .../:eventId/accept | decline | cancel
-- [ ] Photo gallery: drag-and-drop upload, crop / rotate / filters
+- [x] Photo editing on upload: a chosen photo opens in `PhotoEditor` (`src/features/me`) before it is sent: crop (original, 3:4, square; drag and zoom), rotate, six filters, resize (540 / 810 / 1080 px); all in the browser, so a phone picture over 5 MB now works (the editor opens files up to 20 MB and sends a JPEG of at most 1080 px)
+- [ ] Photo gallery: drag-and-drop upload
 - [ ] Second OAuth provider
 - [ ] Video / audio chat
 

@@ -5,6 +5,7 @@
  * while the others change, then written last, which sends one request with the final values.
  */
 import type { DiscoverSort } from '@/api/types'
+import { t } from '@/i18n'
 import { DEFAULT_FILTERS } from './nodes'
 import { getNodeValue, writeNode } from './store'
 
@@ -139,13 +140,13 @@ const isInteger = (value: number) => Number.isInteger(value)
 export function filtersProblem(filters: DiscoverFilters): string | null {
   const { ageMin, ageMax, distance, fameMin, sort } = filters
   const { age, distance: km, fame } = FILTER_LIMITS
-  if (![ageMin, ageMax, distance, fameMin].every(isInteger)) return 'Filters must be whole numbers.'
-  if (ageMin < age.min) return `The minimum age is ${age.min}.`
-  if (ageMax > age.max) return `The maximum age is ${age.max}.`
-  if (ageMin > ageMax) return 'The minimum age cannot be above the maximum age.'
-  if (distance < km.min || distance > km.max) return `The distance must be between ${km.min} and ${km.max} km.`
-  if (fameMin < fame.min || fameMin > fame.max) return `The fame rating goes from ${fame.min} to ${fame.max}.`
-  if (!DISCOVER_SORTS.includes(sort)) return `Unknown sort "${sort}".`
+  if (![ageMin, ageMax, distance, fameMin].every(isInteger)) return t('filters.whole')
+  if (ageMin < age.min) return t('filters.minAge', { n: age.min })
+  if (ageMax > age.max) return t('filters.maxAge', { n: age.max })
+  if (ageMin > ageMax) return t('filters.minAboveMax')
+  if (distance < km.min || distance > km.max) return t('filters.distance', { min: km.min, max: km.max })
+  if (fameMin < fame.min || fameMin > fame.max) return t('filters.fame', { min: fame.min, max: fame.max })
+  if (!DISCOVER_SORTS.includes(sort)) return t('filters.sort', { sort })
   return null
 }
 

@@ -160,9 +160,9 @@
   --tex-wear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -11 0 0 0 7.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)'/%3E%3C/svg%3E");
   /* pattern fills: use with background-size var(--tex-*-size); they paint in currentColor */
   --tex-dots: radial-gradient(circle at center, currentColor 1.6px, transparent 1.9px);
-  --tex-dots-size: 9px 9px;
+  --tex-dots-size: 20px 20px;
   --tex-halftone: radial-gradient(circle at center, currentColor 2.6px, transparent 2.9px);
-  --tex-halftone-size: 10px 10px;
+  --tex-halftone-size: 20px 20px;
   --tex-stripes: repeating-linear-gradient(
     135deg,
     currentColor 0 3px,
@@ -176,27 +176,12 @@
   --tex-checks: repeating-conic-gradient(currentColor 0 25%, transparent 0 50%);
   --tex-checks-size: 16px 16px;
 
-  /* ---------------------------------------------------------------- photo filters */
   /*
-   * Halftone photo screen in pure CSS, after leanrada.com/notes/pure-css-halftone.
-   * Used by PhotoFrame treatment="halftone" (colour screen, .screen in Photo.module.css); the styleguide also
-   * shows the ink and colour variants bare (.halftone* in Styleguide.module.css).
-   * Put an <img> in a wrapper and screen a dot grid over it:
-   *   .wrap          { position: relative; filter: var(--fx-halftone-mono); }
-   *   .wrap::after   { content: ''; position: absolute; inset: 0; mix-blend-mode: screen;
-   *                    background-image: var(--fx-halftone-screen); background-size: var(--fx-halftone-size); }
-   * Colour: use --fx-halftone and --fx-halftone-screen-cmyk, and add `background-blend-mode: multiply` to ::after.
-   * Keep the keyline and overflow on a parent: the blur eats the wrapper's own edge.
-   * The grid, the 10px dot radius and the 5/15px offsets are one set (20px pitch): change them together.
-   * The recipe is not robust: tune the brightness (the threshold) per source image.
+   * halftone photo: PhotoFrame treatment="halftone" (the recipe is in Photo.module.css, after
+   * leanrada.com/notes/pure-css-halftone). Override these on a frame to tune it; the blur and the
+   * threshold follow them.
    */
-  --fx-halftone: brightness(0.8) blur(3px) contrast(999); /* colour: each RGB channel is thresholded */
-  /* pure ink dots, no colour contagion. Greyscale squeezes mid-tones towards white, so it takes more ink than the colour one */
-  --fx-halftone-mono: grayscale(1) brightness(0.62) blur(3px) contrast(999);
-  --fx-halftone-size: 20px 20px;
-  /* the screens are literal black / white / process colours on purpose: the blend maths needs the extremes */
-  --fx-halftone-screen: radial-gradient(10px at center, black, white);
-  --fx-halftone-screen-cmyk: radial-gradient(10px at center, black, white),
-    radial-gradient(10px at 5px 5px, cyan, white), radial-gradient(10px at 15px 5px, magenta, white),
-    radial-gradient(10px at 10px 15px, yellow, white);
+  --fx-halftone-size: 9px; /* dot pitch */
+  --fx-halftone-bleed: 0.39; /* dot radius as a share of the pitch, 0.1 to 0.45: more ink, dots start to merge */
+  --fx-halftone-rotation: 0deg; /* turns the cyan and magenta screens only (yellow and black stay at 30deg) */
 }

@@ -1,6 +1,7 @@
 import { useId, useRef } from 'react'
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { IconChevronRight } from '../icons'
 import { Stamp } from '../lettering/Stamp'
@@ -58,15 +59,16 @@ export interface StepsProps {
 
 /** Wizard progress as a punch card: done steps are punched through, the current one is inked. */
 export function Steps({ current, total, labels, className }: StepsProps) {
+  const t = useT()
   const pad = (n: number) => String(n).padStart(2, '0')
   const name = labels?.[current - 1]
   return (
     <div className={cx(s.steps, className)}>
       <div className={s.stepsHead}>
         <span className={s.stepsCount}>
-          Step {pad(current)}
+          {t('kit.step')} {pad(current)}
           <span aria-hidden="true">/</span>
-          <span className="sr-only"> of </span>
+          <span className="sr-only">{t('kit.stepOf')}</span>
           {pad(total)}
         </span>
         {name ? <span className={s.stepsName}>{name}</span> : null}
@@ -82,8 +84,8 @@ export function Steps({ current, total, labels, className }: StepsProps) {
               aria-current={state === 'current' ? 'step' : undefined}
             >
               <span className="sr-only">
-                {labels?.[i] ?? `Step ${n}`}
-                {state === 'done' ? ', done' : state === 'current' ? ', current' : ''}
+                {labels?.[i] ?? t('kit.stepN', { n })}
+                {state === 'done' ? t('kit.stepDone') : state === 'current' ? t('kit.stepCurrent') : ''}
               </span>
             </li>
           )

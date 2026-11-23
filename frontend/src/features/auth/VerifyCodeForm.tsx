@@ -4,11 +4,12 @@
  */
 import { useRef, useState } from 'react'
 import type { VerifyEmailResult } from '@/api/types'
+import { useLocaleState, useT } from '@/i18n'
 import { Button, IconCheck, TextField } from '@/ui'
 import { actions } from '@/wb'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { FormBanner } from './parts'
-import { checkCode, CODE_LIFETIME, normaliseCode } from './rules'
+import { checkCode, codeLifetime, normaliseCode } from './rules'
 import a from './auth.module.css'
 
 export interface VerifyCodeFormProps {
@@ -17,12 +18,11 @@ export interface VerifyCodeFormProps {
   autoFocus?: boolean
 }
 
-const EXPIRED = `This code is invalid or has expired. A code works once and lasts ${CODE_LIFETIME}; signing in with your password sends a fresh one.`
-
-export function VerifyCodeForm({ onVerified, submitLabel = 'Verify email', autoFocus }: VerifyCodeFormProps) {
+export function VerifyCodeForm({ onVerified, submitLabel, autoFocus }: VerifyCodeFormProps) {
+  const t = useT()
   const [code, setCode] = useState('')
-  const [fieldError, setFieldError] = useState<string | null>(null)
-  const [banner, setBanner] = useState<Banner | null>(null)
+  const [fieldError, setFieldError] = useLocaleState<string | null>(null)
+  const [banner, setBanner] = useLocaleState<Banner | null>(null)
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -42,7 +42,7 @@ export function VerifyCodeForm({ onVerified, submitLabel = 'Verify email', autoF
     } catch (thrown) {
       const error = asApiError(thrown)
       if (error.status === 403) {
-        setFieldError(EXPIRED)
+        setFieldError(t('code.expired', { time: codeLifetime() }))
         inputRef.current?.focus()
       } else if (error.status === 400) {
         const mapped = mapValidation(error, (property) => (property === 'token' ? 'code' : null))
@@ -67,7 +67,7 @@ export function VerifyCodeForm({ onVerified, submitLabel = 'Verify email', autoF
     >
       <TextField
         ref={inputRef}
-        label="Verification code"
+        label={t('code.label')}
         name="code"
         value={code}
         onChange={(event) => {
@@ -81,14 +81,14 @@ export function VerifyCodeForm({ onVerified, submitLabel = 'Verify email', autoF
         spellCheck={false}
         inputMode="text"
         maxLength={80}
-        placeholder="e.g. 3f9a0c12b47e5d68"
-        hint="16 characters, from the email we sent you."
+        placeholder={t('code.placeholder')}
+        hint={t('code.hint')}
         error={fieldError ?? undefined}
         autoFocus={autoFocus}
       />
       <FormBanner banner={banner} onRetry={() => void submit(code)} retrying={busy} />
       <Button type="submit" size="lg" block loading={busy} icon={<IconCheck size={20} strokeWidth={3.5} />}>
-        {submitLabel}
+        {submitLabel ?? t('code.submit')}
       </Button>
     </form>
   )

@@ -4,6 +4,7 @@
  * components that need none (Button without `to`, Headline, Label, Notice, Loader, Stack, Text).
  */
 import type { CSSProperties } from 'react'
+import { useT } from '@/i18n'
 import { Button, Headline, Label, Loader, Notice, Stack, Text } from '@/ui'
 
 const page: CSSProperties = {
@@ -15,9 +16,10 @@ const page: CSSProperties = {
 const panel: CSSProperties = { width: '100%', maxWidth: '36rem' }
 
 export function StoreStarting() {
+  const t = useT()
   return (
     <main className="store-screen store-screen--starting" style={page}>
-      <Loader fill>Starting the store</Loader>
+      <Loader fill>{t('store.starting')}</Loader>
     </main>
   )
 }
@@ -27,22 +29,23 @@ export interface StoreFailureProps {
 }
 
 export function StoreFailure({ reason }: StoreFailureProps) {
+  const t = useT()
   return (
     <main className="store-screen store-screen--failure" style={page}>
       <Stack gap={5} style={panel}>
-        <Label tone="muted">Matcha · state store</Label>
+        <Label tone="muted">{t('store.label')}</Label>
         <Headline as="h1" size="d2" width="condensed" print="riso">
-          The store could not start
+          {t('store.failedTitle')}
         </Headline>
         {reason ? (
-          <Notice tone="error" title="What happened">
+          <Notice tone="error" title={t('store.whatHappened')}>
             {reason}
           </Notice>
         ) : null}
-        <Text>The app's state could not be set up. Reload the page to try again.</Text>
+        <Text>{t('store.failedBody')}</Text>
         <div>
           <Button variant="matcha" onClick={() => window.location.reload()}>
-            Reload
+            {t('frame.reload')}
           </Button>
         </div>
       </Stack>

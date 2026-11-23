@@ -3,6 +3,7 @@
  * model and ids as the kit's `Tabs`, so it pairs with `TabPanel` (pass the same `idBase`).
  */
 import { useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cx, TONE_COLOR, type Tone } from '@/ui'
 import { pad2 } from '@/features/chat/time'
 import s from './ActivityPage.module.css'
@@ -30,6 +31,7 @@ export interface ScoreTabsProps<V extends string> {
 }
 
 export function ScoreTabs<V extends string>({ items, value, onChange, label, idBase, className }: ScoreTabsProps<V>) {
+  const t = useT()
   const refs = useRef<Array<HTMLButtonElement | null>>([])
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = items.findIndex((item) => item.value === value)
@@ -73,7 +75,11 @@ export function ScoreTabs<V extends string>({ items, value, onChange, label, idB
               {item.label}
             </span>
             <span className="sr-only">
-              {item.count == null ? ', loading' : `, ${item.count}${item.unit ? ` ${item.unit}` : ''}`}
+              {item.count == null
+                ? t('act.scoreLoading')
+                : item.unit
+                  ? t('act.scoreCountUnit', { n: item.count, unit: item.unit })
+                  : t('act.scoreCount', { n: item.count })}
             </span>
           </button>
         )

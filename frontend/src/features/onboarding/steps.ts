@@ -1,84 +1,84 @@
 /** The onboarding steps, and where a returning user resumes. */
 import type { OwnProfile } from '@/api/types'
 import type { DraftKey } from '@/features/me/profile'
+import type { MessageKey } from '@/i18n'
 import type { Tone } from '@/ui'
 
 export type StepKey = 'about' | 'into' | 'bio' | 'interests' | 'location' | 'photos'
 
 export interface StepDef {
   key: StepKey
-  /** Name in the punch card. */
-  label: string
+  /** Name in the punch card (a catalogue key: print it with `t(step.label)`). */
+  label: MessageKey
   /** The giant word in the margin on wide screens. */
-  poster: string
+  poster: MessageKey
   /** Accent drum of the step: misregistered plate, numeral, chosen chips. */
   tone: Tone
   /** The fields this step saves (a partial PATCH of just these). */
   fields: readonly DraftKey[]
-  title: readonly [string, string]
-  lead: string
+  /** A stack of two lines (`a|b`: read it with `t.stack`). */
+  title: MessageKey
+  lead: MessageKey
 }
 
 export const STEPS: readonly StepDef[] = [
   {
     key: 'about',
-    label: 'About you',
-    poster: 'Hello',
+    label: 'onb.aboutLabel',
+    poster: 'onb.aboutPoster',
     tone: 'matcha',
     // dateOfBirth only reaches the PATCH when the profile has none yet (a GitHub sign-up): it is set-once
     fields: ['firstName', 'lastName', 'dateOfBirth', 'gender'],
-    title: ['Nice to', 'meet you'],
-    lead: 'Your first name goes on your card. You can change all of this later.',
+    title: 'onb.aboutTitle',
+    lead: 'onb.aboutLead',
   },
   {
     key: 'into',
-    label: 'Into',
-    poster: 'Crush',
+    label: 'onb.intoLabel',
+    poster: 'onb.intoPoster',
     tone: 'strawberry',
     fields: ['sexualPreference'],
-    title: ['Who’s your', 'cup of tea?'],
-    lead: 'Discover deals you the people who fit, and shows you to them.',
+    title: 'onb.intoTitle',
+    lead: 'onb.intoLead',
   },
   {
     key: 'bio',
-    label: 'Bio',
-    poster: 'Story',
+    label: 'onb.bioLabel',
+    poster: 'onb.bioPoster',
     tone: 'yolk',
     fields: ['biography'],
-    title: ['Spill the', 'tea'],
-    lead: 'A few lines about you. Short and true beats long and polished.',
+    title: 'onb.bioTitle',
+    lead: 'onb.bioLead',
   },
   {
     key: 'interests',
-    label: 'Interests',
-    poster: 'Taste',
+    label: 'onb.interestsLabel',
+    poster: 'onb.interestsPoster',
     tone: 'blue',
     fields: ['interests'],
-    title: ['Pick your', 'flavours'],
-    lead: 'Shared interests are printed first on cards, on both sides. One at least.',
+    title: 'onb.interestsTitle',
+    lead: 'onb.interestsLead',
   },
   {
     key: 'location',
-    label: 'Location',
-    poster: 'Here',
+    label: 'onb.locationLabel',
+    poster: 'onb.locationPoster',
     tone: 'strawberry',
     // Saved on its own (PUT /profile/location), not through the profile PATCH.
     fields: [],
-    title: ['Where do', 'you brew?'],
-    lead: 'Discover deals you people nearby. Others see how far away you are, never where.',
+    title: 'onb.locationTitle',
+    lead: 'onb.locationLead',
   },
   {
     key: 'photos',
-    label: 'Photos',
-    poster: 'Smile',
+    label: 'onb.photosLabel',
+    poster: 'onb.photosPoster',
     tone: 'matcha',
     fields: [],
-    title: ['Strike a', 'pose'],
-    lead: 'Up to five photos. One at least: without a photo you stay out of the deck and cannot like anyone.',
+    title: 'onb.photosTitle',
+    lead: 'onb.photosLead',
   },
 ]
-
-export const STEP_LABELS: readonly string[] = STEPS.map((step) => step.label)
 
 /** The profile picture the backend's completeness check asks for (the first upload becomes it). */
 export function hasProfilePicture(profile: OwnProfile): boolean {

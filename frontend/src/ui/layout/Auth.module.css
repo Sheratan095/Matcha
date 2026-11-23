@@ -52,6 +52,17 @@
   padding: var(--s-6) var(--s-12) 0 var(--s-6);
 }
 
+/* the full poster: the edition label floats over the lettering instead of taking a row from it, so the lettering is never pushed down */
+.poster:not(.compact) .top {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.poster:not(.compact) .top > a {
+  pointer-events: auto;
+}
+
 .mark {
   color: inherit;
   text-decoration: none;
@@ -190,8 +201,29 @@
   flex-direction: column;
   align-items: center;
   gap: var(--s-5);
-  padding: 0 var(--gutter) var(--s-10);
+  /* the language label is absolute in the bottom right corner; its width is set here and the bottom padding leaves room for its height (about 0.74 of its width) */
+  --label-w: 15rem;
+  padding: 0 var(--gutter) calc(var(--s-5) * 2 + var(--label-w) * 0.74);
   margin-top: -34px;
+}
+
+/* bottom right of the form column */
+.locale {
+  position: absolute;
+  right: var(--gutter);
+  bottom: var(--s-5);
+  width: var(--label-w);
+}
+
+/* the wordmark above the ticket: wide screens only (on phones the poster band carries it) */
+.formMark {
+  display: none;
+}
+.formMarkLink {
+  display: inline-block;
+  color: var(--c-ink);
+  text-decoration: none;
+  border-radius: var(--r-sm);
 }
 
 .ticket {
@@ -275,6 +307,15 @@
   .formSide {
     justify-content: center;
     margin-top: 0;
-    padding: var(--s-12) var(--s-10);
+    padding: var(--s-10) var(--s-10) calc(var(--s-5) + var(--s-3) + var(--label-w) * 0.74);
+  }
+  .locale {
+    right: var(--s-10);
+    bottom: var(--s-5);
+  }
+  .formMark {
+    display: block;
+    width: 100%;
+    max-width: 440px;
   }
 }

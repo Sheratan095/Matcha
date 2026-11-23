@@ -307,6 +307,14 @@ export const IconRefresh = make('IconRefresh', () => (
   </>
 ))
 
+/** A quarter-turn clockwise: an open circle with the arrowhead at its upper right. */
+export const IconRotate = make('IconRotate', () => (
+  <>
+    <path d="M20 12a8 8 0 1 1-1.87-5.14" />
+    <path d="M13.7 6.1l4.45.75V2.4" />
+  </>
+))
+
 /** A chawan (matcha bowl) with steam. */
 export const IconCup = make('IconCup', (filled) => (
   <>
@@ -435,6 +443,7 @@ export const ICONS = {
   clock: IconClock,
   calendar: IconCalendar,
   refresh: IconRefresh,
+  rotate: IconRotate,
   cup: IconCup,
   globe: IconGlobe,
   flag: IconFlag,

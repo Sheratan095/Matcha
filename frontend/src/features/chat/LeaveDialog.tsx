@@ -1,6 +1,7 @@
 /** The confirmations behind the chat menu: unmatch, block. */
 import { useState } from 'react'
 import type { ApiError } from '@/api/types'
+import { useT } from '@/i18n'
 import { Button, FormError, Modal, Stack, Text } from '@/ui'
 
 export type LeaveKind = 'unmatch' | 'block'
@@ -15,6 +16,7 @@ export interface LeaveDialogProps {
 }
 
 export function LeaveDialog({ kind, name, busy, error, onCancel, onConfirm }: LeaveDialogProps) {
+  const t = useT()
   // Keep the last kind while the dialog plays its exit animation.
   const [shown, setShown] = useState<LeaveKind>('unmatch')
   if (kind && kind !== shown) setShown(kind)
@@ -26,31 +28,26 @@ export function LeaveDialog({ kind, name, busy, error, onCancel, onConfirm }: Le
       onClose={busy ? () => undefined : onCancel}
       dismissible={!busy}
       size="sm"
-      kicker={block ? 'Safety' : 'Conversation'}
-      title={block ? `Block ${name}?` : `Unmatch ${name}?`}
+      kicker={block ? t('chat.safety') : t('chat.conversation')}
+      title={block ? t('chat.blockTitle', { name }) : t('chat.unmatchTitle', { name })}
       footer={
         <>
           <Button variant="paper" onClick={onCancel} disabled={busy}>
-            {block ? 'Cancel' : 'Keep chatting'}
+            {block ? t('kit.cancel') : t('chat.keepChatting')}
           </Button>
           <Button variant="strawberry" loading={busy} onClick={() => onConfirm(shown)}>
-            {block ? 'Block' : 'Unmatch'}
+            {block ? t('chat.block') : t('chat.unmatch')}
           </Button>
         </>
       }
     >
       <Stack gap={4}>
         {block ? (
-          <Text>
-            {name} won&rsquo;t see you in Discover again and can&rsquo;t message you. Your match and this conversation are
-            removed.
-          </Text>
+          <Text>{t('chat.blockBody', { name })}</Text>
         ) : (
-          <Text>
-            The conversation disappears for both of you, and {name} leaves your matches. This can&rsquo;t be undone.
-          </Text>
+          <Text>{t('chat.unmatchBody', { name })}</Text>
         )}
-        <FormError error={error} title={block ? 'Could not block' : 'Could not unmatch'} />
+        <FormError error={error} title={block ? t('chat.couldNotBlock') : t('chat.couldNotUnmatch')} />
       </Stack>
     </Modal>
   )

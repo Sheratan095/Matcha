@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { useT } from '@/i18n'
 import { Button, cx, IconArrowRight, IconCheck } from '@/ui'
 import { listPhrase, type CheckKey, type ProfileCheck } from './profile'
 import s from './CompletenessMeter.module.css'
@@ -13,6 +14,7 @@ export interface CompletenessMeterProps {
 
 /** Profile strength as a punch strip: one hole per item, inked when done, a big percentage above it. */
 export function CompletenessMeter({ checks, onFix }: CompletenessMeterProps) {
+  const t = useT()
   const labelId = useId()
   const total = checks.length
   const done = checks.filter((check) => check.done).length
@@ -20,17 +22,19 @@ export function CompletenessMeter({ checks, onFix }: CompletenessMeterProps) {
   const missing = checks.filter((check) => !check.done)
   const missingRequired = missing.filter((check) => check.required)
   const next = missingRequired[0] ?? missing[0]
-  const valueText = `${percent}%: ${done} of ${total} done${missing.length ? `, missing ${listPhrase(missing.map((m) => m.missing))}` : ''}`
+  const valueText = missing.length
+    ? t('me.meterTextMissing', { percent, done, total, list: listPhrase(missing.map((m) => m.missing)) })
+    : t('me.meterText', { percent, done, total })
 
   return (
     <div className={s.meter}>
       <div className={s.top}>
         <span className={s.titles}>
           <span id={labelId} className={s.label}>
-            Profile strength
+            {t('me.strength')}
           </span>
           <span className={s.count}>
-            {pad(done)}/{pad(total)} done
+            {t('me.doneCount', { done: pad(done), total: pad(total) })}
           </span>
         </span>
         <span className={cx(s.big, missingRequired.length > 0 && s.bigWarn)} aria-hidden="true">
@@ -52,7 +56,11 @@ export function CompletenessMeter({ checks, onFix }: CompletenessMeterProps) {
           <span
             key={check.key}
             className={cx(s.cell, check.done ? s.done : check.required ? s.needed : s.todo)}
-            title={check.done ? `${check.short}: done` : `Missing ${check.missing}${check.required ? ' (required)' : ''}`}
+            title={
+              check.done
+                ? t('me.cellDone', { short: check.short })
+                : t(check.required ? 'me.cellMissingRequired' : 'me.cellMissing', { missing: check.missing })
+            }
           >
             <span className={s.hole} aria-hidden="true">
               {check.done ? <IconCheck size={14} strokeWidth={4} /> : null}
@@ -67,13 +75,12 @@ export function CompletenessMeter({ checks, onFix }: CompletenessMeterProps) {
       {next ? (
         <div className={s.foot}>
           <p className={s.missing}>
-            {missingRequired.length > 0 ? (
-              <>
-                <strong>Hidden from Discover</strong> until you add {listPhrase(missingRequired.map((m) => m.missing))}.
-              </>
-            ) : (
-              <>Nearly there: add {listPhrase(missing.map((m) => m.missing))}.</>
-            )}
+            {missingRequired.length > 0
+              ? t.rich('me.hiddenUntil', {
+                  label: <strong>{t('me.hiddenLabel')}</strong>,
+                  list: listPhrase(missingRequired.map((m) => m.missing)),
+                })
+              : t('me.nearlyThere', { list: listPhrase(missing.map((m) => m.missing)) })}
           </p>
           {onFix ? (
             <Button
@@ -87,7 +94,7 @@ export function CompletenessMeter({ checks, onFix }: CompletenessMeterProps) {
           ) : null}
         </div>
       ) : (
-        <p className={s.note}>Every field filled in. Your card is at full strength.</p>
+        <p className={s.note}>{t('me.allFilled')}</p>
       )}
     </div>
   )

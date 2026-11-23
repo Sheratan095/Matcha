@@ -16,6 +16,7 @@ import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axio
 import { Subject, type Observable } from 'rxjs'
 import type { ApiError } from '@/api/types'
 import { API_URL } from '@/config'
+import { t } from '@/i18n'
 
 // ---------------------------------------------------------------- errors
 
@@ -60,17 +61,17 @@ const MACHINE_CODE = /^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$/
 export function toApiError(error: unknown): ApiError {
   if (isApiError(error)) return error
   if (!axios.isAxiosError(error)) {
-    return apiError(0, error instanceof Error ? error.message : 'Unexpected error', null)
+    return apiError(0, error instanceof Error ? error.message : t('check.unexpected'), null)
   }
   const response = error.response
   if (!response) {
     const timedOut = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
     return timedOut
-      ? apiError(0, 'The server took too long to answer.', LOCAL_ERROR.TIMEOUT)
-      : apiError(0, 'Could not reach the server.', LOCAL_ERROR.NETWORK)
+      ? apiError(0, t('check.timeout'), LOCAL_ERROR.TIMEOUT)
+      : apiError(0, t('check.network'), LOCAL_ERROR.NETWORK)
   }
   const body: unknown = response.data
-  const fallback = response.statusText || `Request failed (${response.status})`
+  const fallback = response.statusText || t('check.requestFailed', { status: response.status })
   if (!body || typeof body !== 'object') {
     return apiError(response.status, typeof body === 'string' && body.trim() ? body.trim() : fallback)
   }

@@ -6,6 +6,7 @@
 import { lazy, Suspense, useId, useState, type FormEvent } from 'react'
 import { MAX_EVENT_DESCRIPTION_LENGTH, MAX_EVENT_TITLE_LENGTH, type ApiError, type UserSummary } from '@/api/types'
 import { useNow } from '@/features/chat/hooks'
+import { useT } from '@/i18n'
 import type { PlacedSpot } from '@/features/location/geo'
 import {
   Avatar,
@@ -75,6 +76,7 @@ function isAhead(time: number): boolean {
 }
 
 export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetProps) {
+  const t = useT()
   const formId = useId()
   const connections = useNodeValue('connections')
   const myProfile = useNodeValue('myProfile')
@@ -98,7 +100,7 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
 
   const people = Array.isArray(connections?.matches) ? connections.matches : []
   const chosen = invitee ?? people.find((person) => person.userId === draft.inviteeId) ?? null
-  const name = chosen?.username.trim() || 'your match'
+  const name = chosen?.username.trim() || t('chat.yourMatchLower')
   const nobody = !invitee && connections != null && people.length === 0
   const slot = slotFrom(draft.day, draft.start, draft.end)
   const center =
@@ -120,11 +122,11 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
     event.preventDefault()
     if (busy) return
     const found: Partial<Record<FieldName, string>> = {}
-    if (!draft.inviteeId) found.inviteeId = 'Pick who the date is with.'
-    if (!draft.title.trim()) found.title = 'Give the date a title.'
-    if (!slot) found.when = 'Pick a day and a time.'
-    else if (!isAhead(slot.startsAt)) found.when = 'Pick a time that is still ahead.'
-    if (draft.withPlace && !draft.place) found.place = 'Tap the map to pin the place, or switch it off.'
+    if (!draft.inviteeId) found.inviteeId = t('check.datePickWho')
+    if (!draft.title.trim()) found.title = t('check.dateTitle')
+    if (!slot) found.when = t('check.datePickTime')
+    else if (!isAhead(slot.startsAt)) found.when = t('cal.pickAhead')
+    if (draft.withPlace && !draft.place) found.place = t('cal.pinPlace')
     setErrors(found)
     setFailure(null)
     if (Object.keys(found).length > 0 || !slot) return
@@ -145,7 +147,7 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
           toast.show({
             id: `date-${planned.eventId}`,
             tone: 'matcha',
-            title: `Invite sent to ${name}`,
+            title: t('cal.inviteSent', { name }),
             message: `${longDayLabel(slot.startsAt, Date.now())} · ${timeRange(slot)}`,
             icon: <IconCalendar size={20} />,
           })
@@ -164,20 +166,20 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
       onClose={close}
       dismissible={!busy}
       size="md"
-      kicker="Calendar"
-      title={chosen ? `A date with ${name}` : 'Plan a date'}
+      kicker={t('cal.title')}
+      title={chosen ? t('cal.dateWithName', { name }) : t('chat.planDate')}
       footer={
         nobody ? (
           <Button variant="paper" onClick={close}>
-            Close
+            {t('kit.close')}
           </Button>
         ) : (
           <>
             <Button variant="paper" onClick={close} disabled={busy}>
-              Cancel
+              {t('kit.cancel')}
             </Button>
             <Button type="submit" form={formId} loading={busy} icon={<IconCalendar size={18} />}>
-              Send invite
+              {t('cal.sendInvite')}
             </Button>
           </>
         )
@@ -185,9 +187,9 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
     >
       {nobody ? (
         <Stack gap={4}>
-          <Text>Dates are planned with your matches, and you have none yet. Like someone who likes you back first.</Text>
+          <Text>{t('cal.nobody')}</Text>
           <ButtonLink to="/discover" variant="ink" icon={<IconRegMark size={20} />}>
-            Go to Discover
+            {t('cal.goDiscover')}
           </ButtonLink>
         </Stack>
       ) : (
@@ -196,15 +198,13 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
             {invitee ? (
               <p className={s.with}>
                 <Avatar src={invitee.profilePictureUrl} name={name} size="sm" decorative />
-                <span>
-                  With <strong>{name}</strong>
-                </span>
+                <span>{t.rich('cal.withName', { name: <strong>{name}</strong> })}</span>
               </p>
             ) : (
               <Select
-                label="With"
-                placeholder={connections == null ? 'Loading your matches…' : 'Pick a match'}
-                options={people.map((person) => ({ value: person.userId, label: person.username || 'Your match' }))}
+                label={t('cal.with')}
+                placeholder={connections == null ? t('cal.loadingMatches') : t('cal.pickMatch')}
+                options={people.map((person) => ({ value: person.userId, label: person.username || t('chat.yourMatch') }))}
                 value={draft.inviteeId}
                 onChange={(event) => set('inviteeId', event.currentTarget.value)}
                 error={errors.inviteeId}
@@ -213,10 +213,10 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
             )}
 
             <TextField
-              label="Title"
+              label={t('cal.fieldTitle')}
               value={draft.title}
               onChange={(event) => set('title', event.currentTarget.value)}
-              placeholder="Drinks by the river"
+              placeholder={t('cal.titlePlaceholder')}
               maxLength={MAX_EVENT_TITLE_LENGTH}
               autoComplete="off"
               error={errors.title}
@@ -225,7 +225,7 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
 
             <div className={s.when}>
               <TextField
-                label="Day"
+                label={t('cal.fieldDay')}
                 type="date"
                 value={draft.day}
                 min={dayInput(now)}
@@ -235,18 +235,18 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
                 disabled={busy}
               />
               <TextField
-                label="From"
+                label={t('cal.fieldFrom')}
                 type="time"
                 value={draft.start}
                 onChange={(event) => set('start', event.currentTarget.value)}
                 disabled={busy}
               />
               <TextField
-                label="Until"
+                label={t('cal.fieldUntil')}
                 type="time"
                 value={draft.end}
                 onChange={(event) => set('end', event.currentTarget.value)}
-                hint={slot?.overnight ? 'The next day' : undefined}
+                hint={slot?.overnight ? t('cal.nextDay') : undefined}
                 disabled={busy}
               />
             </div>
@@ -259,11 +259,11 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
             ) : null}
 
             <TextArea
-              label="A few words"
-              hint="Optional"
+              label={t('cal.fewWords')}
+              hint={t('cal.optional')}
               value={draft.description}
               onChange={(event) => set('description', event.currentTarget.value)}
-              placeholder="I know a place with the best matcha in town."
+              placeholder={t('cal.wordsPlaceholder')}
               maxLength={MAX_EVENT_DESCRIPTION_LENGTH}
               rows={3}
               disabled={busy}
@@ -272,18 +272,18 @@ export function PlanDateSheet({ open, onClose, invitee = null }: PlanDateSheetPr
             <Switch
               checked={draft.withPlace}
               onChange={(event) => set('withPlace', event.currentTarget.checked)}
-              description="Pin where you will meet. They see it on a map."
+              description={t('cal.addPlaceHint')}
               disabled={busy}
             >
-              Add a place
+              {t('cal.addPlace')}
             </Switch>
             {draft.withPlace ? (
-              <Suspense fallback={<Loader>Unfolding the map</Loader>}>
+              <Suspense fallback={<Loader>{t('cal.unfolding')}</Loader>}>
                 <LocationPicker value={draft.place} onChange={(spot) => set('place', spot)} center={center} error={errors.place} />
               </Suspense>
             ) : null}
 
-            <FormError error={failure} title="The invite was not sent" />
+            <FormError error={failure} title={t('cal.notSent')} />
           </Stack>
         </form>
       )}

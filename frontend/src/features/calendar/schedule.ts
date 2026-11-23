@@ -4,6 +4,7 @@
  */
 import type { Coordinates, PlannedDate } from '@/api/types'
 import { clockTime, daysBetween } from '@/features/chat/time'
+import { dateFormat, t, tn } from '@/i18n'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -119,32 +120,31 @@ export function slotFrom(day: string, start: string, end: string): Slot | null {
 
 // ------------------------------------------------------------ labels
 
-// The interface is written in English: dates follow it, whatever the browser locale (as in chat/time.ts).
-const LOCALE = 'en-GB'
-const weekdayShort = new Intl.DateTimeFormat(LOCALE, { weekday: 'short' })
-const monthShort = new Intl.DateTimeFormat(LOCALE, { month: 'short' })
-const longDay = new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })
-const longDayYear = new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+// Dates follow the interface language (as in chat/time.ts): looked up on use, never kept at module level.
+const weekdayShort = () => dateFormat({ weekday: 'short' })
+const monthShort = () => dateFormat({ month: 'short' })
+const longDay = () => dateFormat({ weekday: 'long', day: 'numeric', month: 'long' })
+const longDayYear = () => dateFormat({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
 /** The ticket stub of a day: 'SAT', '21', 'NOV'. */
 export function stubOf(time: number): { weekday: string; day: string; month: string } {
   const date = new Date(time)
-  return { weekday: weekdayShort.format(date), day: String(date.getDate()), month: monthShort.format(date) }
+  return { weekday: weekdayShort().format(date), day: String(date.getDate()), month: monthShort().format(date) }
 }
 
 /** The whole day: 'Saturday 21 November' (with the year when not this one). */
 export function longDayLabel(time: number, now: number): string {
-  return new Date(time).getFullYear() === new Date(now).getFullYear() ? longDay.format(time) : longDayYear.format(time)
+  return new Date(time).getFullYear() === new Date(now).getFullYear() ? longDay().format(time) : longDayYear().format(time)
 }
 
 /** How far off a date is: 'Now' while it is on, 'Today', 'Tomorrow', 'In 3 days' (this week), else null. */
 export function soonLabel(date: Pick<PlannedDate, 'startsAt' | 'endsAt'>, now: number): string | null {
-  if (isHappening(date, now)) return 'Now'
+  if (isHappening(date, now)) return t('time.now')
   if (date.startsAt < now) return null
   const ahead = daysBetween(now, date.startsAt)
-  if (ahead === 0) return 'Today'
-  if (ahead === 1) return 'Tomorrow'
-  return ahead < 7 ? `In ${ahead} days` : null
+  if (ahead === 0) return t('time.today')
+  if (ahead === 1) return t('time.tomorrow')
+  return ahead < 7 ? tn('time.inDays', ahead) : null
 }
 
 /** '20:00 – 22:00', or '22:00 – 01:00 +1' when it ends on a later day. */
@@ -162,5 +162,5 @@ export function mapLink(place: Coordinates): string {
 
 /** A name to print for the other side; never empty. */
 export function nameOf(date: PlannedDate): string {
-  return date.person.username.trim() || 'Your match'
+  return date.person.username.trim() || t('chat.yourMatch')
 }

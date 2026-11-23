@@ -6,6 +6,10 @@
       {
         "include": "**/*.html",
         "outDir": "dist"
+      },
+      {
+        "include": "mail/assets/*.png",
+        "outDir": "dist"
       }
     ],
     "watchAssets": true

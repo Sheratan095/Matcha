@@ -6,11 +6,10 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Outlet, useLocation, type Location } from 'react-router-dom'
 import { readLoginState } from '@/features/auth/navState'
+import { useT } from '@/i18n'
 import { Loader, toast } from '@/ui'
 import { refresh, useNodeStatus, useNodeValue } from '@/wb'
 import { NoProfilePhoto, PageLoader, ProfileTrouble, ServerDown } from './frame/screens'
-
-const CHECKING = 'Checking your ticket'
 
 function pathOf(location: Location): string {
   return `${location.pathname}${location.search}${location.hash}`
@@ -18,20 +17,22 @@ function pathOf(location: Location): string {
 
 /** Only for visitors who are not signed in (login, register...). Signed in: back to `from`, or home. */
 export function AnonymousOnly() {
+  const t = useT()
   const status = useNodeValue('authStatus')
   const location = useLocation()
   if (status === 'authenticated') {
     return <Navigate to={readLoginState(location.state).from ?? '/'} replace />
   }
-  if (status !== 'anonymous') return <PageLoader caption={CHECKING} />
+  if (status !== 'anonymous') return <PageLoader caption={t('frame.checking')} />
   return <Outlet />
 }
 
 /** Said once after a deliberate sign-out, on the way to the front page. */
 function SignedOut() {
+  const t = useT()
   useEffect(() => {
-    toast.show({ id: 'signed-out', tone: 'matcha', title: 'Signed out', message: 'See you soon. Your matches will keep.' })
-  }, [])
+    toast.show({ id: 'signed-out', tone: 'matcha', title: t('toast.signedOutTitle'), message: t('toast.signedOutMessage') })
+  }, [t])
   return <Navigate to="/" replace />
 }
 
@@ -41,6 +42,7 @@ function SignedOut() {
  * A sign-out (by anyone calling `actions.logout()`) lands on the front page instead of /login.
  */
 export function RequireAuth() {
+  const t = useT()
   const status = useNodeValue('authStatus')
   const check = useNodeValue('sessionCheck')
   const checkStatus = useNodeStatus('sessionCheck')
@@ -67,7 +69,7 @@ export function RequireAuth() {
     if (signingOut || logout.status === 'loading') return <SignedOut />
     return <Navigate to="/login" replace state={{ from: pathOf(location) }} />
   }
-  return <PageLoader caption={CHECKING} />
+  return <PageLoader caption={t('frame.checking')} />
 }
 
 /**
@@ -76,12 +78,13 @@ export function RequireAuth() {
  * (`RequireProfilePhoto`): without one, the connections, chats and dates stay reachable.
  */
 export function RequireFilledProfile() {
+  const t = useT()
   const filled = useNodeValue('profileFilled')
   const profile = useNodeStatus('myProfile')
   if (filled === true) return <Outlet />
   if (filled === false) return <Navigate to="/onboarding" replace />
   if (profile.status === 'error') return <ProfileTrouble error={profile.error} />
-  return <Loader fill>Fetching your profile</Loader>
+  return <Loader fill>{t('frame.fetchingProfile')}</Loader>
 }
 
 /**
@@ -91,10 +94,11 @@ export function RequireFilledProfile() {
  * requested): it says why and leads to the photos.
  */
 export function RequireProfilePhoto() {
+  const t = useT()
   const complete = useNodeValue('profileComplete')
   if (complete === true) return <Outlet />
   if (complete === false) return <NoProfilePhoto />
-  return <Loader fill>Fetching your profile</Loader>
+  return <Loader fill>{t('frame.fetchingProfile')}</Loader>
 }
 
 /**
@@ -103,6 +107,7 @@ export function RequireProfilePhoto() {
  * full screen without the app's navigation, the other sections would be out of reach from there.
  */
 export function HomeGate() {
+  const t = useT()
   const status = useNodeValue('authStatus')
   const filled = useNodeValue('profileFilled')
   const profile = useNodeStatus('myProfile')
@@ -111,7 +116,7 @@ export function HomeGate() {
     if (filled === false) return <Navigate to="/onboarding" replace />
     // A failed profile is RequireFilledProfile's to report (with a retry), on /discover.
     if (filled === true || profile.status === 'error') return <Navigate to="/discover" replace />
-    return <PageLoader caption="Fetching your profile" />
+    return <PageLoader caption={t('frame.fetchingProfile')} />
   }
-  return <PageLoader caption={CHECKING} />
+  return <PageLoader caption={t('frame.checking')} />
 }

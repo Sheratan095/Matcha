@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { Button } from '../controls/Button'
 import { IconChat } from '../icons'
@@ -36,13 +37,14 @@ export interface MatchCelebrationProps {
  * a ticker band and the two next steps. Fills its container; use MatchMoment for the overlay.
  */
 export function MatchCelebration({ me, them, onMessage, onDismiss, children, animate = true, className }: MatchCelebrationProps) {
+  const t = useT()
   return (
     <div className={cx(s.celebration, animate && s.animate, className)} data-surface="ink">
       <div className={s.rays} aria-hidden="true" />
       <Halftone from="center" tone="strawberry" columns={36} opacity={0.5} className={s.dots} />
 
       <div className={s.bandTop}>
-        <Marquee items={["It's a match", 'Pour two cups', "It's a match", 'Steeped in mutual interest']} tone="matcha" tilt={-4} speed={18} />
+        <Marquee items={[t('kit.matchMarquee1'), t('kit.matchMarquee2'), t('kit.matchMarquee1'), t('kit.matchMarquee3')]} tone="matcha" tilt={-4} speed={18} />
       </div>
 
       <div className={s.photos}>
@@ -59,27 +61,27 @@ export function MatchCelebration({ me, them, onMessage, onDismiss, children, ani
         </span>
         <span className={s.stamp} aria-hidden="true">
           <Stamp tone="matcha" size="lg" rotate={-9} thunk={animate}>
-            Match!
+            {t('kit.matchStamp')}
           </Stamp>
         </span>
       </div>
 
       <div className={s.copy}>
-        <p className={s.kicker}>It&rsquo;s a</p>
-        <p className={s.word}>Match</p>
-        <p className={s.line}>{children ?? <>You and {them.name} liked each other. Say something before the tea goes cold.</>}</p>
+        <p className={s.kicker}>{t('kit.matchKicker')}</p>
+        <p className={s.word}>{t('kit.matchWord')}</p>
+        <p className={s.line}>{children ?? t('kit.matchLine', { name: them.name })}</p>
       </div>
 
       {(onMessage || onDismiss) && (
         <div className={s.actions}>
           {onMessage ? (
             <Button size="lg" block icon={<IconChat size={22} filled />} onClick={onMessage}>
-              Send a message
+              {t('kit.matchMessage')}
             </Button>
           ) : null}
           {onDismiss ? (
             <Button size="md" variant="paper" block onClick={onDismiss}>
-              Keep swiping
+              {t('kit.matchKeep')}
             </Button>
           ) : null}
         </div>
@@ -96,8 +98,9 @@ export interface MatchMomentProps extends Omit<MatchCelebrationProps, 'animate' 
 
 /** The match celebration as a full-screen takeover (focus-trapped, Escape closes). */
 export function MatchMoment({ open, onClose, onDismiss, ...rest }: MatchMomentProps) {
+  const t = useT()
   return (
-    <Modal open={open} onClose={onClose} title={`It's a match with ${rest.them.name}`} hideTitle variant="takeover" tone="ink">
+    <Modal open={open} onClose={onClose} title={t('kit.matchTitle', { name: rest.them.name })} hideTitle variant="takeover" tone="ink">
       <MatchCelebration {...rest} onDismiss={onDismiss ?? onClose} />
     </Modal>
   )

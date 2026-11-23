@@ -8,6 +8,7 @@ import { Link, Outlet, ScrollRestoration, useRouteError } from 'react-router-dom
 import type { ApiError } from '@/api/types'
 import { API_URL } from '@/config'
 import { bannerFor } from '@/features/auth/errors'
+import { useT } from '@/i18n'
 import {
   Button,
   ButtonLink,
@@ -40,7 +41,7 @@ export function RootLayout() {
 }
 
 /** The whole page while something decides what to show (session probe, profile, a lazy chunk). */
-export function PageLoader({ caption = 'Whisking' }: { caption?: string }) {
+export function PageLoader({ caption }: { caption?: string }) {
   return (
     <div className={s.page}>
       <div className={s.loaderMark} aria-hidden="true">
@@ -66,28 +67,36 @@ export interface ServerDownProps {
 
 /** The session probe got no answer: nothing signed-in can be shown. */
 export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
+  const t = useT()
   return (
     <main id="main" className={s.page}>
-      <title>Can't reach the server · Matcha</title>
+      <title>{`${t('error.networkTitle')} · Matcha`}</title>
       <div className={s.panel}>
         <div className={s.panelTop}>
           <Wordmark size="sm" />
           <Stamp tone="strawberry" variant="rubber" size="lg" rotate={-9} className={s.panelStamp}>
-            No signal
+            {t('frame.noSignal')}
           </Stamp>
         </div>
         <Headline as="h1" size="d1" width="condensed" print="riso" offset="strawberry">
-          Can't reach the server
+          {t('error.networkTitle')}
         </Headline>
-        <Text size="lead">We couldn't check whether you're signed in, so the press is on hold.</Text>
-        <Card label="Backend checklist" meta={API_URL} shadow={3}>
+        <Text size="lead">{t('frame.noServerLead')}</Text>
+        <Card label={t('frame.checklist')} meta={API_URL} shadow={3}>
           <ol className={s.checklist}>
             <li>
-              Start the backend: <code>cd backend</code> then <code>make dev</code>. The gateway listens on{' '}
-              <code>{API_URL}</code>.
+              {t.rich('frame.checkStart', {
+                cd: <code>cd backend</code>,
+                make: <code>make dev</code>,
+                url: <code>{API_URL}</code>,
+              })}
             </li>
             <li>
-              This app's server forwards <code>/api</code> to the gateway: check <code>BACKEND_URL</code> in <code>frontend/.env</code>.
+              {t.rich('frame.checkProxy', {
+                api: <code>/api</code>,
+                env: <code>BACKEND_URL</code>,
+                file: <code>frontend/.env</code>,
+              })}
             </li>
           </ol>
         </Card>
@@ -98,10 +107,10 @@ export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
         ) : null}
         <div className={s.panelActions}>
           <Button size="lg" icon={<IconRefresh size={20} />} loading={retrying} onClick={onRetry}>
-            Try again
+            {t('common.tryAgain')}
           </Button>
           <Button size="lg" variant="paper" onClick={() => window.location.reload()}>
-            Reload page
+            {t('frame.reloadPage')}
           </Button>
         </div>
       </div>
@@ -115,21 +124,21 @@ export function ServerDown({ error, retrying, onRetry }: ServerDownProps) {
  * first tab is the photos). The rest of the app stays open.
  */
 export function NoProfilePhoto() {
+  const t = useT()
   return (
     <div className={s.trouble}>
-      <title>Add a photo · Matcha</title>
+      <title>{`${t('frame.noPhotoTitle')} · Matcha`}</title>
       <EmptyState
-        stamp="No photo"
+        stamp={t('frame.noPhotoStamp')}
         stampTone="yolk"
-        title="Add a photo to open the deck"
+        title={t('frame.noPhotoHeading')}
         action={
           <ButtonLink to="/me" icon={<IconCamera size={18} />}>
-            Add a photo
+            {t('frame.noPhotoTitle')}
           </ButtonLink>
         }
       >
-        Discover needs a profile photo: without one nobody sees your card, and you cannot like or pass on anyone.
-        Your matches, chats and dates are still here.
+        {t('frame.noPhotoBody')}
       </EmptyState>
     </div>
   )
@@ -137,6 +146,7 @@ export function NoProfilePhoto() {
 
 /** `myProfile` failed: the pages behind RequireFilledProfile need it. */
 export function ProfileTrouble({ error }: { error: ApiError | null }) {
+  const t = useT()
   const [busy, setBusy] = useState(false)
   // refresh() never rejects: a new failure lands on the node's status, i.e. back in `error`.
   const retry = () => {
@@ -146,23 +156,23 @@ export function ProfileTrouble({ error }: { error: ApiError | null }) {
   const banner = error ? bannerFor(error) : null
   return (
     <div className={s.trouble}>
-      <title>Profile unavailable · Matcha</title>
+      <title>{`${t('frame.profileTitle')} · Matcha`}</title>
       <EmptyState
-        stamp="Misprint"
+        stamp={t('frame.misprint')}
         stampTone="strawberry"
-        title="Your profile didn't load"
+        title={t('frame.profileHeading')}
         action={
           <Button icon={<IconRefresh size={18} />} loading={busy} onClick={retry}>
-            Try again
+            {t('common.tryAgain')}
           </Button>
         }
       >
         {banner ? (
           <>
-            <strong>{banner.title}.</strong> {banner.detail ?? 'This page needs your profile to work.'}
+            <strong>{banner.title}.</strong> {banner.detail ?? t('frame.needsProfile')}
           </>
         ) : (
-          'This page needs your profile to work.'
+          t('frame.needsProfile')
         )}
       </EmptyState>
     </div>
@@ -171,26 +181,27 @@ export function ProfileTrouble({ error }: { error: ApiError | null }) {
 
 /** The router's error page: a render error or a chunk that failed to load. */
 export function RouteError() {
+  const t = useT()
   const error = useRouteError()
   const message = error instanceof Error ? error.message : typeof error === 'string' ? error : null
   return (
     <main id="main" className={s.page}>
-      <title>Misprint · Matcha</title>
+      <title>{`${t('frame.misprint')} · Matcha`}</title>
       <div className={s.panel}>
         <div className={s.panelTop}>
           <Wordmark size="sm" />
           <Stamp tone="strawberry" variant="rubber" size="lg" rotate={7} className={s.panelStamp}>
-            Misprint
+            {t('frame.misprint')}
           </Stamp>
         </div>
         <Headline as="h1" size="d1" width="condensed" print="riso" offset="strawberry">
-          This page jammed the press
+          {t('frame.jammed')}
         </Headline>
-        <Text size="lead">Something broke while showing it. Reloading usually clears the jam.</Text>
+        <Text size="lead">{t('frame.jammedLead')}</Text>
         {message ? (
           <Card tone="kraft" shadow={0} pad="sm">
             <Label size="sm" tone="muted">
-              Error
+              {t('frame.errorLabel')}
             </Label>
             <Text size="sm">
               <code>{message}</code>
@@ -199,10 +210,10 @@ export function RouteError() {
         ) : null}
         <div className={s.panelActions}>
           <Button size="lg" icon={<IconRefresh size={20} />} onClick={() => window.location.reload()}>
-            Reload
+            {t('frame.reload')}
           </Button>
           <Link to="/" className={s.textLink}>
-            Front page
+            {t('frame.frontPage')}
           </Link>
         </div>
       </div>

@@ -3,9 +3,10 @@
  * what is wrong before sending. The server stays the authority: its answers are mapped onto the same
  * fields by `errors.ts`.
  *
- * Every check returns a message, or null when the value passes.
+ * Every check returns a message (worded in the current language, see src/i18n), or null when the value passes.
  */
 import { LANGUAGES, type Language } from '@/api/types'
+import { t } from '@/i18n'
 
 export const USERNAME_MIN = 3
 export const USERNAME_MAX = 20
@@ -20,13 +21,14 @@ const USERNAME_PATTERN = /^[a-z0-9_.]+$/
  * with single spaces, hyphens or apostrophes between parts ("Jean-Luc", "O'Brien", "José", "Anne Marie").
  */
 const NAME_PATTERN = /^\p{L}+(?:[ '’-]\p{L}+)*$/u
-export const NAME_RULE = 'Letters only, with single spaces, hyphens or apostrophes between parts.'
+/** What the name fields accept, in words. A function, not a constant: it follows the language. */
+export const nameRule = (): string => t('rule.nameChars')
 
 /**
  * How long a verification or reset code works: the backend's EMAIL_VERIFICATION_EXPIRATION_MS and
  * FORGOT_PASSWORD_EXPIRATION_MS defaults (900000 ms), also printed in the emails themselves.
  */
-export const CODE_LIFETIME = '15 minutes'
+export const codeLifetime = (): string => t('common.codeLifetime')
 /** `Matches(/^(?!\s*$).+$/)`: not whitespace-only, and `.` never matches a line break. */
 const PASSWORD_PATTERN = /^(?!\s*$).+$/
 /** Close to validator.js `isEmail` for ordinary addresses. */
@@ -69,37 +71,37 @@ export function normaliseCode(raw: string): string {
 
 export function checkUsername(raw: string): string | null {
   const value = normaliseUsername(raw)
-  if (!value) return 'Pick a username.'
-  if (value.length < USERNAME_MIN) return `At least ${USERNAME_MIN} characters.`
-  if (value.length > USERNAME_MAX) return `At most ${USERNAME_MAX} characters.`
-  if (!USERNAME_PATTERN.test(value)) return 'Letters, digits, dots and underscores only.'
-  if (RESERVED_USERNAMES.has(value)) return "This username isn't available. Pick another one."
+  if (!value) return t('rule.pickUsername')
+  if (value.length < USERNAME_MIN) return t('rule.atLeast', { n: USERNAME_MIN })
+  if (value.length > USERNAME_MAX) return t('rule.atMost', { n: USERNAME_MAX })
+  if (!USERNAME_PATTERN.test(value)) return t('rule.usernameChars')
+  if (RESERVED_USERNAMES.has(value)) return t('rule.usernameReserved')
   return null
 }
 
 export function checkEmail(raw: string): string | null {
   const value = normaliseEmail(raw)
-  if (!value) return 'Enter your email address.'
-  if (value.length > EMAIL_MAX) return `At most ${EMAIL_MAX} characters.`
-  if (!EMAIL_PATTERN.test(value)) return "That doesn't look like an email address."
+  if (!value) return t('rule.enterEmail')
+  if (value.length > EMAIL_MAX) return t('rule.atMost', { n: EMAIL_MAX })
+  if (!EMAIL_PATTERN.test(value)) return t('rule.emailInvalid')
   return null
 }
 
 /** Registration and reset rules: 8–128 characters, not only spaces, no line breaks, not a common password. */
 export function checkNewPassword(password: string): string | null {
-  if (!password) return 'Choose a password.'
-  if (password.length < PASSWORD_MIN) return `At least ${PASSWORD_MIN} characters.`
-  if (password.length > PASSWORD_MAX) return `At most ${PASSWORD_MAX} characters.`
-  if (!PASSWORD_PATTERN.test(password)) return /[\r\n]/.test(password) ? 'No line breaks.' : "Can't be only spaces."
-  if (COMMON_PASSWORDS.has(password)) return 'This password is too common. Pick something harder to guess.'
+  if (!password) return t('rule.choosePassword')
+  if (password.length < PASSWORD_MIN) return t('rule.atLeast', { n: PASSWORD_MIN })
+  if (password.length > PASSWORD_MAX) return t('rule.atMost', { n: PASSWORD_MAX })
+  if (!PASSWORD_PATTERN.test(password)) return /[\r\n]/.test(password) ? t('rule.noLineBreaks') : t('rule.onlySpaces')
+  if (COMMON_PASSWORDS.has(password)) return t('rule.passwordCommon')
   return null
 }
 
 export function checkName(raw: string, what: 'first' | 'last'): string | null {
   const value = raw.trim()
-  if (!value) return what === 'first' ? 'Enter your first name.' : 'Enter your last name.'
-  if (value.length > NAME_MAX) return `At most ${NAME_MAX} characters.`
-  if (!NAME_PATTERN.test(value)) return NAME_RULE
+  if (!value) return what === 'first' ? t('rule.enterFirstName') : t('rule.enterLastName')
+  if (value.length > NAME_MAX) return t('rule.atMost', { n: NAME_MAX })
+  if (!NAME_PATTERN.test(value)) return nameRule()
   return null
 }
 
@@ -155,15 +157,15 @@ export function dateOfBirthBounds(): { min: string; max: string } {
 /** Required, 'YYYY-MM-DD', a real date, not in the future, and an age of MIN_AGE to MAX_AGE. */
 export function checkDateOfBirth(raw: string): string | null {
   const value = raw.trim()
-  if (!value) return 'Enter your date of birth.'
-  if (!DATE_PATTERN.test(value)) return 'Use the format YYYY-MM-DD.'
+  if (!value) return t('rule.enterBirth')
+  if (!DATE_PATTERN.test(value)) return t('rule.birthFormat')
   const birth = parseDate(value)
-  if (!birth) return "That date doesn't exist."
+  if (!birth) return t('rule.birthMissing')
   const today = todayUtc()
-  if (birth > today) return "That date hasn't happened yet."
+  if (birth > today) return t('rule.birthFuture')
   const age = ageOn(birth, today)
-  if (age < MIN_AGE) return `You must be at least ${MIN_AGE} to join.`
-  if (age > MAX_AGE) return 'Check the year: that is more than 120 years ago.'
+  if (age < MIN_AGE) return t('rule.birthTooYoung', { n: MIN_AGE })
+  if (age > MAX_AGE) return t('rule.birthTooOld')
   return null
 }
 
@@ -177,5 +179,5 @@ export function checkRequired(value: string, message: string): string | null {
 }
 
 export function checkCode(raw: string): string | null {
-  return normaliseCode(raw) ? null : 'Enter the code from the email.'
+  return normaliseCode(raw) ? null : t('rule.enterCode')
 }

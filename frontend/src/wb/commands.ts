@@ -12,6 +12,7 @@
 import type { Subscription } from 'rxjs'
 import { apiError, httpEvents$, LOCAL_ERROR, type HttpEvent } from '@/api/http'
 import type { ApiError } from '@/api/types'
+import { t } from '@/i18n'
 import {
   REFRESH_TRIGGERS,
   type CommandName,
@@ -36,7 +37,7 @@ function macrotask(): Promise<void> {
 }
 
 function notRunning(): ApiError {
-  return apiError(0, 'The store is not running, so the request was not sent.', LOCAL_ERROR.NOT_SENT)
+  return apiError(0, t('check.notRunning'), LOCAL_ERROR.NOT_SENT)
 }
 
 // ---------------------------------------------------------------- request watching
@@ -217,7 +218,7 @@ async function execute(command: CommandName, args: readonly unknown[]): Promise<
   if (!outcome.event) {
     throw apiError(0, `"${command}" did not send its request (the store is not running).`, LOCAL_ERROR.NOT_SENT)
   }
-  if (outcome.event.phase === 'error') throw outcome.event.error ?? apiError(0, 'Request failed.')
+  if (outcome.event.phase === 'error') throw outcome.event.error ?? apiError(0, t('check.requestFailedShort'))
   return outcome.event.data
 }
 

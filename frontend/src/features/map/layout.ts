@@ -1,5 +1,6 @@
 /** Pure helpers of the match map: where each person goes, and what is safe to put in a marker. */
 import type { MapMatch } from '@/api/types'
+import { numberFormat, t } from '@/i18n'
 import { distanceKm, isSpot, type Spot } from '@/features/location/geo'
 
 /** A connection with a position, ready for the map. */
@@ -64,7 +65,7 @@ export function placeMatches(matches: readonly MapMatch[], me: Spot | null): { p
 
 /** "<1 km", "4 km", "1,250 km". Positions are ~1 km-snapped: never more precise than that. */
 export function kmText(km: number): string {
-  return km < 1 ? '<1 km' : `${Math.round(km).toLocaleString()} km`
+  return t('deck.kmValue', { n: km < 1 ? '<1' : numberFormat().format(Math.round(km)) })
 }
 
 /** Only http(s) URLs end up in an <img> built outside React (no javascript:, data:, relative tricks). */

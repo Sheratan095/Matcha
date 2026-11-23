@@ -12,6 +12,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { ApiError, Match, Message, PlannedDate } from '@/api/types'
+import { useT } from '@/i18n'
 import { CallOffDialog } from '@/features/calendar/CallOffDialog'
 import { PlanDateSheet } from '@/features/calendar/PlanDateSheet'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
@@ -97,6 +98,7 @@ function knownIds(messages: readonly Message[] | null): Set<string> {
 }
 
 function ChatScreen({ partnerId }: { partnerId: string }) {
+  const t = useT()
   const navigate = useNavigate()
   const now = useNow(30_000)
 
@@ -160,9 +162,9 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
   const loadError = !notFound && !messages ? (openError ?? (chatStatus.status === 'error' ? chatStatus.error : null)) : null
   const matchesError = !match && !notFound && connectionsStatus.status === 'error' ? connectionsStatus.error : null
 
-  const name = match?.username || 'Your match'
+  const name = match?.username || t('chat.yourMatch')
   const me = {
-    name: firstNameOf(myProfile, 'You'),
+    name: firstNameOf(myProfile, t('nav.you')),
     photo: mainPicture(myProfile),
     seed: myId ?? 'me',
   }
@@ -294,8 +296,8 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
         drafts.delete(partnerId)
         toast.show({
           tone: 'ink',
-          title: kind === 'block' ? `${name} is blocked` : `You unmatched ${name}`,
-          message: kind === 'block' ? 'They will not see you or message you again.' : undefined,
+          title: kind === 'block' ? t('chat.blockedTitle', { name }) : t('chat.unmatchedTitle', { name }),
+          message: kind === 'block' ? t('chat.blockedMessage') : undefined,
         })
         navigate('/matches', { replace: true })
       },
@@ -318,7 +320,7 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
     <PageHeader
       size="compact"
       back="/matches"
-      backLabel="Back to matches"
+      backLabel={t('chat.backToMatches')}
       title={
         match ? (
           <button type="button" className={s.who} onClick={() => setProfileOpen(true)}>
@@ -326,15 +328,15 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
             <span className={s.whoText}>
               <span className={s.whoName}>{name}</span>
               <span className={s.whoPresence} aria-hidden="true">
-                View profile
+                {t('chat.viewProfile')}
               </span>
             </span>
-            <span className="sr-only">: view profile</span>
+            <span className="sr-only">{t('chat.viewProfileSr')}</span>
           </button>
         ) : notFound ? (
-          'Conversation'
+          t('chat.conversation')
         ) : (
-          <span className={s.whoSkeleton} aria-label="Loading">
+          <span className={s.whoSkeleton} aria-label={t('kit.loading')}>
             <Skeleton shape="circle" width={36} height={36} />
             <Skeleton shape="text" width={120} height={18} />
           </span>
@@ -343,16 +345,16 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
       actions={
         match && !notFound ? (
           <>
-            <IconButton label="Plan a date" onClick={() => setPlanning(true)} disabled={frozen != null}>
+            <IconButton label={t('chat.planDate')} onClick={() => setPlanning(true)} disabled={frozen != null}>
               <IconCalendar size={20} />
             </IconButton>
             <Menu
-              label="Conversation options"
+              label={t('chat.options')}
               items={[
-                { label: 'View profile', icon: <IconUser size={20} />, onSelect: () => setProfileOpen(true) },
-                { label: 'Plan a date', icon: <IconCalendar size={20} />, onSelect: () => setPlanning(true), disabled: frozen != null },
-                { label: 'Unmatch', icon: <IconTrash size={20} />, tone: 'danger', onSelect: () => askLeave('unmatch') },
-                { label: 'Block', icon: <IconBlock size={20} />, tone: 'danger', onSelect: () => askLeave('block') },
+                { label: t('chat.viewProfile'), icon: <IconUser size={20} />, onSelect: () => setProfileOpen(true) },
+                { label: t('chat.planDate'), icon: <IconCalendar size={20} />, onSelect: () => setPlanning(true), disabled: frozen != null },
+                { label: t('chat.unmatch'), icon: <IconTrash size={20} />, tone: 'danger', onSelect: () => askLeave('unmatch') },
+                { label: t('chat.block'), icon: <IconBlock size={20} />, tone: 'danger', onSelect: () => askLeave('block') },
               ]}
             />
           </>
@@ -366,16 +368,16 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
       <Pane header={header}>
         <div className={s.notFound}>
           <EmptyState
-            stamp="Gone cold"
+            stamp={t('chat.goneStamp')}
             stampTone="ink"
-            title="This conversation has left the pot"
+            title={t('chat.goneTitle')}
             action={
               <ButtonLink to="/matches" size="lg">
-                Back to matches
+                {t('chat.backToMatches')}
               </ButtonLink>
             }
           >
-            The match may have ended, or the link is not quite right. Your other conversations are where you left them.
+            {t('chat.goneBody')}
           </EmptyState>
         </div>
       </Pane>
@@ -390,8 +392,8 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
         onSend={send}
         maxLength={MAX_MESSAGE_LENGTH}
         disabled={!canWrite}
-        label={match ? `Message ${name}` : 'Message'}
-        placeholder={match ? `Message ${name}…` : 'Write something nice…'}
+        label={match ? t('chat.messageTo', { name }) : undefined}
+        placeholder={match ? t('chat.messageToPlaceholder', { name }) : undefined}
       />
     </div>
   )
@@ -414,7 +416,7 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
                 onIcebreaker={insertIcebreaker}
                 onPlanDate={frozen ? undefined : () => setPlanning(true)}
               />
-              <ChatThread label={`Conversation with ${name}`}>
+              <ChatThread label={t('chat.threadWith', { name })}>
                 {timeline.items.map((item) =>
                   item.kind === 'day' ? (
                     <DayDivider key={item.key}>{item.label}</DayDivider>
@@ -441,14 +443,14 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
               <div className={s.inlineNotice}>
                 <Notice
                   tone="warning"
-                  title="Not up to date"
+                  title={t('kit.notUpToDate')}
                   action={
                     <Button size="sm" variant="paper" icon={<IconRefresh size={16} />} onClick={() => setAttempt((n) => n + 1)}>
-                      Reload
+                      {t('frame.reload')}
                     </Button>
                   }
                 >
-                  The latest messages could not be loaded.
+                  {t('chat.latestFailed')}
                 </Notice>
               </div>
             ) : null}
@@ -457,14 +459,14 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
           <div className={s.loadError}>
             <Notice
               tone="error"
-              title="The conversation did not load"
+              title={t('chat.loadFailed')}
               action={
                 <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={() => setAttempt((n) => n + 1)}>
-                  Try again
+                  {t('common.tryAgain')}
                 </Button>
               }
             >
-              {(loadError ?? matchesError)?.message ?? 'Something went wrong.'}
+              {(loadError ?? matchesError)?.message ?? t('kit.wrong')}
             </Notice>
           </div>
         ) : (
@@ -483,7 +485,7 @@ function ChatScreen({ partnerId }: { partnerId: string }) {
               }}
             >
               <IconChevronDown size={18} strokeWidth={3} />
-              {unseen === 1 ? '1 new message' : `${unseen} new messages`}
+              {t.n('chat.newMessages', unseen)}
             </button>
           ) : null}
         </div>
@@ -517,22 +519,24 @@ function DateNoteItem({ date, note, now, onCallOff }: DateNoteItemProps) {
 }
 
 function FailedActions({ error, onRetry, onDiscard }: { error: string | null; onRetry: () => void; onDiscard: () => void }) {
+  const t = useT()
   return (
     <div className={s.failed}>
       {error ? <span className={s.failedWhy}>{error}</span> : null}
       <Button size="sm" variant="paper" icon={<IconRefresh size={16} />} onClick={onRetry}>
-        Retry
+        {t('chat.retry')}
       </Button>
       <Button size="sm" variant="ghost" onClick={onDiscard}>
-        Delete
+        {t('chat.delete')}
       </Button>
     </div>
   )
 }
 
 function ThreadSkeleton() {
+  const t = useT()
   return (
-    <div className={s.skeleton} aria-busy="true" aria-label="Loading the conversation">
+    <div className={s.skeleton} aria-busy="true" aria-label={t('chat.loadingConversation')}>
       <Skeleton width="58%" height={44} style={{ borderRadius: 18 }} />
       <Skeleton width="42%" height={44} style={{ borderRadius: 18 }} />
       <Skeleton width="64%" height={64} style={{ borderRadius: 18, alignSelf: 'flex-end' }} />

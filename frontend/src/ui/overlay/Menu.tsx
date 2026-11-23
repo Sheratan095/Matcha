@@ -1,12 +1,15 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
-import { IconChevronRight, IconMore } from '../icons'
+import { IconCheck, IconChevronRight, IconMore } from '../icons'
 import s from './Menu.module.css'
 
 export interface MenuItem {
   label: string
   icon?: ReactNode
+  /** Makes the item a radio of the menu (a choice among several): true marks the current one. Menu only. */
+  checked?: boolean
   /** Smaller second line (ActionList only). */
   description?: string
   onSelect: () => void
@@ -23,8 +26,12 @@ export interface MenuProps {
   trigger?: ReactNode
   /** Which edge of the trigger the menu lines up with. Default end. */
   align?: 'start' | 'end'
+  /** Open below the trigger (default) or above it, for a trigger at the foot of the page. */
+  side?: 'down' | 'up'
   /** Trigger look: a paper icon button (default) or bare. */
   triggerVariant?: 'paper' | 'ghost'
+  /** Extra class on the trigger button (a custom size or shape). */
+  triggerClassName?: string
   className?: string
 }
 
@@ -34,17 +41,27 @@ export interface MenuProps {
  */
 export function Menu({
   items,
-  label = 'More options',
+  label,
   trigger,
   align = 'end',
+  side = 'down',
   triggerVariant = 'paper',
+  triggerClassName,
   className,
 }: MenuProps) {
+  const t = useT()
+  const name = label ?? t('kit.moreOptions')
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([])
   const menuId = useId()
+
+  /** Where focus lands when the menu opens: the current choice of a radio menu, else the first item. */
+  const firstIndex = Math.max(
+    0,
+    items.findIndex((it) => it.checked),
+  )
 
   const focusItem = (i: number) => {
     const enabled = items.map((it, idx) => (it.disabled ? -1 : idx)).filter((x) => x >= 0)
@@ -71,7 +88,7 @@ export function Menu({
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       setOpen(true)
-      requestAnimationFrame(() => focusItem(e.key === 'ArrowUp' ? items.length - 1 : 0))
+      requestAnimationFrame(() => focusItem(e.key === 'ArrowUp' ? items.length - 1 : firstIndex))
     }
   }
 
@@ -110,22 +127,28 @@ export function Menu({
       <button
         ref={triggerRef}
         type="button"
-        className={cx(s.trigger, triggerVariant === 'ghost' && s.triggerGhost, open && s.triggerOpen)}
-        aria-label={label}
-        title={label}
+        className={cx(s.trigger, triggerVariant === 'ghost' && s.triggerGhost, open && s.triggerOpen, triggerClassName)}
+        aria-label={name}
+        title={name}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => {
           setOpen((v) => !v)
-          if (!open) requestAnimationFrame(() => focusItem(0))
+          if (!open) requestAnimationFrame(() => focusItem(firstIndex))
         }}
         onKeyDown={onTriggerKey}
       >
         {trigger ?? <IconMore size={22} />}
       </button>
       {open ? (
-        <div id={menuId} role="menu" aria-label={label} className={cx(s.menu, s[`align-${align}`])} onKeyDown={onMenuKey}>
+        <div
+          id={menuId}
+          role="menu"
+          aria-label={name}
+          className={cx(s.menu, s[`align-${align}`], side === 'up' && s.sideUp)}
+          onKeyDown={onMenuKey}
+        >
           {items.map((item, i) => (
             <button
               key={item.label}
@@ -133,7 +156,8 @@ export function Menu({
                 itemRefs.current[i] = el
               }}
               type="button"
-              role="menuitem"
+              role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
+              aria-checked={item.checked}
               tabIndex={-1}
               disabled={item.disabled}
               className={cx(s.item, item.tone === 'danger' && s.danger)}
@@ -144,7 +168,8 @@ export function Menu({
               }}
             >
               {item.icon ? <span className={s.itemIcon}>{item.icon}</span> : null}
-              <span>{item.label}</span>
+              <span className={s.itemLabel}>{item.label}</span>
+              {item.checked ? <IconCheck size={18} strokeWidth={3.5} className={s.itemCheck} /> : null}
             </button>
           ))}
         </div>

@@ -68,6 +68,25 @@
   left: 0;
   transform-origin: top left;
 }
+/* above the trigger: for one at the foot of the page */
+.sideUp {
+  top: auto;
+  bottom: calc(100% + 10px);
+  animation-name: menu-in-up;
+}
+.sideUp.align-end {
+  transform-origin: bottom right;
+}
+.sideUp.align-start {
+  transform-origin: bottom left;
+}
+@keyframes menu-in-up {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+    scale: 0.97;
+  }
+}
 
 .item {
   display: flex;
@@ -95,6 +114,14 @@
 }
 .itemIcon {
   display: inline-flex;
+  flex: none;
+}
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+}
+/* the current choice of a radio menu */
+.itemCheck {
   flex: none;
 }
 .danger {

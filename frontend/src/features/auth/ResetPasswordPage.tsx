@@ -6,32 +6,31 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocaleState, useT, type Translator } from '@/i18n'
 import { AuthLayout, Button, ButtonLink, IconArrowRight, Notice, PasswordField, Stamp, Text } from '@/ui'
 import { actions, useNodeValue } from '@/wb'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
 import { readFlag } from './navState'
 import { FormBanner } from './parts'
-import { checkNewPassword, CODE_LIFETIME, PASSWORD_MAX } from './rules'
+import { checkNewPassword, codeLifetime, PASSWORD_MAX, PASSWORD_MIN } from './rules'
 import { useAuthForm } from './useAuthForm'
 import a from './auth.module.css'
 
 type Field = 'password' | 'confirm'
 const FIELDS: readonly Field[] = ['password', 'confirm']
 
-const POSTER = {
-  lines: ['New', 'key', 'cut'],
-  tone: 'yolk' as const,
-  sticker: (
-    <>
-      Fresh
-      <br />
-      start
-    </>
-  ),
-  marquee: ['A fresh key in one email', 'Eight characters or more', 'No reruns'],
+/** The poster of every state of this page; built per render because its words follow the language. */
+function posterFor(t: Translator) {
+  return {
+    lines: t.lines('reset.lines'),
+    tone: 'yolk' as const,
+    sticker: t.stack('reset.sticker'),
+    marquee: [t('reset.marquee1'), t('reset.marquee2'), t('reset.marquee3')],
+  }
 }
 
 export default function ResetPasswordPage() {
+  const t = useT()
   const [params] = useSearchParams()
   const token = params.get('token')?.trim() || null
   const location = useLocation()
@@ -40,11 +39,12 @@ export default function ResetPasswordPage() {
   const signedIn = useNodeValue('authStatus') === 'authenticated'
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [banner, setBanner] = useState<Banner | null>(null)
+  const [banner, setBanner] = useLocaleState<Banner | null>(null)
   const [busy, setBusy] = useState(false)
-  /** The token the backend refused, with why. */
-  const [dead, setDead] = useState<{ token: string; message: string } | null>(null)
+  /** The token the backend refused, with the server's own words; `said` is null when the link had no token at all. */
+  const [dead, setDead] = useState<{ token: string; said: string | null } | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const poster = posterFor(t)
 
   const form = useAuthForm<Field>(
     FIELDS,
@@ -52,9 +52,9 @@ export default function ResetPasswordPage() {
       field === 'password'
         ? checkNewPassword(password)
         : !confirm
-          ? 'Type the new password again.'
+          ? t('reset.confirmEmpty')
           : confirm !== password
-            ? "The two passwords don't match."
+            ? t('reset.confirmMismatch')
             : null,
     formRef,
   )
@@ -79,15 +79,15 @@ export default function ResetPasswordPage() {
     } catch (thrown) {
       const error = asApiError(thrown)
       if (error.code === 'PASSWORD_REUSE') {
-        form.fail({ password: 'That is your current password. Pick a new one.' })
+        form.fail({ password: t('reset.reused') })
       } else if (error.code === 'COMMON_PASSWORD') {
-        form.fail({ password: 'This password is too common. Pick something harder to guess.' })
+        form.fail({ password: t('rule.passwordCommon') })
       } else if (error.status === 403) {
-        setDead({ token, message: error.message })
+        setDead({ token, said: error.message })
       } else if (error.status === 400) {
         const mapped = mapValidation<Field>(error, (property) => (property === 'password' ? 'password' : null))
         if (error.messages.some((message) => message.startsWith('token'))) {
-          setDead({ token, message: 'The link is missing its token.' })
+          setDead({ token, said: null })
         } else {
           form.fail(mapped.fields)
           setBanner(mapped.banner)
@@ -102,28 +102,32 @@ export default function ResetPasswordPage() {
 
   const backLink = (
     <p className={a.links}>
-      {signedIn ? <Link to="/me">Back to your profile</Link> : <Link to="/login">Back to sign in</Link>}
+      {signedIn ? (
+        <Link to="/me">{t('common.backToProfile')}</Link>
+      ) : (
+        <Link to="/login">{t('common.backToSignIn')}</Link>
+      )}
     </p>
   )
 
   if (done) {
     return (
       <>
-        <title>Password changed · Matcha</title>
+        <title>{`${t('common.passwordChanged')} · Matcha`}</title>
         <AuthLayout
-          title="Password changed"
-          kicker="New key cut"
-          intro="Your new password is set. Use it next time you sign in."
-          poster={POSTER}
+          title={t('common.passwordChanged')}
+          kicker={t('reset.doneKicker')}
+          intro={t('reset.doneIntro')}
+          poster={poster}
         >
           <div className={a.result}>
-            <Stamp tone="yolk" variant="solid" size="xl" rotate={-7} thunk sub="Key Nº 2" className={a.resultStamp}>
-              Fresh key
+            <Stamp tone="yolk" variant="solid" size="xl" rotate={-7} thunk sub={t('reset.doneStampSub')} className={a.resultStamp}>
+              {t('reset.doneStamp')}
             </Stamp>
             <div className={a.actions}>
               {signedIn ? (
                 <ButtonLink to="/" size="lg" block iconRight={<IconArrowRight size={20} strokeWidth={3} />}>
-                  Back to Matcha
+                  {t('common.backToMatcha')}
                 </ButtonLink>
               ) : (
                 <Button
@@ -132,7 +136,7 @@ export default function ResetPasswordPage() {
                   iconRight={<IconArrowRight size={20} strokeWidth={3} />}
                   onClick={() => navigate('/login', { state: { reset: true } })}
                 >
-                  Sign in
+                  {t('common.signIn')}
                 </Button>
               )}
             </div>
@@ -144,28 +148,32 @@ export default function ResetPasswordPage() {
 
   if (!token || dead?.token === token) {
     const expired = Boolean(token)
+    // The backend's generic answer is replaced by our own wording; any other message of its is kept in front.
+    const serverSaid = !dead
+      ? ''
+      : dead.said === null
+        ? `${t('reset.missingToken')} `
+        : dead.said && dead.said !== 'Invalid or expired reset token'
+          ? `${dead.said}. `
+          : ''
     return (
       <>
-        <title>Reset your password · Matcha</title>
+        <title>{`${t('reset.noToken')} · Matcha`}</title>
         <AuthLayout
-          title={expired ? 'Link expired' : 'Reset your password'}
-          kicker={expired ? 'Out of date' : 'Key cutting'}
-          intro={
-            expired
-              ? undefined
-              : 'This page opens from the link in a password reset email. Ask for one and follow it here.'
-          }
-          poster={POSTER}
+          title={expired ? t('common.linkExpired') : t('reset.noToken')}
+          kicker={expired ? t('common.outOfDate') : t('common.keyCutting')}
+          intro={expired ? undefined : t('reset.noTokenIntro')}
+          poster={poster}
           footer={backLink}
         >
           {expired ? (
-            <Notice tone="warning" title="This reset link no longer works">
-              {dead?.message && dead.message !== 'Invalid or expired reset token' ? `${dead.message}. ` : ''}A link
-              works once and lasts {CODE_LIFETIME}, and asking again replaces it.
+            <Notice tone="warning" title={t('reset.deadTitle')}>
+              {serverSaid}
+              {t('reset.deadBody', { time: codeLifetime() })}
             </Notice>
           ) : null}
           <ButtonLink to="/forgot-password" size="lg" block>
-            {expired ? 'Send me a new link' : 'Send me a link'}
+            {expired ? t('reset.sendNew') : t('reset.send')}
           </ButtonLink>
         </AuthLayout>
       </>
@@ -174,12 +182,12 @@ export default function ResetPasswordPage() {
 
   return (
     <>
-      <title>Choose a new password · Matcha</title>
+      <title>{`${t('reset.chooseTitle')} · Matcha`}</title>
       <AuthLayout
-        title="Choose a new password"
-        kicker="Key cutting"
-        intro="It must differ from your current one."
-        poster={POSTER}
+        title={t('reset.chooseTitle')}
+        kicker={t('common.keyCutting')}
+        intro={t('reset.chooseIntro')}
+        poster={poster}
         footer={backLink}
       >
         <form
@@ -192,7 +200,7 @@ export default function ResetPasswordPage() {
           }}
         >
           <PasswordField
-            label="New password"
+            label={t('reset.newPassword')}
             name="new-password"
             value={password}
             onChange={(event) => {
@@ -201,13 +209,13 @@ export default function ResetPasswordPage() {
             }}
             onBlur={(event) => form.blur('password', event.target.value)}
             error={form.errorOf('password')}
-            hint="At least 8 characters. Common passwords are refused."
+            hint={t('common.passwordHint', { n: PASSWORD_MIN })}
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
             autoFocus
           />
           <PasswordField
-            label="Confirm new password"
+            label={t('reset.confirmPassword')}
             name="confirm-password"
             value={confirm}
             onChange={(event) => {
@@ -221,10 +229,10 @@ export default function ResetPasswordPage() {
           />
           <FormBanner banner={banner} onRetry={() => void submit()} retrying={busy} />
           <Button type="submit" size="lg" block loading={busy}>
-            Save new password
+            {t('reset.save')}
           </Button>
           <Text size="xs" muted>
-            Changing your password does not sign you in: you'll sign in with the new one right after.
+            {t('reset.note')}
           </Text>
         </form>
       </AuthLayout>

@@ -5,6 +5,7 @@
  * the deck's 100 km or 80 years.
  */
 import type { Gender, SexualPreference } from '@/api/types'
+import { t, type MessageKey } from '@/i18n'
 import { AGE_RANGE, DISTANCE_RANGE, FAME_RANGE, type SheetFilters } from '@/features/discover/filterRules'
 import { EMPTY_SEARCH, type SearchCriteria } from '@/wb'
 
@@ -51,8 +52,13 @@ export function activeFilterCount(criteria: SearchCriteria): number {
   )
 }
 
-const GENDER_WORD: Record<Gender, string> = { female: 'women', male: 'men', other: 'other genders' }
-const INTO_WORD: Record<SexualPreference, string> = { female: 'women', male: 'men', both: 'men & women', other: 'other' }
+const GENDER_WORD: Record<Gender, MessageKey> = { female: 'search.women', male: 'search.men', other: 'search.otherGenders' }
+const INTO_WORD: Record<SexualPreference, MessageKey> = {
+  female: 'search.women',
+  male: 'search.men',
+  both: 'search.menWomen',
+  other: 'search.other',
+}
 
 /**
  * "women or men · into women · ages 25-40 · within 20 km · fame 40+ · #tea and #jazz"; empty when
@@ -61,19 +67,20 @@ const INTO_WORD: Record<SexualPreference, string> = { female: 'women', male: 'me
 export function filterSummary(criteria: SearchCriteria): string {
   const parts: string[] = []
   const { ageMin, ageMax, distance, fameMin, tags, genders, preferences } = criteria
-  if (genders.length > 0) parts.push(genders.map((gender) => GENDER_WORD[gender]).join(' or '))
-  if (preferences.length > 0) parts.push(`into ${preferences.map((preference) => INTO_WORD[preference]).join(' or ')}`)
-  if (ageMin !== null && ageMax !== null) parts.push(`ages ${ageMin}-${ageMax}`)
-  else if (ageMin !== null) parts.push(`ages ${ageMin}+`)
-  else if (ageMax !== null) parts.push(`ages up to ${ageMax}`)
-  if (distance !== null) parts.push(`within ${distance} km`)
-  if (fameMin !== null) parts.push(`fame ${fameMin}+`)
-  if (tags.length > 0) parts.push(tags.map((tag) => `#${tag}`).join(' and '))
+  const or = ` ${t('common.or')} `
+  if (genders.length > 0) parts.push(genders.map((gender) => t(GENDER_WORD[gender])).join(or))
+  if (preferences.length > 0) parts.push(t('search.into', { list: preferences.map((preference) => t(INTO_WORD[preference])).join(or) }))
+  if (ageMin !== null && ageMax !== null) parts.push(t('search.ages', { min: ageMin, max: ageMax }))
+  else if (ageMin !== null) parts.push(t('search.agesFrom', { n: ageMin }))
+  else if (ageMax !== null) parts.push(t('search.agesUpTo', { n: ageMax }))
+  if (distance !== null) parts.push(t('search.within', { km: distance }))
+  if (fameMin !== null) parts.push(t('search.fameAtLeast', { n: fameMin }))
+  if (tags.length > 0) parts.push(tags.map((tag) => `#${tag}`).join(` ${t('search.and')} `))
   return parts.join(' · ')
 }
 
 /** The distance rail's open end reads "Any". */
-export const formatDistance = (km: number): string => (km >= DISTANCE_RANGE.max ? 'Any' : `${km} km`)
+export const formatDistance = (km: number): string => (km >= DISTANCE_RANGE.max ? t('deck.noLimit') : t('deck.kmValue', { n: km }))
 
 /** The fame rail's open end reads "Any". */
-export const formatFame = (fame: number): string => (fame <= FAME_RANGE.min ? 'Any' : String(fame))
+export const formatFame = (fame: number): string => (fame <= FAME_RANGE.min ? t('deck.noLimit') : String(fame))

@@ -1,6 +1,7 @@
 /** "Likes you": everyone who liked the viewer and is waiting for an answer, as pinned polaroids. */
 import type { CSSProperties } from 'react'
 import type { UserSummary } from '@/api/types'
+import { useT } from '@/i18n'
 import { Button, ButtonLink, EmptyState, IconHeart, IconRefresh, IconRegMark, Notice, PhotoFrame, Skeleton, TicketHeader } from '@/ui'
 import type { NodeStatus } from '@/wb'
 import s from './ActivityPage.module.css'
@@ -13,24 +14,25 @@ export interface LikesPanelProps {
 }
 
 export function LikesPanel({ likes, status, onOpen, onRetry }: LikesPanelProps) {
+  const t = useT()
   if (!likes) {
     if (status.status === 'error') {
       return (
         <Notice
           tone="error"
-          title="Your likes did not load"
+          title={t('act.likesFailed')}
           action={
             <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={onRetry}>
-              Try again
+              {t('common.tryAgain')}
             </Button>
           }
         >
-          {status.error?.message ?? 'Something went wrong.'}
+          {status.error?.message ?? t('kit.wrong')}
         </Notice>
       )
     }
     return (
-      <div className={s.likes} aria-busy="true" aria-label="Loading your likes">
+      <div className={s.likes} aria-busy="true" aria-label={t('act.loadingLikes')}>
         {[0, 1, 2, 3].map((index) => (
           <Skeleton key={index} height={238} style={{ borderRadius: 'var(--r-md)' }} />
         ))}
@@ -41,24 +43,23 @@ export function LikesPanel({ likes, status, onOpen, onRetry }: LikesPanelProps) 
   if (likes.length === 0) {
     return (
       <EmptyState
-        stamp="All quiet"
+        stamp={t('act.quietStamp')}
         stampTone="strawberry"
-        title="Nobody in the queue yet"
+        title={t('act.queueTitle')}
         action={
           <ButtonLink to="/discover" icon={<IconRegMark size={20} />}>
-            Keep swiping
+            {t('act.keepSwiping')}
           </ButtonLink>
         }
       >
-        When someone likes you, they show up here before you have even seen their card. Like them back and you are
-        connected.
+        {t('act.likesEmpty')}
       </EmptyState>
     )
   }
 
   return (
     <>
-      <TicketHeader label="They liked you first" meta="Like back = match" />
+      <TicketHeader label={t('act.likedFirst')} meta={t('act.likeBackMatch')} />
       <ul className={s.likes}>
         {likes.map((liker, index) => {
           const tilt = [-1.6, 1.2, 0.8, -1.1][index % 4]
@@ -77,9 +78,9 @@ export function LikesPanel({ likes, status, onOpen, onRetry }: LikesPanelProps) 
                 </PhotoFrame>
                 <span className={s.likeLabel}>
                   <span className={s.likeName}>{liker.username}</span>
-                  <span className={s.likeMeta}>Likes you</span>
+                  <span className={s.likeMeta}>{t('act.tabLikes')}</span>
                 </span>
-                <span className="sr-only">. Liked you. Open the profile.</span>
+                <span className="sr-only">{t('act.likeSr')}</span>
               </button>
             </li>
           )

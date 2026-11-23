@@ -1,19 +1,32 @@
 import type { CSSProperties } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import s from './Wordmark.module.css'
 
 export interface LogoMarkProps {
   /** Pixel size. Default 32. */
   size?: number
-  /** Flat tile without the hard shadow. */
+  /** No hard shadow under the tile. */
   flat?: boolean
   title?: string
   className?: string
 }
 
+/** The coffee-cups mark, 512 × 512 box. Same drawing as `public/LOGO` and `public/favicon.svg`. */
+const MARK_PATH =
+  'M426.53 419.3C425.77 428.5 421.17 433.1 412.73 433.1C362.72 440.16 312.71 440.72 262.7 434.76C256.64 449.32 242.28 459.55 225.52 459.55H78.33C56.1 459.55 38.08 441.53 38.08 419.3V170.9C38.08 169.75 38.2 168.62 38.46 167.5C40.19 159.82 47.16 154.73 53.77 151.32C55.03 150.66 56.31 150.06 57.61 149.49C59.32 148.73 61.07 148.03 62.82 147.39C74.48 143.1 86.81 140.64 99.07 138.85C116.55 136.3 134.26 135.26 151.92 135.25C167.49 135.26 183.09 136.07 198.54 138.01C192.57 133.38 188.73 126.14 188.73 118V104.2C188.73 90.23 200.05 78.9 214.02 78.9H260.02V55.9C260.02 44.47 269.29 35.2 280.73 35.2H381.93C393.36 35.2 402.63 44.47 402.63 55.9V78.9H448.63C462.6 78.9 473.92 90.23 473.92 104.2V118C473.92 131.97 462.6 143.3 448.63 143.3H448.26ZM54.18 419.3C54.18 432.64 64.99 443.45 78.33 443.45H225.52C238.86 443.45 249.68 432.64 249.68 419.3V382.11C252.25 382.97 254.97 383.42 257.73 383.42C264 383.42 270.05 381.09 274.7 376.88C292.79 360.52 311.96 344.72 326.33 324.81C335.71 311.81 342.77 296.69 342.82 280.38C342.82 260.07 332.13 241.26 314.67 230.88C297.21 220.5 275.57 220.08 257.73 229.78C255.11 228.36 252.42 227.16 249.68 226.17V190.69C248.55 191.26 247.4 191.8 246.24 192.31C244.53 193.07 242.78 193.77 241.03 194.41C229.37 198.7 217.04 201.16 204.78 202.95C187.3 205.5 169.59 206.54 151.93 206.55C134.26 206.54 116.55 205.5 99.07 202.95C86.81 201.16 74.48 198.7 62.82 194.41C61.07 193.77 59.32 193.07 57.61 192.31C56.45 191.8 55.3 191.26 54.18 190.69ZM265.77 187.92C320.53 192.15 375.29 191.08 430.05 184.7L432.95 147.9C370.84 154.93 308.73 155.51 246.62 149.66C247.79 150.18 248.94 150.73 250.08 151.32C256.69 154.73 263.66 159.82 265.39 167.5C265.65 168.62 265.77 169.75 265.77 170.9ZM411.4 421.6L413.57 394C364.31 400.89 315.04 401.59 265.77 396.1V419.3C265.77 420.71 265.7 422.1 265.56 423.47C314.17 429.21 362.79 428.58 411.4 421.6ZM257.73 358.12C232.61 335.4 197.93 307.29 197.93 280.38C197.92 265.93 207.52 253.23 221.42 249.29C235.33 245.36 250.16 251.14 257.73 263.45C265.29 251.14 280.12 245.36 294.03 249.29C307.93 253.23 317.53 265.93 317.52 280.38C317.52 307.29 282.84 335.4 257.73 358.12Z'
+
 /**
- * The brand mark: a tea-tin tile carrying a heart that is also two leaves.
- * The same drawing is used for the favicon.
+ * Extra line weight, in the 512 box: a stroke on top of the fill. The source outline is about 16 thick; past
+ * ~24 the heart and the gap between the two cups close up. `public/favicon.svg` and `favicon-mask.svg` use the same.
+ */
+const MARK_WEIGHT = 2
+/** The drawing's scale in the 40 box, centred on its own centre (256, 247.5). */
+const MARK_SCALE = 0.056
+
+/**
+ * The brand mark: the coffee-cups drawing from `public/LOGO`, with a heavier line, on a matcha tile with an
+ * ink outline and a hard shadow. The favicon is the same tile.
  */
 export function LogoMark({ size = 32, flat, title, className }: LogoMarkProps) {
   return (
@@ -39,19 +52,14 @@ export function LogoMark({ size = 32, flat, title, className }: LogoMarkProps) {
         stroke="var(--c-ink)"
         strokeWidth="3"
       />
-      <g transform={flat ? 'translate(20 20.5)' : 'translate(18.5 19)'}>
-        <path
-          fill="var(--c-ink)"
-          d="M0 10.5C-6.6 6-10 1.8-10-2.7c0-3.3 2.4-5.5 5.2-5.5C-2.6-8.2-1-7 0-5.2 1-7 2.6-8.2 4.8-8.2 7.6-8.2 10-6 10-2.7 10 1.8 6.6 6 0 10.5z"
-        />
-        <path
-          fill="none"
-          stroke="var(--c-matcha)"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          d="M0-4.2V7.5M0 .2l-3.8-3M0 .2l3.8-3M0 4l-3.2-2.5M0 4l3.2-2.5"
-        />
-      </g>
+      <path
+        fill="var(--c-ink)"
+        stroke="var(--c-ink)"
+        strokeWidth={MARK_WEIGHT}
+        strokeLinejoin="round"
+        transform={`translate(${flat ? '20 20' : '18.5 18.5'}) scale(${MARK_SCALE}) translate(-256 -247.5)`}
+        d={MARK_PATH}
+      />
     </svg>
   )
 }
@@ -70,9 +78,10 @@ export interface WordmarkProps {
 
 const MARK_PX = { sm: 26, md: 34, lg: 48, xl: 72 } as const
 
-/** The MATCHA lockup: tile mark + expanded heavy lettering with a misregistered green plate. */
+/** The MATCHA lockup: logo mark + expanded heavy lettering with a misregistered green plate. */
 export function Wordmark({ size = 'md', mark = true, tagline, tone = 'ink', className, style }: WordmarkProps) {
-  const strap = tagline === true ? 'Press edition' : tagline
+  const t = useT()
+  const strap = tagline === true ? t('poster.edition') : tagline
   return (
     <span className={cx(s.wordmark, s[size], s[tone], className)} style={style}>
       {mark && <LogoMark size={MARK_PX[size]} />}

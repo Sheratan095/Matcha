@@ -8,11 +8,12 @@
 import { useEffect } from 'react'
 import type { CalendarAction, CalendarEventSummary, UserSummary } from '@/api/types'
 import { upcomingLabel } from '@/features/chat/time'
+import { t } from '@/i18n'
 import { Avatar, toast, type ToastTone } from '@/ui'
 import { getNodeValue, realtime$ } from '@/wb'
 
 function nameOf(person: UserSummary): string {
-  return person.username.trim() || 'Someone'
+  return person.username.trim() || t('toast.someone')
 }
 
 function excerpt(text: string): string {
@@ -22,19 +23,27 @@ function excerpt(text: string): string {
 
 interface CalendarToast {
   tone: ToastTone
-  title: (name: string) => string
+  title: string
   action: string
   /** The conversation with them (where an invite is answered too), rather than the calendar. */
   inChat: boolean
   duration?: number
 }
 
-const CALENDAR: Record<CalendarAction, CalendarToast> = {
-  invite: { tone: 'blue', title: (name) => `${name} invited you on a date`, action: 'Answer', inChat: true, duration: 7000 },
-  accept: { tone: 'matcha', title: (name) => `${name} accepted your date`, action: 'See dates', inChat: false },
-  decline: { tone: 'ink', title: (name) => `${name} declined your date`, action: 'See dates', inChat: false },
-  cancel: { tone: 'ink', title: (name) => `${name} cancelled the date`, action: 'See dates', inChat: false },
-  start: { tone: 'strawberry', title: (name) => `Your date with ${name} is starting`, action: 'Open chat', inChat: true, duration: 7000 },
+/** The toast for an answer about a date, worded in the language the page is in when it arrives. */
+function calendarToast(action: CalendarAction, name: string): CalendarToast {
+  switch (action) {
+    case 'invite':
+      return { tone: 'blue', title: t('toast.inviteTitle', { name }), action: t('toast.inviteAction'), inChat: true, duration: 7000 }
+    case 'accept':
+      return { tone: 'matcha', title: t('toast.acceptTitle', { name }), action: t('toast.seeDates'), inChat: false }
+    case 'decline':
+      return { tone: 'ink', title: t('toast.declineTitle', { name }), action: t('toast.seeDates'), inChat: false }
+    case 'cancel':
+      return { tone: 'ink', title: t('toast.cancelTitle', { name }), action: t('toast.seeDates'), inChat: false }
+    case 'start':
+      return { tone: 'strawberry', title: t('toast.startTitle', { name }), action: t('toast.startAction'), inChat: true, duration: 7000 }
+  }
 }
 
 /** "Drinks by the river · Sat 21 Nov, 20:00", either half alone when the other is missing. */
@@ -64,11 +73,11 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
           toast.show({
             id: `person-${event.person.userId}`,
             tone: 'matcha',
-            title: "It's a match!",
-            message: `You and ${name} like each other.`,
+            title: t('toast.matchTitle'),
+            message: t('toast.matchMessage', { name }),
             icon: avatarOf(event.person),
             duration: 7000,
-            action: { label: 'Say hi', onClick: () => navigate(`/chat/${event.person.userId}`) },
+            action: { label: t('toast.matchAction'), onClick: () => navigate(`/chat/${event.person.userId}`) },
           })
           break
         }
@@ -82,10 +91,10 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
           toast.show({
             id: `chat-${from}`,
             tone: 'ink',
-            title: `${name} sent a message`,
+            title: t('toast.messageTitle', { name }),
             message: excerpt(event.message.text),
             icon: avatarOf(event.from),
-            action: { label: 'Reply', onClick: () => navigate(`/chat/${from}`) },
+            action: { label: t('toast.messageAction'), onClick: () => navigate(`/chat/${from}`) },
           })
           break
         }
@@ -94,10 +103,10 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
           toast.show({
             id: `person-${event.person.userId}`,
             tone: 'yolk',
-            title: `${name} liked you`,
-            message: 'Like them back and it’s a match.',
+            title: t('toast.likeTitle', { name }),
+            message: t('toast.likeMessage'),
             icon: avatarOf(event.person),
-            action: { label: 'See who', onClick: () => navigate('/activity') },
+            action: { label: t('toast.likeAction'), onClick: () => navigate('/activity') },
           })
           break
         }
@@ -107,15 +116,15 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
           toast.show({
             id: `view-${event.person.userId}`,
             tone: 'blue',
-            title: `${name} viewed your profile`,
-            message: 'Someone is curious about you.',
+            title: t('toast.viewTitle', { name }),
+            message: t('toast.viewMessage'),
             icon: avatarOf(event.person),
-            action: { label: 'See visitors', onClick: () => navigate('/activity?tab=views') },
+            action: { label: t('toast.viewAction'), onClick: () => navigate('/activity?tab=views') },
           })
           break
         }
         case 'calendar': {
-          const { tone, title, action, inChat, duration } = CALENDAR[event.action]
+          const { tone, title, action, inChat, duration } = calendarToast(event.action, nameOf(event.person))
           const chat = `/chat/${event.person.userId}`
           const to = inChat ? chat : '/calendar'
           // One toast per date: a later answer about it replaces the earlier one. In the conversation
@@ -124,7 +133,7 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
           toast.show({
             id: `date-${event.event.id}`,
             tone,
-            title: title(nameOf(event.person)),
+            title,
             message: dateLine(event.event),
             icon: avatarOf(event.person),
             duration,
@@ -139,8 +148,8 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
           toast.show({
             id: `person-${event.person.userId}`,
             tone: 'ink',
-            title: `${nameOf(event.person)} ended the connection`,
-            message: 'You are no longer connected. The conversation and any dates with them are gone.',
+            title: t('toast.unmatchTitle', { name: nameOf(event.person) }),
+            message: t('toast.unmatchMessage'),
             icon: avatarOf(event.person),
             duration: 7000,
           })

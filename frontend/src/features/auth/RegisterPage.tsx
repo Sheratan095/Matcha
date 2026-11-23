@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LANGUAGES, type Language } from '@/api/types'
+import { LANGUAGE_NAMES, useLocale, useLocaleState, useT } from '@/i18n'
 import { AuthLayout, Button, PasswordField, Segmented, Text, TextField } from '@/ui'
 import { actions } from '@/wb'
 import { asApiError, bannerFor, mapValidation, type Banner } from './errors'
@@ -17,15 +18,16 @@ import {
   checkName,
   checkNewPassword,
   checkUsername,
-  CODE_LIFETIME,
+  codeLifetime,
   dateOfBirthBounds,
   EMAIL_MAX,
   MIN_AGE,
   NAME_MAX,
-  NAME_RULE,
+  nameRule,
   normaliseEmail,
   normaliseUsername,
   PASSWORD_MAX,
+  PASSWORD_MIN,
   USERNAME_MAX,
 } from './rules'
 import { useAuthForm } from './useAuthForm'
@@ -35,14 +37,13 @@ import a from './auth.module.css'
 type Field = 'username' | 'email' | 'password' | 'firstName' | 'lastName' | 'dateOfBirth' | 'language'
 const FIELDS: readonly Field[] = ['username', 'email', 'password', 'firstName', 'lastName', 'dateOfBirth', 'language']
 
-const LANGUAGE_LABEL: Record<Language, string> = { en: 'English', fr: 'Français', es: 'Español' }
 /** Short codes on the chips (three equal chips fit a 360px phone); the full name for assistive tech. */
 const LANGUAGE_OPTIONS = LANGUAGES.map((value) => ({
   value,
   label: (
     <>
       <span aria-hidden="true">{value}</span>
-      <span className="sr-only">{LANGUAGE_LABEL[value]}</span>
+      <span className="sr-only">{LANGUAGE_NAMES[value]}</span>
     </>
   ),
 }))
@@ -52,7 +53,9 @@ function isField(property: string): property is Field {
 }
 
 export default function RegisterPage() {
+  const t = useT()
   const navigate = useNavigate()
+  const locale = useLocale()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -60,8 +63,10 @@ export default function RegisterPage() {
   const [lastName, setLastName] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [bounds] = useState(dateOfBirthBounds)
-  const [language, setLanguage] = useState<Language>('en')
-  const [banner, setBanner] = useState<Banner | null>(null)
+  /** The email language starts as the interface language and follows it until the user picks one here. */
+  const [picked, setPicked] = useState<Language | null>(null)
+  const language = picked ?? locale
+  const [banner, setBanner] = useLocaleState<Banner | null>(null)
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState<{ email: string; username: string } | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -112,21 +117,21 @@ export default function RegisterPage() {
     } catch (thrown) {
       const error = asApiError(thrown)
       if (error.code === 'RESERVED_USERNAME') {
-        form.fail({ username: "This username isn't available. Pick another one." })
+        form.fail({ username: t('rule.usernameReserved') })
       } else if (error.code === 'COMMON_PASSWORD') {
-        form.fail({ password: 'This password is too common. Pick something harder to guess.' })
+        form.fail({ password: t('rule.passwordCommon') })
       } else if (error.status === 409) {
         if (/email/i.test(error.message)) {
-          form.fail({ email: 'An account already uses this email. Sign in, or reset its password.' })
+          form.fail({ email: t('register.emailTaken') })
         } else {
-          form.fail({ username: 'That username is taken. Try another one.' })
+          form.fail({ username: t('register.usernameTaken') })
         }
       } else if (error.status === 400 && /date of birth/i.test(error.message)) {
         // The profile service's verdict, relayed by auth as a single message (not a validation array)
-        form.fail({ dateOfBirth: `Enter a real date: you must be at least ${MIN_AGE} to join.` })
+        form.fail({ dateOfBirth: t('register.birthRejected', { n: MIN_AGE }) })
       } else if (error.status === 400 && /^Invalid (first|last) name\b/i.test(error.message)) {
         // Also the profile service's verdict (the name rule lives in the database), relayed the same way
-        form.fail(/^Invalid first/i.test(error.message) ? { firstName: NAME_RULE } : { lastName: NAME_RULE })
+        form.fail(/^Invalid first/i.test(error.message) ? { firstName: nameRule() } : { lastName: nameRule() })
       } else if (error.status === 400) {
         const mapped = mapValidation<Field>(error, (property) => (isField(property) ? property : null))
         form.fail(mapped.fields)
@@ -142,31 +147,20 @@ export default function RegisterPage() {
   if (sent) {
     return (
       <>
-        <title>Check your inbox · Matcha</title>
+        <title>{`${t('common.checkInbox')} · Matcha`}</title>
         <AuthLayout
-          title="Check your inbox"
-          kicker="Almost in"
-          intro={
-            <>
-              We sent a verification link to <strong>{sent.email}</strong>. Open it, or enter the code from the email
-              below. It works for {CODE_LIFETIME}.
-            </>
-          }
+          title={t('common.checkInbox')}
+          kicker={t('register.sentKicker')}
+          intro={t.rich('register.sentIntro', { email: <strong>{sent.email}</strong>, time: codeLifetime() })}
           poster={{
-            lines: ['One', 'more', 'step'],
+            lines: t.lines('register.sentLines'),
             tone: 'blue',
-            sticker: (
-              <>
-                You've
-                <br />
-                got mail
-              </>
-            ),
-            marquee: ['Signed, sealed, delivered', 'Verify to start swiping', `Valid for ${CODE_LIFETIME}`],
+            sticker: t.stack('register.sentSticker'),
+            marquee: [t('common.signedSealed'), t('register.sentMarquee'), t('common.validFor', { time: codeLifetime() })],
           }}
           footer={
             <p className={a.links}>
-              Already verified? <Link to="/login" state={{ username: sent.username }}>Sign in</Link>
+              {t('register.alreadyVerified')} <Link to="/login" state={{ username: sent.username }}>{t('common.signIn')}</Link>
             </p>
           }
         >
@@ -179,29 +173,23 @@ export default function RegisterPage() {
   }
 
   const lowered = username.trim() !== username.trim().toLowerCase() && !form.errorOf('username')
+  const rule = nameRule()
 
   return (
     <>
-      <title>Create an account · Matcha</title>
+      <title>{`${t('register.docTitle')} · Matcha`}</title>
       <AuthLayout
-        title="Join the press"
-        kicker="New member"
-        intro="Two minutes, six fields. We'll email you a code to confirm it's you."
+        title={t('register.title')}
+        kicker={t('register.kicker')}
+        intro={t('register.intro')}
         poster={{
-          lines: ['Fresh', 'off the', 'press'],
+          lines: t.lines('register.lines'),
           tone: 'strawberry',
-          sticker: (
-            <>
-              Free
-              <br />
-              to join
-            </>
-          ),
-          marquee: ['Ceremonial grade romance', 'No sugar added', 'Fresh matches daily', 'Stone-ground in Paris'],
+          sticker: t.stack('common.freeSticker'),
         }}
         footer={
           <p className={a.links}>
-            Already a member? <Link to="/login">Sign in</Link>
+            {t('register.haveAccount')} <Link to="/login">{t('common.signIn')}</Link>
           </p>
         }
       >
@@ -215,7 +203,7 @@ export default function RegisterPage() {
           }}
         >
           <TextField
-            label="Username"
+            label={t('common.username')}
             name="username"
             value={username}
             onChange={(event) => {
@@ -224,7 +212,7 @@ export default function RegisterPage() {
             }}
             onBlur={(event) => form.blur('username', event.target.value)}
             error={form.errorOf('username')}
-            hint={lowered ? `Saved in lowercase: ${normaliseUsername(username)}` : '3–20 characters: letters, digits, dots and underscores.'}
+            hint={lowered ? t('register.usernameLowered', { name: normaliseUsername(username) }) : t('register.usernameHint')}
             autoComplete="username"
             autoCapitalize="none"
             autoCorrect="off"
@@ -234,7 +222,7 @@ export default function RegisterPage() {
             autoFocus
           />
           <TextField
-            label="Email"
+            label={t('common.email')}
             name="email"
             type="email"
             inputMode="email"
@@ -245,7 +233,7 @@ export default function RegisterPage() {
             }}
             onBlur={(event) => form.blur('email', event.target.value)}
             error={form.errorOf('email')}
-            hint="We send the verification code here."
+            hint={t('register.emailHint')}
             autoComplete="email"
             autoCapitalize="none"
             spellCheck={false}
@@ -253,7 +241,7 @@ export default function RegisterPage() {
             placeholder="alice@example.com"
           />
           <PasswordField
-            label="Password"
+            label={t('common.password')}
             name="new-password"
             value={password}
             onChange={(event) => {
@@ -262,13 +250,13 @@ export default function RegisterPage() {
             }}
             onBlur={(event) => form.blur('password', event.target.value)}
             error={form.errorOf('password')}
-            hint="At least 8 characters. Common passwords are refused."
+            hint={t('common.passwordHint', { n: PASSWORD_MIN })}
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
           />
           <div className={a.pair}>
             <TextField
-              label="First name"
+              label={t('register.firstName')}
               name="given-name"
               value={firstName}
               onChange={(event) => {
@@ -282,7 +270,7 @@ export default function RegisterPage() {
               placeholder="Alice"
             />
             <TextField
-              label="Last name"
+              label={t('register.lastName')}
               name="family-name"
               value={lastName}
               onChange={(event) => {
@@ -297,10 +285,10 @@ export default function RegisterPage() {
             />
           </div>
           <Text size="xs" muted>
-            Names: {NAME_RULE.charAt(0).toLowerCase() + NAME_RULE.slice(1)}
+            {t('register.namesNote', { rule: rule.charAt(0).toLowerCase() + rule.slice(1) })}
           </Text>
           <TextField
-            label="Date of birth"
+            label={t('register.dateOfBirth')}
             name="bday"
             type="date"
             value={dateOfBirth}
@@ -310,30 +298,30 @@ export default function RegisterPage() {
             }}
             onBlur={(event) => form.blur('dateOfBirth', event.target.value)}
             error={form.errorOf('dateOfBirth')}
-            hint={`${MIN_AGE}+ only. Others see your age, never the date, and it can't be changed later.`}
+            hint={t('register.dateOfBirthHint', { n: MIN_AGE })}
             autoComplete="bday"
             min={bounds.min}
             max={bounds.max}
           />
           <Segmented<Language>
-            label="Email language"
+            label={t('register.emailLanguage')}
             name="language"
             options={LANGUAGE_OPTIONS}
             value={language}
             onChange={(value) => {
-              setLanguage(value)
+              setPicked(value)
               form.changed('language')
             }}
             error={form.errorOf('language')}
-            hint={`Our emails will be in ${LANGUAGE_LABEL[language]}.`}
+            hint={t('register.emailLanguageHint', { language: LANGUAGE_NAMES[language] })}
             block
           />
           <FormBanner banner={banner} onRetry={() => void submit()} retrying={busy} />
           <Button type="submit" size="lg" block loading={busy}>
-            Create account
+            {t('common.createAccount')}
           </Button>
           <OrRule />
-          <GithubButton label="Sign up with GitHub" />
+          <GithubButton label={t('common.githubSignUp')} />
         </form>
       </AuthLayout>
     </>

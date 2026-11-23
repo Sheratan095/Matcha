@@ -404,6 +404,12 @@
   .railBadge {
     flex: none;
   }
+  /* Spanish words run longer ("Actividad" beside its badge): the rail link spends less on gaps and padding. */
+  :lang(es) .railLink {
+    gap: var(--s-2);
+    padding-inline: var(--s-2);
+    letter-spacing: 0.02em;
+  }
   .railFoot {
     margin-top: auto;
     display: flex;

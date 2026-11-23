@@ -17,6 +17,7 @@ import type { ReactNode, Ref } from 'react'
 import { distinctUntilChanged, map, Subject } from 'rxjs'
 import type { DeckAction, DeckCard } from '@/api/types'
 import { cardName, serialOf } from '@/features/profile/format'
+import { useT } from '@/i18n'
 import { ActionButton, ProfileCard, type CardStamp } from '@/ui'
 import { cardDrag } from './gesture'
 import {
@@ -132,6 +133,7 @@ function cancelAnimations(element: HTMLElement): void {
 }
 
 export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding, keyboard = true, history, ref }: DeckProps) {
+  const t = useT()
   const stackRef = useRef<HTMLDivElement>(null)
   const buttonsRef = useRef<HTMLDivElement>(null)
   const [flights, setFlights] = useState<Flight[]>([])
@@ -390,7 +392,7 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
           <ActionButton
             kind="pass"
             size="lg"
-            label={name ? `Pass on ${name}` : 'Pass'}
+            label={name ? t('act.passOn', { name }) : t('kit.actionPass')}
             onClick={() => throwTop('pass')}
             disabled={!top}
             aria-keyshortcuts="ArrowLeft"
@@ -400,7 +402,7 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
           <ActionButton
             kind="like"
             size="lg"
-            label={name ? `Like ${name}` : 'Like'}
+            label={name ? t('deck.likeName', { name }) : t('kit.actionLike')}
             onClick={() => throwTop('like')}
             disabled={!top}
             aria-keyshortcuts="ArrowRight"
@@ -410,13 +412,13 @@ export function Deck({ cards, placeholder, onSwipe, onOpen, onRewind, rewinding,
 
       <p className={s.legend} aria-hidden="true">
         <span>
-          <kbd>←</kbd> Nope
+          <kbd>←</kbd> {t('deck.legendNope')}
         </span>
         <span>
-          <kbd>→</kbd> Like
+          <kbd>→</kbd> {t('deck.legendLike')}
         </span>
         <span>
-          <kbd>Z</kbd> Undo
+          <kbd>Z</kbd> {t('deck.legendUndo')}
         </span>
       </p>
     </div>

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import type { ApiError, OwnProfile } from '@/api/types'
 import { MAX_USER_PICTURES } from '@/api/types'
 import ProfileSheet from '@/features/profile/ProfileSheet'
+import { useT } from '@/i18n'
 import { Button, ButtonLink, Card, IconArrowRight, IconRefresh, Notice, TabPanel, Tabs, Text } from '@/ui'
 import { refresh, useNodeValue } from '@/wb'
 import { AccountSettings } from './AccountSettings'
@@ -38,6 +39,7 @@ const FIX_TARGET: Record<CheckKey, { tab: Tab; id: string }> = {
 }
 
 function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError: ApiError | null }) {
+  const t = useT()
   const [params] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -77,7 +79,7 @@ function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError
 
   return (
     <div className={s.page}>
-      <title>Your profile · Matcha</title>
+      <title>{t('me.pageTitle')}</title>
       <ProfileHeader
         profile={profile}
         onEdit={() => goTo('details', SECTION_IDS.names)}
@@ -88,10 +90,10 @@ function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError
       {refreshError ? (
         <Notice
           tone="warning"
-          title="Showing the last version we loaded"
+          title={t('me.lastVersion')}
           action={
             <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={() => void refresh('myProfile')}>
-              Reload
+              {t('frame.reload')}
             </Button>
           }
         >
@@ -102,48 +104,47 @@ function MeScreen({ profile, refreshError }: { profile: OwnProfile; refreshError
       {!filled ? (
         <Notice
           tone="info"
-          title="Finish your profile to start swiping"
+          title={t('me.finishTitle')}
           action={
             <ButtonLink to="/onboarding" size="sm" variant="blue" iconRight={<IconArrowRight size={16} />}>
-              Finish setup
+              {t('me.finishAction')}
             </ButtonLink>
           }
         >
-          Your name, date of birth, gender and preference, a biography, one interest, your location and a photo put you
-          in the deck.
+          {t('me.finishBody')}
         </Notice>
       ) : !complete ? (
         <Notice
           tone="info"
-          title="Add a photo to start swiping"
+          title={t('me.addPhotoTitle')}
           action={
             <Button size="sm" variant="blue" iconRight={<IconArrowRight size={16} />} onClick={() => setTab('photos')}>
-              Add a photo
+              {t('frame.noPhotoTitle')}
             </Button>
           }
         >
-          Discover opens once your card has a photo: without one nobody sees you, and you cannot like anyone.
+          {t('me.addPhotoBody')}
         </Notice>
       ) : null}
 
       <div className={s.sections}>
         <Tabs
-          label="Profile sections"
+          label={t('me.sectionsLabel')}
           idBase={TAB_IDS}
           value={tab}
           onChange={setTab}
           items={[
-            { value: 'photos', label: 'Photos' },
-            { value: 'details', label: 'Details' },
-            { value: 'account', label: 'Account' },
+            { value: 'photos', label: t('me.tabPhotos') },
+            { value: 'details', label: t('me.tabDetails') },
+            { value: 'account', label: t('me.tabAccount') },
           ]}
         />
 
         <TabPanel idBase={TAB_IDS} value="photos" active={tab === 'photos'} className={s.panel}>
-          <Card as="section" id="me-photos" aria-label="Photos" label="Photos" meta={`${pad(profile.pictures.length)}/${pad(MAX_USER_PICTURES)}`}>
+          <Card as="section" id="me-photos" aria-label={t('me.tabPhotos')} label={t('me.tabPhotos')} meta={`${pad(profile.pictures.length)}/${pad(MAX_USER_PICTURES)}`}>
             <div className={s.photosIntro}>
               <Text size="sm">
-                Up to five. The <strong>main</strong> photo leads your card; press the star on another to swap.
+                {t.rich('me.photosIntro', { main: <strong>{t('me.photosMain')}</strong> })}
               </Text>
             </div>
             <PhotoManager profile={profile} />

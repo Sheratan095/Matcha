@@ -4,8 +4,9 @@
  */
 import type { ApiError } from '@/api/types'
 import { API_URL } from '@/config'
+import { t } from '@/i18n'
 import { LOCAL_ERROR, toApiError } from '@/wb'
-import { NAME_RULE } from './rules'
+import { nameRule } from './rules'
 
 export type FieldErrors<Field extends string> = Partial<Record<Field, string>>
 
@@ -30,18 +31,18 @@ function propertyOf(message: string): string | null {
 
 /** Readable wording for the class-validator messages the auth DTOs produce. */
 function friendly(property: string, message: string): string {
-  if (/should not be empty$/.test(message)) return 'Required.'
+  if (/should not be empty$/.test(message)) return t('error.required')
   const longer = /must be longer than or equal to (\d+)/.exec(message)
-  if (longer) return `At least ${longer[1]} characters.`
+  if (longer) return t('rule.atLeast', { n: longer[1] })
   const shorter = /must be shorter than or equal to (\d+)/.exec(message)
-  if (shorter) return `At most ${shorter[1]} characters.`
-  if (/must be an email$/.test(message)) return "That doesn't look like an email address."
-  if (/must be one of the following values/.test(message)) return 'Pick one of the listed options.'
-  if (/must be a date in YYYY-MM-DD format$/.test(message)) return 'Use the format YYYY-MM-DD.'
+  if (shorter) return t('rule.atMost', { n: shorter[1] })
+  if (/must be an email$/.test(message)) return t('rule.emailInvalid')
+  if (/must be one of the following values/.test(message)) return t('error.pickListed')
+  if (/must be a date in YYYY-MM-DD format$/.test(message)) return t('rule.birthFormat')
   if (/must match .* regular expression$/.test(message)) {
-    if (property === 'username') return 'Letters, digits, dots and underscores only.'
-    if (property === 'firstName' || property === 'lastName') return NAME_RULE
-    if (property === 'password') return "Can't be only spaces or contain line breaks."
+    if (property === 'username') return t('rule.usernameChars')
+    if (property === 'firstName' || property === 'lastName') return nameRule()
+    if (property === 'password') return t('error.passwordShape')
   }
   return message
 }
@@ -50,35 +51,35 @@ function friendly(property: string, message: string): string {
 export function bannerFor(error: ApiError): Banner {
   if (error.code === LOCAL_ERROR.NETWORK) {
     return {
-      title: "Can't reach the server",
-      detail: `Nothing answered at ${API_URL}. Check that the Matcha backend is running.`,
+      title: t('error.networkTitle'),
+      detail: t('error.networkDetail', { url: API_URL }),
       retry: true,
     }
   }
   if (error.code === LOCAL_ERROR.TIMEOUT) {
     return {
-      title: 'The server took too long to answer',
-      detail: 'A backend service may be down or restarting. Try again in a moment.',
+      title: t('error.timeoutTitle'),
+      detail: t('error.timeoutDetail'),
       retry: true,
     }
   }
   if (error.code === LOCAL_ERROR.NOT_SENT) {
-    return { title: "The app's store isn't running", detail: error.message, retry: false }
+    return { title: t('error.noStore'), detail: error.message, retry: false }
   }
   if (error.code === LOCAL_ERROR.NO_SESSION) {
-    return { title: 'Signed in, but no session was kept', detail: error.message, retry: true }
+    return { title: t('error.noSession'), detail: error.message, retry: true }
   }
   if (error.status >= 500) {
     return {
-      title: error.message && error.message !== 'Internal server error' ? error.message : 'Something broke on the server',
-      detail: 'The server hit a problem with this request. Try again in a moment.',
+      title: error.message && error.message !== 'Internal server error' ? error.message : t('error.serverTitle'),
+      detail: t('error.serverDetail'),
       retry: true,
     }
   }
   if (error.messages.length > 1) {
-    return { title: 'Please fix the following', detail: error.messages.join(' · '), retry: false }
+    return { title: t('error.fixFollowing'), detail: error.messages.join(' · '), retry: false }
   }
-  return { title: error.message || 'Something went wrong', retry: false }
+  return { title: error.message || t('error.generic'), retry: false }
 }
 
 /**
@@ -105,7 +106,7 @@ export function mapValidation<Field extends string>(
       ? null
       : rest.length === 1
         ? { title: rest[0], retry: false }
-        : { title: 'Please fix the following', detail: rest.join(' · '), retry: false }
+        : { title: t('error.fixFollowing'), detail: rest.join(' · '), retry: false }
   return { fields, banner }
 }
 

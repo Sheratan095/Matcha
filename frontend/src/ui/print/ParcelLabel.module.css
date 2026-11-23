@@ -1,0 +1,123 @@
+/*
+ * A priority-mail label, after the USPS one: white stock, a hairline frame, a square P cell, a double rule over
+ * the service band, a heavy rule under it and another at the foot. The proportions are measured from the
+ * original (a 462px-wide label). Everything inside is sized in container units (cqi, of the label's own width),
+ * so it holds together from a phone corner to a poster; the keylines stay fixed so they never go to hairs.
+ * (A container's own cqi resolve against its parent container, so the frame is in px.)
+ */
+.label {
+  --hair: 1.5px;
+  --heavy: 4px;
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  max-width: 32rem;
+  border: var(--hair) solid var(--c-ink);
+  border-bottom: var(--heavy) solid var(--c-ink);
+  /* label stock is whiter than the card stock of the rest of the kit */
+  background-color: color-mix(in srgb, var(--c-paper-hi) 22%, #fff);
+  background-image: var(--tex-grain-soft);
+  color: var(--c-ink);
+  box-shadow: var(--sh-2);
+}
+
+/* the square P cell | the sender line and the postage box */
+.head {
+  display: grid;
+  grid-template-columns: 24.7cqi minmax(0, 1fr);
+  border-bottom: var(--hair) solid var(--c-ink);
+}
+.mark {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-right: var(--hair) solid var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: var(--wd-normal);
+  font-size: 20.5cqi;
+  line-height: 1;
+  user-select: none;
+}
+.sender {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 29.7cqi;
+  align-items: start;
+  column-gap: 2cqi;
+  /* "From:" sits a way in from the divider, the box hangs off the right edge, as on the original */
+  padding: 3cqi 3.9cqi 0 11cqi;
+}
+.from {
+  padding-top: 0.4cqi;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: var(--wd-wide);
+  font-size: 4.9cqi;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* the postage box: a plain rectangle with its own hairline (the language picker fills it) */
+.postage {
+  min-width: 0;
+  height: 19cqi;
+}
+
+/* the service band: a thin rule a short way under the head's, then a heavy one under the text */
+.band {
+  --fit: calc(90cqi / (var(--n) * 0.7));
+  margin: 1.7cqi 0 0;
+  padding: 1.3cqi 2cqi 1cqi;
+  border-top: var(--hair) solid var(--c-ink);
+  border-bottom: var(--heavy) solid var(--c-ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: var(--wd-normal);
+  font-size: min(var(--fit), 7.6cqi);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.trackingLabel {
+  margin: 0;
+  padding: 1.5cqi 0 1.3cqi;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: var(--wd-normal);
+  font-size: 3.4cqi;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* the barcode: four fifths of the width, as on the original */
+.label .bars {
+  display: flex;
+  width: 100%;
+  padding: 0 9.7cqi;
+  box-sizing: border-box;
+}
+.label .bars svg {
+  display: block;
+  width: 100%;
+  height: 19.5cqi;
+}
+
+.number {
+  margin: 0;
+  padding: 2.6cqi 2cqi 2.6cqi;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-stretch: var(--wd-normal);
+  font-size: 3.1cqi;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-align: center;
+  word-spacing: 0.7em;
+}

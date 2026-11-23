@@ -1,0 +1,74 @@
+/* CommandBlock: a Card (ticket strip + tin) around a mono listing. Two accents at most: the command and its flags. */
+.block {
+  min-width: 0;
+}
+
+/* tone sets the palette; Card sets the fill and the text colour */
+.ink {
+  --cb-cmd: var(--c-matcha);
+  --cb-flag: var(--c-yolk);
+  --cb-dim: var(--c-paper-lo);
+}
+.paper {
+  --cb-cmd: var(--c-matcha-deep);
+  --cb-flag: var(--c-yolk-deep);
+  --cb-dim: var(--c-ink-3);
+}
+
+/* a long command scrolls sideways; the box is focusable so a keyboard can reach the overflow */
+.scroll {
+  overflow-x: auto;
+  padding: 0 var(--s-4) var(--s-3);
+}
+.scroll:focus-visible {
+  outline-offset: -3px;
+}
+
+.pre {
+  margin: 0;
+  width: max-content;
+  min-width: 100%;
+}
+.pre code {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.75;
+  tab-size: 2;
+}
+
+.line {
+  display: block;
+  white-space: pre;
+}
+/* the prompt is generated content: it is not selected, so a drag-copy takes the commands only */
+.line::before {
+  content: attr(data-prompt);
+  margin-right: 1ch;
+  color: var(--cb-dim);
+  user-select: none;
+}
+.comment::before {
+  content: none;
+}
+
+.cmd {
+  color: var(--cb-cmd);
+  font-weight: 700;
+}
+.flag {
+  color: var(--cb-flag);
+}
+.op,
+.comment {
+  color: var(--cb-dim);
+}
+.comment {
+  font-style: italic;
+}
+
+.foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--s-4) var(--s-4);
+}

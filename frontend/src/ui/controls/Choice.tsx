@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import type { ComponentProps, CSSProperties, ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { IconCheck } from '../icons'
 import type { Tone } from '../tones'
@@ -298,12 +299,14 @@ export function DualSlider({
   minGap,
   format,
   unit,
-  thumbLabels = ['Minimum', 'Maximum'],
+  thumbLabels,
   disabled,
   className,
 }: DualSliderProps) {
+  const t = useT()
   const id = useId()
   const gap = minGap ?? step
+  const thumbs = thumbLabels ?? [t('kit.minimum'), t('kit.maximum')]
   const [lo, hi] = value
   const span = max - min || 1
   const fmt = (v: number) => (format ? format(v) : String(v))
@@ -322,7 +325,7 @@ export function DualSlider({
         <output className={s.readout}>
           {fmt(lo)}
           <i aria-hidden="true">–</i>
-          <span className="sr-only"> to </span>
+          <span className="sr-only">{t('kit.to')}</span>
           {fmt(hi)}
           {unit ? <small>{unit}</small> : null}
         </output>
@@ -343,7 +346,7 @@ export function DualSlider({
           step={step}
           value={lo}
           disabled={disabled}
-          aria-label={thumbLabels[0]}
+          aria-label={thumbs[0]}
           aria-valuetext={unit ? `${fmt(lo)} ${unit}` : fmt(lo)}
           onChange={(e) => onChange([Math.min(Number(e.currentTarget.value), hi - gap), hi])}
         />
@@ -355,7 +358,7 @@ export function DualSlider({
           step={step}
           value={hi}
           disabled={disabled}
-          aria-label={thumbLabels[1]}
+          aria-label={thumbs[1]}
           aria-valuetext={unit ? `${fmt(hi)} ${unit}` : fmt(hi)}
           onChange={(e) => onChange([lo, Math.max(Number(e.currentTarget.value), lo + gap)])}
         />

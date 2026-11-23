@@ -4,6 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import type { OwnProfile } from '@/api/types'
 import { MAX_BIOGRAPHY_LENGTH, MAX_INTEREST_LENGTH } from '@/api/types'
 import { dateOfBirthBounds, MIN_AGE } from '@/features/auth/rules'
+import { useT, type MessageKey } from '@/i18n'
 import { savedSpot, sameSpot, type PlacedSpot } from '@/features/location/geo'
 import { LocationPicker } from '@/features/location/LocationPicker'
 import { locationMode, modeAfterSaving, setLocationMode } from '@/features/location/mode'
@@ -11,7 +12,7 @@ import { describe } from '@/features/me/errors'
 import { focusFirstInvalid } from '@/features/me/focus'
 import { PhotoManager } from '@/features/me/PhotoManager'
 import { ProfileLoading, ProfileUnavailable, SignedOut } from '@/features/me/ProfileStatus'
-import { canSetDateOfBirth, GENDER_OPTIONS, PREFERENCE_OPTIONS } from '@/features/me/profile'
+import { canSetDateOfBirth, genderOptions, preferenceOptions } from '@/features/me/profile'
 import { useMyProfile } from '@/features/me/useMyProfile'
 import { useProfileDraft, type ProfileDraftApi } from '@/features/me/useProfileDraft'
 import { useTagCatalogue } from '@/features/me/useTagCatalogue'
@@ -39,21 +40,23 @@ import {
 } from '@/ui'
 import { actions, tagFromInput, toApiError, useNodeValue } from '@/wb'
 import { Celebration } from './Celebration'
-import { firstRequiredGap, resumeStep, STEP_LABELS, STEPS } from './steps'
+import { firstRequiredGap, resumeStep, STEPS } from './steps'
 import s from './Onboarding.module.css'
 
 const FORM_ID = 'onboarding-step'
 const pad = (n: number) => String(n).padStart(2, '0')
 
-const BIO_STARTERS: readonly { label: string; text: string }[] = [
-  { label: 'Perfect Sunday', text: 'My perfect Sunday: ' },
-  { label: 'Weirdly good at', text: 'I’m weirdly good at ' },
-  { label: 'Matcha or coffee', text: 'Matcha or coffee? ' },
+/** The openers under the biography: what the button says, and what it starts the biography with. */
+const BIO_STARTERS: readonly { label: MessageKey; text: MessageKey }[] = [
+  { label: 'onb.starterSundayLabel', text: 'onb.starterSundayText' },
+  { label: 'onb.starterGoodLabel', text: 'onb.starterGoodText' },
+  { label: 'onb.starterCoffeeLabel', text: 'onb.starterCoffeeText' },
 ]
 
 // ---------------------------------------------------------------- frame
 
 function OnboardingHeader({ current }: { current: number | null }) {
+  const t = useT()
   const navigate = useNavigate()
   const [leaving, setLeaving] = useState(false)
   const logout = async () => {
@@ -63,7 +66,7 @@ function OnboardingHeader({ current }: { current: number | null }) {
       navigate('/', { replace: true })
     } catch {
       setLeaving(false)
-      toast.error('Could not log out', 'Try again in a moment.')
+      toast.error(t('me.logOutFailed'), t('onb.tryMoment'))
     }
   }
   return (
@@ -71,10 +74,10 @@ function OnboardingHeader({ current }: { current: number | null }) {
       <div className={s.topRow}>
         <Wordmark size="sm" />
         <Button variant="ghost" size="sm" icon={<IconLogout size={16} />} loading={leaving} onClick={logout}>
-          Log out
+          {t('me.logOut')}
         </Button>
       </div>
-      {current !== null ? <Steps current={current + 1} total={STEPS.length} labels={STEP_LABELS} /> : null}
+      {current !== null ? <Steps current={current + 1} total={STEPS.length} labels={STEPS.map((step) => t(step.label))} /> : null}
     </div>
   )
 }
@@ -94,12 +97,13 @@ function Frame({ children, footer, poster, current }: { children: ReactNode; foo
  * for it). It is set once, then only the age shows.
  */
 function AboutFields({ form, askBirthday }: { form: ProfileDraftApi; askBirthday: boolean }) {
+  const t = useT()
   const [bounds] = useState(dateOfBirthBounds)
   return (
     <>
       <div className={s.names}>
         <TextField
-          label="First name"
+          label={t('me.labelFirstName')}
           autoComplete="given-name"
           maxLength={50}
           value={form.value.firstName}
@@ -107,7 +111,7 @@ function AboutFields({ form, askBirthday }: { form: ProfileDraftApi; askBirthday
           error={form.errors.firstName}
         />
         <TextField
-          label="Last name"
+          label={t('me.labelLastName')}
           autoComplete="family-name"
           maxLength={50}
           value={form.value.lastName}
@@ -117,7 +121,7 @@ function AboutFields({ form, askBirthday }: { form: ProfileDraftApi; askBirthday
       </div>
       {askBirthday ? (
         <TextField
-          label="Date of birth"
+          label={t('me.labelBirth')}
           type="date"
           autoComplete="bday"
           min={bounds.min}
@@ -125,12 +129,12 @@ function AboutFields({ form, askBirthday }: { form: ProfileDraftApi; askBirthday
           value={form.value.dateOfBirth}
           onChange={(e) => form.set('dateOfBirth', e.currentTarget.value)}
           error={form.errors.dateOfBirth}
-          hint={`${MIN_AGE}+ only. Others see your age, never the date, and it can't be changed later.`}
+          hint={t('onb.birthHint', { n: MIN_AGE })}
         />
       ) : null}
       <Segmented
-        label="I am"
-        options={GENDER_OPTIONS}
+        label={t('onb.iAm')}
+        options={genderOptions()}
         value={form.value.gender}
         onChange={(value) => form.set('gender', value)}
         error={form.errors.gender}
@@ -142,10 +146,11 @@ function AboutFields({ form, askBirthday }: { form: ProfileDraftApi; askBirthday
 }
 
 function IntoFields({ form }: { form: ProfileDraftApi }) {
+  const t = useT()
   return (
     <Segmented
-      label="Show me"
-      options={PREFERENCE_OPTIONS}
+      label={t('me.showMe')}
+      options={preferenceOptions()}
       value={form.value.sexualPreference}
       onChange={(value) => form.set('sexualPreference', value)}
       error={form.errors.sexualPreference}
@@ -157,6 +162,7 @@ function IntoFields({ form }: { form: ProfileDraftApi }) {
 }
 
 function BioFields({ form }: { form: ProfileDraftApi }) {
+  const t = useT()
   const bio = form.value.biography
   const add = (starter: string) => {
     const joined = (bio.trim() ? `${bio.trimEnd()}\n${starter}` : starter).slice(0, MAX_BIOGRAPHY_LENGTH)
@@ -176,22 +182,22 @@ function BioFields({ form }: { form: ProfileDraftApi }) {
     <>
       <TextArea
         id="onboarding-bio"
-        label="Biography"
+        label={t('me.labelBiography')}
         maxLength={MAX_BIOGRAPHY_LENGTH}
         rows={6}
         value={bio}
-        placeholder="Tea, trains and terrible puns…"
+        placeholder={t('onb.bioPlaceholder')}
         onChange={(e) => form.set('biography', e.currentTarget.value)}
         error={form.errors.biography}
       />
-      <div className={s.starters} role="group" aria-label="Need a start?">
+      <div className={s.starters} role="group" aria-label={t('onb.needStart')}>
         <Label tone="muted" as="span">
-          Need a start?
+          {t('onb.needStart')}
         </Label>
         <div className={s.starterRow}>
           {BIO_STARTERS.map((starter) => (
-            <Button key={starter.label} size="sm" variant="paper" icon={<IconPlus size={14} />} onClick={() => add(starter.text)}>
-              {starter.label}
+            <Button key={starter.label} size="sm" variant="paper" icon={<IconPlus size={14} />} onClick={() => add(`${t(starter.text)} `)}>
+              {t(starter.label)}
             </Button>
           ))}
         </div>
@@ -201,12 +207,13 @@ function BioFields({ form }: { form: ProfileDraftApi }) {
 }
 
 function InterestFields({ form }: { form: ProfileDraftApi }) {
+  const t = useT()
   const catalogue = useTagCatalogue()
   const count = form.value.interests.length
   return (
     <>
       <TagInput
-        label="Interests"
+        label={t('me.labelInterests')}
         value={form.value.interests}
         onChange={(tags) => form.set('interests', tags)}
         normalize={tagFromInput}
@@ -217,7 +224,9 @@ function InterestFields({ form }: { form: ProfileDraftApi }) {
         error={form.errors.interests}
       />
       <p className={s.tally} aria-live="polite">
-        <span className={s.tallyNumber}>{pad(count)}</span> picked{count === 0 ? ' · one at least' : ''}
+        {t.rich(count === 0 ? 'onb.tallyNone' : count === 1 ? 'onb.tallyOne' : 'onb.tallyMany', {
+          n: <span className={s.tallyNumber}>{pad(count)}</span>,
+        })}
       </p>
     </>
   )
@@ -226,6 +235,7 @@ function InterestFields({ form }: { form: ProfileDraftApi }) {
 // ---------------------------------------------------------------- wizard
 
 function Wizard({ profile }: { profile: OwnProfile }) {
+  const t = useT()
   const navigate = useNavigate()
   const [start] = useState(() => resumeStep(profile))
   const [index, setIndex] = useState(() => Math.min(start, STEPS.length - 1))
@@ -265,7 +275,7 @@ function Wizard({ profile }: { profile: OwnProfile }) {
   const go = (next: number) => {
     moved.current = true
     setIndex(next)
-    setAnnouncement(`Step ${next + 1} of ${STEPS.length}: ${STEPS[next].label}`)
+    setAnnouncement(t('onb.stepAnnounce', { n: next + 1, total: STEPS.length, label: t(STEPS[next].label) }))
   }
 
   const finish = () => {
@@ -274,8 +284,8 @@ function Wizard({ profile }: { profile: OwnProfile }) {
       const target = gap >= 0 ? gap : 0
       setGapNotice(
         STEPS[target].key === 'photos'
-          ? 'One more thing before the deck: add a photo. Without one you stay out of everyone’s deck and cannot like anyone.'
-          : `One more thing before the deck: ${STEPS[target].label.toLowerCase()} is still missing.`,
+          ? t('onb.gapPhoto')
+          : t('onb.gapStep', { label: t(STEPS[target].label).toLowerCase() }),
       )
       go(target)
       return
@@ -286,7 +296,7 @@ function Wizard({ profile }: { profile: OwnProfile }) {
   /** The location step: saves the pin when it moved. Returns false (and says why) when it cannot go on. */
   const saveSpot = async (): Promise<boolean> => {
     if (!spot) {
-      setSpotError('Place your pin: use your location, search a place or tap the map.')
+      setSpotError(t('onb.placePin'))
       return false
     }
     const stored = savedSpot(profile)
@@ -330,10 +340,10 @@ function Wizard({ profile }: { profile: OwnProfile }) {
 
   const leave = () => {
     navigate('/discover', { replace: true })
-    toast.show({ tone: 'matcha', title: 'You’re in the deck', message: 'Swipe right on what you like. Your profile lives under Me.' })
+    toast.show({ tone: 'matcha', title: t('onb.inDeckTitle'), message: t('onb.inDeckBody') })
   }
 
-  const nextLabel = last ? 'Finish' : 'Continue'
+  const nextLabel = last ? t('onb.finish') : t('onb.continue')
 
   return (
     <Frame
@@ -346,8 +356,8 @@ function Wizard({ profile }: { profile: OwnProfile }) {
               variant="paper"
               size="lg"
               icon={<IconArrowLeft size={22} />}
-              aria-label={`Back to ${STEPS[index - 1].label.toLowerCase()}`}
-              title="Back"
+              aria-label={t('onb.backTo', { label: t(STEPS[index - 1].label).toLowerCase() })}
+              title={t('kit.back')}
               disabled={saving}
               onClick={() => go(index - 1)}
             />
@@ -360,12 +370,12 @@ function Wizard({ profile }: { profile: OwnProfile }) {
             className={s.grow}
             iconRight={last ? <IconCheck size={20} strokeWidth={3.5} /> : <IconArrowRight size={20} />}
           >
-            {saving ? 'Saving' : nextLabel}
+            {saving ? t('me.stateSaving') : nextLabel}
           </Button>
         </div>
       }
     >
-      <title>{`${step.label} · Set up your profile · Matcha`}</title>
+      <title>{t('onb.docTitle', { label: t(step.label) })}</title>
       <form
         key={step.key}
         id={FORM_ID}
@@ -381,20 +391,18 @@ function Wizard({ profile }: { profile: OwnProfile }) {
 
         <header className={s.head}>
           <Label tone="muted">
-            Step {pad(index + 1)} · {step.label}
+            {t('onb.stepKicker', { n: pad(index + 1), label: t(step.label) })}
           </Label>
           <Headline as="h1" id="onboarding-title" size="d2" width="condensed" print="riso" offset={step.tone}>
-            {step.title[0]}
-            <br />
-            {step.title[1]}
+            {t.stack(step.title)}
           </Headline>
           <Text size="lead" className={s.lead}>
-            {step.lead}
+            {t(step.lead)}
           </Text>
         </header>
 
         {gapNotice ? (
-          <Notice tone="warning" title="Almost there" onDismiss={() => setGapNotice(null)}>
+          <Notice tone="warning" title={t('onb.almost')} onDismiss={() => setGapNotice(null)}>
             {gapNotice}
           </Notice>
         ) : null}
@@ -415,10 +423,10 @@ function Wizard({ profile }: { profile: OwnProfile }) {
               error={spotError}
             />
           ) : null}
-          {step.key === 'photos' ? <PhotoManager profile={profile} label="Your photos" /> : null}
+          {step.key === 'photos' ? <PhotoManager profile={profile} /> : null}
         </div>
 
-        <FormError error={step.key === 'location' ? spotFailure : form.formError} title="Not saved" />
+        <FormError error={step.key === 'location' ? spotFailure : form.formError} title={t('me.notSaved')} />
       </form>
 
       <p className="sr-only" role="status" aria-live="polite">
@@ -432,12 +440,13 @@ function Wizard({ profile }: { profile: OwnProfile }) {
 
 /** `/onboarding`: complete the profile one step at a time; each step saves what it changed. */
 export default function OnboardingPage() {
+  const t = useT()
   const me = useMyProfile()
   if (me.state === 'ready') return <Wizard profile={me.profile} />
   return (
     <Frame current={null}>
       <div className={s.status}>
-        {me.state === 'loading' ? <ProfileLoading caption="Setting out your card" /> : null}
+        {me.state === 'loading' ? <ProfileLoading caption={t('onb.settingOut')} /> : null}
         {me.state === 'error' ? <ProfileUnavailable error={me.error} /> : null}
         {me.state === 'signed-out' ? <SignedOut /> : null}
       </div>

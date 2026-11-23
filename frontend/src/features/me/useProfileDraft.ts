@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ProfileUpdatePayload } from '@/api/types'
+import { t } from '@/i18n'
 import { actions, toApiError } from '@/wb'
 import { splitApiError } from './errors'
 import {
@@ -12,15 +13,17 @@ import {
   type ProfileDraft,
 } from './profile'
 
-/** Request property → label, for server validation messages. */
-const FIELD_LABELS: Record<DraftKey, string> = {
-  firstName: 'First name',
-  lastName: 'Last name',
-  dateOfBirth: 'Date of birth',
-  gender: 'Gender',
-  sexualPreference: 'Preference',
-  biography: 'Biography',
-  interests: 'Interests',
+/** Request property → label, for server validation messages (worded when the problem comes up). */
+function fieldLabels(): Record<DraftKey, string> {
+  return {
+    firstName: t('me.labelFirstName'),
+    lastName: t('me.labelLastName'),
+    dateOfBirth: t('me.labelBirth'),
+    gender: t('me.labelGender'),
+    sexualPreference: t('me.labelPreference'),
+    biography: t('me.labelBiography'),
+    interests: t('me.labelInterests'),
+  }
 }
 
 export type FieldErrors = Partial<Record<DraftKey, string>>
@@ -93,7 +96,7 @@ export function useProfileDraft(profile: EditableProfile): ProfileDraftApi {
       setSaved(true)
       return true
     } catch (failure) {
-      const split = splitApiError(toApiError(failure), FIELD_LABELS)
+      const split = splitApiError(toApiError(failure), fieldLabels())
       setErrors(split.fields)
       setFormError(split.form)
       return false

@@ -7,6 +7,7 @@
 import { useId, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { PlannedDate } from '@/api/types'
+import { useT } from '@/i18n'
 import { useNow } from '@/features/chat/hooks'
 import { pad2 } from '@/features/chat/time'
 import { coordinatesLabel } from '@/features/location/geo'
@@ -39,6 +40,7 @@ import { lookOf, useAnswerInvite } from './moves'
 import { PlanDateSheet } from './PlanDateSheet'
 import {
   agendaOf,
+  isHappening,
   longDayLabel,
   mapLink,
   movesOf,
@@ -50,6 +52,7 @@ import {
 import s from './CalendarPage.module.css'
 
 export default function CalendarPage() {
+  const t = useT()
   const dates = useNodeValue('dates')
   const status = useNodeStatus('calendar')
   const connections = useNodeValue('connections')
@@ -67,22 +70,21 @@ export default function CalendarPage() {
   const empty = agenda !== null && agenda.invites.length + agenda.ahead.length + agenda.past.length === 0
   const noConnections = Array.isArray(connections?.matches) && connections.matches.length === 0
 
-  const kicker = agenda ? (
-    <>
-      {pad2(agenda.invites.length)} {agenda.invites.length === 1 ? 'invite' : 'invites'} · {pad2(agenda.ahead.length)} ahead
-    </>
-  ) : (
-    'Your diary'
-  )
+  const kicker = agenda
+    ? t('cal.kicker', {
+        invites: t.n('cal.invites', agenda.invites.length, { n: pad2(agenda.invites.length) }),
+        n: pad2(agenda.ahead.length),
+      })
+    : t('cal.diary')
 
   return (
     <div className={s.page}>
       <PageHeader
-        title="Calendar"
+        title={t('cal.title')}
         kicker={kicker}
         actions={
-          <Button size="sm" icon={<IconPlus size={16} strokeWidth={3} />} aria-label="Plan a date" onClick={() => setPlanning(true)}>
-            Plan
+          <Button size="sm" icon={<IconPlus size={16} strokeWidth={3} />} aria-label={t('chat.planDate')} onClick={() => setPlanning(true)}>
+            {t('cal.plan')}
           </Button>
         }
       />
@@ -93,37 +95,37 @@ export default function CalendarPage() {
         ) : (
           <>
             {agenda.invites.length > 0 ? (
-              <Section label="Invites · answer before it starts" count={agenda.invites.length}>
+              <Section label={t('cal.invitesSection')} count={agenda.invites.length}>
                 <DateList dates={agenda.invites} now={now} onCallOff={setCallingOff} />
               </Section>
             ) : null}
-            <Section label="Ahead" count={agenda.ahead.length}>
+            <Section label={t('cal.ahead')} count={agenda.ahead.length}>
               {agenda.ahead.length > 0 ? (
                 <DateList dates={agenda.ahead} now={now} onCallOff={setCallingOff} />
               ) : (
                 <div className={s.quiet}>
-                  <p className={s.quietTitle}>Nothing ahead yet</p>
+                  <p className={s.quietTitle}>{t('cal.nothingAhead')}</p>
                   <p className={s.quietText}>
-                    {agenda.invites.length > 0 ? 'Say yes to an invite above, or plan one of your own.' : 'Plan a date with one of your matches.'}
+                    {agenda.invites.length > 0 ? t('cal.sayYes') : t('cal.planWithMatch')}
                   </p>
                 </div>
               )}
             </Section>
             {agenda.past.length > 0 ? (
-              <Section label="Been there" count={agenda.past.length}>
+              <Section label={t('cal.beenThere')} count={agenda.past.length}>
                 <DateList dates={agenda.past} now={now} onCallOff={setCallingOff} />
               </Section>
             ) : null}
             {status.status === 'error' ? (
-              <Notice tone="warning" title="Not up to date" action={<ReloadButton variant="paper" />}>
-                The latest changes to your calendar could not be loaded.
+              <Notice tone="warning" title={t('kit.notUpToDate')} action={<ReloadButton variant="paper" />}>
+                {t('cal.latestFailed')}
               </Notice>
             ) : null}
           </>
         )
       ) : status.status === 'error' ? (
-        <Notice tone="error" title="Your calendar did not load" action={<ReloadButton variant="ink" />}>
-          {status.error?.message ?? 'Something went wrong.'}
+        <Notice tone="error" title={t('cal.loadFailed')} action={<ReloadButton variant="ink" />}>
+          {status.error?.message ?? t('kit.wrong')}
         </Notice>
       ) : (
         <CalendarSkeleton />
@@ -136,9 +138,10 @@ export default function CalendarPage() {
 }
 
 function ReloadButton({ variant }: { variant: 'ink' | 'paper' }) {
+  const t = useT()
   return (
     <Button size="sm" variant={variant} icon={<IconRefresh size={16} />} onClick={() => void refresh('calendar')}>
-      Try again
+      {t('common.tryAgain')}
     </Button>
   )
 }
@@ -177,6 +180,7 @@ interface DateTicketProps {
 }
 
 function DateTicket({ date, now, onCallOff }: DateTicketProps) {
+  const t = useT()
   const { busy, answer } = useAnswerInvite(date)
   const name = nameOf(date)
   const stub = stubOf(date.startsAt)
@@ -186,7 +190,7 @@ function DateTicket({ date, now, onCallOff }: DateTicketProps) {
   const over = date.endsAt <= now
 
   return (
-    <article className={s.ticket} data-over={over ? '' : undefined} aria-label={`${date.title}, with ${name}`}>
+    <article className={s.ticket} data-over={over ? '' : undefined} aria-label={t('cal.dateWith', { title: date.title, name })}>
       <div className={s.stub} data-tone={look.tone} aria-hidden="true">
         <span className={s.stubWeekday}>{stub.weekday}</span>
         <span className={s.stubDay}>{stub.day}</span>
@@ -201,7 +205,7 @@ function DateTicket({ date, now, onCallOff }: DateTicketProps) {
               {timeRange(date)}
             </time>
           </Label>
-          {soon && soon !== 'Now' ? (
+          {soon && !isHappening(date, now) ? (
             <Label size="sm" tone="muted">
               {soon}
             </Label>
@@ -218,10 +222,10 @@ function DateTicket({ date, now, onCallOff }: DateTicketProps) {
         <Link to={`/chat/${date.person.userId}`} className={s.person}>
           <Avatar src={date.person.profilePictureUrl} name={name} size="xs" decorative />
           <span className={s.personText}>
-            {date.mine ? 'You invited' : 'From'} <strong>{name}</strong>
+            {t.rich(date.mine ? 'cal.youInvitedName' : 'cal.fromName', { name: <strong>{name}</strong> })}
           </span>
           <IconChevronRight size={16} strokeWidth={3} aria-hidden="true" />
-          <span className="sr-only">: open the conversation</span>
+          <span className="sr-only">{t('cal.openConversationSr')}</span>
         </Link>
 
         {date.description ? (
@@ -235,9 +239,9 @@ function DateTicket({ date, now, onCallOff }: DateTicketProps) {
             <IconPin size={16} aria-hidden="true" />
             <span className={s.placeText}>{coordinatesLabel(date.place)}</span>
             <span className={s.placeOpen}>
-              Open map <IconExternal size={14} aria-hidden="true" />
+              {t('cal.openMap')} <IconExternal size={14} aria-hidden="true" />
             </span>
-            <span className="sr-only"> (opens OpenStreetMap in a new tab)</span>
+            <span className="sr-only">{t('chat.mapSr')}</span>
           </a>
         ) : null}
 
@@ -252,7 +256,7 @@ function DateTicket({ date, now, onCallOff }: DateTicketProps) {
                   disabled={busy !== null}
                   onClick={() => answer('accept')}
                 >
-                  Accept
+                  {t('chat.accept')}
                 </Button>
                 <Button
                   size="sm"
@@ -262,13 +266,13 @@ function DateTicket({ date, now, onCallOff }: DateTicketProps) {
                   disabled={busy !== null}
                   onClick={() => answer('decline')}
                 >
-                  Decline
+                  {t('chat.decline')}
                 </Button>
               </>
             ) : null}
             {moves.cancel ? (
               <Button size="sm" variant="ghost" onClick={() => onCallOff(date)}>
-                {date.status === 'declined' ? 'Remove' : 'Call off'}
+                {date.status === 'declined' ? t('chat.remove') : t('chat.callOff')}
               </Button>
             ) : null}
           </div>
@@ -281,37 +285,39 @@ function DateTicket({ date, now, onCallOff }: DateTicketProps) {
 // ------------------------------------------------------------ empty, loading
 
 function NothingPlanned({ noConnections, onPlan }: { noConnections: boolean; onPlan: () => void }) {
+  const t = useT()
   return (
     <div className={s.empty}>
       <PosterWord size="min(40vw, 11rem)" tone="yolk" outline className={s.emptyWord}>
-        Free
+        {t('cal.free')}
       </PosterWord>
       <EmptyState
-        stamp="Blank page"
+        stamp={t('cal.blankStamp')}
         stampTone="matcha"
         icon={<IconCalendar size={28} />}
-        title="Nothing planned yet"
+        title={t('cal.nothingPlanned')}
         action={
           noConnections ? (
             <ButtonLink to="/discover" size="lg" icon={<IconRegMark size={22} />}>
-              Find a match first
+              {t('cal.findMatchFirst')}
             </ButtonLink>
           ) : (
             <Button size="lg" icon={<IconCalendar size={22} />} onClick={onPlan}>
-              Plan a date
+              {t('chat.planDate')}
             </Button>
           )
         }
       >
-        Pick one of your matches, a day and a time, and maybe a place. They get your invite at once and answer it here.
+        {t('cal.emptyBody')}
       </EmptyState>
     </div>
   )
 }
 
 function CalendarSkeleton() {
+  const t = useT()
   return (
-    <div className={s.skeleton} aria-busy="true" aria-label="Loading your calendar">
+    <div className={s.skeleton} aria-busy="true" aria-label={t('cal.loadingCalendar')}>
       {[0, 1, 2].map((index) => (
         <div key={index} className={s.skeletonTicket}>
           <Skeleton width={72} height={112} style={{ borderRadius: 14 }} />

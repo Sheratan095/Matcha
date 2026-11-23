@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { Chip } from '../display/Chip'
 import { IconPlus } from '../icons'
@@ -50,11 +51,12 @@ export function TagInput({
   max,
   maxLength = 50,
   suggestionLimit = 8,
-  placeholder = 'Type and press Enter',
+  placeholder,
   normalize = defaultNormalize,
   disabled,
   className,
 }: TagInputProps) {
+  const t = useT()
   const id = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState('')
@@ -127,7 +129,7 @@ export function TagInput({
         }}
       >
         {value.map((tag) => (
-          <Chip key={tag} tone="matcha" onRemove={() => remove(tag)} removeLabel={`Remove ${tag}`} disabled={disabled}>
+          <Chip key={tag} tone="matcha" onRemove={() => remove(tag)} removeLabel={t('kit.removeTag', { tag })} disabled={disabled}>
             #{tag}
           </Chip>
         ))}
@@ -136,7 +138,7 @@ export function TagInput({
           id={id}
           className={s.input}
           value={draft}
-          placeholder={full ? 'Full' : placeholder}
+          placeholder={full ? t('kit.tagFull') : (placeholder ?? t('kit.tagPlaceholder'))}
           maxLength={maxLength + 1}
           disabled={disabled}
           autoCapitalize="none"
@@ -150,7 +152,7 @@ export function TagInput({
         />
       </div>
       {shown.length > 0 && !disabled ? (
-        <div className={s.suggestions} role="group" aria-label="Suggestions">
+        <div className={s.suggestions} role="group" aria-label={t('kit.suggestions')}>
           {shown.map((tag) => (
             <button key={tag} type="button" className={s.suggestion} disabled={full} onClick={() => add(tag)}>
               <IconPlus size={12} strokeWidth={4} />

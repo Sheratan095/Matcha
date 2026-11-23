@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cx } from '../cx'
 import { Spinner } from '../display/Loader'
 import { IconCheck, IconSend, IconWarning } from '../icons'
@@ -27,6 +28,7 @@ export interface ChatBubbleProps {
 
 /** One message. Group consecutive bubbles from the same side with `position`. */
 export function ChatBubble({ side, children, time, status, position = 'single', showMeta, className }: ChatBubbleProps) {
+  const t = useT()
   const meta = showMeta ?? (position === 'single' || position === 'last')
   return (
     <div className={cx(s.line, s[side], s[`pos-${position}`], className)}>
@@ -37,21 +39,21 @@ export function ChatBubble({ side, children, time, status, position = 'single', 
           {side === 'mine' && status ? (
             <span className={s.status}>
               {status === 'sending' ? (
-                <Spinner size={12} label="Sending" />
+                <Spinner size={12} label={t('kit.sending')} />
               ) : status === 'failed' ? (
                 <>
                   <IconWarning size={13} strokeWidth={3} />
-                  Not sent
+                  {t('kit.chatNotSent')}
                 </>
               ) : status === 'read' ? (
                 <>
                   <IconCheck size={13} strokeWidth={3.5} />
-                  Read
+                  {t('kit.chatRead')}
                 </>
               ) : (
                 <>
                   <IconCheck size={13} strokeWidth={3.5} />
-                  Sent
+                  {t('kit.chatSent')}
                 </>
               )}
             </span>
@@ -66,13 +68,14 @@ export function ChatBubble({ side, children, time, status, position = 'single', 
 
 /** "…" bubble on their side while they type. */
 export function TypingIndicator({ name }: { name?: string }) {
+  const t = useT()
   return (
     <div className={cx(s.line, s.theirs, s['pos-single'])} role="status" aria-live="polite">
       <div className={cx(s.bubble, s.typing)}>
         <i />
         <i />
         <i />
-        <span className="sr-only">{name ? `${name} is typing` : 'Typing'}</span>
+        <span className="sr-only">{name ? t('kit.typingName', { name }) : t('kit.typing')}</span>
       </div>
     </div>
   )
@@ -112,13 +115,14 @@ export function ChatComposer({
   value,
   onChange,
   onSend,
-  placeholder = 'Write something nice…',
+  placeholder,
   maxLength = 1000,
   disabled,
   sending,
-  label = 'Message',
+  label,
   className,
 }: ChatComposerProps) {
+  const t = useT()
   const ref = useRef<HTMLTextAreaElement>(null)
   const text = value.trim()
   const canSend = text.length > 0 && !disabled && !sending
@@ -143,14 +147,14 @@ export function ChatComposer({
       }}
     >
       <label className={s.box}>
-        <span className="sr-only">{label}</span>
+        <span className="sr-only">{label ?? t('kit.composerLabel')}</span>
         <textarea
           ref={ref}
           className={s.textarea}
           rows={1}
           value={value}
           maxLength={maxLength}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('kit.composerPlaceholder')}
           disabled={disabled}
           enterKeyHint="send"
           onChange={(e) => onChange(e.currentTarget.value)}
@@ -167,7 +171,7 @@ export function ChatComposer({
           </span>
         ) : null}
       </label>
-      <button type="submit" className={s.send} disabled={!canSend} aria-label="Send">
+      <button type="submit" className={s.send} disabled={!canSend} aria-label={t('kit.composerSend')}>
         {sending ? <Spinner size={22} label="" /> : <IconSend size={22} filled />}
       </button>
     </form>
@@ -177,9 +181,10 @@ export function ChatComposer({
 // ------------------------------------------------------------------ ChatThread
 
 /** The scrolling column that holds bubbles, typing indicators and day dividers (role="log"). */
-export function ChatThread({ children, label = 'Messages', className }: { children: ReactNode; label?: string; className?: string }) {
+export function ChatThread({ children, label, className }: { children: ReactNode; label?: string; className?: string }) {
+  const t = useT()
   return (
-    <div role="log" aria-label={label} aria-live="polite" className={cx(s.thread, className)}>
+    <div role="log" aria-label={label ?? t('kit.threadLabel')} aria-live="polite" className={cx(s.thread, className)}>
       {children}
     </div>
   )

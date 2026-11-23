@@ -5,6 +5,7 @@
 import { useId } from 'react'
 import { Link } from 'react-router-dom'
 import type { Match } from '@/api/types'
+import { useT } from '@/i18n'
 import { useNow } from '@/features/chat/hooks'
 import { pad2, shortAgo } from '@/features/chat/time'
 import {
@@ -37,6 +38,7 @@ function reload(): void {
 }
 
 export default function MatchesPage() {
+  const t = useT()
   const matches = useNodeValue('matches')
   const status = useNodeStatus('connections')
   const unread = useNodeValue('unreadCount') ?? 0
@@ -52,17 +54,13 @@ export default function MatchesPage() {
   const fresh = list ? list.filter((match) => !match.lastMessage) : []
   const talking = list ? list.filter((match) => match.lastMessage).sort((a, b) => activityAt(b) - activityAt(a)) : []
 
-  const kicker = list ? (
-    <>
-      {pad2(fresh.length)} new · {pad2(unread)} unread
-    </>
-  ) : (
-    'Your tin'
-  )
+  const kicker = list
+    ? `${t.n('matches.newCount', fresh.length, { n: pad2(fresh.length) })} · ${t.n('matches.unreadCount', unread, { n: pad2(unread) })}`
+    : t('matches.yourTin')
 
   return (
     <div className={s.page}>
-      <PageHeader title="Matches" kicker={kicker} />
+      <PageHeader title={t('matches.title')} kicker={kicker} />
 
       {list ? (
         list.length === 0 ? (
@@ -76,14 +74,14 @@ export default function MatchesPage() {
       ) : status.status === 'error' ? (
         <Notice
           tone="error"
-          title="Your matches did not load"
+          title={t('matches.loadFailed')}
           action={
             <Button size="sm" variant="ink" icon={<IconRefresh size={16} />} onClick={reload}>
-              Try again
+              {t('common.tryAgain')}
             </Button>
           }
         >
-          {status.error?.message ?? 'Something went wrong.'}
+          {status.error?.message ?? t('kit.wrong')}
         </Notice>
       ) : (
         <MatchesSkeleton />
@@ -95,13 +93,14 @@ export default function MatchesPage() {
 // ------------------------------------------------------------ new matches
 
 function NewMatches({ matches }: { matches: Match[] }) {
+  const t = useT()
   const headingId = useId()
   return (
     <section className={s.section} aria-labelledby={headingId}>
       <h2 id={headingId} className="sr-only">
-        New matches
+        {t('matches.newMatches')}
       </h2>
-      <TicketHeader label={matches.length > 0 ? 'New matches · say hi first' : 'New matches · none waiting'} meta={pad2(matches.length)} />
+      <TicketHeader label={matches.length > 0 ? t('matches.newHeader') : t('matches.newNone')} meta={pad2(matches.length)} />
       <ul className={s.strip}>
         {matches.map((match, index) => {
           const name = match.username
@@ -112,12 +111,12 @@ function NewMatches({ matches }: { matches: Match[] }) {
                   <Avatar src={match.profilePictureUrl} name={name} size="xl" shadow decorative />
                   <span className={s.freshBadge} aria-hidden="true">
                     <Badge tone="yolk" rotate={-8}>
-                      New
+                      {t('matches.newBadge')}
                     </Badge>
                   </span>
                 </span>
                 <span className={s.freshName}>{name}</span>
-                <span className="sr-only">, new match. Start the conversation.</span>
+                <span className="sr-only">{t('matches.newSr')}</span>
               </Link>
             </li>
           )
@@ -127,7 +126,7 @@ function NewMatches({ matches }: { matches: Match[] }) {
             <span className={s.moreFace} aria-hidden="true">
               <IconPlus size={30} strokeWidth={3} />
             </span>
-            <span className={s.freshName}>Find more</span>
+            <span className={s.freshName}>{t('matches.findMore')}</span>
           </Link>
         </li>
       </ul>
@@ -145,18 +144,19 @@ interface ConversationsProps {
 }
 
 function Conversations({ matches, unread, now, hasNew }: ConversationsProps) {
+  const t = useT()
   const headingId = useId()
   return (
     <section className={s.section} aria-labelledby={headingId}>
       <h2 id={headingId} className="sr-only">
-        Conversations
+        {t('matches.conversations')}
       </h2>
-      <TicketHeader label="Conversations" meta={unread > 0 ? `${pad2(unread)} unread` : pad2(matches.length)} />
+      <TicketHeader label={t('matches.conversations')} meta={unread > 0 ? t.n('matches.unreadCount', unread, { n: pad2(unread) }) : pad2(matches.length)} />
       {matches.length === 0 ? (
         <div className={s.quiet}>
-          <p className={s.quietTitle}>No conversations yet</p>
+          <p className={s.quietTitle}>{t('matches.noConversations')}</p>
           <p className={s.quietText}>
-            {hasNew ? 'Pick a new match above and say hello. Someone has to go first.' : 'Say hi to a match to start one.'}
+            {hasNew ? t('matches.pickNew') : t('matches.sayHi')}
           </p>
         </div>
       ) : (
@@ -167,7 +167,7 @@ function Conversations({ matches, unread, now, hasNew }: ConversationsProps) {
             const mine = last != null && last.senderId !== match.userId
             const subtitle = last ? (
               <>
-                {mine ? <span className={s.you}>You: </span> : null}
+                {mine ? <span className={s.you}>{t('matches.you')}</span> : null}
                 {last.text}
               </>
             ) : null
@@ -182,7 +182,7 @@ function Conversations({ matches, unread, now, hasNew }: ConversationsProps) {
                   unread={match.unread > 0}
                   trailing={
                     match.unread > 0 ? (
-                      <CountBadge count={match.unread} label={match.unread === 1 ? 'unread message' : 'unread messages'} />
+                      <CountBadge count={match.unread} label={t.n('matches.unreadMessages', match.unread)} />
                     ) : undefined
                   }
                 />
@@ -198,30 +198,32 @@ function Conversations({ matches, unread, now, hasNew }: ConversationsProps) {
 // ------------------------------------------------------------ empty, loading
 
 function NoMatches() {
+  const t = useT()
   return (
     <div className={s.empty}>
       <PosterWord size="min(40vw, 11rem)" tone="matcha" outline className={s.emptyWord}>
-        Swipe
+        {t('matches.swipe')}
       </PosterWord>
       <EmptyState
-        stamp="Empty tin"
+        stamp={t('matches.emptyStamp')}
         stampTone="strawberry"
-        title="No matches yet"
+        title={t('matches.emptyTitle')}
         action={
           <ButtonLink to="/discover" size="lg" icon={<IconRegMark size={22} />}>
-            Go to Discover
+            {t('cal.goDiscover')}
           </ButtonLink>
         }
       >
-        Every match starts on Discover. Like someone who likes you back, and they land here.
+        {t('matches.emptyBody')}
       </EmptyState>
     </div>
   )
 }
 
 function MatchesSkeleton() {
+  const t = useT()
   return (
-    <div className={s.skeleton} aria-busy="true" aria-label="Loading your matches">
+    <div className={s.skeleton} aria-busy="true" aria-label={t('matches.loading')}>
       <div className={s.skeletonStrip}>
         {[0, 1, 2, 3].map((index) => (
           <div key={index} className={s.skeletonFresh}>

@@ -12,6 +12,7 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ApiError, OtherProfile, Profile, ProfileRelation } from '@/api/types'
+import { useT } from '@/i18n'
 import {
   Badge,
   Button,
@@ -67,6 +68,7 @@ export interface ProfileSheetProps {
 const pad = (n: number) => String(n).padStart(2, '0')
 
 export default function ProfileSheet({ target, onClose, actions: slot, onBlocked, hideMenu }: ProfileSheetProps) {
+  const t = useT()
   const open = target !== null
   const key = target?.userId ?? null
 
@@ -126,7 +128,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
 
   // the action's rejection says it failed; the node status only fills in a missing message
   const failed = open && !loaded && failure?.key === key
-  const failureMessage = (failure?.key === key ? failure.error.message : status.error?.message) ?? 'The profile could not be loaded.'
+  const failureMessage = (failure?.key === key ? failure.error.message : status.error?.message) ?? t('check.profileNotLoaded')
   const loading = open && !loaded && !failed
 
   const close = () => {
@@ -134,7 +136,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
     actions.closeProfile()
   }
 
-  const name = data ? displayName(data) : 'Profile'
+  const name = data ? displayName(data) : t('prof.profile')
   const isMe = !!data && !!me && data.userId === me.userId
   const baseRelation = data?.relation ?? null
   const relation = data && relationOverride?.userId === data.userId ? relationOverride.relation : baseRelation
@@ -147,7 +149,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
     try {
       await actions.blockUser(userId)
       setConfirming(false)
-      toast.show({ tone: 'ink', title: `${name} is blocked`, message: 'You will not see each other again.' })
+      toast.show({ tone: 'ink', title: t('chat.blockedTitle', { name }), message: t('prof.blockedMessage') })
       onBlocked?.(userId)
       close()
     } catch (error) {
@@ -161,9 +163,9 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
     if (!data) return
     try {
       await actions.reportUser(data.userId)
-      toast.show({ tone: 'ink', title: `${name} is reported`, message: 'Thank you: the team will look into this account.' })
+      toast.show({ tone: 'ink', title: t('prof.reportedTitle', { name }), message: t('prof.reportedMessage') })
     } catch (error) {
-      toast.show({ tone: 'strawberry', title: 'Not reported', message: toApiError(error).message })
+      toast.show({ tone: 'strawberry', title: t('prof.notReported'), message: toApiError(error).message })
     }
   }
 
@@ -176,15 +178,15 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
       if (relation.liked) {
         await actions.unlikeUser(userId)
         setRelationOverride({ userId, relation: { liked: false, likesYou: relation.likesYou, matched: false } })
-        toast.show({ tone: 'ink', title: relation.matched ? `You and ${name} are no longer connected` : `You took back your like` })
+        toast.show({ tone: 'ink', title: relation.matched ? t('prof.noLongerConnected', { name }) : t('prof.tookBack') })
       } else {
         const outcome = await actions.likeUser(userId, 'like')
         const matched = outcome.matched || relation.likesYou
         setRelationOverride({ userId, relation: { liked: true, likesYou: relation.likesYou, matched } })
-        toast.show({ tone: 'strawberry', title: matched ? `You and ${name} are connected` : `You liked ${name}` })
+        toast.show({ tone: 'strawberry', title: matched ? t('prof.nowConnected', { name }) : t('act.youLiked', { name }) })
       }
     } catch (error) {
-      toast.show({ tone: 'strawberry', title: 'That did not work', message: toApiError(error).message })
+      toast.show({ tone: 'strawberry', title: t('deck.didNotWork'), message: toApiError(error).message })
     } finally {
       setLiking(false)
     }
@@ -197,25 +199,37 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
         <ActionButton
           kind={relation.liked ? 'pass' : 'like'}
           size="lg"
-          label={relation.liked ? (relation.matched ? `Disconnect from ${name}` : `Take back your like for ${name}`) : `Like ${name}`}
+          label={
+            relation.liked
+              ? relation.matched
+                ? t('prof.disconnect', { name })
+                : t('prof.takeBack', { name })
+              : t('deck.likeName', { name })
+          }
           disabled={liking}
           aria-busy={liking || undefined}
           onClick={() => void toggleLike()}
         />
         <Label tone="muted">
-          {relation.liked ? (relation.matched ? 'Connected · tap to disconnect' : 'Liked · tap to take it back') : relation.likesYou ? 'Likes you · like back to connect' : 'Like'}
+          {relation.liked
+            ? relation.matched
+              ? t('prof.hintConnected')
+              : t('prof.hintLiked')
+            : relation.likesYou
+              ? t('prof.hintLikesYou')
+              : t('prof.hintLike')}
         </Label>
       </div>
     ) : undefined)
 
   const menuItems = [
     {
-      label: 'Report as fake account',
+      label: t('prof.report'),
       icon: <IconFlag size={18} />,
       onSelect: () => void report(),
     },
     {
-      label: `Block ${name}`,
+      label: t('prof.blockName', { name }),
       icon: <IconBlock size={18} />,
       tone: 'danger' as const,
       onSelect: () => {
@@ -227,7 +241,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
 
   return (
     <>
-      <Modal open={open} onClose={close} title={`${name}'s profile`} hideTitle bleed size="md" footer={footer}>
+      <Modal open={open} onClose={close} title={t('prof.sheetTitle', { name })} hideTitle bleed size="md" footer={footer}>
         {data ? (
           <ProfileBody
             data={data}
@@ -241,7 +255,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
             }}
             menu={
               hideMenu || isMe ? null : (
-                <Menu label={`More options for ${name}`} align="start" items={menuItems} />
+                <Menu label={t('prof.moreFor', { name })} align="start" items={menuItems} />
               )
             }
             aboutId={aboutId}
@@ -251,7 +265,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
           <div className={s.state}>
             <Notice
               tone="error"
-              title="This profile could not be loaded"
+              title={t('prof.loadFailedTitle')}
               action={
                 <Button
                   size="sm"
@@ -261,7 +275,7 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
                     setRetry((n) => n + 1)
                   }}
                 >
-                  Retry
+                  {t('chat.retry')}
                 </Button>
               }
             >
@@ -278,26 +292,24 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
         onClose={() => {
           if (!blocking) setConfirming(false)
         }}
-        title={`Block ${name}?`}
-        kicker="No take-backs"
+        title={t('chat.blockTitle', { name })}
+        kicker={t('prof.blockKicker')}
         variant="dialog"
         size="sm"
         footer={
           <>
             <Button variant="paper" onClick={() => setConfirming(false)} disabled={blocking}>
-              Cancel
+              {t('kit.cancel')}
             </Button>
             <Button variant="strawberry" icon={<IconBlock size={18} />} loading={blocking} onClick={() => void confirmBlock()}>
-              Block
+              {t('chat.block')}
             </Button>
           </>
         }
       >
         <Stack gap={3}>
-          <Text>
-            {name} disappears from your deck, your matches and your likes, and any conversation ends. They are not told.
-          </Text>
-          <FormError error={blockError} title="Not blocked" />
+          <Text>{t('prof.blockBody', { name })}</Text>
+          <FormError error={blockError} title={t('prof.notBlocked')} />
         </Stack>
       </Modal>
     </>
@@ -330,6 +342,7 @@ function factsOf(data: OtherProfile, relation: ProfileRelation | null) {
 }
 
 function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, aboutId, interestsId }: ProfileBodyProps) {
+  const t = useT()
   const facts = factsOf(data, relation)
   const name = displayName(data)
   const interests = data.interests.map((tag) => tag.name)
@@ -337,7 +350,7 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
   const common = me && me.userId !== data.userId ? interests.filter((tag) => mine.has(tag)) : []
   const ordered = [...common, ...interests.filter((tag) => !common.includes(tag))]
   const identity = identityText(data)
-  const seen = facts.online === false ? (lastSeenText(facts.lastSeen) ?? 'Offline') : null
+  const seen = facts.online === false ? (lastSeenText(facts.lastSeen) ?? t('prof.offline')) : null
   const bio = data.biography?.trim()
   const username = data.username
 
@@ -347,15 +360,11 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
         {menu ? <div className={s.menu}>{menu}</div> : null}
         {facts.matched ? (
           <Sticker tone="matcha" shape="burst" size="86px" rotate={12} className={s.likes}>
-            Con-
-            <br />
-            nected
+            {t.stack('prof.connectedSticker')}
           </Sticker>
         ) : facts.likesYou ? (
           <Sticker tone="yolk" shape="burst" size="86px" rotate={12} className={s.likes}>
-            Likes
-            <br />
-            you
+            {t.stack('kit.likesYou')}
           </Sticker>
         ) : null}
       </PhotoCarousel>
@@ -367,7 +376,7 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
           {facts.distanceKm != null ? (
             <span className={s.where}>
               <IconPin size={14} strokeWidth={3} />
-              {distanceText(facts.distanceKm)} away
+              {t('search.away', { distance: distanceText(facts.distanceKm) })}
             </span>
           ) : null}
         </div>
@@ -382,7 +391,7 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
           <div className={s.meta}>
             {facts.online ? (
               <Badge tone="matcha" className={s.online}>
-                Online now
+                {t('prof.onlineNow')}
               </Badge>
             ) : seen ? (
               <Label tone="muted" className={s.seen}>
@@ -395,27 +404,27 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
 
         {facts.fame != null ? (
           <StatGroup className={s.stats}>
-            <Stat value={Math.round(facts.fame)} label="Fame" />
+            <Stat value={Math.round(facts.fame)} label={t('prof.statFame')} />
             {facts.distanceKm != null ? (
-              <Stat value={facts.distanceKm < 1 ? '<1' : Math.round(facts.distanceKm)} unit="km" label="Away" tone="yolk" />
+              <Stat value={facts.distanceKm < 1 ? '<1' : Math.round(facts.distanceKm)} unit="km" label={t('prof.statAway')} tone="yolk" />
             ) : null}
-            <Stat value={pad(common.length)} label="Shared" tone="strawberry" />
+            <Stat value={pad(common.length)} label={t('prof.statShared')} tone="strawberry" />
           </StatGroup>
         ) : null}
 
         {loading ? (
           <div className={s.loading} role="status">
             <Spinner size={18} label="" />
-            <Label tone="muted">Loading the full profile</Label>
+            <Label tone="muted">{t('prof.loadingFull')}</Label>
           </div>
         ) : null}
         {failed ? (
           <Notice
             tone="error"
-            title="Could not load everything"
+            title={t('prof.partialTitle')}
             action={
               <Button size="sm" variant="paper" onClick={onRetry}>
-                Retry
+                {t('chat.retry')}
               </Button>
             }
           >
@@ -424,20 +433,20 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
         ) : null}
 
         <section className={s.section} aria-labelledby={aboutId}>
-          <TicketHeader label={<span id={aboutId}>About {name}</span>} />
+          <TicketHeader label={<span id={aboutId}>{t('prof.about', { name })}</span>} />
           {bio ? (
             <Text className={s.bio}>{bio}</Text>
           ) : (
             <Text muted size="sm">
-              {loading ? '…' : `${name} has not written a biography yet.`}
+              {loading ? '…' : t('prof.noBio', { name })}
             </Text>
           )}
         </section>
 
         <section className={s.section} aria-labelledby={interestsId}>
           <TicketHeader
-            label={<span id={interestsId}>Interests</span>}
-            meta={common.length > 0 ? `${pad(common.length)} in common` : ordered.length > 0 ? pad(ordered.length) : null}
+            label={<span id={interestsId}>{t('prof.interests')}</span>}
+            meta={common.length > 0 ? t('prof.inCommon', { n: pad(common.length) }) : ordered.length > 0 ? pad(ordered.length) : null}
           />
           {ordered.length > 0 ? (
             <ul className={s.tags}>
@@ -447,7 +456,7 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
                   <li key={tag}>
                     <Chip size="md" tone={shared ? 'matcha' : 'paper'}>
                       #{tag}
-                      {shared ? <span className="sr-only"> (in common)</span> : null}
+                      {shared ? <span className="sr-only">{t('prof.inCommonSr')}</span> : null}
                     </Chip>
                   </li>
                 )
@@ -455,7 +464,7 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
             </ul>
           ) : (
             <Text muted size="sm">
-              No interests listed.
+              {t('prof.noInterests')}
             </Text>
           )}
         </section>
@@ -465,8 +474,9 @@ function ProfileBody({ data, relation, me, loading, failed, onRetry, menu, about
 }
 
 function ProfileSkeleton() {
+  const t = useT()
   return (
-    <div className={s.profile} role="status" aria-label="Loading the profile">
+    <div className={s.profile} role="status" aria-label={t('prof.loadingProfile')}>
       <Skeleton className={s.skPhoto} />
       <div className={s.body} aria-hidden="true">
         <Skeleton shape="text" width="40%" height={10} />
