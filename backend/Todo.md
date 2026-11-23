@@ -138,13 +138,6 @@ maybe just add check for two users and event in db
 	keep in this way
 	ALLOW JUST VERIFICATION WITH LINK
 	allow just verification by code after verification in the same page?
-
-[] wtf style guide?? cool but really needed?
-
-[] logo maybe could be changed - add new logo also in email templates
-
-[] recent research (under search bar like insta) could be fetched by getVisitedProfiles?
-
 [x] unify dto errors in globals
 
 [x] Unify expiration time format min/hours -> ms
@@ -161,10 +154,6 @@ maybe just add check for two users and event in db
 
 [x] "Their visit history" is ambiguous. You expose who viewed me, but not the profiles I viewed. The data is already in profile_views, so a "profiles I visited" endpoint would be cheap insurance.
 
-[] Micro-framework rule. The subject excludes frameworks that bundle validators or a user account manager. NestJS with class-validator and passport may come up, so have your argument ready: no ORM, raw SQL through pg, and validation and OAuth come from separate libraries.
-
 [x] Stale comments. The comment at app.controller.ts:356 says pass isn't implemented, but it is. The isProfileComplete comment says "upload at least 5 pictures". Both could confuse anyone reading the code during the defense.
 
 [x] wire up notification for all calendar related events
-
-[] add a second oauth2 provider
