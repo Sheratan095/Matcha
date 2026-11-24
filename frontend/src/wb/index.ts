@@ -6,6 +6,8 @@
  * - `actions`: the flows screens call.
  * - `realtime$`, and the notification feed it fills: `useNotifications`, `useUnreadNotifications`,
  *   `getNotifications`, `markAllNotificationsRead`, `clearNotifications`.
+ * - The match moment queue (realtime's `match` and the screens' own likes): `useMatchMoment`,
+ *   `celebrateMatch`, `dismissMatchMoment`, `clearMatchMoments`.
  * - Boot (main.tsx only): `installStoreHttp`, `startStore`, `startRealtime`.
  */
 export {
@@ -44,6 +46,13 @@ export {
   type RefreshableNodeName,
   type WritableNodeName,
 } from './nodes'
+export {
+  celebrateMatch,
+  clearMatchMoments,
+  dismissMatchMoment,
+  useMatchMoment,
+  type MatchedPerson,
+} from './matchMoments'
 export {
   clearNotifications,
   getNotifications,

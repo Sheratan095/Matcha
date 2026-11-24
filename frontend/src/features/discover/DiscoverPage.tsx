@@ -1,20 +1,19 @@
 /**
- * /discover: the swipe deck, its filters, the match moment and the profile sheet.
+ * /discover: the swipe deck, its filters and the profile sheet. A like that makes a match plays the
+ * app's match moment (`celebrateMatch`, src/app/frame/MatchMoments.tsx).
  *
  * Data: `visibleDeck` (GET /profile/discover, sorted in the browser; the deck loads the first time this
- * page asks for it) + `useNodeStatus('discoverDeck')` (loading vs failure), `useFilters()`, `myProfile`
- * (your side of the match moment). Flows:
+ * page asks for it) + `useNodeStatus('discoverDeck')` (loading vs failure), `useFilters()`. Flows:
  * `actions.swipe / rewind / setFilters / reloadDeck`. Opening a card loads the full profile
  * (GET /profile/:userId, which records a visit). Ephemeral view state (drag, flights, sheets) stays here.
  */
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { DeckAction, DeckCard } from '@/api/types'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
-import { cardName, deckPreviewProfile, displayName, mainPicture } from '@/features/profile/format'
+import { cardName, deckPreviewProfile } from '@/features/profile/format'
 import { useT } from '@/i18n'
-import { ActionButton, CountBadge, IconSliders, MatchMoment, toast } from '@/ui'
-import { actions, toApiError, useFilters, useLoad, useNodeStatus, useNodeValue, type DiscoverFilters } from '@/wb'
+import { ActionButton, CountBadge, IconSliders, toast } from '@/ui'
+import { actions, celebrateMatch, toApiError, useFilters, useLoad, useMatchMoment, useNodeStatus, useNodeValue, type DiscoverFilters } from '@/wb'
 import { Deck, type DeckHandle, type SwipeRecord } from './Deck'
 import { DeckEmpty, DeckError, DeckSkeleton } from './DeckStates'
 import { canWiden, changedFilters, scopeText, SORT_KEY, WIDEST } from './filterRules'
@@ -72,13 +71,11 @@ function FilterTicket({ filters, onOpen }: { filters: DiscoverFilters; onOpen: (
 
 export default function DiscoverPage() {
   const t = useT()
-  const navigate = useNavigate()
   // Loaded once; afterwards swipes, filters and "reload" keep it current.
   useLoad('discoverDeck')
   const deck = useNodeValue('visibleDeck')
   const deckStatus = useNodeStatus('discoverDeck')
   const filters = useFilters()
-  const me = useNodeValue('myProfile')
   const fitRef = useViewportFit<HTMLDivElement>()
   const deckRef = useRef<DeckHandle>(null)
   const [history] = useState<SwipeRecord[]>(() => [])
@@ -86,9 +83,8 @@ export default function DiscoverPage() {
 
   const [sheet, setSheet] = useState<ProfileTarget | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  /** People this session's likes connected with, waiting for their match moment. */
-  const [matches, setMatches] = useState<DeckCard[]>([])
-  const [shownMatch, setShownMatch] = useState<DeckCard | null>(null)
+  /** A match moment is on screen (the app's, over this page): the deck's keys wait. */
+  const celebrating = useMatchMoment() !== null
   const [rewinding, setRewinding] = useState(false)
   const [pendingSwipes, setPendingSwipes] = useState(0)
   const [busy, setBusy] = useState<Busy>(null)
@@ -99,10 +95,6 @@ export default function DiscoverPage() {
     latestCards.current = cards
   })
   usePreloadDeck(cards)
-
-  // The match on screen stays mounted through the takeover's exit animation.
-  const match = matches[0] ?? null
-  if (match && match !== shownMatch) setShownMatch(match)
 
   // ---------------------------------------------------------------- flows
 
@@ -121,7 +113,7 @@ export default function DiscoverPage() {
         .then(
           (result) => {
             if (result.matched) {
-              setMatches((queue) => [...queue, card])
+              celebrateMatch({ userId: card.userId, name, photo: card.profilePictureUrl })
               announce(t('deck.announceMatch', { name }))
             }
           },
@@ -254,7 +246,7 @@ export default function DiscoverPage() {
   }
 
   const sheetCard = sheet ? cards.find((card) => card.userId === sheet.userId) : undefined
-  const keyboard = !sheet && !filtersOpen && !match
+  const keyboard = !sheet && !filtersOpen && !celebrating
 
   return (
     <div ref={fitRef} className={s.page}>
@@ -303,23 +295,6 @@ export default function DiscoverPage() {
           ) : undefined
         }
       />
-
-      {shownMatch ? (
-        <MatchMoment
-          open={match !== null}
-          onClose={() => setMatches((queue) => queue.slice(1))}
-          me={{ name: me ? displayName(me) : t('nav.you'), photo: mainPicture(me)?.url, seed: me?.userId ?? 'me' }}
-          them={{
-            name: cardName(shownMatch),
-            photo: shownMatch.profilePictureUrl,
-            seed: shownMatch.userId,
-          }}
-          onMessage={() => {
-            setMatches([])
-            navigate(`/chat/${shownMatch.userId}`)
-          }}
-        />
-      ) : null}
     </div>
   )
 }

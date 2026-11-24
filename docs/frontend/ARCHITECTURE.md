@@ -134,7 +134,8 @@ anything under `src/wb` stops the store and reloads the page (never two stores).
     realtime events send nothing while the gate is closed, and the first `load(name)` opens it for the
     rest of the session (4.4). Sign-out closes every gate. Only what the shell itself shows loads at
     sign-in: `myProfile` (guards, avatar), `connections` + `chatList` (Matches badge), `calendar`
-    (Calendar badge: invites waiting for an answer), `likesReceived` (Activity badge).
+    (Calendar badge: invites waiting for an answer). `likesReceived` loads at sign-in too, though the
+    shell no longer shows it: the Activity badge counts the unread notifications (`useUnreadNotifications`).
 - Custom functions receive dependency values **in `dep` order** (never rely on parameter names: the
   engine falls back to order, and minifiers rename parameters). They declare exactly one parameter per
   dependency (more makes the engine append a snapshot). Their inputs are **optional** dependencies
@@ -396,6 +397,16 @@ is `NodeValues[N] | null | undefined`.
   is renewed (`renewSession()`, once per outage) and a socket that had given up is told to connect again.
   When the renewal is refused with 403 (no live refresh token) the session is probed, which signs the user
   out and closes the socket.
+- The **match moment** (`src/wb/matchMoments.ts`, started by `startRealtime`; played by
+  `src/app/frame/MatchMoments.tsx`, mounted in `App` over every page): the "It's a match" takeover for
+  every new connection. Fed by every `match` realtime hears (they liked you back, a match made elsewhere,
+  the backend's replay of one made while you were offline, the echo of your own like) and by
+  `celebrateMatch`, which the screens whose like made the match call on the like's answer (the deck,
+  "likes you", the profile sheet), so it plays without waiting for the socket. A connection plays once:
+  a second announcement of it is dropped until an `unmatch` about that person ends it, and someone whose
+  connection ended while queued leaves the queue. Several play one after the other; "Send a message"
+  drops the rest. A match shows no toast (it dismisses the like toast it completes). Exports:
+  `useMatchMoment`, `celebrateMatch`, `dismissMatchMoment`, `clearMatchMoments`.
 - The **notification feed** (`src/wb/notifications.ts`, started by `startRealtime`; Activity >
   Notifications). The backend has no list of notifications (it only replays the ones queued while the
   user was offline, at connection), so the feed is built from `realtime$`: likes, views, matches,
@@ -407,7 +418,7 @@ is `NodeValues[N] | null | undefined`.
   Unread means not shown on the Notifications tab yet: the tab marks everything read while it is open,
   and opening a conversation reads its message entry. Exports: `useNotifications`,
   `useUnreadNotifications`, `getNotifications`, `markAllNotificationsRead`, `clearNotifications`.
-  The shell's Activity badge still counts the pending likes, not the unread notifications.
+  The shell's Activity badge is `useUnreadNotifications`, so unread notifications show from any page.
 - Errors: `isApiError`, `toApiError`, `LOCAL_ERROR` (`NETWORK`, `TIMEOUT`, `NOT_SENT`, `INVALID`,
   `NO_SESSION`, `DROPPED`).
 - Boot (only `src/main.tsx`): `installStoreHttp()`, `startStore()`, await `ready`,

@@ -1,19 +1,18 @@
 /**
- * `/activity`: who likes you (answer them: a like back connects you), who viewed your profile, the
- * profiles you visited, and the notifications you were sent (src/wb/notifications.ts). The tab is in
- * the URL (`?tab=views`, `?tab=visited`, `?tab=notifications`) so a notification can link straight to
- * it. Likes load at sign-in (the shell's badge); the visitors and your visits load with this page, so
- * every tab shows its count at once.
+ * `/activity`: who likes you (answer them: a like back connects you, and plays the app's match moment),
+ * who viewed your profile, the profiles you visited, and the notifications you were sent
+ * (src/wb/notifications.ts). The tab is in the URL (`?tab=views`, `?tab=visited`, `?tab=notifications`)
+ * so a notification can link straight to it. Likes load at sign-in; the visitors and your visits load
+ * with this page, so every tab shows its count at once.
  */
 import { useId, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import type { DeckAction, UserSummary } from '@/api/types'
-import { firstNameOf, mainPicture } from '@/features/chat/people'
 import { useT } from '@/i18n'
 import ProfileSheet, { type ProfileTarget } from '@/features/profile/ProfileSheet'
 import { summaryPreviewProfile } from '@/features/profile/format'
-import { ActionButton, IconBell, IconEye, IconHeart, IconPin, MatchMoment, PageHeader, TabPanel, toast } from '@/ui'
-import { actions, load, refresh, REVISIT_MS, toApiError, useLoad, useNodeStatus, useNodeValue, useUnreadNotifications } from '@/wb'
+import { ActionButton, IconBell, IconEye, IconHeart, IconPin, PageHeader, TabPanel, toast } from '@/ui'
+import { actions, celebrateMatch, load, refresh, REVISIT_MS, toApiError, useLoad, useNodeStatus, useNodeValue, useUnreadNotifications } from '@/wb'
 import { LikesPanel } from './LikesPanel'
 import { NotificationsPanel } from './NotificationsPanel'
 import { ScoreTabs } from './ScoreTabs'
@@ -29,7 +28,6 @@ function tabFrom(value: string | null): TabValue {
 export default function ActivityPage() {
   const t = useT()
   const idBase = useId()
-  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const tab = tabFrom(params.get('tab'))
   // A tab switch is a navigation: preventScrollReset keeps <ScrollRestoration /> from jumping to the top.
@@ -51,8 +49,6 @@ export default function ActivityPage() {
   const viewersStatus = useNodeStatus('myViewers')
   const visitedValue = useNodeValue('visitedProfiles')
   const visitedStatus = useNodeStatus('visitedProfiles')
-  const myProfile = useNodeValue('myProfile')
-  const myId = useNodeValue('sessionUserId')
 
   const likes = likesValue && Array.isArray(likesValue.likes) ? likesValue.likes : null
   const viewers = viewersValue ? viewersValue.viewers : null
@@ -81,11 +77,6 @@ export default function ActivityPage() {
     setTarget({ userId: person.userId, preview: summaryPreviewProfile(person, { liked: false, likesYou: true, matched: false }) })
   }
 
-  const [match, setMatch] = useState<UserSummary | null>(null)
-  // The match moment keeps its people on screen while it plays its exit.
-  const [shownMatch, setShownMatch] = useState<UserSummary | null>(null)
-  if (match && match !== shownMatch) setShownMatch(match)
-
   const answer = (person: UserSummary, action: DeckAction) => {
     if (busy) return
     const name = person.username
@@ -96,7 +87,7 @@ export default function ActivityPage() {
         setBusy(null)
         setTarget(null)
         setAdmirer(null)
-        if (outcome.matched) setMatch(person)
+        if (outcome.matched) celebrateMatch({ userId: person.userId, name: person.username, photo: person.profilePictureUrl, theyLikedFirst: true })
         else if (action === 'like') toast.show({ tone: 'strawberry', title: t('act.youLiked', { name }) })
         else toast.show({ tone: 'ink', title: t('act.youPassed', { name }), message: t('act.passedMessage') })
       },
@@ -192,20 +183,6 @@ export default function ActivityPage() {
       </TabPanel>
 
       <ProfileSheet target={target} onClose={closeSheet} actions={sheetActions} />
-
-      <MatchMoment
-        open={match !== null}
-        onClose={() => setMatch(null)}
-        me={{ name: firstNameOf(myProfile, t('nav.you')), photo: mainPicture(myProfile), seed: myId ?? 'me' }}
-        them={{ name: shownMatch?.username ?? t('toast.someone'), photo: shownMatch?.profilePictureUrl ?? null, seed: shownMatch?.userId }}
-        onMessage={() => {
-          const id = match?.userId
-          setMatch(null)
-          if (id) navigate(`/chat/${id}`)
-        }}
-      >
-        {t('act.matchLine', { name: shownMatch?.username ?? t('toast.someone') })}
-      </MatchMoment>
     </div>
   )
 }

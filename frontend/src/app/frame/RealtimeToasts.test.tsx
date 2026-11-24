@@ -65,7 +65,14 @@ describe('RealtimeToasts', () => {
     expect(toast.getSnapshot().map((item) => item.id)).toEqual(['person-ann', 'view-ann'])
   })
 
-  it('a connection the other person ended says so, and replaces the toast of their match', () => {
+  it('a match takes the like it completes off the screen (the match moment tells of it)', () => {
+    act(() => source.next({ type: 'like', person: person('ann') }))
+    expect(shown('person-ann')).toMatchObject({ title: 'ann liked you' })
+    act(() => source.next({ type: 'match', person: person('ann') }))
+    expect(toast.getSnapshot()).toEqual([])
+  })
+
+  it('a connection the other person ended says so', () => {
     act(() => {
       source.next({ type: 'match', person: person('ann') })
       source.next({ type: 'unmatch', person: person('ann') })

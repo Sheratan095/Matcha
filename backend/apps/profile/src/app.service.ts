@@ -535,7 +535,16 @@ export class AppService
 
 				// Notify only on a new like. If they are now matched, a MATCHED event is also sent
 				// to both users over the websocket.
-				await sendProfileLikeNotification(likedId, likerId, nowMatched, this.httpService);
+				// Non-blocking: the like is already saved, so a failed notification must not turn into
+				// a 500 (the client would retry, the retry is a duplicate like, and nobody is ever told).
+				try
+				{
+					await sendProfileLikeNotification(likedId, likerId, nowMatched, this.httpService);
+				}
+				catch (notifyError: any)
+				{
+					this.logger.warn(`Failed to send like notification from ${likerId} to ${likedId}`, notifyError);
+				}
 			}
 			else
 				this.logger.log(`Duplicate like for user ${likedId} by ${likerId} ignored`);
@@ -567,9 +576,19 @@ export class AppService
 
 			if (removed)
 			{
-				// Notify both users only when a real match was dissolved.
+				// Notify both users only when a real match was dissolved. Non-blocking, as in likeUser:
+				// the unlike is already saved.
 				if (wasMatched)
-					await sendProfileUnlikeNotification(likedId, likerId, this.httpService);
+				{
+					try
+					{
+						await sendProfileUnlikeNotification(likedId, likerId, this.httpService);
+					}
+					catch (notifyError: any)
+					{
+						this.logger.warn(`Failed to send unmatch notification for ${likerId} and ${likedId}`, notifyError);
+					}
+				}
 
 				this.logger.log(`User ${likedId} unliked by ${likerId}`);
 			}
@@ -603,9 +622,19 @@ export class AppService
 
 			// If a match was dissolved, clear both sides' match/chat views with the existing
 			// unmatch push. To the blocked user this is indistinguishable from a normal unmatch,
-			// so the block itself is never revealed.
+			// so the block itself is never revealed. Non-blocking, as in likeUser: the block is
+			// already saved, and a 500 would tell the blocker it failed.
 			if (wasMatched)
-				await sendProfileUnlikeNotification(blockedId, blockerId, this.httpService);
+			{
+				try
+				{
+					await sendProfileUnlikeNotification(blockedId, blockerId, this.httpService);
+				}
+				catch (notifyError: any)
+				{
+					this.logger.warn(`Failed to send unmatch notification for block of ${blockedId} by ${blockerId}`, notifyError);
+				}
+			}
 
 			return ({ blocked: true });
 		}

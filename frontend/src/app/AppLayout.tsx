@@ -1,26 +1,25 @@
 /**
  * The signed-in frame: the kit's AppShell with the six sections, their badges (unread messages,
- * invites waiting for an answer, likes received), the section name as margin poster on wide screens,
- * the search bar and the account menu.
+ * invites waiting for an answer, unread notifications), the section name as margin poster on wide screens,
+ * the search bar and the sign-out button.
  * Pages render in the Outlet; a lazy page that is still loading keeps the shell on screen.
  * A conversation (`/chat/:userId`) belongs to Matches: that tab stays lit, the shell fits the
  * viewport so the thread scrolls inside it, and the navigation stays (the rail, or the tab bar on
  * phones, where the conversation's own header replaces the top bar).
  */
-import { Suspense } from 'react'
-import { matchPath, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Suspense, useState } from 'react'
+import { matchPath, Outlet, useLocation } from 'react-router-dom'
 import {
   AppShell,
-  Avatar,
   IconCalendar,
   IconChat,
   IconGlobe,
+  IconButton,
   IconHeart,
   IconLogout,
   IconRegMark,
   IconUser,
   Loader,
-  Menu,
   toast,
   type ShellTab,
 } from '@/ui'
@@ -28,7 +27,7 @@ import { useInvitesWaiting } from '@/features/calendar/useInvitesWaiting'
 import { useT } from '@/i18n'
 import { useAutoLocation } from '@/features/location/useAutoLocation'
 import { SearchBar } from '@/features/search/SearchBar'
-import { actions, toApiError, useNodeValue } from '@/wb'
+import { actions, toApiError, useNodeValue, useUnreadNotifications } from '@/wb'
 
 const SECTIONS = [
   { to: '/discover', label: 'nav.discover', poster: 'nav.posterDiscover', icon: <IconRegMark size={22} /> },
@@ -39,28 +38,21 @@ const SECTIONS = [
   { to: '/me', label: 'nav.me', poster: 'nav.posterProfile', icon: <IconUser size={22} /> },
 ] as const
 
-function AccountMenu() {
+/** Signs out in one click. RequireAuth sees the sign-out and takes the user to the front page. */
+function SignOutButton() {
   const t = useT()
-  const navigate = useNavigate()
-  const profile = useNodeValue('myProfile')
-  const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || t('nav.you')
-  const photo = profile?.pictures.find((picture) => picture.isProfile)?.url ?? null
+  const [busy, setBusy] = useState(false)
+  const signOut = () => {
+    setBusy(true)
+    actions.logout().catch((error: unknown) => {
+      setBusy(false)
+      toast.error(t('nav.signOutFailed'), toApiError(error).message)
+    })
+  }
   return (
-    <Menu
-      label={t('nav.account')}
-      triggerVariant="ghost"
-      trigger={<Avatar src={photo} name={name} size="sm" decorative />}
-      items={[
-        { label: t('nav.yourProfile'), icon: <IconUser size={18} />, onSelect: () => navigate('/me') },
-        {
-          label: t('nav.signOut'),
-          icon: <IconLogout size={18} />,
-          // RequireAuth sees the sign-out and takes the user to the front page.
-          onSelect: () =>
-            void actions.logout().catch((error: unknown) => toast.error(t('nav.signOutFailed'), toApiError(error).message)),
-        },
-      ]}
-    />
+    <IconButton label={t('nav.signOut')} variant="ghost" onClick={signOut} disabled={busy}>
+      <IconLogout size={22} />
+    </IconButton>
   )
 }
 
@@ -76,7 +68,8 @@ export default function AppLayout() {
   useAutoLocation()
   const { pathname } = useLocation()
   const unread = useNodeValue('unreadCount') ?? 0
-  const likes = useNodeValue('likesReceived')?.likes?.length ?? 0
+  // What the Activity > Notifications tab has not shown yet; opening that tab clears it.
+  const notifications = useUnreadNotifications()
   const invites = useInvitesWaiting()
   const chat = matchPath('/chat/:userId', pathname)
   const partnerName = usePartnerName(chat?.params.userId)
@@ -86,7 +79,7 @@ export default function AppLayout() {
   const badges: Partial<Record<(typeof SECTIONS)[number]['to'], number>> = {
     '/matches': unread,
     '/calendar': invites,
-    '/activity': likes,
+    '/activity': notifications,
   }
   const tabs: ShellTab[] = SECTIONS.map((candidate) => ({
     to: candidate.to,
@@ -107,7 +100,7 @@ export default function AppLayout() {
       fit={chat != null}
       hideTopBar={chat != null}
       search={<SearchBar />}
-      actions={<AccountMenu />}
+      actions={<SignOutButton />}
     >
       {/* The Me page names itself (it also knows when the profile is not loaded yet). */}
       {section && section.to !== '/me' ? <title>{`${t(section.label)} · Matcha`}</title> : null}

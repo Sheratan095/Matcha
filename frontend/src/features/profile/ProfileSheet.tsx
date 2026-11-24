@@ -4,8 +4,9 @@
  *
  * - It loads `apiProfile` (`actions.showApiProfile`): age, distance, fame, presence and the like
  *   relation; shared interests are worked out against your own profile. Opening a profile records a
- *   profile view on the backend. Without an `actions` slot the sheet offers like / unlike itself, and
- *   its menu reports a fake account or blocks (subject IV.5).
+ *   profile view on the backend. Without an `actions` slot the sheet offers like / unlike itself (a like
+ *   that makes a match plays the app's match moment), and its menu reports a fake account or blocks
+ *   (subject IV.5).
  * - `preview` shows at once while the full profile loads.
  * - Closing calls `onClose` and `actions.closeProfile()` (also when the caller sets `target` to null).
  */
@@ -38,8 +39,8 @@ import {
   toast,
   ActionButton,
 } from '@/ui'
-import { actions, LOCAL_ERROR, toApiError, useNodeStatus, useNodeValue } from '@/wb'
-import { displayName, distanceText, identityText, lastSeenText, orderedPictures, serialOf } from './format'
+import { actions, celebrateMatch, LOCAL_ERROR, toApiError, useNodeStatus, useNodeValue } from '@/wb'
+import { displayName, distanceText, identityText, lastSeenText, mainPicture, orderedPictures, serialOf } from './format'
 import { PhotoCarousel } from './PhotoCarousel'
 import s from './ProfileSheet.module.css'
 
@@ -183,7 +184,16 @@ export default function ProfileSheet({ target, onClose, actions: slot, onBlocked
         const outcome = await actions.likeUser(userId, 'like')
         const matched = outcome.matched || relation.likesYou
         setRelationOverride({ userId, relation: { liked: true, likesYou: relation.likesYou, matched } })
-        toast.show({ tone: 'strawberry', title: matched ? t('prof.nowConnected', { name }) : t('act.youLiked', { name }) })
+        if (matched) {
+          celebrateMatch({
+            userId,
+            name: data.firstName?.trim() || data.username || null,
+            photo: mainPicture(data)?.url ?? null,
+            theyLikedFirst: relation.likesYou,
+          })
+        } else {
+          toast.show({ tone: 'strawberry', title: t('act.youLiked', { name }) })
+        }
       }
     } catch (error) {
       toast.show({ tone: 'strawberry', title: t('deck.didNotWork'), message: toApiError(error).message })

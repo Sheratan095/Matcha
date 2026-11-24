@@ -53,7 +53,8 @@
 - [x] Profile views on the socket: `profile-view` -> a toast ("<name> viewed your profile", "See visitors" -> Activity > Viewers), besides the reload of the viewers
 - [x] A list of the last notifications: Activity > Notifications (src/wb/notifications.ts: built from the socket events, the last 50 kept per user in this browser, unread count on the tab)
 - [x] "A connected user unlikes them": a toast ("<name> ended the connection"), and an entry in the list; the echo of your own unlike / block is skipped (`own`)
-- [ ] Unread notifications visible from any page: the Activity badge in the shell still counts the pending likes, not the unread notifications (`useUnreadNotifications`)
+- [x] Unread notifications visible from any page: the Activity badge in the shell counts the unread notifications (`useUnreadNotifications`)
+- [x] The match moment plays for every new connection, on any page: realtime's `match` (they liked you back, a replay after being offline) as well as your own like (src/wb/matchMoments.ts, src/app/frame/MatchMoments.tsx); once per connection, the echo of your own like included
 - [x] Refresh the affected nodes on each event (likes, viewers, connections, chat list, open chat, matchesMap)
 - [x] Remove `mockEvents$` and the typing indicator (the backend has no `typing` event)
 
@@ -62,14 +63,14 @@
 - [x] Realtime never connected behind the Vite proxy (SAL: "problemi con i ws"): `io('/api/notification')` made `/api/notification` the namespace and connected to `/socket.io`, which Vite does not forward (it answered its index.html). The socket now connects to namespace `/notification` on path `/api/socket.io` (`socketTarget` in src/wb/realtime.ts)
 - [x] Unnecessary / duplicate requests (SAL 12/11): only what the shell shows loads at sign-in (profile, matches, chat list, likes); the deck, interests, viewers, visits, blocks and the map load when a screen asks (`useLoad`), StrictMode no longer doubles them, an opened profile is fetched (and the visit recorded) once, the `match` / `unmatch` echo of your own action no longer refreshes the lists a second time, GET /notification/online is no longer called (nothing showed it)
 - [x] No unhandled error in the console with the real backend (every page, logged in and out): checked on the production build in Chrome (headless), 360px and 1280px. A first-time visitor no longer sends the boot `POST /auth/refresh` that 403'd on every page (src/wb/sessionHint.ts), and the engine logs an HTTP failure as a debug line (the screens show it)
-- [ ] Check every page on Firefox and Chrome, and on a phone width
+- [x] Check every page on Firefox and Chrome, and on a phone width
 
 ## Bonus 
 - [x] Interactive map of users (/map)
 - [x] GitHub OAuth
 - [x] Calendar (/calendar, its own tab with a badge for the invites waiting): plan dates with a match (title, description, place as coordinates, date and time; also from a conversation's menu), answer an invite, call a date off: GET /profile/calendar, POST /profile/calendar/event, POST .../:eventId/accept | decline | cancel
 - [x] Photo editing on upload: a chosen photo opens in `PhotoEditor` (`src/features/me`) before it is sent: crop (original, 3:4, square; drag and zoom), rotate, six filters, resize (540 / 810 / 1080 px); all in the browser, so a phone picture over 5 MB now works (the editor opens files up to 20 MB and sends a JPEG of at most 1080 px)
-- [ ] Photo gallery: drag-and-drop upload
+- [x] Photo gallery: drag-and-drop upload
 - [ ] Second OAuth provider
 - [ ] Video / audio chat
 

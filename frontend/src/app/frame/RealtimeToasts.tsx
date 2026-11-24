@@ -1,9 +1,10 @@
 /**
- * Global toasts from `realtime$`: a new connection, a connection ended by the other person, a message
+ * Global toasts from `realtime$`: a connection ended by the other person, a message
  * for a conversation that is not open, someone liking you, someone viewing your profile, and a date
  * invited to, accepted, declined, cancelled or starting. Each links to the right place (an ended
- * connection has nowhere to go). Renders nothing itself (the Toaster does). What the toasts say is also
- * kept in the Activity > Notifications feed.
+ * connection has nowhere to go). A new connection gets the match moment instead (./MatchMoments.tsx),
+ * which replaces the toast of the like that made it. Renders nothing itself (the Toaster does). What the
+ * toasts say is also kept in the Activity > Notifications feed.
  */
 import { useEffect } from 'react'
 import type { CalendarAction, CalendarEventSummary, UserSummary } from '@/api/types'
@@ -67,20 +68,11 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
     const subscription = realtime$.subscribe((event) => {
       if (getNodeValue('authStatus') !== 'authenticated') return
       switch (event.type) {
-        case 'match': {
-          const name = nameOf(event.person)
-          // Same id as the like toast: the like that made the match is replaced, not stacked.
-          toast.show({
-            id: `person-${event.person.userId}`,
-            tone: 'matcha',
-            title: t('toast.matchTitle'),
-            message: t('toast.matchMessage', { name }),
-            icon: avatarOf(event.person),
-            duration: 7000,
-            action: { label: t('toast.matchAction'), onClick: () => navigate(`/chat/${event.person.userId}`) },
-          })
+        case 'match':
+          // The match moment takes the whole screen (MatchMoments): the like that made the match is
+          // old news under it.
+          toast.dismiss(`person-${event.person.userId}`)
           break
-        }
         case 'message': {
           const from = event.from.userId
           // The open conversation shows it already. Check the route too: right after navigating to a
@@ -144,7 +136,7 @@ export function RealtimeToasts({ navigate, currentPath }: RealtimeToastsProps) {
         case 'unmatch': {
           // Unliking or blocking someone is echoed to you too: only the other person's doing is news.
           if (event.own) break
-          // Same id as their like and match toasts: it replaces a "match" that is no longer true.
+          // Same id as their like toast: it replaces a "likes you" that is no longer true.
           toast.show({
             id: `person-${event.person.userId}`,
             tone: 'ink',

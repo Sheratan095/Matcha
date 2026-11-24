@@ -558,6 +558,21 @@ export class DbService implements OnModuleInit
 		return (created);
 	}
 
+	// Serializes the transactions that change the relationship between the same two users (like,
+	// unlike, block), whichever of the two starts them. Without it, A liking B while B likes A runs
+	// both match checks before either like is committed: both see no match, so no chat opens and no
+	// MATCHED event goes out although the likes are mutual. Likewise a like racing an unlike can open
+	// a chat for a match that is already gone. Taken FIRST in the transaction and held until COMMIT /
+	// ROLLBACK, so the second one waits and then reads what the first committed (READ COMMITTED takes
+	// a fresh snapshot per statement). LEAST / GREATEST make (A, B) and (B, A) the same key.
+	private async lockPair(client: PoolClient, userAId: string, userBId: string): Promise<void>
+	{
+		await client.query(
+			`SELECT pg_advisory_xact_lock(hashtextextended(LEAST($1::uuid, $2::uuid)::text || GREATEST($1::uuid, $2::uuid)::text, 0))`,
+			[userAId, userBId]
+		);
+	}
+
 	// Records that likerId liked likedId. Idempotent: a second like for the same pair is a
 	// no-op (ON CONFLICT DO NOTHING). Returns true when a new like was stored, false when the
 	// like already existed. A missing likedId trips the users(id) foreign key (error code
@@ -573,6 +588,8 @@ export class DbService implements OnModuleInit
 		try
 		{
 			await client.query('BEGIN');
+
+			await this.lockPair(client, likerId, likedId);
 
 			const likeResult = await client.query(
 				`INSERT INTO likes (liker_id, liked_id)
@@ -640,6 +657,8 @@ export class DbService implements OnModuleInit
 		try
 		{
 			await client.query('BEGIN');
+
+			await this.lockPair(client, likerId, likedId);
 
 			// Capture the match state BEFORE removing the like (removing it breaks the mutual).
 			const matchResult = await client.query(
@@ -829,6 +848,8 @@ export class DbService implements OnModuleInit
 		try
 		{
 			await client.query('BEGIN');
+
+			await this.lockPair(client, blockerId, blockedId);
 
 			const matchResult = await client.query(
 				`SELECT EXISTS (

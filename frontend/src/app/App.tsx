@@ -1,17 +1,19 @@
 /**
- * The app root (rendered by main.tsx once the store is live): the router, the one Toaster and realtime
- * toasts.
+ * The app root (rendered by main.tsx once the store is live): the router, the one Toaster, realtime
+ * toasts and the match moment.
  */
 import { Suspense } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { useT } from '@/i18n'
 import { closeModals, Toaster } from '@/ui'
+import { MatchMoments } from './frame/MatchMoments'
 import { RealtimeToasts } from './frame/RealtimeToasts'
 import { PageLoader } from './frame/screens'
 import { router } from './router'
 
 /**
- * Toasts live outside the router tree: navigate through, and read the location from, the router itself.
+ * Toasts and the match moment live outside the router tree: navigate through, and read the location
+ * from, the router itself.
  * An open sheet or dialog is closed first: when the toast leads to the page already open (another of
  * its tabs), it would otherwise stay over what the user was taken to.
  */
@@ -33,6 +35,7 @@ export default function App() {
       </Suspense>
       <Toaster position="top-right" />
       <RealtimeToasts navigate={go} currentPath={currentPath} />
+      <MatchMoments navigate={go} />
     </>
   )
 }

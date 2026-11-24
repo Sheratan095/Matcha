@@ -59,6 +59,8 @@ function identityLine(profile: Profile, t: Translator): string {
 export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHeaderProps) {
   const t = useT()
   const complete = useNodeValue('profileComplete') === true
+  // Fame moves when others view or like you, so the profile is refetched on a revisit, like the viewers.
+  useLoad('myProfile', { maxAgeMs: REVISIT_MS })
   useLoad('myViewers', { maxAgeMs: REVISIT_MS })
   const viewers = useNodeValue('myViewers')
   const viewersStatus = useNodeStatus('myViewers')
@@ -68,6 +70,7 @@ export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHead
   const tags = interestNames(profile)
   const since = new Date(profile.createdAt).getFullYear()
   const viewerCount = viewers ? viewers.viewers.length : viewersStatus.status === 'error' ? '–' : '··'
+  const fame = profile.fameRating != null ? Math.round(profile.fameRating) : '–'
 
   return (
     <section className={s.header} aria-labelledby="me-name">
@@ -119,8 +122,9 @@ export function ProfileHeader({ profile, onEdit, onFix, onPreview }: ProfileHead
 
       <CompletenessMeter checks={profileChecks(profile)} onFix={onFix} />
 
-      <StatGroup>
-        <Stat value={viewerCount} label={t('me.statViewers')} />
+      <StatGroup className={s.stats}>
+        <Stat value={fame} label={t('prof.statFame')} />
+        <Stat value={viewerCount} label={t('me.statViewers')} tone="blue" />
         <Stat value={profile.interests.length} label={t('me.statInterests')} tone="strawberry" />
         <Stat value={profile.pictures.length} unit="/5" label={t('me.statPhotos')} tone="yolk" />
       </StatGroup>

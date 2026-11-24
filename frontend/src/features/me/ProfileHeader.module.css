@@ -2,6 +2,22 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-5);
+  container: me-header / inline-size;
+}
+
+/* Four numbers: one row where they fit, two by two on a phone, where four columns would clip the
+   labels ("Popularité", "Visiteurs"). */
+@container me-header (max-width: 27.99rem) {
+  .header .stats {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .header .stats > :nth-child(odd) {
+    border-left: 0;
+  }
+  .header .stats > :nth-child(n + 3) {
+    border-top: var(--line);
+  }
 }
 
 /* The matcha tin: the photo laid on a dotted colour field, the name cropped behind it. */
